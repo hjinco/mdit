@@ -45,7 +45,7 @@ export const aiChatPlugin = AIChatPlugin.extend({
     node: AIAnchorElement,
   },
   shortcuts: { show: { keys: 'mod+j' } },
-  useHooks: ({ editor, getOption }) => {
+  useHooks: ({ editor }) => {
     const mode = usePluginOption(
       { key: KEYS.aiChat } as AIChatPluginConfig,
       'mode'
@@ -54,9 +54,10 @@ export const aiChatPlugin = AIChatPlugin.extend({
     useChatChunk({
       onChunk: ({ chunk, isFirst, nodes }) => {
         if (isFirst) {
-          const selection = editor.selection
-          if (!selection) return
           if (mode === 'insert') {
+            const selection = editor.selection
+            if (!selection) return
+
             editor.tf.withoutSaving(() => {
               editor.tf.insertNodes(
                 {
@@ -87,12 +88,16 @@ export const aiChatPlugin = AIChatPlugin.extend({
                           .blockSelection.getNodes()
                           .at(-1)![1]
                       )
-                    : PathApi.next(selection.focus.path.slice(0, 1)),
+                    : PathApi.next(editor.selection!.focus.path.slice(0, 1)),
                 }
               )
             })
           }
-          editor.setOption(AIChatPlugin, 'streaming', true)
+
+          // setTimeout ensures ai-menu.tsx can properly find the anchor DOM node
+          setTimeout(() => {
+            editor.setOption(AIChatPlugin, 'streaming', true)
+          }, 0)
         }
 
         if (nodes.length < 1) {
@@ -103,7 +108,6 @@ export const aiChatPlugin = AIChatPlugin.extend({
           withAIBatch(
             editor,
             () => {
-              if (!getOption('streaming')) return
               editor.tf.withScrolling(() => {
                 streamInsertChunk(editor, chunk, {
                   textProps: {
