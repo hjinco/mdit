@@ -222,12 +222,10 @@ export function AIMenu() {
   useEffect(() => {
     if (streaming) {
       const anchor = api.aiChat.node({ anchor: true })
-      setTimeout(() => {
-        if (!anchor) return
-        const anchorDom = editor.api.toDOMNode(anchor[0])
-        if (!anchorDom) return
-        setAnchorElement(anchorDom)
-      }, 200)
+      if (!anchor) return
+      const anchorDom = editor.api.toDOMNode(anchor[0])
+      if (!anchorDom) return
+      setAnchorElement(anchorDom)
     }
   }, [streaming])
 
