@@ -121,9 +121,6 @@ export const aiChatPlugin = AIChatPlugin.extend({
       },
       onFinish: ({ content }) => {
         if (mode === 'chat') {
-          const selection = editor.selection
-          if (!selection) return
-
           const isBlockSelecting = editor.getOption(
             BlockSelectionPlugin,
             'isSelectingSome'
@@ -159,22 +156,25 @@ export const aiChatPlugin = AIChatPlugin.extend({
                     })
                 })
               })
-            }
+            } else {
+              const nodes = markdownToSlateNodes(editor, content)
+              const diff = getDiff(
+                selectedBlocks.map(([b]) => b),
+                nodes
+              )
 
-            const nodes = markdownToSlateNodes(editor, content)
-            const diff = getDiff([selectedBlocks[0][0]], nodes)
+              editor.tf.withoutNormalizing(() => {
+                removeBlockSelectionNodes(editor)
 
-            editor.tf.withoutNormalizing(() => {
-              removeBlockSelectionNodes(editor)
-
-              editor.tf.withNewBatch(() => {
-                editor
-                  .getTransforms(BlockSelectionPlugin)
-                  .blockSelection.insertBlocksAndSelect(diff as TElement[], {
-                    at: selectedBlocks[0][1],
-                  })
+                editor.tf.withNewBatch(() => {
+                  editor
+                    .getTransforms(BlockSelectionPlugin)
+                    .blockSelection.insertBlocksAndSelect(diff as TElement[], {
+                      at: selectedBlocks[0][1],
+                    })
+                })
               })
-            })
+            }
           } else {
             const firstBlock = editor.api.node({
               block: true,
@@ -209,11 +209,11 @@ export const aiChatPlugin = AIChatPlugin.extend({
                 const diff = getDiff(editor.api.fragment(), formattedBlocks)
                 editor.tf.insertFragment(diff)
               }
+            } else {
+              const nodes = markdownToSlateNodes(editor, content)
+              const diff = getDiff(editor.api.fragment(), nodes)
+              editor.tf.insertFragment(diff)
             }
-
-            const nodes = markdownToSlateNodes(editor, content)
-            const diff = getDiff(editor.api.fragment(), nodes)
-            editor.tf.insertFragment(diff)
           }
         }
 
