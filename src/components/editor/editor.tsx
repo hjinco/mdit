@@ -1,5 +1,4 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { open, save } from '@tauri-apps/plugin-dialog'
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { FileIcon, FilePenIcon } from 'lucide-react'
 import {
@@ -8,7 +7,7 @@ import {
   PlateContent,
   usePlateEditor,
 } from 'platejs/react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTabContext } from '@/contexts/tab-context'
 import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
@@ -64,40 +63,11 @@ const plugins = [
 
 export function Editor() {
   const isSaved = useRef(true)
-  const { tab, setTab } = useTabContext()
+  const { tab, newNote, openNote } = useTabContext()
 
   const editor = usePlateEditor({
     plugins,
   })
-
-  const openTab = useCallback(async () => {
-    const path = await open({
-      multiple: false,
-      directory: false,
-      title: 'Open Note',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    })
-    if (path) {
-      const name = path.split('/').pop()?.split('.').shift()
-      if (name) {
-        setTab({ path, name })
-      }
-    }
-  }, [setTab])
-
-  const createNote = useCallback(async () => {
-    const path = await save({
-      title: 'Create Note',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    })
-    if (path) {
-      const name = path.split('/').pop()?.split('.').shift()
-      if (name) {
-        await writeTextFile(path, '')
-        setTab({ path, name })
-      }
-    }
-  }, [setTab])
 
   useEffect(() => {
     if (!tab) return
@@ -142,13 +112,13 @@ export function Editor() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex flex-col gap-2">
-          <Button variant="ghost" onClick={openTab}>
+          <Button variant="ghost" onClick={openNote}>
             <FileIcon /> Open Note
           </Button>
           <Button
             className="w-full justify-start"
             variant="ghost"
-            onClick={createNote}
+            onClick={newNote}
           >
             <FilePenIcon /> New Note
           </Button>

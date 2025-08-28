@@ -38,7 +38,8 @@
         "noUnknownAtRules": "off",
         "useAwait": "off",
         "noConsole": "off",
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noEmptyBlockStatements": "off"
       },
       "complexity": {
         "noExcessiveCognitiveComplexity": "off",
