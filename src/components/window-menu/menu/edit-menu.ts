@@ -1,32 +1,36 @@
 import { PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 
-export async function createMditMenu() {
+export async function createEditMenu() {
   return await Submenu.new({
-    text: 'Mdit',
+    text: 'Edit',
     items: [
       await PredefinedMenuItem.new({
-        text: 'Services',
-        item: 'Services',
+        text: 'Undo',
+        item: 'Undo',
+      }),
+      await PredefinedMenuItem.new({
+        text: 'Redo',
+        item: 'Redo',
       }),
       await PredefinedMenuItem.new({
         text: 'Separator',
         item: 'Separator',
       }),
       await PredefinedMenuItem.new({
-        text: 'Hide',
-        item: 'Hide',
+        text: 'Cut',
+        item: 'Cut',
       }),
       await PredefinedMenuItem.new({
-        text: 'Hide Others',
-        item: 'HideOthers',
+        text: 'Copy',
+        item: 'Copy',
       }),
       await PredefinedMenuItem.new({
-        text: 'Separator',
-        item: 'Separator',
+        text: 'Paste',
+        item: 'Paste',
       }),
       await PredefinedMenuItem.new({
-        text: 'Quit',
-        item: 'Quit',
+        text: 'Select All',
+        item: 'SelectAll',
       }),
     ],
   })

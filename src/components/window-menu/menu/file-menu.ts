@@ -1,4 +1,4 @@
-import { MenuItem, Submenu } from '@tauri-apps/api/menu'
+import { MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 
 export async function createFileMenu({
   newNote,
@@ -21,6 +21,14 @@ export async function createFileMenu({
         text: 'Open Note',
         accelerator: 'CmdOrCtrl+O',
         action: () => openNote(),
+      }),
+      await PredefinedMenuItem.new({
+        text: 'Separator',
+        item: 'Separator',
+      }),
+      await PredefinedMenuItem.new({
+        text: 'Close Window',
+        item: 'CloseWindow',
       }),
     ],
   })
