@@ -421,7 +421,7 @@ export function AIMenu() {
             </div>
           ) : (
             <CommandPrimitive.Input
-              autoFocus={!!chatConfig}
+              autoFocus
               className={cn(
                 'flex h-9 w-full min-w-0 bg-transparent border-input border-b px-3 py-1 text-base outline-none transition-[color,box-shadow] placeholder:text-muted-foreground md:text-sm dark:bg-input/30',
                 'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
@@ -438,6 +438,10 @@ export function AIMenu() {
                 if (isHotkey('backspace')(e) && input.length === 0) {
                   e.preventDefault()
                   api.aiChat.hide()
+                }
+                if (!chatConfig) {
+                  setModelPopoverOpen(true)
+                  return
                 }
                 if (isHotkey('enter')(e) && !e.shiftKey && !value) {
                   e.preventDefault()
