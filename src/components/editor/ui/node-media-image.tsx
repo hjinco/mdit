@@ -1,4 +1,3 @@
-import { useDraggable } from '@platejs/dnd'
 import { Image, ImagePlugin, useMediaState } from '@platejs/media/react'
 import { ResizableProvider, useResizableValue } from '@platejs/resizable'
 import { convertFileSrc } from '@tauri-apps/api/core'
@@ -25,10 +24,6 @@ export const ImageElement = withHOC(
       return convertFileSrc(props.element.url)
     }, [props.element.url])
 
-    const { isDragging, handleRef } = useDraggable({
-      element: props.element,
-    })
-
     return (
       <MediaToolbar plugin={ImagePlugin}>
         <PlateElement {...props} className="py-2.5">
@@ -45,12 +40,10 @@ export const ImageElement = withHOC(
                 options={{ direction: 'left' }}
               />
               <Image
-                ref={handleRef}
                 className={cn(
                   'block w-full max-w-full cursor-pointer object-cover px-0',
                   'rounded-sm',
-                  focused && selected && 'ring-2 ring-ring ring-offset-2',
-                  isDragging && 'opacity-50'
+                  focused && selected && 'ring-2 ring-ring ring-offset-2'
                 )}
                 alt={props.attributes.alt as string | undefined}
                 src={src}

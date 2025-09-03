@@ -1,4 +1,3 @@
-import { useDraggable } from '@platejs/dnd'
 import { parseTwitterUrl, parseVideoUrl } from '@platejs/media'
 import { useMediaState } from '@platejs/media/react'
 import { ResizableProvider, useResizableValue } from '@platejs/resizable'
@@ -37,15 +36,10 @@ export const VideoElement = withHOC(
 
     const isEditorMounted = useEditorMounted()
 
-    const { isDragging, handleRef } = useDraggable({
-      element: props.element,
-    })
-
     return (
       <PlateElement className="py-2.5" {...props}>
         <figure className="relative m-0 cursor-default" contentEditable={false}>
           <Resizable
-            className={cn(isDragging && 'opacity-50')}
             align={align}
             options={{
               align,
@@ -66,7 +60,7 @@ export const VideoElement = withHOC(
               />
 
               {!isUpload && isYoutube && (
-                <div ref={handleRef}>
+                <div>
                   <LiteYouTubeEmbed
                     id={embed!.id!}
                     title="youtube"
@@ -91,7 +85,7 @@ export const VideoElement = withHOC(
               )}
 
               {isUpload && isEditorMounted && (
-                <div ref={handleRef}>
+                <div>
                   <ReactPlayer
                     height="100%"
                     src={unsafeUrl}
