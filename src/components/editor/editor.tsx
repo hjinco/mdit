@@ -8,8 +8,8 @@ import {
   usePlateEditor,
 } from 'platejs/react'
 import { useEffect, useRef } from 'react'
-import { useTabContext } from '@/contexts/tab-context'
 import { cn } from '@/lib/utils'
+import { useTabStore } from '@/store/tab-store'
 import { Button } from '@/ui/button'
 import { AIKit } from './plugins/ai-kit'
 import { AutoformatKit } from './plugins/autoformat-kit'
@@ -64,7 +64,7 @@ const plugins = [
 export function Editor() {
   const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
-  const { tab, newNote, openNote } = useTabContext()
+  const { tab, newNote, openNote } = useTabStore()
 
   const editor = usePlateEditor({
     plugins,

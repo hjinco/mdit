@@ -1,9 +1,12 @@
 import { useEffect } from 'react'
-import { useTabContext } from '@/contexts/tab-context'
+import { useShallow } from 'zustand/shallow'
+import { useTabStore } from '@/store/tab-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
-  const { newNote, openNote } = useTabContext()
+  const { newNote, openNote } = useTabStore(
+    useShallow((s) => ({ newNote: s.newNote, openNote: s.openNote }))
+  )
 
   useEffect(() => {
     installWindowMenu({
