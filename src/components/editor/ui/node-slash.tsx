@@ -4,7 +4,6 @@ import { open } from '@tauri-apps/plugin-dialog'
 import {
   CalendarIcon,
   Code2,
-  Columns3Icon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -171,11 +170,11 @@ const groups: Group[] = [
         label: 'Table of contents',
         value: KEYS.toc,
       },
-      {
-        icon: <Columns3Icon />,
-        label: '3 columns',
-        value: 'action_three_columns',
-      },
+      // {
+      //   icon: <Columns3Icon />,
+      //   label: '3 columns',
+      //   value: 'action_three_columns',
+      // },
       {
         focusEditor: false,
         icon: <RadicalIcon />,
