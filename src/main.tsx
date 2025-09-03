@@ -1,3 +1,4 @@
+import { PlateController } from 'platejs/react'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Toaster } from '@/ui/sonner'
@@ -11,8 +12,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
       <DropProvider>
-        <App />
-        <WindowMenu />
+        <PlateController>
+          <App />
+          <WindowMenu />
+        </PlateController>
       </DropProvider>
     </ThemeProvider>
     <Updater />
