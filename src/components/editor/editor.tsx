@@ -17,6 +17,7 @@ import { BasicBlocksKit } from './plugins/basic-blocks-kit'
 import { BasicMarksKit } from './plugins/basic-marks-kit'
 import { BlockSelectionKit } from './plugins/block-selection-kit'
 import { CalloutKit } from './plugins/callout-kit'
+import { CmdAKit } from './plugins/cmd-a-kit'
 import { CodeBlockKit } from './plugins/code-block-kit'
 // import { ColumnKit } from './plugins/column-kit'
 import { CursorOverlayKit } from './plugins/cursor-overlay-kit'
@@ -42,6 +43,7 @@ const plugins = [
   ...BasicMarksKit,
   ...BlockSelectionKit,
   ...CalloutKit,
+  ...CmdAKit,
   ...CodeBlockKit,
   // ...ColumnKit,
   ...CursorOverlayKit,

@@ -1,4 +1,5 @@
 import { Menu } from '@tauri-apps/api/menu'
+import type { PlateEditor } from 'platejs/react'
 import { createEditMenu } from './edit-menu'
 import { createFileMenu } from './file-menu'
 import { createHelpMenu } from './help-menu'
@@ -7,9 +8,11 @@ import { createViewMenu } from './view-menu'
 import { createWindowMenu } from './window-menu'
 
 export async function installWindowMenu({
+  editor,
   newNote,
   openNote,
 }: {
+  editor: PlateEditor
   newNote: () => void
   openNote: () => void
 }) {
@@ -20,7 +23,9 @@ export async function installWindowMenu({
         newNote,
         openNote,
       }),
-      await createEditMenu(),
+      await createEditMenu({
+        editor,
+      }),
       await createViewMenu(),
       await createWindowMenu(),
       await createHelpMenu(),
