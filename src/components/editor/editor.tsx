@@ -77,7 +77,10 @@ export function Editor() {
     readTextFile(tab.path)
       .then(editor.api.markdown.deserialize)
       .then((value) => {
-        editor.tf.setValue(value)
+        editor.tf.reset()
+        editor.tf.withoutSaving(() => {
+          editor.tf.setValue(value)
+        })
         editor.tf.focus()
       })
   }, [tab, editor])
