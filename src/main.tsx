@@ -5,17 +5,14 @@ import { App } from './app'
 import { Updater } from './components/updater/updater'
 import { WindowMenu } from './components/window-menu/window-menu'
 import { DropProvider } from './contexts/drop-context'
-import { TabProvider } from './contexts/tab-context'
 import { ThemeProvider } from './contexts/theme-context'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ThemeProvider>
       <DropProvider>
-        <TabProvider>
-          <App />
-          <WindowMenu />
-        </TabProvider>
+        <App />
+        <WindowMenu />
       </DropProvider>
     </ThemeProvider>
     <Updater />

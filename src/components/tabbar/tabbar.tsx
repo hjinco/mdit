@@ -1,9 +1,9 @@
-import { useTabContext } from '@/contexts/tab-context'
+import { useTabStore } from '@/store/tab-store'
 import { ModeToggle } from './ui/mode-toggle'
 import { Tab } from './ui/tab'
 
 export function Tabbar() {
-  const { tab, renameNote } = useTabContext()
+  const { tab, renameNote } = useTabStore()
 
   if (!tab) return <div className="h-10" data-tauri-drag-region />
 
