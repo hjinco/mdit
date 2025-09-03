@@ -18,7 +18,7 @@ import { BasicMarksKit } from './plugins/basic-marks-kit'
 import { BlockSelectionKit } from './plugins/block-selection-kit'
 import { CalloutKit } from './plugins/callout-kit'
 import { CodeBlockKit } from './plugins/code-block-kit'
-import { ColumnKit } from './plugins/column-kit'
+// import { ColumnKit } from './plugins/column-kit'
 import { CursorOverlayKit } from './plugins/cursor-overlay-kit'
 import { DateKit } from './plugins/date-kit'
 import { DiffKit } from './plugins/diff-kit'
@@ -43,7 +43,7 @@ const plugins = [
   ...BlockSelectionKit,
   ...CalloutKit,
   ...CodeBlockKit,
-  ...ColumnKit,
+  // ...ColumnKit,
   ...CursorOverlayKit,
   ...EmojiKit,
   ...DateKit,
