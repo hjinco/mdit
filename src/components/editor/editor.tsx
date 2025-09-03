@@ -22,7 +22,7 @@ import { ColumnKit } from './plugins/column-kit'
 import { CursorOverlayKit } from './plugins/cursor-overlay-kit'
 import { DateKit } from './plugins/date-kit'
 import { DiffKit } from './plugins/diff-kit'
-import { DndKit } from './plugins/dnd-kit'
+import { DropKit } from './plugins/drop-kit'
 import { EmojiKit } from './plugins/emoji-kit'
 import { FloatingToolbarKit } from './plugins/floating-toolbar-kit'
 import { LinkKit } from './plugins/link-kit'
@@ -48,7 +48,7 @@ const plugins = [
   ...EmojiKit,
   ...DateKit,
   ...DiffKit,
-  ...DndKit,
+  ...DropKit,
   ...FloatingToolbarKit,
   ...LinkKit,
   ...ListKit,
@@ -62,6 +62,7 @@ const plugins = [
 ]
 
 export function Editor() {
+  const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
   const { tab, newNote, openNote } = useTabContext()
 
@@ -141,6 +142,7 @@ export function Editor() {
         )}
       >
         <PlateContent
+          ref={ref}
           className={cn(
             'group/editor',
             'relative w-full cursor-text overflow-x-hidden break-words whitespace-pre-wrap select-text',
