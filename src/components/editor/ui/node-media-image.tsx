@@ -21,6 +21,9 @@ export const ImageElement = withHOC(
     const width = useResizableValue('width')
 
     const src = useMemo(() => {
+      if (props.element.url.startsWith('http')) {
+        return props.element.url
+      }
       return convertFileSrc(props.element.url)
     }, [props.element.url])
 
