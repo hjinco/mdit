@@ -315,7 +315,7 @@ export function AIMenu() {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center text-xs gap-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center text-xs gap-0.5 px-1.5 py-1 border rounded-full bg-background/50 backdrop-blur-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {chatConfig ? chatConfig.model : 'Select model'}
                 <ChevronDownIcon className="size-3" />
