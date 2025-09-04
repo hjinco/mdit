@@ -1,3 +1,4 @@
+import { MarkdownPlugin } from '@platejs/markdown'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { createPlatePlugin, type PlateEditor } from 'platejs/react'
 
@@ -69,4 +70,54 @@ export const CmdAPlugin = createPlatePlugin({
   },
 })
 
-export const CmdAKit = [CmdAPlugin]
+export const CmdXPlugin = createPlatePlugin({
+  key: 'cmd-x',
+  handlers: {
+    onKeyDown: ({ editor, event }) => {
+      if (event.key === 'x' && event.metaKey) {
+        // This handler doesn’t seem to run when the block is already selected
+        // but it remains as defensive code.
+        const isBlockSelecting = editor.getOption(
+          BlockSelectionPlugin,
+          'isSelectingSome'
+        )
+        if (isBlockSelecting) return
+
+        const sel = editor.selection
+        if (!sel) return
+
+        const pointsEqual = (a: typeof sel.anchor, b: typeof sel.anchor) =>
+          a.offset === b.offset &&
+          a.path.length === b.path.length &&
+          a.path.every((v, i) => v === b.path[i])
+
+        // Only intercept Cmd+X when selection is collapsed
+        if (!pointsEqual(sel.anchor, sel.focus)) return
+
+        // Find the top-level block at the caret
+        const entry = editor.api.above({
+          at: sel.anchor,
+          match: editor.api.isBlock,
+          mode: 'highest',
+        })
+
+        if (!entry) return
+
+        const [node, path] = entry
+
+        // Copy the current block as Markdown instead of plain text
+        const markdown = editor
+          .getApi(MarkdownPlugin)
+          .markdown.serialize({ value: [node as any] })
+        navigator.clipboard.writeText(markdown)
+
+        editor.tf.removeNodes({ at: path })
+
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+  },
+})
+
+export const ShortcutsKit = [CmdAPlugin, CmdXPlugin]
