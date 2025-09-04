@@ -1,48 +1,49 @@
 import { MarkdownPlugin } from '@platejs/markdown'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
+import { PointApi } from 'platejs'
 import { createPlatePlugin, type PlateEditor } from 'platejs/react'
 
 export function selectAllLikeCmdA(editor: PlateEditor) {
   const sel = editor.selection
   if (!sel) return
 
+  const edges = editor.api.edges(sel)
+  if (!edges) return
+
+  const edgeStart = edges[0]
+  const edgeEnd = edges[1]
+
   const startEntry = editor.api.above({
-    at: sel.anchor,
+    at: edgeStart,
     match: editor.api.isBlock,
     mode: 'highest',
   })
   const endEntry = editor.api.above({
-    at: sel.focus,
+    at: edgeEnd,
     match: editor.api.isBlock,
     mode: 'highest',
   })
   if (!startEntry || !endEntry) return
 
-  let [, startPath] = startEntry
-  let [, endPath] = endEntry
+  const [startNode, startPath] = startEntry
+  const [endNode, endPath] = endEntry
 
-  // when dragging backwards
-  if (startPath[0] > endPath[0]) {
-    const tmp = startPath
-    startPath = endPath
-    endPath = tmp
+  if (
+    startNode.type === 'code_block' ||
+    endNode.type === 'code_block' ||
+    // TODO: improve table selection
+    startNode.type === 'table' ||
+    endNode.type === 'table'
+  ) {
+    return
   }
 
   const start = editor.api.start(startPath)
   const end = editor.api.end(endPath)
-
   if (!start || !end) return
 
-  const pointsEqual = (a: typeof sel.anchor, b: typeof sel.anchor) =>
-    a.offset === b.offset &&
-    a.path.length === b.path.length &&
-    a.path.every((v, i) => v === b.path[i])
-
-  // Consider both single and multiple blocks when selection aligns to
-  // the exact block boundaries from first block start to last block end.
   const isFullBlockSelected =
-    (pointsEqual(sel.anchor, start) && pointsEqual(sel.focus, end)) ||
-    (pointsEqual(sel.anchor, end) && pointsEqual(sel.focus, start))
+    PointApi.equals(edgeStart, start) && PointApi.equals(edgeEnd, end)
 
   if (isFullBlockSelected) {
     editor.getApi(BlockSelectionPlugin).blockSelection.selectAll()
