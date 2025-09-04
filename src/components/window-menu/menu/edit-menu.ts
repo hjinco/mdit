@@ -1,6 +1,6 @@
 import { MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 import type { PlateEditor } from 'platejs/react'
-import { selectAllLikeCmdA } from '@/components/editor/plugins/cmd-a-kit'
+import { selectAllLikeCmdA } from '@/components/editor/plugins/shortcuts-kit'
 
 export async function createEditMenu({ editor }: { editor: PlateEditor }) {
   return await Submenu.new({

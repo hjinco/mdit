@@ -17,7 +17,6 @@ import { BasicBlocksKit } from './plugins/basic-blocks-kit'
 import { BasicMarksKit } from './plugins/basic-marks-kit'
 import { BlockSelectionKit } from './plugins/block-selection-kit'
 import { CalloutKit } from './plugins/callout-kit'
-import { CmdAKit } from './plugins/cmd-a-kit'
 import { CodeBlockKit } from './plugins/code-block-kit'
 // import { ColumnKit } from './plugins/column-kit'
 import { CursorOverlayKit } from './plugins/cursor-overlay-kit'
@@ -31,6 +30,7 @@ import { ListKit } from './plugins/list-kit'
 import { MarkdownKit } from './plugins/markdown-kit'
 import { MathKit } from './plugins/math-kit'
 import { MediaKit } from './plugins/media-kit'
+import { ShortcutsKit } from './plugins/shortcuts-kit'
 import { SlashKit } from './plugins/slash-kit'
 import { TableKit } from './plugins/table-kit'
 import { TocKit } from './plugins/toc-kit'
@@ -43,7 +43,6 @@ const plugins = [
   ...BasicMarksKit,
   ...BlockSelectionKit,
   ...CalloutKit,
-  ...CmdAKit,
   ...CodeBlockKit,
   // ...ColumnKit,
   ...CursorOverlayKit,
@@ -57,6 +56,7 @@ const plugins = [
   ...MarkdownKit,
   ...MathKit,
   ...MediaKit,
+  ...ShortcutsKit,
   ...SlashKit,
   ...TableKit,
   ...TocKit,

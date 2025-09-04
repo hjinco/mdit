@@ -69,4 +69,4 @@ export const CmdAPlugin = createPlatePlugin({
   },
 })
 
-export const CmdAKit = [CmdAPlugin]
+export const ShortcutsKit = [CmdAPlugin]
