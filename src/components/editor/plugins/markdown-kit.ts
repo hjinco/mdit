@@ -6,16 +6,41 @@ import {
 } from '@platejs/markdown'
 import { relative, resolve } from 'pathe'
 import { getPluginType, KEYS, type TText } from 'platejs'
+import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import YAML from 'yaml'
 import { useTabStore } from '@/store/tab-store'
+import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 export const MarkdownKit = [
   MarkdownPlugin.configure({
     options: {
       disallowedNodes: [KEYS.slashCommand],
-      remarkPlugins: [remarkMath, remarkGfm, remarkMdx, remarkMention],
+      remarkPlugins: [
+        remarkMath,
+        remarkGfm,
+        remarkMdx,
+        remarkMention,
+        remarkFrontmatter,
+      ],
       rules: {
+        [FRONTMATTER_KEY]: {
+          serialize: (node) => {
+            const yaml = YAML.stringify(node?.data ?? {})
+            const value = `---\n${yaml === '{}\n' ? '' : yaml}---`
+            return { type: 'html', value }
+          },
+        },
+        yaml: {
+          deserialize: (mdastNode) => {
+            return {
+              type: FRONTMATTER_KEY,
+              data: YAML.parse(mdastNode.value),
+              children: [{ text: '' }],
+            }
+          },
+        },
         img: {
           deserialize: (mdastNode, _, options) => {
             const tabPath = useTabStore.getState().tab?.path

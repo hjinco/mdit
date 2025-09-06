@@ -31,7 +31,9 @@
       },
       "nursery": {
         "noShadow": "off",
-        "useSortedClasses": "off"
+        "useSortedClasses": "off",
+        "useConsistentTypeDefinitions": "off",
+        "noUnnecessaryConditions": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",
