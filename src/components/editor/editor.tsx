@@ -31,7 +31,7 @@ import { ListKit } from './plugins/list-kit'
 import { MarkdownKit } from './plugins/markdown-kit'
 import { MathKit } from './plugins/math-kit'
 import { MediaKit } from './plugins/media-kit'
-import { ShortcutsKit } from './plugins/shortcuts-kit'
+import { cutSelection, ShortcutsKit } from './plugins/shortcuts-kit'
 import { SlashKit } from './plugins/slash-kit'
 import { TableKit } from './plugins/table-kit'
 import { TocKit } from './plugins/toc-kit'
@@ -147,6 +147,14 @@ export function Editor() {
           'ignore-click-outside/toolbar',
           'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/25 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/15'
         )}
+        onKeyDown={(e) => {
+          // I wish I could just use shortcuts but it's not working as expected
+          if (e.key === 'x' && e.metaKey) {
+            e.preventDefault()
+            e.stopPropagation()
+            cutSelection(editor)
+          }
+        }}
       >
         <PlateContent
           ref={ref}

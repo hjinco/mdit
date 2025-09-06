@@ -58,67 +58,70 @@ export function selectAllLikeCmdA(editor: PlateEditor) {
   editor.tf.focus()
 }
 
-export const CmdAPlugin = createPlatePlugin({
-  key: 'cmd-a',
-  handlers: {
-    onKeyDown: ({ editor, event }) => {
-      if (event.key === 'a' && event.metaKey) {
-        event.preventDefault()
-        event.stopPropagation()
+export function cutSelection(editor: PlateEditor) {
+  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
+
+  // If there are selected blocks, use block selection logic
+  if (selectedBlocks.length > 0) {
+    const nodes = selectedBlocks.map(([node]) => node)
+    const markdown = editor
+      .getApi(MarkdownPlugin)
+      .markdown.serialize({ value: nodes as any })
+
+    navigator.clipboard.writeText(markdown)
+    editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()
+    return
+  }
+
+  // Otherwise, use the mod+x logic for current block
+  const sel = editor.selection
+  if (!sel) return
+
+  // If the selection is expanded, cut the exact fragment
+  if (!PointApi.equals(sel.anchor, sel.focus)) {
+    const fragment = editor.api.fragment()
+    if (!fragment || fragment.length === 0) return
+
+    const markdown = editor
+      .getApi(MarkdownPlugin)
+      .markdown.serialize({ value: fragment as any })
+
+    navigator.clipboard.writeText(markdown)
+    editor.tf.deleteFragment()
+    return
+  }
+
+  // Find the top-level block at the caret
+  const entry = editor.api.above({
+    at: sel.anchor,
+    match: editor.api.isBlock,
+    mode: 'highest',
+  })
+
+  if (!entry) return
+
+  const [node, path] = entry
+
+  // Copy the current block as Markdown instead of plain text
+  const markdown = editor
+    .getApi(MarkdownPlugin)
+    .markdown.serialize({ value: [node as any] })
+  navigator.clipboard.writeText(markdown)
+
+  editor.tf.removeNodes({ at: path })
+}
+
+export const ShortcutsPlugin = createPlatePlugin({
+  key: 'shortcuts',
+  shortcuts: {
+    selectAll: {
+      keys: 'mod+a',
+      handler: ({ editor }) => {
         selectAllLikeCmdA(editor)
-      }
+      },
     },
   },
 })
 
-export const CmdXPlugin = createPlatePlugin({
-  key: 'cmd-x',
-  handlers: {
-    onKeyDown: ({ editor, event }) => {
-      if (event.key === 'x' && event.metaKey) {
-        // This handler doesn’t seem to run when the block is already selected
-        // but it remains as defensive code.
-        const isBlockSelecting = editor.getOption(
-          BlockSelectionPlugin,
-          'isSelectingSome'
-        )
-        if (isBlockSelecting) return
-
-        const sel = editor.selection
-        if (!sel) return
-
-        const pointsEqual = (a: typeof sel.anchor, b: typeof sel.anchor) =>
-          a.offset === b.offset &&
-          a.path.length === b.path.length &&
-          a.path.every((v, i) => v === b.path[i])
-
-        // Only intercept Cmd+X when selection is collapsed
-        if (!pointsEqual(sel.anchor, sel.focus)) return
-
-        // Find the top-level block at the caret
-        const entry = editor.api.above({
-          at: sel.anchor,
-          match: editor.api.isBlock,
-          mode: 'highest',
-        })
-
-        if (!entry) return
-
-        const [node, path] = entry
-
-        // Copy the current block as Markdown instead of plain text
-        const markdown = editor
-          .getApi(MarkdownPlugin)
-          .markdown.serialize({ value: [node as any] })
-        navigator.clipboard.writeText(markdown)
-
-        editor.tf.removeNodes({ at: path })
-
-        event.preventDefault()
-        event.stopPropagation()
-      }
-    },
-  },
-})
-
-export const ShortcutsKit = [CmdAPlugin, CmdXPlugin]
+export const ShortcutsKit = [ShortcutsPlugin]
