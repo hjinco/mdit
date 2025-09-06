@@ -58,7 +58,7 @@ export function selectAllLikeCmdA(editor: PlateEditor) {
   editor.tf.focus()
 }
 
-export function cutSelection(editor: PlateEditor) {
+function copyOrCutSelection(editor: PlateEditor, action: 'copy' | 'cut') {
   const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
   const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
 
@@ -70,15 +70,17 @@ export function cutSelection(editor: PlateEditor) {
       .markdown.serialize({ value: nodes as any })
 
     navigator.clipboard.writeText(markdown)
-    editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()
+    if (action === 'cut') {
+      editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()
+    }
     return
   }
 
-  // Otherwise, use the mod+x logic for current block
+  // Otherwise, use the logic for current selection or block
   const sel = editor.selection
   if (!sel) return
 
-  // If the selection is expanded, cut the exact fragment
+  // If the selection is expanded, copy/cut the exact fragment
   if (!PointApi.equals(sel.anchor, sel.focus)) {
     const fragment = editor.api.fragment()
     if (!fragment || fragment.length === 0) return
@@ -88,11 +90,13 @@ export function cutSelection(editor: PlateEditor) {
       .markdown.serialize({ value: fragment as any })
 
     navigator.clipboard.writeText(markdown)
-    editor.tf.deleteFragment()
+    if (action === 'cut') {
+      editor.tf.deleteFragment()
+    }
     return
   }
 
-  // Find the top-level block at the caret
+  // Find the top-level block at the caret and copy/cut it as Markdown
   const entry = editor.api.above({
     at: sel.anchor,
     match: editor.api.isBlock,
@@ -103,13 +107,21 @@ export function cutSelection(editor: PlateEditor) {
 
   const [node, path] = entry
 
-  // Copy the current block as Markdown instead of plain text
   const markdown = editor
     .getApi(MarkdownPlugin)
     .markdown.serialize({ value: [node as any] })
   navigator.clipboard.writeText(markdown)
+  if (action === 'cut') {
+    editor.tf.removeNodes({ at: path })
+  }
+}
 
-  editor.tf.removeNodes({ at: path })
+export function cutSelection(editor: PlateEditor) {
+  copyOrCutSelection(editor, 'cut')
+}
+
+export function copySelection(editor: PlateEditor) {
+  copyOrCutSelection(editor, 'copy')
 }
 
 export const ShortcutsPlugin = createPlatePlugin({
