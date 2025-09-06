@@ -22,6 +22,7 @@ import {
 import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
+import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 import { insertBlock, insertInlineElement } from '../utils/transforms'
 import {
   InlineCombobox,
@@ -35,6 +36,7 @@ import {
 
 type Group = {
   group: string
+  shouldHide?: (editor: PlateEditor) => boolean
   items: {
     icon: React.ReactNode
     value: string
@@ -47,6 +49,39 @@ type Group = {
 }
 
 const groups: Group[] = [
+  {
+    group: 'Document',
+    shouldHide: (editor) => {
+      const hasFrontmatter = editor.api.some({
+        match: { type: FRONTMATTER_KEY },
+      })
+      const currentBlock = editor.api.node({ block: true, mode: 'lowest' })
+      const isInFirstTopLevelBlock = currentBlock
+        ? currentBlock[1][0] === 0
+        : false
+      const canInsertFrontmatter = isInFirstTopLevelBlock && !hasFrontmatter
+      return !canInsertFrontmatter
+    },
+    items: [
+      {
+        icon: <TableOfContentsIcon />,
+        keywords: ['metadata', 'yaml', 'head', 'front matter'],
+        label: 'Frontmatter',
+        value: 'frontmatter',
+        onSelect: (editor: PlateEditor) => {
+          if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
+          editor.tf.replaceNodes(
+            {
+              type: FRONTMATTER_KEY,
+              data: {},
+              children: [{ text: '' }],
+            },
+            { at: [0] }
+          )
+        },
+      },
+    ],
+  },
   {
     group: 'AI',
     items: [
@@ -226,28 +261,30 @@ export function SlashInputElement(
         <InlineComboboxContent>
           <InlineComboboxEmpty>No results</InlineComboboxEmpty>
 
-          {groups.map(({ group, items }) => (
-            <InlineComboboxGroup key={group}>
-              <InlineComboboxGroupLabel>{group}</InlineComboboxGroupLabel>
+          {groups
+            .filter(({ shouldHide }) => !shouldHide?.(editor))
+            .map(({ group, items }) => (
+              <InlineComboboxGroup key={group}>
+                <InlineComboboxGroupLabel>{group}</InlineComboboxGroupLabel>
 
-              {items.map(
-                ({ focusEditor, icon, keywords, label, value, onSelect }) => (
-                  <InlineComboboxItem
-                    key={value}
-                    value={value}
-                    onClick={() => onSelect(editor, value)}
-                    label={label}
-                    focusEditor={focusEditor}
-                    group={group}
-                    keywords={keywords}
-                  >
-                    <div className="mr-2 text-muted-foreground">{icon}</div>
-                    {label ?? value}
-                  </InlineComboboxItem>
-                )
-              )}
-            </InlineComboboxGroup>
-          ))}
+                {items.map(
+                  ({ focusEditor, icon, keywords, label, value, onSelect }) => (
+                    <InlineComboboxItem
+                      key={value}
+                      value={value}
+                      onClick={() => onSelect(editor, value)}
+                      label={label}
+                      focusEditor={focusEditor}
+                      group={group}
+                      keywords={keywords}
+                    >
+                      <div className="mr-2 text-muted-foreground">{icon}</div>
+                      {label ?? value}
+                    </InlineComboboxItem>
+                  )
+                )}
+              </InlineComboboxGroup>
+            ))}
         </InlineComboboxContent>
       </InlineCombobox>
 

@@ -25,6 +25,7 @@ import { DiffKit } from './plugins/diff-kit'
 import { DropKit } from './plugins/drop-kit'
 import { EmojiKit } from './plugins/emoji-kit'
 import { FloatingToolbarKit } from './plugins/floating-toolbar-kit'
+import { FrontmatterKit } from './plugins/frontmatter-kit'
 import { LinkKit } from './plugins/link-kit'
 import { ListKit } from './plugins/list-kit'
 import { MarkdownKit } from './plugins/markdown-kit'
@@ -47,6 +48,7 @@ const plugins = [
   // ...ColumnKit,
   ...CursorOverlayKit,
   ...EmojiKit,
+  ...FrontmatterKit,
   ...DateKit,
   ...DiffKit,
   ...DropKit,
