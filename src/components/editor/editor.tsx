@@ -31,7 +31,7 @@ import { ListKit } from './plugins/list-kit'
 import { MarkdownKit } from './plugins/markdown-kit'
 import { MathKit } from './plugins/math-kit'
 import { MediaKit } from './plugins/media-kit'
-import { cutSelection, ShortcutsKit } from './plugins/shortcuts-kit'
+import { cutSelection, copySelection, ShortcutsKit } from './plugins/shortcuts-kit'
 import { SlashKit } from './plugins/slash-kit'
 import { TableKit } from './plugins/table-kit'
 import { TocKit } from './plugins/toc-kit'
@@ -153,6 +153,11 @@ export function Editor() {
             e.preventDefault()
             e.stopPropagation()
             cutSelection(editor)
+          }
+          if (e.key === 'c' && e.metaKey) {
+            e.preventDefault()
+            e.stopPropagation()
+            copySelection(editor)
           }
         }}
       >
