@@ -32,8 +32,10 @@ export function TreeNode({
   const hasChildren = (entry.children?.length ?? 0) > 0
 
   const openNote = useTabStore((s) => s.openNote)
+  const activeTabPath = useTabStore((s) => s.tab?.path)
 
   const isExpanded = Boolean(expandedDirectories[entry.path])
+  const isActive = !isDirectory && activeTabPath === entry.path
 
   const extension = useMemo(() => {
     if (entry.isDirectory) {
@@ -152,8 +154,9 @@ export function TreeNode({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         className={cn(
-          'w-full text-left flex items-center gap-1.5 px-2 py-1 text-foreground/70 min-w-0',
-          'hover:text-foreground'
+          'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm',
+          'hover:text-accent-foreground',
+          isActive && 'text-accent-foreground font-medium'
         )}
         style={{ paddingLeft: `${12 + depth * 12}px` }}
         disabled={isRenaming}
