@@ -1,6 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
-import { FileIcon, FilePenIcon } from 'lucide-react'
+import { writeTextFile } from '@tauri-apps/plugin-fs'
 import {
   Plate,
   PlateContainer,
@@ -10,7 +9,6 @@ import {
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
-import { Button } from '@/ui/button'
 import { AIKit } from './plugins/ai-kit'
 import { AutoformatKit } from './plugins/autoformat-kit'
 import { BasicBlocksKit } from './plugins/basic-blocks-kit'
@@ -31,7 +29,11 @@ import { ListKit } from './plugins/list-kit'
 import { MarkdownKit } from './plugins/markdown-kit'
 import { MathKit } from './plugins/math-kit'
 import { MediaKit } from './plugins/media-kit'
-import { cutSelection, copySelection, ShortcutsKit } from './plugins/shortcuts-kit'
+import {
+  copySelection,
+  cutSelection,
+  ShortcutsKit,
+} from './plugins/shortcuts-kit'
 import { SlashKit } from './plugins/slash-kit'
 import { TableKit } from './plugins/table-kit'
 import { TocKit } from './plugins/toc-kit'
@@ -68,7 +70,7 @@ const plugins = [
 export function Editor() {
   const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
-  const { tab, newNote, openNote } = useTabStore()
+  const tab = useTabStore((s) => s.tab)
 
   const editor = usePlateEditor({
     plugins,
@@ -76,15 +78,12 @@ export function Editor() {
 
   useEffect(() => {
     if (!tab) return
-    readTextFile(tab.path)
-      .then(editor.api.markdown.deserialize)
-      .then((value) => {
-        editor.tf.reset()
-        editor.tf.withoutSaving(() => {
-          editor.tf.setValue(value)
-        })
-        editor.tf.focus()
-      })
+    const value = editor.api.markdown.deserialize(tab.content)
+    editor.tf.reset()
+    editor.tf.withoutSaving(() => {
+      editor.tf.setValue(value)
+    })
+    editor.tf.focus()
   }, [tab, editor])
 
   useEffect(() => {
@@ -117,22 +116,7 @@ export function Editor() {
   }, [tab, editor])
 
   if (!tab) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex flex-col gap-2">
-          <Button variant="ghost" onClick={openNote}>
-            <FileIcon /> Open Note
-          </Button>
-          <Button
-            className="w-full justify-start"
-            variant="ghost"
-            onClick={newNote}
-          >
-            <FilePenIcon /> New Note
-          </Button>
-        </div>
-      </div>
-    )
+    return null
   }
 
   return (

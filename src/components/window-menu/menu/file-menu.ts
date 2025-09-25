@@ -1,11 +1,9 @@
 import { MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 
 export async function createFileMenu({
-  newNote,
-  openNote,
+  createNote,
 }: {
-  newNote: () => void
-  openNote: () => void
+  createNote: () => void
 }) {
   return await Submenu.new({
     text: 'File',
@@ -14,13 +12,7 @@ export async function createFileMenu({
         id: 'new-note',
         text: 'New Note',
         accelerator: 'CmdOrCtrl+N',
-        action: () => newNote(),
-      }),
-      await MenuItem.new({
-        id: 'open-note',
-        text: 'Open Note',
-        accelerator: 'CmdOrCtrl+O',
-        action: () => openNote(),
+        action: () => createNote(),
       }),
       await PredefinedMenuItem.new({
         text: 'Separator',
