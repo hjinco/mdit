@@ -5,7 +5,7 @@ type TabProps = {
 export function Tab({ name }: TabProps) {
   return (
     <div
-      className="py-2 text-muted-foreground cursor-default"
+      className="text-sm py-2 text-muted-foreground cursor-default"
       data-tauri-drag-region
     >
       {name}
