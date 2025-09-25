@@ -265,11 +265,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteEntry: async (path: string) => {
     try {
-      await invoke('move_to_trash', { path })
-
       const { closeTab } = useTabStore.getState()
       closeTab(path)
 
+      await invoke('move_to_trash', { path })
       await get().refreshWorkspaceEntries()
 
       return true
