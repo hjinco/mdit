@@ -268,6 +268,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       const { closeTab } = useTabStore.getState()
       closeTab(path)
 
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
       await invoke('move_to_trash', { path })
       await get().refreshWorkspaceEntries()
 
