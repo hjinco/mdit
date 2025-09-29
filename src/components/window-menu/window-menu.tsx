@@ -8,10 +8,11 @@ import { installWindowMenu } from './menu'
 export function WindowMenu() {
   const editor = useEditorRef()
 
-  const { workspacePath, createNote } = useWorkspaceStore(
+  const { workspacePath, createNote, openFolderPicker } = useWorkspaceStore(
     useShallow((s) => ({
       workspacePath: s.workspacePath,
       createNote: s.createNote,
+      openFolderPicker: s.openFolderPicker,
     }))
   )
 
@@ -28,8 +29,9 @@ export function WindowMenu() {
           }
         }
       },
+      openWorkspace: () => openFolderPicker(),
     })
-  }, [editor, workspacePath, createNote, openNote])
+  }, [editor, workspacePath, createNote, openFolderPicker, openNote])
 
   return null
 }

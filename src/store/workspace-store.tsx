@@ -98,6 +98,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   setWorkspace: (path: string) => {
     try {
+      const { tab, closeTab } = useTabStore.getState()
+
+      if (tab) {
+        closeTab(tab.path)
+      }
+
       const recentWorkspacePaths = get().recentWorkspacePaths
 
       const updatedHistory = [
