@@ -1,53 +1,58 @@
-import { open, save } from '@tauri-apps/plugin-dialog'
-import { rename, writeTextFile } from '@tauri-apps/plugin-fs'
+import { readTextFile } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 
 export type Tab = {
   path: string
   name: string
+  content: string
 }
 
 type TabStore = {
   tab: Tab | null
-  newNote: () => Promise<void>
-  openNote: () => Promise<void>
-  renameNote: (name: string) => Promise<void>
+  openNote: (path: string) => Promise<void>
+  closeTab: (path: string) => void
+  renameTab: (oldPath: string, newPath: string) => void
 }
 
 export const useTabStore = create<TabStore>((set, get) => ({
   tab: null,
-  openNote: async () => {
-    const path = await open({
-      multiple: false,
-      directory: false,
-      title: 'Open Note',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    })
-    if (path) {
-      const name = path.split('/').pop()?.split('.').shift()
-      if (name) {
-        set({ tab: { path, name } })
-      }
+  openNote: async (path: string) => {
+    const content = await readTextFile(path)
+    const name = path.split('/').pop()?.split('.').shift()
+
+    if (name) {
+      set({ tab: { path, name, content } })
     }
   },
-  newNote: async () => {
-    const path = await save({
-      title: 'New Note',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
-    })
-    if (path) {
-      const name = path.split('/').pop()?.split('.').shift()
-      if (name) {
-        await writeTextFile(path, '')
-        set({ tab: { path, name } })
-      }
-    }
-  },
-  renameNote: async (name: string) => {
+  closeTab: (path) => {
     const tab = get().tab
-    if (!tab) return
-    const path = `${tab.path.split('/').slice(0, -1).join('/')}/${name}.md`
-    await rename(tab.path, path)
-    set({ tab: { ...tab, path, name } })
+
+    if (!tab || tab.path !== path) {
+      return
+    }
+
+    set({ tab: null })
+  },
+  renameTab: (oldPath, newPath) => {
+    const tab = get().tab
+
+    if (!tab || tab.path !== oldPath) {
+      return
+    }
+
+    const name = newPath.split('/').pop()?.split('.').shift()
+
+    if (!name) {
+      set({ tab: null })
+      return
+    }
+
+    set({
+      tab: {
+        ...tab,
+        path: newPath,
+        name,
+      },
+    })
   },
 }))

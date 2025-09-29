@@ -9,19 +9,19 @@ import { createWindowMenu } from './window-menu'
 
 export async function installWindowMenu({
   editor,
-  newNote,
-  openNote,
+  createNote,
+  openWorkspace,
 }: {
   editor: PlateEditor
-  newNote: () => void
-  openNote: () => void
+  createNote: () => void | Promise<void>
+  openWorkspace: () => void | Promise<void>
 }) {
   const menu = await Menu.new({
     items: [
       await createMditMenu(),
       await createFileMenu({
-        newNote,
-        openNote,
+        createNote,
+        openWorkspace,
       }),
       await createEditMenu({
         editor,

@@ -1,11 +1,11 @@
 import { MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 
 export async function createFileMenu({
-  newNote,
-  openNote,
+  createNote,
+  openWorkspace,
 }: {
-  newNote: () => void
-  openNote: () => void
+  createNote: () => void | Promise<void>
+  openWorkspace: () => void | Promise<void>
 }) {
   return await Submenu.new({
     text: 'File',
@@ -14,13 +14,13 @@ export async function createFileMenu({
         id: 'new-note',
         text: 'New Note',
         accelerator: 'CmdOrCtrl+N',
-        action: () => newNote(),
+        action: () => createNote(),
       }),
       await MenuItem.new({
-        id: 'open-note',
-        text: 'Open Note',
+        id: 'open-folder',
+        text: 'Open Folder...',
         accelerator: 'CmdOrCtrl+O',
-        action: () => openNote(),
+        action: () => openWorkspace(),
       }),
       await PredefinedMenuItem.new({
         text: 'Separator',
