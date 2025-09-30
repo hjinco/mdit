@@ -4,7 +4,6 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
-import { ModeToggle } from './ui/mode-toggle'
 import { Tab } from './ui/tab'
 
 export function Tabbar() {
@@ -33,9 +32,6 @@ export function Tabbar() {
       </div>
       <div className="flex-1 flex justify-center" data-tauri-drag-region>
         {tab && <Tab name={tab?.name || 'Untitled'} />}
-      </div>
-      <div className="fixed top-1 right-1">
-        <ModeToggle />
       </div>
     </div>
   )

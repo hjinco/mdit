@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 
 export function FileExplorer() {
@@ -163,16 +164,16 @@ export function FileExplorer() {
   }
 
   return (
-    <aside
-      className="shrink-0 w-64 flex flex-col bg-muted"
-      onContextMenu={handleRootContextMenu}
-    >
+    <aside className="shrink-0 w-64 flex flex-col bg-muted">
       <header className="flex items-center justify-between px-4 pt-2">
         <span className="text-foreground/70 cursor-default">
           {workspacePath?.split('/').pop()}
         </span>
       </header>
-      <div className="flex-1 overflow-y-auto px-1 py-2">
+      <div
+        className="flex-1 overflow-y-auto px-1 py-2"
+        onContextMenu={handleRootContextMenu}
+      >
         <ul>
           {entries.map((entry) => (
             <TreeNode
@@ -190,6 +191,9 @@ export function FileExplorer() {
           ))}
         </ul>
       </div>
+      <footer className="flex items-center justify-end px-2 pb-2">
+        <SettingsMenu />
+      </footer>
     </aside>
   )
 }
