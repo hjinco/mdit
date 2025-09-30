@@ -76,9 +76,8 @@ export function AIMenu() {
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null)
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
 
-  // Load connected providers from localStorage on mount
   useEffect(() => {
-    if (isConfigLoaded && !open) return
+    if (isConfigLoaded || !open) return
     const loadConnectedProviders = async () => {
       try {
         const stored = localStorage.getItem('mdit-connected-providers')
