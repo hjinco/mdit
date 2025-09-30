@@ -68,6 +68,7 @@ export function AIMenu() {
   } | null>(null)
   const [showApiKeyInput, setShowApiKeyInput] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false)
 
   const chat = useChat(chatConfig)
 
@@ -77,6 +78,7 @@ export function AIMenu() {
 
   // Load connected providers from localStorage on mount
   useEffect(() => {
+    if (isConfigLoaded && !open) return
     const loadConnectedProviders = async () => {
       try {
         const stored = localStorage.getItem('mdit-connected-providers')
@@ -112,11 +114,13 @@ export function AIMenu() {
       } catch {
         // Failed to load from localStorage
         setConnectedProviders([])
+      } finally {
+        setIsConfigLoaded(true)
       }
     }
 
     loadConnectedProviders()
-  }, [])
+  }, [isConfigLoaded, open])
 
   // Helper function to load API key and set config
   const loadApiKeyAndSetConfig = async (provider: string, model: string) => {
