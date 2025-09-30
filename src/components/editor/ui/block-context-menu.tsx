@@ -77,7 +77,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
           })
         }}
       >
-        <div className="w-full h-full">{children}</div>
+        <div>{children}</div>
       </ContextMenuTrigger>
       <ContextMenuContent
         className="w-64"
