@@ -1,10 +1,12 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { useCallback, useState } from 'react'
 import { useTabStore } from '@/store/tab-store'
+import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TreeNode } from './ui/tree-node'
 
 export function FileExplorer() {
+  const isOpen = useUIStore((state) => state.isFileExplorerOpen)
   const {
     workspacePath,
     entries,
@@ -155,6 +157,10 @@ export function FileExplorer() {
     },
     [entries, showDirectoryMenu, workspacePath]
   )
+
+  if (!isOpen) {
+    return null
+  }
 
   return (
     <aside
