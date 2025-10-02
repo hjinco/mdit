@@ -9,5 +9,10 @@ export const LinkKit = [
       node: withDiffStyle(LinkElement),
       afterEditable: () => <LinkFloatingToolbar />,
     },
+    options: {
+      isUrl() {
+        return true
+      },
+    },
   }),
 ]
