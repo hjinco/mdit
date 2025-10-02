@@ -81,6 +81,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tauri-plugin-keyring-api": "^0.1.1",
+    "unicode-segmenter": "^0.14.0",
     "yaml": "^2.8.1",
     "zustand": "^5.0.8"
   },

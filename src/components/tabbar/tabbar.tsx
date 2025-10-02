@@ -1,15 +1,11 @@
-import {
-  ArrowLeftToLineIcon,
-  ArrowRightToLineIcon,
-  SquarePenIcon,
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
-import { Button } from '@/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { MoreButton } from './ui/more-button'
+import { NewNoteButton } from './ui/new-note-button'
 import { Tab } from './ui/tab'
+import { ToggleButton } from './ui/toggle-button'
 
 export function Tabbar() {
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
@@ -39,47 +35,7 @@ export function Tabbar() {
       <div className="flex-1 flex justify-center" data-tauri-drag-region>
         {tab && <Tab name={tab?.name || 'Untitled'} />}
       </div>
+      <div className="flex items-center pr-1.5">{tab && <MoreButton />}</div>
     </div>
-  )
-}
-
-function NewNoteButton() {
-  const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent"
-          onClick={createAndOpenNote}
-        >
-          <SquarePenIcon />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>New Note (⌘N)</p>
-      </TooltipContent>
-    </Tooltip>
-  )
-}
-
-function ToggleButton({
-  isOpen,
-  onToggle,
-}: {
-  isOpen: boolean
-  onToggle: () => void
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent mr-1"
-      onClick={onToggle}
-    >
-      {isOpen ? <ArrowLeftToLineIcon /> : <ArrowRightToLineIcon />}
-    </Button>
   )
 }

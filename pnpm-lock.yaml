@@ -221,6 +221,9 @@ importers:
       tauri-plugin-keyring-api:
         specifier: ^0.1.1
         version: 0.1.1
+      unicode-segmenter:
+        specifier: ^0.14.0
+        version: 0.14.0
       yaml:
         specifier: ^2.8.1
         version: 2.8.1
@@ -2834,6 +2837,9 @@ packages:
 
   undici-types@7.10.0:
     resolution: {integrity: sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==}
+
+  unicode-segmenter@0.14.0:
+    resolution: {integrity: sha512-AH4lhPCJANUnSLEKnM4byboctePJzltF4xj8b+NbNiYeAkAXGh7px2K/4NANFp7dnr6+zB3e6HLu8Jj8SKyvYg==}
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -5891,6 +5897,8 @@ snapshots:
       - yaml
 
   undici-types@7.10.0: {}
+
+  unicode-segmenter@0.14.0: {}
 
   unified@11.0.5:
     dependencies:
