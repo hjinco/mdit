@@ -1,9 +1,14 @@
-import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
+import {
+  ArrowLeftToLineIcon,
+  ArrowRightToLineIcon,
+  SquarePenIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { Tab } from './ui/tab'
 
 export function Tabbar() {
@@ -21,10 +26,11 @@ export function Tabbar() {
       <div
         className={cn(
           'w-64 bg-muted flex items-center justify-end',
-          !isFileExplorerOpen && 'bg-background w-28'
+          !isFileExplorerOpen && 'bg-background w-36'
         )}
         data-tauri-drag-region
       >
+        <NewNoteButton />
         <ToggleButton
           isOpen={isFileExplorerOpen}
           onToggle={toggleFileExplorer}
@@ -34,6 +40,28 @@ export function Tabbar() {
         {tab && <Tab name={tab?.name || 'Untitled'} />}
       </div>
     </div>
+  )
+}
+
+function NewNoteButton() {
+  const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent"
+          onClick={createAndOpenNote}
+        >
+          <SquarePenIcon />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>New Note (⌘N)</p>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -48,7 +76,7 @@ function ToggleButton({
     <Button
       variant="ghost"
       size="icon"
-      className="text-muted-foreground hover:text-foreground hover:bg-transparent"
+      className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent mr-1"
       onClick={onToggle}
     >
       {isOpen ? <ArrowLeftToLineIcon /> : <ArrowRightToLineIcon />}

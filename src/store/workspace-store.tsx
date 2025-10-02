@@ -35,6 +35,7 @@ type WorkspaceStore = {
   toggleDirectory: (path: string) => void
   createFolder: (directoryPath: string) => Promise<string | null>
   createNote: (directoryPath: string) => Promise<string | null>
+  createAndOpenNote: () => Promise<void>
   deleteEntry: (path: string) => Promise<boolean>
   renameEntry: (
     entry: WorkspaceEntry,
@@ -266,6 +267,31 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (error) {
       console.error('Failed to create note:', error)
       return null
+    }
+  },
+
+  createAndOpenNote: async () => {
+    const workspacePath = get().workspacePath
+
+    if (!workspacePath) {
+      return
+    }
+
+    try {
+      const { tab, openTab } = useTabStore.getState()
+      let targetDirectory = workspacePath
+
+      if (tab) {
+        targetDirectory = await dirname(tab.path)
+      }
+
+      const newNotePath = await get().createNote(targetDirectory)
+
+      if (newNotePath) {
+        await openTab(newNotePath)
+      }
+    } catch (error) {
+      console.error('Failed to create and open note:', error)
     }
   },
 
