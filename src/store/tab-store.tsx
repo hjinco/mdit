@@ -9,6 +9,7 @@ export type Tab = {
 
 type TabStore = {
   tab: Tab | null
+  openTab: (path: string) => Promise<void>
   openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
   renameTab: (oldPath: string, newPath: string) => void
@@ -16,13 +17,20 @@ type TabStore = {
 
 export const useTabStore = create<TabStore>((set, get) => ({
   tab: null,
-  openNote: async (path: string) => {
+  openTab: async (path: string) => {
+    if (!path.endsWith('.md')) {
+      return
+    }
+
     const content = await readTextFile(path)
     const name = path.split('/').pop()?.split('.').shift()
 
     if (name) {
       set({ tab: { path, name, content } })
     }
+  },
+  openNote: async (path: string) => {
+    await get().openTab(path)
   },
   closeTab: (path) => {
     const tab = get().tab
