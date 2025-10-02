@@ -1,8 +1,8 @@
 import { flip, offset, type UseVirtualFloatingOptions } from '@platejs/floating'
+import { upsertLink } from '@platejs/link'
 import {
   type LinkFloatingToolbarState,
   LinkPlugin,
-  submitFloatingLink,
   useFloatingLinkEdit,
   useFloatingLinkEditState,
   useFloatingLinkInsert,
@@ -378,7 +378,10 @@ function LinkUrlInput() {
 
     applyUrlToEditor(trimmedValue)
 
-    const didSubmit = submitFloatingLink(editor)
+    const didSubmit = upsertLink(editor, {
+      url: trimmedValue,
+      skipValidation: true,
+    })
     if (didSubmit) {
       setHighlightedIndex(-1)
       return
