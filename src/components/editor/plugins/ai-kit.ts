@@ -14,7 +14,8 @@ import {
 import type { UseChatOptions } from 'ai/react'
 import { getPluginType, KEYS, PathApi, type TElement } from 'platejs'
 import { usePluginOption } from 'platejs/react'
-import { AILoadingBar, AIMenu } from '../ui/ai-menu'
+import { AILoadingBar } from '../ui/ai-loading-bar'
+import { AIMenu } from '../ui/ai-menu'
 import { AIAnchorElement } from '../ui/node-ai'
 import { getDiff } from './diff-kit'
 
