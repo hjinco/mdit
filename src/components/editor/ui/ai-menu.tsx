@@ -15,7 +15,9 @@ import {
   setPassword,
 } from 'tauri-plugin-keyring-api'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
+import { useAICommands } from '../hooks/use-ai-commands'
 import { useChat } from '../hooks/use-chat'
+import { AIMenuAddCommand } from './ai-menu-add-command'
 import { AIMenuContent } from './ai-menu-content'
 
 const providers = {
@@ -44,6 +46,9 @@ export function AIMenu() {
   const { input, messages, setInput, status, stop } = chat
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null)
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
+
+  const [addCommandOpen, setAddCommandOpen] = useState(false)
+  const { commands, addCommand, removeCommand } = useAICommands()
 
   useEffect(() => {
     if (isConfigLoaded || !open) return
@@ -258,6 +263,10 @@ export function AIMenu() {
       open={open}
       onOpenChange={(open) => {
         if (!open) {
+          if (addCommandOpen) {
+            setAddCommandOpen(false)
+            return
+          }
           handleAccept()
         }
         setOpen(open)
@@ -267,6 +276,8 @@ export function AIMenu() {
       <PopoverAnchor virtualRef={{ current: anchorElement! }} />
 
       <PopoverContent
+        // For the animation
+        key={addCommandOpen ? 'addCommand' : 'content'}
         className="border-none bg-transparent p-0 shadow-none"
         align="center"
         side="bottom"
@@ -278,47 +289,62 @@ export function AIMenu() {
           handleAccept()
         }}
       >
-        <AIMenuContent
-          chatConfig={chatConfig}
-          connectedProviders={connectedProviders}
-          showApiKeyInput={showApiKeyInput}
-          apiKeyInput={apiKeyInput}
-          modelPopoverOpen={modelPopoverOpen}
-          isLoading={isLoading}
-          messages={messages}
-          input={input}
-          value={value}
-          onModelPopoverOpenChange={setModelPopoverOpen}
-          onProviderDisconnect={handleProviderDisconnect}
-          onShowApiKeyInput={setShowApiKeyInput}
-          onApiKeyInputChange={setApiKeyInput}
-          onModelSelect={handleModelSelect}
-          onApiKeySubmit={handleApiKeySubmit}
-          onValueChange={setValue}
-          onInputChange={setInput}
-          onInputClick={() => {
-            if (!chatConfig) {
-              setModelPopoverOpen(true)
-            }
-          }}
-          onInputKeyDown={(e) => {
-            if (isHotkey('backspace')(e) && input.length === 0) {
-              e.preventDefault()
-              api.aiChat.hide()
-            }
-            if (!chatConfig) {
-              setModelPopoverOpen(true)
-              return
-            }
-            if (isHotkey('enter')(e) && !e.shiftKey && !value) {
-              e.preventDefault()
-              api.aiChat.submit({
-                mode: 'chat',
-              })
-            }
-          }}
-          onAccept={handleAccept}
-        />
+        {addCommandOpen ? (
+          <AIMenuAddCommand
+            onAdd={(command) => {
+              addCommand(command)
+              setAddCommandOpen(false)
+            }}
+            onClose={() => setAddCommandOpen(false)}
+          />
+        ) : (
+          <AIMenuContent
+            chatConfig={chatConfig}
+            connectedProviders={connectedProviders}
+            showApiKeyInput={showApiKeyInput}
+            apiKeyInput={apiKeyInput}
+            modelPopoverOpen={modelPopoverOpen}
+            isLoading={isLoading}
+            messages={messages}
+            commands={commands}
+            input={input}
+            value={value}
+            onModelPopoverOpenChange={setModelPopoverOpen}
+            onProviderDisconnect={handleProviderDisconnect}
+            onShowApiKeyInput={setShowApiKeyInput}
+            onApiKeyInputChange={setApiKeyInput}
+            onModelSelect={handleModelSelect}
+            onApiKeySubmit={handleApiKeySubmit}
+            onValueChange={setValue}
+            onInputChange={setInput}
+            onInputClick={() => {
+              if (!chatConfig) {
+                setModelPopoverOpen(true)
+              }
+            }}
+            onInputKeyDown={(e) => {
+              if (isHotkey('backspace')(e) && input.length === 0) {
+                e.preventDefault()
+                api.aiChat.hide()
+              }
+              if (!chatConfig) {
+                setModelPopoverOpen(true)
+                return
+              }
+              if (isHotkey('enter')(e) && !e.shiftKey && !value) {
+                e.preventDefault()
+                api.aiChat.submit({
+                  mode: 'chat',
+                })
+              }
+            }}
+            onAccept={handleAccept}
+            onAddCommandOpen={() => setAddCommandOpen(true)}
+            onCommandRemove={(type, label) => {
+              removeCommand(type, label)
+            }}
+          />
+        )}
       </PopoverContent>
     </Popover>
   )

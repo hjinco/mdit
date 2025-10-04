@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import { Input } from '@/ui/input'
+import type { Command as TCommand } from '../hooks/use-ai-commands'
 import { AIMenuItems } from './ai-menu-items'
 
 const providers = {
@@ -36,6 +37,7 @@ interface AIMenuContentProps {
   modelPopoverOpen: boolean
   isLoading: boolean
   messages: any[]
+  commands: TCommand[]
   input: string
   value: string
   onModelPopoverOpenChange: (open: boolean) => void
@@ -49,6 +51,8 @@ interface AIMenuContentProps {
   onInputClick: () => void
   onInputKeyDown: (e: React.KeyboardEvent) => void
   onAccept: () => void
+  onAddCommandOpen: () => void
+  onCommandRemove: (type: 'selectionCommand', label: string) => void
 }
 
 export function AIMenuContent({
@@ -59,6 +63,7 @@ export function AIMenuContent({
   modelPopoverOpen,
   isLoading,
   messages,
+  commands,
   input,
   value,
   onModelPopoverOpenChange,
@@ -72,6 +77,8 @@ export function AIMenuContent({
   onInputClick,
   onInputKeyDown,
   onAccept,
+  onAddCommandOpen,
+  onCommandRemove,
 }: AIMenuContentProps) {
   return (
     <>
@@ -214,9 +221,12 @@ export function AIMenuContent({
         {!isLoading && (
           <CommandList>
             <AIMenuItems
+              commands={commands}
               setValue={onValueChange}
               onAccept={onAccept}
               disabled={!chatConfig}
+              onAddCommandOpen={onAddCommandOpen}
+              onCommandRemove={onCommandRemove}
             />
           </CommandList>
         )}
