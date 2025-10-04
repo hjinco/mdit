@@ -3,12 +3,14 @@ import { useIsSelecting } from '@platejs/selection/react'
 import {
   Album,
   Check,
+  CommandIcon,
   CornerUpLeft,
   FeatherIcon,
   ListMinus,
   ListPlus,
   PenLine,
-  SmileIcon,
+  PlusIcon,
+  Trash2Icon,
   Wand,
   X,
 } from 'lucide-react'
@@ -16,6 +18,7 @@ import { NodeApi } from 'platejs'
 import { type PlateEditor, useEditorRef, usePluginOption } from 'platejs/react'
 import { useEffect, useMemo } from 'react'
 import { CommandGroup, CommandItem } from '@/ui/command'
+import type { Command } from '../hooks/use-ai-commands'
 
 type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
 
@@ -73,16 +76,6 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
         })
 
         editor.getApi(AIChatPlugin).aiChat.hide()
-      })
-    },
-  },
-  emojify: {
-    icon: <SmileIcon />,
-    label: 'Emojify',
-    value: 'emojify',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
-        prompt: 'Emojify',
       })
     },
   },
@@ -193,10 +186,9 @@ const menuStateItems: Record<
     {
       items: [
         aiChatItems.improveWriting,
-        aiChatItems.emojify,
+        aiChatItems.fixSpelling,
         aiChatItems.makeLonger,
         aiChatItems.makeShorter,
-        aiChatItems.fixSpelling,
         aiChatItems.simplifyLanguage,
       ],
     },
@@ -204,15 +196,21 @@ const menuStateItems: Record<
 }
 
 export interface AIMenuItemsProps {
+  commands: Command[]
   setValue: (value: string) => void
   onAccept: () => void
   disabled: boolean
+  onAddCommandOpen: () => void
+  onCommandRemove: (type: 'selectionCommand', label: string) => void
 }
 
 export function AIMenuItems({
+  commands,
   setValue,
   onAccept,
   disabled,
+  onAddCommandOpen,
+  onCommandRemove,
 }: AIMenuItemsProps) {
   const editor = useEditorRef()
   const { messages } = usePluginOption(AIChatPlugin, 'chat')
@@ -266,6 +264,45 @@ export function AIMenuItems({
               <span>{menuItem.label}</span>
             </CommandItem>
           ))}
+          {menuState === 'selectionCommand' &&
+            commands.map((command) => (
+              <CommandItem
+                className="group"
+                key={command.label}
+                onSelect={() => {
+                  editor.getApi(AIChatPlugin).aiChat.submit({
+                    prompt: command.prompt,
+                  })
+                }}
+                value={command.label}
+                disabled={disabled}
+              >
+                <CommandIcon className="text-muted-foreground" />
+                <span>{command.label}</span>
+                <button
+                  type="button"
+                  className="ml-auto size-5 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 group/item"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCommandRemove('selectionCommand', command.label)
+                  }}
+                >
+                  <Trash2Icon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
+                </button>
+              </CommandItem>
+            ))}
+          {menuState === 'selectionCommand' && (
+            <CommandItem
+              className="[&_svg]:text-muted-foreground"
+              key="addCommand"
+              onSelect={onAddCommandOpen}
+              value="addCommand"
+              disabled={disabled}
+            >
+              <PlusIcon />
+              <span>Add command</span>
+            </CommandItem>
+          )}
         </CommandGroup>
       ))}
     </>
