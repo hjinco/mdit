@@ -1,8 +1,19 @@
-import { Submenu } from '@tauri-apps/api/menu'
+import { MenuItem, Submenu } from '@tauri-apps/api/menu'
 
-export async function createViewMenu() {
+export async function createViewMenu({
+  toggleFileExplorer,
+}: {
+  toggleFileExplorer: () => void
+}) {
   return await Submenu.new({
     text: 'View',
-    items: [],
+    items: [
+      await MenuItem.new({
+        id: 'toggle-explorer',
+        text: 'Toggle File Explorer',
+        accelerator: 'CmdOrCtrl+\\',
+        action: () => toggleFileExplorer(),
+      }),
+    ],
   })
 }
