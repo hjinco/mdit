@@ -1,5 +1,6 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { useCallback, useState } from 'react'
+import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
@@ -159,12 +160,13 @@ export function FileExplorer() {
     [entries, showDirectoryMenu, workspacePath]
   )
 
-  if (!isOpen) {
-    return null
-  }
-
   return (
-    <aside className="shrink-0 w-64 flex flex-col bg-muted">
+    <aside
+      className={cn(
+        'shrink-0 w-64 flex flex-col bg-muted transition-[width] duration-200',
+        !isOpen && 'w-0 overflow-hidden'
+      )}
+    >
       <header className="flex items-center justify-between px-4 pt-2">
         <span className="text-foreground/70 cursor-default">
           {workspacePath?.split('/').pop()}

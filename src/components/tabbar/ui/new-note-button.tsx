@@ -1,13 +1,14 @@
 import { SquarePenIcon } from 'lucide-react'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
+import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 export function NewNoteButton() {
   const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
 
   return (
-    <Tooltip>
+    <Tooltip delayDuration={500}>
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
@@ -19,9 +20,14 @@ export function NewNoteButton() {
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <p>New Note (⌘N)</p>
+        <div className="flex items-center gap-1">
+          New Note
+          <KbdGroup>
+            <Kbd>Cmd</Kbd>
+            <Kbd>N</Kbd>
+          </KbdGroup>
+        </div>
       </TooltipContent>
     </Tooltip>
   )
 }
-
