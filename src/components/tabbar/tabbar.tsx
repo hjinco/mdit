@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { TooltipProvider } from '@/ui/tooltip'
 import { MoreButton } from './ui/more-button'
 import { NewNoteButton } from './ui/new-note-button'
 import { Tab } from './ui/tab'
@@ -39,11 +40,13 @@ export function Tabbar() {
         )}
         data-tauri-drag-region
       >
-        <NewNoteButton />
-        <ToggleButton
-          isOpen={isFileExplorerOpen}
-          onToggle={toggleFileExplorer}
-        />
+        <TooltipProvider delayDuration={500} skipDelayDuration={100}>
+          <NewNoteButton />
+          <ToggleButton
+            isOpen={isFileExplorerOpen}
+            onToggle={toggleFileExplorer}
+          />
+        </TooltipProvider>
       </div>
       <div className="flex-1 flex justify-center" data-tauri-drag-region>
         {tab && <Tab name={tab?.name || 'Untitled'} />}
