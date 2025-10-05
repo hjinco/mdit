@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
@@ -13,6 +14,18 @@ export function Tabbar() {
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const tab = useTabStore((s) => s.tab)
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        toggleFileExplorer()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleFileExplorer])
+
   if (!workspacePath) {
     return <div className="h-10" data-tauri-drag-region />
   }
@@ -21,7 +34,7 @@ export function Tabbar() {
     <div className="flex h-10" data-tauri-drag-region>
       <div
         className={cn(
-          'w-64 bg-muted flex items-center justify-end',
+          'w-64 bg-muted flex items-center justify-end transition-[width] duration-250',
           !isFileExplorerOpen && 'bg-background w-36'
         )}
         data-tauri-drag-region
