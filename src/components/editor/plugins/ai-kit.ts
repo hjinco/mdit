@@ -14,6 +14,7 @@ import {
 import type { UseChatOptions } from 'ai/react'
 import { getPluginType, KEYS, PathApi, type TElement } from 'platejs'
 import { usePluginOption } from 'platejs/react'
+import { toast } from 'sonner'
 import { AILoadingBar } from '../ui/ai-loading-bar'
 import { AIMenu } from '../ui/ai-menu'
 import { AIAnchorElement } from '../ui/node-ai'
@@ -125,6 +126,27 @@ export const aiChatPlugin = AIChatPlugin.extend({
         }
       },
       onFinish: ({ content }) => {
+        const resetStreamingState = () => {
+          editor.setOption(AIChatPlugin, 'streaming', false)
+          editor.setOption(AIChatPlugin, '_blockChunks', '')
+          editor.setOption(AIChatPlugin, '_blockPath', null)
+        }
+
+        const chatState = editor.getOption(AIChatPlugin, 'chat')
+        const isChatError =
+          chatState?.status === 'error' || chatState?.error !== undefined
+
+        if (isChatError) {
+          resetStreamingState()
+          if (mode === 'chat') {
+            editor.setOption(AIChatPlugin, 'open', true)
+          } else {
+            editor.getTransforms(AIChatPlugin).aiChat.removeAnchor()
+          }
+          toast.error('Error occurred. Please try again.')
+          return
+        }
+
         if (mode === 'chat') {
           const isBlockSelecting = editor.getOption(
             BlockSelectionPlugin,
@@ -222,9 +244,7 @@ export const aiChatPlugin = AIChatPlugin.extend({
           }
         }
 
-        editor.setOption(AIChatPlugin, 'streaming', false)
-        editor.setOption(AIChatPlugin, '_blockChunks', '')
-        editor.setOption(AIChatPlugin, '_blockPath', null)
+        resetStreamingState()
       },
     })
   },

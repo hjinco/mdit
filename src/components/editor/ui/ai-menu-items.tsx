@@ -213,16 +213,34 @@ export function AIMenuItems({
   onCommandRemove,
 }: AIMenuItemsProps) {
   const editor = useEditorRef()
-  const { messages } = usePluginOption(AIChatPlugin, 'chat')
+  const chat = usePluginOption(AIChatPlugin, 'chat')
+  const messages = chat?.messages
+  const status = chat?.status
   const isSelecting = useIsSelecting()
 
+  const hasAssistantSuggestion = useMemo(() => {
+    if (!messages || status === 'error') return false
+
+    return messages.some((message: { role: string; content?: unknown }) => {
+      if (message.role !== 'assistant') return false
+      const content = message.content
+      if (typeof content === 'string') {
+        return content.trim().length > 0
+      }
+      if (Array.isArray(content)) {
+        return content.length > 0
+      }
+      return Boolean(content)
+    })
+  }, [messages, status])
+
   const menuState = useMemo(() => {
-    if (messages && messages.length > 0) {
+    if (hasAssistantSuggestion) {
       return 'cursorSuggestion'
     }
 
     return isSelecting ? 'selectionCommand' : 'cursorCommand'
-  }, [isSelecting, messages])
+  }, [hasAssistantSuggestion, isSelecting])
 
   const menuGroups = useMemo(() => {
     const items = menuStateItems[menuState]
