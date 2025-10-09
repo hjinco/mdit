@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { useChat as useBaseChat } from '@ai-sdk/react'
 import { streamText } from 'ai'
+import { ollama } from 'ollama-ai-provider'
 import { usePluginOption } from 'platejs/react'
 import { useEffect, useRef } from 'react'
 import { aiChatPlugin } from '@/components/editor/plugins/ai-kit'
@@ -23,6 +24,9 @@ export const useChat = (
         llmRef.current = createGoogleGenerativeAI({
           apiKey: config.apiKey,
         })(config.model)
+        break
+      case 'ollama':
+        llmRef.current = ollama(config.model)
         break
       default:
         throw new Error(`Unsupported provider: ${config.provider}`)
