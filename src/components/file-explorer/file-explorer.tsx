@@ -168,15 +168,15 @@ export function FileExplorer() {
       )}
     >
       <header className="flex items-center justify-between px-4 pt-2">
-        <span className="text-foreground/70 cursor-default">
+        <span className="text-sm text-foreground/70 cursor-default">
           {workspacePath?.split('/').pop()}
         </span>
       </header>
       <div
-        className="flex-1 overflow-y-auto px-1 py-2"
+        className="flex-1 overflow-y-auto p-1"
         onContextMenu={handleRootContextMenu}
       >
-        <ul>
+        <ul className="space-y-0.5">
           {entries.map((entry) => (
             <TreeNode
               key={entry.path}
