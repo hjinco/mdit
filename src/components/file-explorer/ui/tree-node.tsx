@@ -155,8 +155,9 @@ export function TreeNode({
         onContextMenu={handleContextMenu}
         className={cn(
           'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm',
-          'hover:text-accent-foreground',
-          isActive && 'text-accent-foreground font-medium'
+          'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
+          isActive &&
+            'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground'
         )}
         style={{ paddingLeft: `${12 + depth * 12}px` }}
         disabled={isRenaming}
