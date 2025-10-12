@@ -2,24 +2,27 @@ import './globals.css'
 import { useEffect } from 'react'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
-import { LicenseActivation } from './components/license/license-activation'
+import { LicenseActivationDialog } from './components/license/license-activation-dialog'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
+import { useLicenseStore } from './store/license-store'
 import { useWorkspaceStore } from './store/workspace-store'
 
 export function App() {
   const { workspacePath, isLoading, initializeWorkspace } = useWorkspaceStore()
+  const checkLicenseAndTrial = useLicenseStore((s) => s.checkLicenseAndTrial)
 
   useEffect(() => {
     initializeWorkspace()
-  }, [initializeWorkspace])
+    checkLicenseAndTrial()
+  }, [initializeWorkspace, checkLicenseAndTrial])
 
   if (isLoading) {
     return null
   }
 
   return (
-    <LicenseActivation>
+    <>
       <div className="h-screen flex flex-col">
         <Tabbar />
         <div className="flex-1 overflow-hidden flex">
@@ -33,6 +36,7 @@ export function App() {
           )}
         </div>
       </div>
-    </LicenseActivation>
+      <LicenseActivationDialog />
+    </>
   )
 }
