@@ -45,7 +45,9 @@
       },
       "complexity": {
         "noExcessiveCognitiveComplexity": "off",
-        "useSimplifiedLogicExpression": "off"
+        "useSimplifiedLogicExpression": "off",
+        "noBannedTypes": "off",
+        "noForEach": "off"
       },
       "performance": {
         "noNamespaceImport": "off"

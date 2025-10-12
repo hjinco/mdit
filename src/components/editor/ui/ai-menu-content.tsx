@@ -6,6 +6,8 @@ import type { Command as TCommand } from '../hooks/use-ai-commands'
 import { AIMenuItems } from './ai-menu-items'
 import { AIModelSelector } from './ai-model-selector'
 
+type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
+
 interface AIMenuContentProps {
   chatConfig: {
     provider: string
@@ -20,6 +22,7 @@ interface AIMenuContentProps {
   commands: TCommand[]
   input: string
   value: string
+  menuState: EditorChatState
   onModelPopoverOpenChange: (open: boolean) => void
   onProviderDisconnect: (provider: string) => void
   onModelSelect: (provider: string, model: string) => void
@@ -29,7 +32,6 @@ interface AIMenuContentProps {
   onInputChange: (value: string) => void
   onInputClick: () => void
   onInputKeyDown: (e: React.KeyboardEvent) => void
-  onAccept: () => void
   onAddCommandOpen: () => void
   onCommandRemove: (type: 'selectionCommand', label: string) => void
 }
@@ -43,6 +45,7 @@ export function AIMenuContent({
   commands,
   input,
   value,
+  menuState,
   onModelPopoverOpenChange,
   onProviderDisconnect,
   onModelSelect,
@@ -53,23 +56,24 @@ export function AIMenuContent({
   onInputChange,
   onInputClick,
   onInputKeyDown,
-  onAccept,
   onAddCommandOpen,
   onCommandRemove,
 }: AIMenuContentProps) {
   return (
     <>
-      <AIModelSelector
-        chatConfig={chatConfig}
-        connectedProviders={connectedProviders}
-        providers={providers}
-        modelPopoverOpen={modelPopoverOpen}
-        onModelPopoverOpenChange={onModelPopoverOpenChange}
-        onProviderDisconnect={onProviderDisconnect}
-        onModelSelect={onModelSelect}
-        onApiKeySubmit={onApiKeySubmit}
-        onModelNameSubmit={onModelNameSubmit}
-      />
+      {menuState !== 'cursorSuggestion' && (
+        <AIModelSelector
+          chatConfig={chatConfig}
+          connectedProviders={connectedProviders}
+          providers={providers}
+          modelPopoverOpen={modelPopoverOpen}
+          onModelPopoverOpenChange={onModelPopoverOpenChange}
+          onProviderDisconnect={onProviderDisconnect}
+          onModelSelect={onModelSelect}
+          onApiKeySubmit={onApiKeySubmit}
+          onModelNameSubmit={onModelNameSubmit}
+        />
+      )}
       <Command
         className="w-full rounded-lg border shadow-md"
         onValueChange={onValueChange}
@@ -106,9 +110,11 @@ export function AIMenuContent({
           <CommandList>
             <AIMenuItems
               commands={commands}
+              input={input}
+              setInput={onInputChange}
               setValue={onValueChange}
-              onAccept={onAccept}
               disabled={!chatConfig}
+              menuState={menuState}
               onAddCommandOpen={onAddCommandOpen}
               onCommandRemove={onCommandRemove}
             />

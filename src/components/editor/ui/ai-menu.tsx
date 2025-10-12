@@ -1,13 +1,13 @@
 import { AIChatPlugin, useEditorChat } from '@platejs/ai/react'
-import { BlockSelectionPlugin } from '@platejs/selection/react'
-import { isHotkey, type NodeEntry } from 'platejs'
+import { BlockSelectionPlugin, useIsSelecting } from '@platejs/selection/react'
+import { isHotkey, KEYS, type NodeEntry } from 'platejs'
 import {
   useEditorPlugin,
   useFocusedLast,
   useHotkeys,
   usePluginOption,
 } from 'platejs/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   deletePassword,
@@ -19,6 +19,8 @@ import { useAICommands } from '../hooks/use-ai-commands'
 import { useChat } from '../hooks/use-chat'
 import { AIMenuAddCommand } from './ai-menu-add-command'
 import { AIMenuContent } from './ai-menu-content'
+
+type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
 
 const defaultProviders: Record<string, string[]> = {
   google: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
@@ -51,14 +53,14 @@ const normalizeModelList = (models: unknown): string[] => {
 export function AIMenu() {
   const { api, editor } = useEditorPlugin(AIChatPlugin)
   const mode = usePluginOption(AIChatPlugin, 'mode')
+  const toolName = usePluginOption(AIChatPlugin, 'toolName')
   const streaming = usePluginOption(AIChatPlugin, 'streaming')
   const isFocusedLast = useFocusedLast()
   const open = usePluginOption(AIChatPlugin, 'open') && isFocusedLast
   const [value, setValue] = useState('')
   const [connectedProviders, setConnectedProviders] = useState<string[]>([])
-  const [providerModels, setProviderModels] = useState<Record<string, string[]>>(
-    createProviderModels
-  )
+  const [providerModels, setProviderModels] =
+    useState<Record<string, string[]>>(createProviderModels)
   const [chatConfig, setChatConfig] = useState<{
     provider: string
     model: string
@@ -68,12 +70,36 @@ export function AIMenu() {
 
   const chat = useChat(chatConfig)
 
-  const { input, messages, setInput, status, stop } = chat
+  const { status, messages } = chat
+  const [input, setInput] = useState('')
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null)
   const [modelPopoverOpen, setModelPopoverOpen] = useState(false)
 
   const [addCommandOpen, setAddCommandOpen] = useState(false)
   const { commands, addCommand, removeCommand } = useAICommands()
+
+  const isSelecting = useIsSelecting()
+
+  const hasAssistantSuggestion = useMemo(() => {
+    if (!messages || status === 'error') return false
+
+    return messages.some((message) => {
+      if (message.role !== 'assistant') return false
+      return message.parts.some(
+        (part) => part.type === 'text' && part.text?.trim().length > 0
+      )
+    })
+  }, [messages, status])
+
+  const menuState = useMemo<EditorChatState>(() => {
+    if (hasAssistantSuggestion) {
+      return 'cursorSuggestion'
+    }
+
+    return isSelecting ? 'selectionCommand' : 'cursorCommand'
+  }, [hasAssistantSuggestion, isSelecting])
+
+  const submitMode = menuState === 'selectionCommand' ? 'chat' : 'insert'
 
   useEffect(() => {
     if (isConfigLoaded || !open) return
@@ -115,9 +141,7 @@ export function AIMenu() {
             if (config?.provider && connected.includes(config.provider)) {
               if (config.provider === 'ollama') {
                 const preferredModel =
-                  typeof config.model === 'string'
-                    ? config.model.trim()
-                    : ''
+                  typeof config.model === 'string' ? config.model.trim() : ''
                 if (preferredModel) {
                   if (!ollamaModels.includes(preferredModel)) {
                     ollamaModels = [...ollamaModels, preferredModel]
@@ -286,6 +310,8 @@ export function AIMenu() {
         'mdit-default-config',
         JSON.stringify({ provider, model })
       )
+
+      setModelPopoverOpen(false)
       return
     }
 
@@ -328,34 +354,15 @@ export function AIMenu() {
     }
   }
 
-  const handleAccept = () => {
-    editor.tf.withoutNormalizing(() => {
-      editor.tf.removeNodes({
-        match: (n) =>
-          n.diff === true &&
-          (n.diffOperation as { type: string })?.type === 'delete',
-        at: [],
-        mode: 'lowest',
-      })
-
-      editor.tf.unsetNodes(['diff', 'diffOperation'], {
-        at: [],
-        match: (n) => n.diff === true,
-        mode: 'lowest',
-      })
-
-      editor.getApi(AIChatPlugin).aiChat.hide()
-    })
-  }
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
     if (streaming) {
       const anchor = api.aiChat.node({ anchor: true })
       if (!anchor) return
-      const anchorDom = editor.api.toDOMNode(anchor[0])
-      if (!anchorDom) return
-      setAnchorElement(anchorDom)
+      setTimeout(() => {
+        const anchorDom = editor.api.toDOMNode(anchor![0])!
+        setAnchorElement(anchorDom)
+      }, 0)
     }
   }, [streaming])
 
@@ -412,25 +419,42 @@ export function AIMenu() {
   })
 
   useHotkeys('esc', () => {
-    stop()
+    api.aiChat.stop()
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
 
-  if (isLoading && mode === 'insert') {
-    return null
-  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    if (toolName === 'edit' && mode === 'chat' && !isLoading) {
+      let anchorNode = editor.api.node({
+        at: [],
+        reverse: true,
+        match: (n) => !!n[KEYS.suggestion],
+      })
+      if (!anchorNode) {
+        anchorNode = editor
+          .getApi(BlockSelectionPlugin)
+          .blockSelection.getNodes({ selectionFallback: true, sort: true })
+          .at(-1)
+      }
+      if (!anchorNode) return
+      const block = editor.api.block({ at: anchorNode[1] })
+      setAnchorElement(editor.api.toDOMNode(block![0]!)!)
+    }
+  }, [isLoading])
+
+  if (isLoading && mode === 'insert') return null
+  if (toolName === 'comment') return null
+  if (toolName === 'edit' && mode === 'chat' && isLoading) return null
 
   return (
     <Popover
       open={open}
       onOpenChange={(open) => {
-        if (!open) {
-          if (addCommandOpen) {
-            setAddCommandOpen(false)
-            return
-          }
-          handleAccept()
+        if (!open && addCommandOpen) {
+          setAddCommandOpen(false)
+          return
         }
         setOpen(open)
       }}
@@ -449,7 +473,6 @@ export function AIMenu() {
         }}
         onEscapeKeyDown={(e) => {
           e.preventDefault()
-          handleAccept()
         }}
       >
         {addCommandOpen ? (
@@ -471,6 +494,7 @@ export function AIMenu() {
             commands={commands}
             input={input}
             value={value}
+            menuState={menuState}
             onModelPopoverOpenChange={setModelPopoverOpen}
             onProviderDisconnect={handleProviderDisconnect}
             onModelSelect={handleModelSelect}
@@ -494,12 +518,10 @@ export function AIMenu() {
               }
               if (isHotkey('enter')(e) && !e.shiftKey && !value) {
                 e.preventDefault()
-                api.aiChat.submit({
-                  mode: 'chat',
-                })
+                api.aiChat.submit(input, { mode: submitMode, toolName: 'edit' })
+                setInput('')
               }
             }}
-            onAccept={handleAccept}
             onAddCommandOpen={() => setAddCommandOpen(true)}
             onCommandRemove={(type, label) => {
               removeCommand(type, label)

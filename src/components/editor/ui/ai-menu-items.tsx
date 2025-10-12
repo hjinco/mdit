@@ -1,5 +1,4 @@
-import { AIChatPlugin } from '@platejs/ai/react'
-import { useIsSelecting } from '@platejs/selection/react'
+import { AIChatPlugin, AIPlugin } from '@platejs/ai/react'
 import {
   Album,
   Check,
@@ -15,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { NodeApi } from 'platejs'
-import { type PlateEditor, useEditorRef, usePluginOption } from 'platejs/react'
+import { type PlateEditor, useEditorRef } from 'platejs/react'
 import { useEffect, useMemo } from 'react'
 import { CommandGroup, CommandItem } from '@/ui/command'
 import type { Command } from '../hooks/use-ai-commands'
@@ -27,23 +26,23 @@ const aiChatItems = {
     icon: <Check />,
     label: 'Accept',
     value: 'accept',
-    onSelect: () => {
-      // handled in the onAccept prop
-      return
+    onSelect: ({ editor }) => {
+      editor.getTransforms(AIChatPlugin).aiChat.accept()
+      editor.tf.focus({ edge: 'end' })
     },
   },
   continueWrite: {
     icon: <PenLine />,
     label: 'Continue writing',
     value: 'continueWrite',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
+    onSelect: ({ editor, input }) => {
       const ancestorNode = editor.api.block({ highest: true })
 
       if (!ancestorNode) return
 
       const isEmpty = NodeApi.string(ancestorNode[0]).trim().length === 0
 
-      editor.getApi(AIChatPlugin).aiChat.submit({
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt: isEmpty
           ? `<Document>
@@ -59,33 +58,19 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     label: 'Discard',
     shortcut: 'Escape',
     value: 'discard',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.tf.withoutNormalizing(() => {
-        editor.tf.unsetNodes(['diff', 'diffOperation'], {
-          at: [],
-          match: (n) =>
-            n.diff === true &&
-            (n.diffOperation as { type: string })?.type === 'delete',
-          mode: 'lowest',
-        })
-
-        editor.tf.removeNodes({
-          match: (n) => n.diff === true,
-          at: [],
-          mode: 'lowest',
-        })
-
-        editor.getApi(AIChatPlugin).aiChat.hide()
-      })
+    onSelect: ({ editor }) => {
+      editor.getTransforms(AIPlugin).ai.undo()
+      editor.getApi(AIChatPlugin).aiChat.hide()
     },
   },
   fixSpelling: {
     icon: <Check />,
     label: 'Fix spelling & grammar',
     value: 'fixSpelling',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Fix spelling and grammar',
+        toolName: 'edit',
       })
     },
   },
@@ -93,9 +78,10 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <Wand />,
     label: 'Improve writing',
     value: 'improveWriting',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Improve the writing',
+        toolName: 'edit',
       })
     },
   },
@@ -103,9 +89,10 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <ListPlus />,
     label: 'Make longer',
     value: 'makeLonger',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Make longer',
+        toolName: 'edit',
       })
     },
   },
@@ -113,9 +100,10 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <ListMinus />,
     label: 'Make shorter',
     value: 'makeShorter',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Make shorter',
+        toolName: 'edit',
       })
     },
   },
@@ -123,9 +111,10 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <FeatherIcon />,
     label: 'Simplify language',
     value: 'simplifyLanguage',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         prompt: 'Simplify the language',
+        toolName: 'edit',
       })
     },
   },
@@ -133,13 +122,14 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <Album />,
     label: 'Add a summary',
     value: 'summarize',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
-      editor.getApi(AIChatPlugin).aiChat.submit({
+    onSelect: ({ editor, input }) => {
+      editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
         prompt: {
           default: 'Summarize {editor}',
           selecting: 'Summarize',
         },
+        toolName: 'generate',
       })
     },
   },
@@ -147,7 +137,7 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     icon: <CornerUpLeft />,
     label: 'Try again',
     value: 'tryAgain',
-    onSelect: ({ editor }: { editor: PlateEditor }) => {
+    onSelect: ({ editor }) => {
       editor.getApi(AIChatPlugin).aiChat.reload()
     },
   },
@@ -161,7 +151,13 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     filterItems?: boolean
     items?: { label: string; value: string }[]
     shortcut?: string
-    onSelect?: ({ editor }: { editor: PlateEditor }) => void
+    onSelect: ({
+      editor,
+      input,
+    }: {
+      editor: PlateEditor
+      input: string
+    }) => void
   }
 >
 
@@ -197,66 +193,32 @@ const menuStateItems: Record<
 
 export interface AIMenuItemsProps {
   commands: Command[]
+  input: string
+  setInput: (value: string) => void
   setValue: (value: string) => void
-  onAccept: () => void
   disabled: boolean
+  menuState: EditorChatState
   onAddCommandOpen: () => void
   onCommandRemove: (type: 'selectionCommand', label: string) => void
 }
 
 export function AIMenuItems({
   commands,
+  input,
+  setInput,
   setValue,
-  onAccept,
   disabled,
+  menuState,
   onAddCommandOpen,
   onCommandRemove,
 }: AIMenuItemsProps) {
   const editor = useEditorRef()
-  const chat = usePluginOption(AIChatPlugin, 'chat')
-  const messages = chat?.messages
-  const status = chat?.status
-  const isSelecting = useIsSelecting()
-
-  const hasAssistantSuggestion = useMemo(() => {
-    if (!messages || status === 'error') return false
-
-    return messages.some((message: { role: string; content?: unknown }) => {
-      if (message.role !== 'assistant') return false
-      const content = message.content
-      if (typeof content === 'string') {
-        return content.trim().length > 0
-      }
-      if (Array.isArray(content)) {
-        return content.length > 0
-      }
-      return Boolean(content)
-    })
-  }, [messages, status])
-
-  const menuState = useMemo(() => {
-    if (hasAssistantSuggestion) {
-      return 'cursorSuggestion'
-    }
-
-    return isSelecting ? 'selectionCommand' : 'cursorCommand'
-  }, [hasAssistantSuggestion, isSelecting])
 
   const menuGroups = useMemo(() => {
     const items = menuStateItems[menuState]
 
     return items
   }, [menuState])
-
-  const handleMenuItemSelect = (
-    menuItem: (typeof aiChatItems)[keyof typeof aiChatItems]
-  ) => {
-    if (menuItem.value === 'accept') {
-      onAccept()
-    } else {
-      menuItem.onSelect?.({ editor })
-    }
-  }
 
   useEffect(() => {
     if (menuGroups.length > 0 && menuGroups[0].items.length > 0) {
@@ -273,7 +235,8 @@ export function AIMenuItems({
               className="[&_svg]:text-muted-foreground"
               key={menuItem.value}
               onSelect={() => {
-                handleMenuItemSelect(menuItem)
+                menuItem.onSelect({ editor, input })
+                setInput('')
               }}
               value={menuItem.value}
               disabled={disabled}
@@ -288,8 +251,10 @@ export function AIMenuItems({
                 className="group"
                 key={command.label}
                 onSelect={() => {
-                  editor.getApi(AIChatPlugin).aiChat.submit({
+                  editor.getApi(AIChatPlugin).aiChat.submit(input, {
+                    mode: 'chat',
                     prompt: command.prompt,
+                    toolName: 'edit',
                   })
                 }}
                 value={command.label}
