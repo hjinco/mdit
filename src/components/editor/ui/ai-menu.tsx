@@ -310,6 +310,8 @@ export function AIMenu() {
         'mdit-default-config',
         JSON.stringify({ provider, model })
       )
+
+      setModelPopoverOpen(false)
       return
     }
 
