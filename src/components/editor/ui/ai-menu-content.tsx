@@ -61,17 +61,19 @@ export function AIMenuContent({
 }: AIMenuContentProps) {
   return (
     <>
-      <AIModelSelector
-        chatConfig={chatConfig}
-        connectedProviders={connectedProviders}
-        providers={providers}
-        modelPopoverOpen={modelPopoverOpen}
-        onModelPopoverOpenChange={onModelPopoverOpenChange}
-        onProviderDisconnect={onProviderDisconnect}
-        onModelSelect={onModelSelect}
-        onApiKeySubmit={onApiKeySubmit}
-        onModelNameSubmit={onModelNameSubmit}
-      />
+      {menuState !== 'cursorSuggestion' && (
+        <AIModelSelector
+          chatConfig={chatConfig}
+          connectedProviders={connectedProviders}
+          providers={providers}
+          modelPopoverOpen={modelPopoverOpen}
+          onModelPopoverOpenChange={onModelPopoverOpenChange}
+          onProviderDisconnect={onProviderDisconnect}
+          onModelSelect={onModelSelect}
+          onApiKeySubmit={onApiKeySubmit}
+          onModelNameSubmit={onModelNameSubmit}
+        />
+      )}
       <Command
         className="w-full rounded-lg border shadow-md"
         onValueChange={onValueChange}
