@@ -4,7 +4,7 @@ import {
   remarkMdx,
   remarkMention,
 } from '@platejs/markdown'
-import { relative, resolve } from 'pathe'
+import { dirname, relative, resolve } from 'pathe'
 import { getPluginType, KEYS, type TText } from 'platejs'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
@@ -46,7 +46,8 @@ export const MarkdownKit = [
             const tabPath = useTabStore.getState().tab?.path
             if (!tabPath) throw new Error('Tab path not found')
 
-            const url = resolve(tabPath, mdastNode.url)
+            const tabDir = dirname(tabPath)
+            const url = resolve(tabDir, mdastNode.url)
 
             return {
               caption: [{ text: mdastNode.alt } as TText],
@@ -59,7 +60,9 @@ export const MarkdownKit = [
             const tabPath = useTabStore.getState().tab?.path
             if (!tabPath) throw new Error('Tab path not found')
 
-            const relUrl = relative(tabPath, url)
+            const tabDir = dirname(tabPath)
+            const relUrl = relative(tabDir, url)
+            const normalizedRelUrl = relUrl.startsWith('.') ? relUrl : `./${relUrl}`
 
             const image: MdImage = {
               alt: caption
@@ -69,7 +72,7 @@ export const MarkdownKit = [
                 ? caption.map((c) => (c as any).text).join('')
                 : undefined,
               type: 'image',
-              url: relUrl,
+              url: normalizedRelUrl,
             }
 
             // since plate is using block image so we need to wrap it in a paragraph
