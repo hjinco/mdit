@@ -18,6 +18,7 @@ import { useEditorRef, usePluginOption } from 'platejs/react'
 import { useEffect, useRef } from 'react'
 import { aiChatPlugin } from '@/components/editor/plugins/ai-kit'
 import { EditorKit } from '@/components/editor/plugins/editor-kit'
+import { markdownJoinerTransform } from '../utils/markdown-joiner-transform'
 
 export type ToolName = 'comment' | 'edit' | 'generate'
 export type TComment = {
@@ -294,6 +295,7 @@ export const useChat = (
                 messages: convertToModelMessages(messages),
                 model: llmRef.current,
                 system: generateSystem,
+                experimental_transform: markdownJoinerTransform(),
               })
 
               writer.merge(gen.toUIMessageStream({ sendFinish: false }))
@@ -313,6 +315,7 @@ export const useChat = (
                 messages: convertToModelMessages(messages),
                 model: llmRef.current,
                 system: editSystem,
+                experimental_transform: markdownJoinerTransform(),
               })
 
               writer.merge(edit.toUIMessageStream({ sendFinish: false }))
