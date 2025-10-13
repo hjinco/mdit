@@ -324,6 +324,7 @@ export function AIMenu() {
     }
 
     await loadApiKeyAndSetConfig(provider, model)
+    setModelPopoverOpen(false)
   }
 
   const handleProviderDisconnect = async (provider: string) => {
