@@ -16,6 +16,7 @@ import { ollama } from 'ollama-ai-provider-v2'
 import { createSlateEditor, RangeApi } from 'platejs'
 import { useEditorRef, usePluginOption } from 'platejs/react'
 import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { aiChatPlugin } from '@/components/editor/plugins/ai-kit'
 import { EditorKit } from '@/components/editor/plugins/editor-kit'
 import { markdownJoinerTransform } from '../utils/markdown-joiner-transform'
@@ -330,6 +331,9 @@ export const useChat = (
       if (data.type === 'data-toolName') {
         editor.setOption(AIChatPlugin, 'toolName', data.data)
       }
+    },
+    onError(error) {
+      toast.error(error.message)
     },
     ...options,
   })
