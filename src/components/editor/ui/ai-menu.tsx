@@ -24,6 +24,14 @@ type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
 
 const defaultProviders: Record<string, string[]> = {
   google: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  openai: [
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+  ],
   ollama: [], // Empty array - users input custom model names
 }
 

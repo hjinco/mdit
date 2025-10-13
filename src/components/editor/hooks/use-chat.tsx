@@ -1,4 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
 import { type UseChatHelpers, useChat as useBaseChat } from '@ai-sdk/react'
 import { replacePlaceholders } from '@platejs/ai'
 import { AIChatPlugin } from '@platejs/ai/react'
@@ -210,6 +211,11 @@ export const useChat = (
     switch (config.provider) {
       case 'google':
         llmRef.current = createGoogleGenerativeAI({
+          apiKey: config.apiKey,
+        })(config.model)
+        break
+      case 'openai':
+        llmRef.current = createOpenAI({
           apiKey: config.apiKey,
         })(config.model)
         break

@@ -11,6 +11,9 @@ importers:
       '@ai-sdk/google':
         specifier: ^2.0.20
         version: 2.0.20(zod@4.1.11)
+      '@ai-sdk/openai':
+        specifier: ^2.0.50
+        version: 2.0.50(zod@4.1.11)
       '@ai-sdk/react':
         specifier: 2.0.68
         version: 2.0.68(react@19.1.1)(zod@4.1.11)
@@ -299,6 +302,12 @@ packages:
 
   '@ai-sdk/google@2.0.20':
     resolution: {integrity: sha512-+pVkl1GSnORRJEKnjscQEdfW4RR2csVVY8F3QkCHdWjbeSIqrEQw8MWQ4SrtsVLJdAvqyG9WMdiDR7WXSXpn4Q==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai@2.0.50':
+    resolution: {integrity: sha512-Ws7QrenAEg2qagySpECh11OA1nSrXfmAVoEE03NIJqdQlMKjXBCg1mldoCayYhgckDGOFJ7Ar2N15H02BsE47Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -3152,6 +3161,12 @@ snapshots:
       zod: 4.1.11
 
   '@ai-sdk/google@2.0.20(zod@4.1.11)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.11)
+      zod: 4.1.11
+
+  '@ai-sdk/openai@2.0.50(zod@4.1.11)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@ai-sdk/provider-utils': 3.0.12(zod@4.1.11)
