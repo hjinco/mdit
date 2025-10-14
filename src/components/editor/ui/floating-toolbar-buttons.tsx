@@ -12,11 +12,11 @@ import {
   LinkIcon,
   MoreHorizontalIcon,
   RadicalIcon,
+  SparklesIcon,
   StrikethroughIcon,
   SubscriptIcon,
   SuperscriptIcon,
   UnderlineIcon,
-  WandSparklesIcon,
 } from 'lucide-react'
 import { KEYS } from 'platejs'
 import {
@@ -50,6 +50,7 @@ export function FloatingToolbarButtons() {
         <>
           <ToolbarGroup>
             <ToolbarButton
+              size="sm"
               tooltip="AI commands"
               onClick={() => {
                 api.aiChat.show()
@@ -58,21 +59,30 @@ export function FloatingToolbarButtons() {
                 e.preventDefault()
               }}
             >
-              <WandSparklesIcon />
+              <SparklesIcon />
               Ask AI
             </ToolbarButton>
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <MarkToolbarButton nodeType={KEYS.bold} tooltip="Bold (⌘+B)">
+            <MarkToolbarButton
+              size="sm"
+              nodeType={KEYS.bold}
+              tooltip="Bold (⌘+B)"
+            >
               <BoldIcon />
             </MarkToolbarButton>
 
-            <MarkToolbarButton nodeType={KEYS.italic} tooltip="Italic (⌘+I)">
+            <MarkToolbarButton
+              size="sm"
+              nodeType={KEYS.italic}
+              tooltip="Italic (⌘+I)"
+            >
               <ItalicIcon />
             </MarkToolbarButton>
 
             <MarkToolbarButton
+              size="sm"
               nodeType={KEYS.underline}
               tooltip="Underline (⌘+U)"
             >
@@ -80,17 +90,23 @@ export function FloatingToolbarButtons() {
             </MarkToolbarButton>
 
             <MarkToolbarButton
+              size="sm"
               nodeType={KEYS.strikethrough}
               tooltip="Strikethrough (⌘+⇧+M)"
             >
               <StrikethroughIcon />
             </MarkToolbarButton>
 
-            <MarkToolbarButton nodeType={KEYS.code} tooltip="Code (⌘+E)">
+            <MarkToolbarButton
+              size="sm"
+              nodeType={KEYS.code}
+              tooltip="Code (⌘+E)"
+            >
               <Code2Icon />
             </MarkToolbarButton>
 
             <ToolbarButton
+              size="sm"
               onClick={() => {
                 insertInlineEquation(editor)
               }}
@@ -99,7 +115,12 @@ export function FloatingToolbarButtons() {
               <RadicalIcon />
             </ToolbarButton>
 
-            <ToolbarButton data-plate-focus tooltip="Link" {...buttonProps}>
+            <ToolbarButton
+              size="sm"
+              data-plate-focus
+              tooltip="Link"
+              {...buttonProps}
+            >
               <LinkIcon />
             </ToolbarButton>
           </ToolbarGroup>
@@ -131,7 +152,7 @@ export function MoreToolbarButton() {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Insert">
+        <ToolbarButton size="sm" pressed={open} tooltip="Insert">
           <MoreHorizontalIcon />
         </ToolbarButton>
       </DropdownMenuTrigger>

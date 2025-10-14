@@ -11,13 +11,13 @@ import {
   LightbulbIcon,
   ListIcon,
   ListOrdered,
-  PilcrowIcon,
   Quote,
   RadicalIcon,
   SparklesIcon,
   Square,
   Table,
   TableOfContentsIcon,
+  TypeIcon,
 } from 'lucide-react'
 import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
@@ -99,7 +99,7 @@ const groups: Group[] = [
     group: 'Basic blocks',
     items: [
       {
-        icon: <PilcrowIcon />,
+        icon: <TypeIcon />,
         keywords: ['paragraph'],
         label: 'Text',
         value: KEYS.p,

@@ -33,9 +33,9 @@ export function SuggestionLeaf(props: PlateLeafProps<TSuggestionText>) {
       {...props}
       as={Component}
       className={cn(
-        'bg-blue-500/10 text-blue-500 no-underline transition-colors duration-200',
+        'bg-blue-500/10 text-blue-400 no-underline transition-colors duration-200',
         (hasActive || hasHover) && 'bg-blue-500/20',
-        hasRemove && 'bg-foreground/5 text-foreground/35',
+        hasRemove && 'bg-foreground/5 text-foreground/30',
         (hasActive || hasHover) && hasRemove && 'bg-foreground/10 no-underline'
       )}
       attributes={{

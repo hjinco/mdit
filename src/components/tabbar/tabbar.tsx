@@ -36,7 +36,7 @@ export function Tabbar() {
       <div
         className={cn(
           'w-64 bg-muted flex items-center justify-end transition-[width] duration-250',
-          !isFileExplorerOpen && 'bg-background w-36'
+          isFileExplorerOpen ? 'border-r' : 'bg-background w-36'
         )}
         data-tauri-drag-region
       >

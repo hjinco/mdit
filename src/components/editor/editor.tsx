@@ -74,7 +74,7 @@ export function Editor() {
       <PlateContainer
         className={cn(
           'ignore-click-outside/toolbar',
-          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/25 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/15'
+          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/15 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/15'
         )}
         onKeyDown={(e) => {
           // I wish I could just use shortcuts but it's not working as expected
@@ -98,7 +98,7 @@ export function Editor() {
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))]'
+            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/80'
           )}
           autoCapitalize="off"
           spellCheck={false}
