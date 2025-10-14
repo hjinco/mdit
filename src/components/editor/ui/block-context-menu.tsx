@@ -4,6 +4,7 @@ import {
   BlockMenuPlugin,
   BlockSelectionPlugin,
 } from '@platejs/selection/react'
+import { CopyIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
 import { KEYS } from 'platejs'
 import { useEditorPlugin, usePlateState } from 'platejs/react'
 import { useCallback, useState } from 'react'
@@ -98,7 +99,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
               setValue('askAI')
             }}
           >
-            Ask AI
+            <SparklesIcon /> Ask AI
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
@@ -108,7 +109,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
               editor.tf.focus()
             }}
           >
-            Delete
+            <Trash2Icon /> Delete
           </ContextMenuItem>
           <ContextMenuItem
             onClick={() => {
@@ -117,7 +118,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
                 .blockSelection.duplicate()
             }}
           >
-            Duplicate
+            <CopyIcon /> Duplicate
             {/* <ContextMenuShortcut>⌘ + D</ContextMenuShortcut> */}
           </ContextMenuItem>
           <ContextMenuSub>

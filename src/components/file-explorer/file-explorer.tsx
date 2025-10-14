@@ -174,7 +174,7 @@ export function FileExplorer() {
   return (
     <aside
       className={cn(
-        'shrink-0 w-64 flex flex-col bg-muted transition-[width] duration-200',
+        'shrink-0 w-64 flex flex-col bg-muted transition-[width] duration-200 border-r',
         !isOpen && 'w-0 overflow-hidden'
       )}
     >
