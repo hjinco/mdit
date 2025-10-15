@@ -297,10 +297,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteEntry: async (path: string) => {
     try {
-      const { closeTab } = useTabStore.getState()
-      closeTab(path)
+      const { tab, closeTab } = useTabStore.getState()
 
-      await new Promise((resolve) => setTimeout(resolve, 300))
+      if (tab?.path === path) {
+        closeTab(path)
+        await new Promise((resolve) => setTimeout(resolve, 400))
+      }
 
       await invoke('move_to_trash', { path })
       await get().refreshWorkspaceEntries()
