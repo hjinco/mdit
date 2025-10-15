@@ -195,6 +195,8 @@ export function TreeNode({
               onKeyDown={handleRenameKeyDown}
               onBlur={handleRenameBlur}
               className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
+              spellCheck={false}
+              autoComplete="off"
             />
           )}
         </div>
