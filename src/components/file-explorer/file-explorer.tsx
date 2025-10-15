@@ -9,6 +9,7 @@ import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
+import { WorkspaceDropdown } from './ui/workspace-dropdown'
 
 export function FileExplorer() {
   const isOpen = useUIStore((state) => state.isFileExplorerOpen)
@@ -17,11 +18,14 @@ export function FileExplorer() {
     workspacePath,
     entries,
     expandedDirectories,
+    recentWorkspacePaths,
     createNote,
     createFolder,
     deleteEntry,
     renameEntry,
     toggleDirectory,
+    setWorkspace,
+    openFolderPicker,
   } = useWorkspaceStore()
   const openNote = useTabStore((state) => state.openNote)
 
@@ -186,10 +190,13 @@ export function FileExplorer() {
         !isOpen && 'w-0 overflow-hidden'
       )}
     >
-      <header className="flex items-center justify-between px-4 pt-2">
-        <span className="text-sm text-foreground/70 cursor-default">
-          {workspacePath?.split('/').pop()}
-        </span>
+      <header className="flex items-center justify-between px-1 pt-2">
+        <WorkspaceDropdown
+          workspacePath={workspacePath}
+          recentWorkspacePaths={recentWorkspacePaths}
+          onWorkspaceSelect={setWorkspace}
+          onOpenFolderPicker={openFolderPicker}
+        />
       </header>
       <div
         className="flex-1 overflow-y-auto p-1"
