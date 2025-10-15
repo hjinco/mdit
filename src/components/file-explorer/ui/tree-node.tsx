@@ -89,6 +89,7 @@ export function TreeNode({
   const [draftName, setDraftName] = useState(baseName)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const hasSubmittedRef = useRef(false)
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
     if (isRenaming) {
@@ -147,9 +148,20 @@ export function TreeNode({
     await submitRename()
   }, [submitRename])
 
+  // Scroll into view when this node becomes active
+  useEffect(() => {
+    if (isActive && buttonRef.current) {
+      buttonRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [isActive])
+
   return (
     <li>
       <button
+        ref={buttonRef}
         type="button"
         onClick={handleClick}
         onContextMenu={handleContextMenu}
