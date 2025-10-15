@@ -1,9 +1,12 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { ExternalLink } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import { Button } from '@/ui/button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 
@@ -168,6 +171,14 @@ export function FileExplorer() {
   //   return 'Activate License'
   // }
 
+  const handleFeatureBaseClick = useCallback(async () => {
+    try {
+      await openUrl('https://mdit.featurebase.app')
+    } catch (error) {
+      console.error('Failed to open FeatureBase URL:', error)
+    }
+  }, [])
+
   return (
     <aside
       className={cn(
@@ -202,6 +213,14 @@ export function FileExplorer() {
         </ul>
       </div>
       <footer className="px-2 pb-2">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground"
+          onClick={handleFeatureBaseClick}
+        >
+          <ExternalLink /> Feedback
+        </Button>
         {/* {!licenseStatus.hasLicense && (
           <Button
             type="button"
