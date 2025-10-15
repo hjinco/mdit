@@ -84,7 +84,7 @@ export function AIModelSelector({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-border/60 bg-background hover:bg-accent hover:border-border transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-sm border border-border/60 bg-background hover:bg-accent hover:border-border transition-colors"
           >
             <span className="text-muted-foreground">
               {chatConfig ? chatConfig.model : 'Select model'}
@@ -92,7 +92,10 @@ export function AIModelSelector({
             <ChevronDownIcon className="size-3.5 text-muted-foreground/70" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 p-1">
+        <PopoverContent
+          align="end"
+          className="w-72 p-1 max-h-[400px] overflow-y-auto"
+        >
           <div className="space-y-0.5">
             {Object.entries(providers).map(([provider, models], index) => {
               const isConnected = connectedProviders.includes(provider)
@@ -114,7 +117,7 @@ export function AIModelSelector({
                           type="button"
                           onClick={() => onProviderDisconnect(provider)}
                           title={`Disconnect ${provider}`}
-                          className="p-0.5 rounded hover:bg-destructive/10 transition-colors"
+                          className="p-0.5 rounded-sm hover:bg-destructive/10 transition-colors"
                         >
                           <UnlinkIcon className="size-3.5 text-muted-foreground hover:text-destructive transition-colors" />
                         </button>
@@ -123,7 +126,7 @@ export function AIModelSelector({
                           type="button"
                           onClick={() => handleConnect(provider)}
                           title={`Connect ${provider}`}
-                          className="p-0.5 rounded hover:bg-primary/10 transition-colors"
+                          className="p-0.5 rounded-sm hover:bg-primary/10 transition-colors"
                         >
                           <Link className="size-3.5 text-muted-foreground hover:text-primary transition-colors" />
                         </button>
@@ -146,7 +149,7 @@ export function AIModelSelector({
                                       onModelSelect(provider, model)
                                     }
                                     className={cn(
-                                      'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md transition-colors text-left',
+                                      'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-sm transition-colors text-left',
                                       isSelected
                                         ? 'bg-primary/10 text-primary font-medium'
                                         : 'hover:bg-accent text-foreground/80 hover:text-foreground'
@@ -168,7 +171,7 @@ export function AIModelSelector({
                               key={`${provider}-add-model`}
                               type="button"
                               onClick={() => handleConnect(provider)}
-                              className="w-full px-2 py-1.5 text-xs text-primary hover:bg-primary/10 rounded-md transition-colors text-left font-medium"
+                              className="w-full px-2 py-1.5 text-xs text-primary hover:bg-primary/10 rounded-sm transition-colors text-left font-medium"
                             >
                               Add new model...
                             </button>
@@ -184,7 +187,7 @@ export function AIModelSelector({
                                 type="button"
                                 onClick={() => onModelSelect(provider, model)}
                                 className={cn(
-                                  'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md transition-colors text-left',
+                                  'w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-sm transition-colors text-left',
                                   isSelected
                                     ? 'bg-primary/10 text-primary font-medium'
                                     : 'hover:bg-accent text-foreground/80 hover:text-foreground'
@@ -217,7 +220,7 @@ export function AIModelSelector({
                             size="sm"
                             onClick={handleApiKeySubmitInternal}
                             disabled={!apiKeyInput.trim()}
-                            className="flex-1 h-7 text-xs"
+                            className="flex-1 h-8 text-sm rounded-sm font-light"
                           >
                             Connect
                           </Button>
@@ -225,7 +228,7 @@ export function AIModelSelector({
                             size="sm"
                             variant="outline"
                             onClick={handleCancel}
-                            className="flex-1 h-7 text-xs"
+                            className="flex-1 h-8 text-sm rounded-sm font-light"
                           >
                             Cancel
                           </Button>
@@ -251,7 +254,7 @@ export function AIModelSelector({
                             size="sm"
                             onClick={handleModelNameSubmitInternal}
                             disabled={!modelNameInput.trim()}
-                            className="flex-1 h-7 text-xs"
+                            className="flex-1 h-8 text-sm rounded-sm font-light"
                           >
                             Connect
                           </Button>
@@ -259,7 +262,7 @@ export function AIModelSelector({
                             size="sm"
                             variant="outline"
                             onClick={handleCancel}
-                            className="flex-1 h-7 text-xs"
+                            className="flex-1 h-8 text-sm rounded-sm font-light"
                           >
                             Cancel
                           </Button>
