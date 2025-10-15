@@ -17,7 +17,7 @@ import {
   useSelected,
 } from 'platejs/react'
 import { useEffect } from 'react'
-import { Button, buttonVariants } from '@/ui/button'
+import { Button } from '@/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { Separator } from '@/ui/separator'
 import { CaptionButton } from './caption'
@@ -29,9 +29,11 @@ const inputVariants = cva(
 export function MediaToolbar({
   children,
   plugin,
+  hide,
 }: {
   children: React.ReactNode
   plugin: WithRequiredKey
+  hide?: boolean
 }) {
   const editor = useEditorRef()
   const readOnly = useReadOnly()
@@ -47,7 +49,8 @@ export function MediaToolbar({
     !readOnly &&
     selected &&
     selectionCollapsed &&
-    !isImagePreviewOpen
+    !isImagePreviewOpen &&
+    !hide
   const isEditing = useFloatingMediaValue('isEditing')
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
@@ -84,11 +87,11 @@ export function MediaToolbar({
           </div>
         ) : (
           <div className="box-content flex items-center">
-            <FloatingMediaPrimitive.EditButton
+            {/* <FloatingMediaPrimitive.EditButton
               className={buttonVariants({ size: 'sm', variant: 'ghost' })}
             >
               Edit link
-            </FloatingMediaPrimitive.EditButton>
+            </FloatingMediaPrimitive.EditButton> */}
 
             <CaptionButton size="sm" variant="ghost">
               Caption
