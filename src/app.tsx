@@ -2,7 +2,6 @@ import './globals.css'
 import { useEffect } from 'react'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
-import { LicenseActivationDialog } from './components/license/license-activation-dialog'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
 import { useLicenseStore } from './store/license-store'
@@ -36,7 +35,7 @@ export function App() {
           )}
         </div>
       </div>
-      <LicenseActivationDialog />
+      {/* <LicenseActivationDialog /> */}
     </>
   )
 }
