@@ -1,18 +1,15 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
-import { KeyRoundIcon } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { useLicenseStore } from '@/store/license-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
-import { Button } from '@/ui/button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 
 export function FileExplorer() {
   const isOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const { licenseStatus, openLicenseDialog } = useLicenseStore()
+  // const { licenseStatus, openLicenseDialog } = useLicenseStore()
   const {
     workspacePath,
     entries,
@@ -164,12 +161,12 @@ export function FileExplorer() {
     [entries, showDirectoryMenu, workspacePath]
   )
 
-  const getLicenseButtonText = () => {
-    if (licenseStatus.isInTrial) {
-      return `Trial: ${licenseStatus.daysRemaining}d left`
-    }
-    return 'Activate License'
-  }
+  // const getLicenseButtonText = () => {
+  //   if (licenseStatus.isInTrial) {
+  //     return `Trial: ${licenseStatus.daysRemaining}d left`
+  //   }
+  //   return 'Activate License'
+  // }
 
   return (
     <aside
@@ -205,7 +202,7 @@ export function FileExplorer() {
         </ul>
       </div>
       <footer className="px-2 pb-2">
-        {!licenseStatus.hasLicense && (
+        {/* {!licenseStatus.hasLicense && (
           <Button
             type="button"
             variant="ghost"
@@ -215,7 +212,7 @@ export function FileExplorer() {
             <KeyRoundIcon />
             {getLicenseButtonText()}
           </Button>
-        )}
+        )} */}
         <SettingsMenu />
       </footer>
     </aside>
