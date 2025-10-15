@@ -63,7 +63,7 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                   <FormLabel className="text-xs font-medium">Label</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Translate to Korean"
+                      placeholder="Summarize text"
                       className="h-8"
                       autoComplete="off"
                       spellCheck="false"
@@ -83,7 +83,7 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                   <FormLabel className="text-xs font-medium">Prompt</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Translate this to Korean"
+                      placeholder="Summarize the selected text in 3 bullet points"
                       autoComplete="off"
                       spellCheck="false"
                       {...field}
