@@ -303,11 +303,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteEntry: async (path: string) => {
     try {
-      const { tab, closeTab } = useTabStore.getState()
+      const { tab, isSaved, closeTab } = useTabStore.getState()
 
       if (tab?.path === path) {
         closeTab(path)
-        await new Promise((resolve) => setTimeout(resolve, 400))
+        // Only delay if tab has unsaved changes
+        if (!isSaved) {
+          await new Promise((resolve) => setTimeout(resolve, 400))
+        }
       }
 
       await invoke('move_to_trash', { path })
