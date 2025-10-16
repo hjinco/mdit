@@ -1,7 +1,10 @@
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 
+let tabIdCounter = 0
+
 export type Tab = {
+  id: number
   path: string
   name: string
   content: string
@@ -29,7 +32,10 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const name = path.split('/').pop()?.split('.').shift()
 
     if (name) {
-      set({ tab: { path, name, content }, isSaved: true })
+      set({
+        tab: { id: ++tabIdCounter, path, name, content },
+        isSaved: true,
+      })
     }
   },
   openNote: async (path: string) => {

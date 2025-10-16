@@ -6,7 +6,7 @@ import {
   PlateContent,
   usePlateEditor,
 } from 'platejs/react'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
@@ -24,33 +24,37 @@ export function Editor() {
     plugins: EditorKit,
   })
 
+  const tabId = tab?.id
+  const tabContent = tab?.content
+
+  const handleSave = useCallback(() => {
+    if (!tab || isSaved.current) return
+    writeTextFile(tab.path, editor.api.markdown.serialize())
+      .then(() => {
+        isSaved.current = true
+        setTabSaved(true)
+      })
+      .catch(() => {
+        isSaved.current = false
+        setTabSaved(false)
+      })
+  }, [tab, editor, setTabSaved])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ...
   useEffect(() => {
-    if (!tab) return
-    const value = editor.api.markdown.deserialize(tab.content)
+    if (tabContent === undefined) return
+    const value = editor.api.markdown.deserialize(tabContent)
     editor.tf.reset()
     editor.tf.withoutSaving(() => {
       editor.tf.setValue(value)
     })
     editor.tf.focus()
-  }, [tab, editor])
+  }, [tabId, tabContent, editor])
 
   useEffect(() => {
     if (!tab) return
 
     const appWindow = getCurrentWindow()
-
-    const handleSave = () => {
-      if (isSaved.current) return
-      writeTextFile(tab.path, editor.api.markdown.serialize())
-        .then(() => {
-          isSaved.current = true
-          setTabSaved(true)
-        })
-        .catch(() => {
-          isSaved.current = false
-          setTabSaved(false)
-        })
-    }
 
     const interval = setInterval(handleSave, 10_000)
     const closeListener = appWindow.listen('tauri://close-requested', () => {
@@ -63,7 +67,7 @@ export function Editor() {
       clearInterval(interval)
       handleSave()
     }
-  }, [tab, editor, setTabSaved])
+  }, [tab, handleSave])
 
   if (!tab) {
     return null
@@ -109,6 +113,9 @@ export function Editor() {
           autoCapitalize="off"
           spellCheck={false}
           disableDefaultStyles
+          onBlur={() => {
+            handleSave()
+          }}
         />
       </PlateContainer>
     </Plate>
