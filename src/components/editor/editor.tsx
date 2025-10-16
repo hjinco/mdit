@@ -7,6 +7,7 @@ import {
   usePlateEditor,
 } from 'platejs/react'
 import { useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { EditorKit } from './plugins/editor-kit'
@@ -15,7 +16,9 @@ import { copySelection, cutSelection } from './plugins/shortcuts-kit'
 export function Editor() {
   const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
-  const tab = useTabStore((s) => s.tab)
+  const { tab, setTabSaved } = useTabStore(
+    useShallow((s) => ({ tab: s.tab, setTabSaved: s.setTabSaved }))
+  )
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -41,9 +44,11 @@ export function Editor() {
       writeTextFile(tab.path, editor.api.markdown.serialize())
         .then(() => {
           isSaved.current = true
+          setTabSaved(true)
         })
         .catch(() => {
           isSaved.current = false
+          setTabSaved(false)
         })
     }
 
@@ -58,7 +63,7 @@ export function Editor() {
       clearInterval(interval)
       handleSave()
     }
-  }, [tab, editor])
+  }, [tab, editor, setTabSaved])
 
   if (!tab) {
     return null
@@ -67,8 +72,9 @@ export function Editor() {
   return (
     <Plate
       editor={editor}
-      onValueChange={() => {
+      onChange={() => {
         isSaved.current = false
+        setTabSaved(false)
       }}
     >
       <PlateContainer

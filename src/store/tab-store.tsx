@@ -9,14 +9,17 @@ export type Tab = {
 
 type TabStore = {
   tab: Tab | null
+  isSaved: boolean
   openTab: (path: string) => Promise<void>
   openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
   renameTab: (oldPath: string, newPath: string) => void
+  setTabSaved: (isSaved: boolean) => void
 }
 
 export const useTabStore = create<TabStore>((set, get) => ({
   tab: null,
+  isSaved: true,
   openTab: async (path: string) => {
     if (!path.endsWith('.md')) {
       return
@@ -26,7 +29,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const name = path.split('/').pop()?.split('.').shift()
 
     if (name) {
-      set({ tab: { path, name, content } })
+      set({ tab: { path, name, content }, isSaved: true })
     }
   },
   openNote: async (path: string) => {
@@ -61,6 +64,11 @@ export const useTabStore = create<TabStore>((set, get) => ({
         path: newPath,
         name,
       },
+    })
+  },
+  setTabSaved: (isSaved) => {
+    set({
+      isSaved,
     })
   },
 }))
