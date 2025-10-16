@@ -42,6 +42,7 @@ type WorkspaceStore = {
     entry: WorkspaceEntry,
     newName: string
   ) => Promise<string | null>
+  moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -369,6 +370,75 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (error) {
       console.error('Failed to rename entry:', entry.path, error)
       return null
+    }
+  },
+
+  moveEntry: async (sourcePath: string, destinationPath: string) => {
+    const workspacePath = get().workspacePath
+
+    // Validation 1: Check if workspace is set
+    if (!workspacePath) {
+      console.error('No workspace set')
+      return false
+    }
+
+    // Validation 2: Prevent moving to itself
+    if (sourcePath === destinationPath) {
+      console.error('Cannot move entry to itself')
+      return false
+    }
+
+    // Validation 3: Check if destination is a child of source (prevent parent moves into children)
+    const destinationIsChildOfSource =
+      destinationPath.startsWith(`${sourcePath}/`) ||
+      destinationPath.startsWith(`${sourcePath}\\`)
+
+    if (destinationIsChildOfSource) {
+      console.error('Cannot move entry to its own parent')
+      return false
+    }
+
+    // Validation 4: Ensure both paths are within workspace
+    const sourceInWorkspace =
+      sourcePath === workspacePath || sourcePath.startsWith(`${workspacePath}/`)
+    const destinationInWorkspace =
+      destinationPath === workspacePath ||
+      destinationPath.startsWith(`${workspacePath}/`)
+
+    if (!sourceInWorkspace || !destinationInWorkspace) {
+      console.error('Source or destination is outside workspace')
+      return false
+    }
+
+    try {
+      // Get the file/folder name from source path
+      const fileName =
+        sourcePath.split('/').pop() || sourcePath.split('\\').pop()
+      if (!fileName) {
+        console.error('Could not extract file name from source path')
+        return false
+      }
+
+      // Construct the new path
+      const newPath = await join(destinationPath, fileName)
+
+      // Check if destination already has this item
+      if (await exists(newPath)) {
+        console.error('Destination already contains this item')
+        return false
+      }
+
+      await rename(sourcePath, newPath)
+
+      // Update tab path if the moved file is currently open
+      const { renameTab } = useTabStore.getState()
+      renameTab(sourcePath, newPath)
+
+      await get().refreshWorkspaceEntries()
+      return true
+    } catch (error) {
+      console.error('Failed to move entry:', sourcePath, destinationPath, error)
+      return false
     }
   },
 }))
