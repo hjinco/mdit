@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core'
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
@@ -32,6 +33,18 @@ export function FileExplorer() {
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )
+
+  // Setup workspace root as a drop target
+  const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
+    useDroppable({
+      id: `droppable-${workspacePath}`,
+      data: {
+        path: workspacePath,
+        isDirectory: true,
+        depth: -1,
+      },
+      disabled: !workspacePath,
+    })
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -199,10 +212,15 @@ export function FileExplorer() {
         />
       </header>
       <div
-        className="flex-1 overflow-y-auto p-1"
+        ref={setWorkspaceDropRef}
+        className={cn(
+          'flex-1 overflow-y-auto p-1',
+          isOverWorkspace &&
+            'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
+        )}
         onContextMenu={handleRootContextMenu}
       >
-        <ul className="space-y-0.5">
+        <ul className="space-y-0.5 min-h-full pb-4">
           {entries.map((entry) => (
             <TreeNode
               key={entry.path}

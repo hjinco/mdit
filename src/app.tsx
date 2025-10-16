@@ -4,6 +4,7 @@ import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
+import { DndProvider } from './contexts/dnd-provider'
 import { useLicenseStore } from './store/license-store'
 import { useWorkspaceStore } from './store/workspace-store'
 
@@ -21,7 +22,7 @@ export function App() {
   }
 
   return (
-    <>
+    <DndProvider>
       <div className="h-screen flex flex-col">
         <Tabbar />
         <div className="flex-1 overflow-hidden flex">
@@ -36,6 +37,6 @@ export function App() {
         </div>
       </div>
       {/* <LicenseActivationDialog /> */}
-    </>
+    </DndProvider>
   )
 }

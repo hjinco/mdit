@@ -1,3 +1,4 @@
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { FileIcon, FolderIcon, FolderOpenIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -62,6 +63,27 @@ export function TreeNode({
 
     return entry.name.slice(0, entry.name.length - extension.length)
   }, [entry.isDirectory, entry.name, extension])
+
+  // Setup draggable
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: entry.path,
+    data: {
+      path: entry.path,
+      isDirectory: entry.isDirectory,
+      name: entry.name,
+    },
+  })
+
+  // Setup droppable only for directories
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `droppable-${entry.path}`,
+    data: {
+      path: entry.path,
+      isDirectory: entry.isDirectory,
+      depth,
+    },
+    disabled: !entry.isDirectory,
+  })
 
   const handleClick = () => {
     if (isDirectory) {
@@ -148,6 +170,38 @@ export function TreeNode({
     await submitRename()
   }, [submitRename])
 
+  // Auto-expand folder when dragging over it
+  const autoExpandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
+
+  useEffect(() => {
+    if (isOver && isDirectory && !isExpanded && hasChildren) {
+      if (autoExpandTimeoutRef.current) {
+        clearTimeout(autoExpandTimeoutRef.current)
+      }
+      autoExpandTimeoutRef.current = setTimeout(() => {
+        onDirectoryClick(entry.path)
+      }, 500)
+    } else if (autoExpandTimeoutRef.current) {
+      clearTimeout(autoExpandTimeoutRef.current)
+      autoExpandTimeoutRef.current = null
+    }
+
+    return () => {
+      if (autoExpandTimeoutRef.current) {
+        clearTimeout(autoExpandTimeoutRef.current)
+      }
+    }
+  }, [
+    isOver,
+    isDirectory,
+    isExpanded,
+    hasChildren,
+    entry.path,
+    onDirectoryClick,
+  ])
+
   // Scroll into view when this node becomes active
   useEffect(() => {
     if (isActive && buttonRef.current) {
@@ -160,65 +214,118 @@ export function TreeNode({
 
   return (
     <li>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        className={cn(
-          'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm',
-          'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
-          isActive &&
-            'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground'
-        )}
-        style={{ paddingLeft: `${12 + depth * 12}px` }}
-        disabled={isRenaming}
-      >
-        {isDirectory ? (
-          isExpanded ? (
-            <FolderOpenIcon className="size-4 shrink-0" />
-          ) : (
-            <FolderIcon className="size-4 shrink-0" />
-          )
-        ) : (
-          <FileIcon className="size-4 shrink-0" />
-        )}
-        <div className="relative flex-1 min-w-0 truncate">
-          <span className={cn('text-sm', isRenaming && 'invisible')}>
-            {entry.name}
-          </span>
-          {isRenaming && (
-            <input
-              ref={inputRef}
-              value={draftName}
-              onChange={(event) => setDraftName(event.target.value)}
-              onKeyDown={handleRenameKeyDown}
-              onBlur={handleRenameBlur}
-              className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
-              spellCheck={false}
-              autoComplete="off"
-            />
+      {isDirectory ? (
+        <div
+          ref={setDroppableRef}
+          className={cn(
+            'rounded-sm transition-colors',
+            isOver &&
+              'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
+          )}
+        >
+          <button
+            ref={(node) => {
+              setNodeRef(node)
+              buttonRef.current = node
+            }}
+            type="button"
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            className={cn(
+              'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity',
+              'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
+              isActive &&
+                'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
+              isDragging && 'opacity-50 cursor-grabbing'
+            )}
+            style={{ paddingLeft: `${12 + depth * 12}px` }}
+            disabled={isRenaming}
+            {...attributes}
+            {...listeners}
+          >
+            {isExpanded ? (
+              <FolderOpenIcon className="size-4 shrink-0" />
+            ) : (
+              <FolderIcon className="size-4 shrink-0" />
+            )}
+            <div className="relative flex-1 min-w-0 truncate">
+              <span className={cn('text-sm', isRenaming && 'invisible')}>
+                {entry.name}
+              </span>
+              {isRenaming && (
+                <input
+                  ref={inputRef}
+                  value={draftName}
+                  onChange={(event) => setDraftName(event.target.value)}
+                  onKeyDown={handleRenameKeyDown}
+                  onBlur={handleRenameBlur}
+                  className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              )}
+            </div>
+          </button>
+
+          {hasChildren && isExpanded && (
+            <ul>
+              {entry.children!.map((child) => (
+                <TreeNode
+                  key={child.path}
+                  entry={child}
+                  depth={depth + 1}
+                  expandedDirectories={expandedDirectories}
+                  onDirectoryClick={onDirectoryClick}
+                  onDirectoryContextMenu={onDirectoryContextMenu}
+                  onFileContextMenu={onFileContextMenu}
+                  renamingEntryPath={renamingEntryPath}
+                  onRenameSubmit={onRenameSubmit}
+                  onRenameCancel={onRenameCancel}
+                />
+              ))}
+            </ul>
           )}
         </div>
-      </button>
-
-      {isDirectory && hasChildren && isExpanded && (
-        <ul>
-          {entry.children!.map((child) => (
-            <TreeNode
-              key={child.path}
-              entry={child}
-              depth={depth + 1}
-              expandedDirectories={expandedDirectories}
-              onDirectoryClick={onDirectoryClick}
-              onDirectoryContextMenu={onDirectoryContextMenu}
-              onFileContextMenu={onFileContextMenu}
-              renamingEntryPath={renamingEntryPath}
-              onRenameSubmit={onRenameSubmit}
-              onRenameCancel={onRenameCancel}
-            />
-          ))}
-        </ul>
+      ) : (
+        <button
+          ref={(node) => {
+            setNodeRef(node)
+            buttonRef.current = node
+          }}
+          type="button"
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
+          className={cn(
+            'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity',
+            'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
+            isActive &&
+              'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
+            isDragging && 'opacity-50 cursor-grabbing'
+          )}
+          style={{ paddingLeft: `${12 + depth * 12}px` }}
+          disabled={isRenaming}
+          {...attributes}
+          {...listeners}
+        >
+          <FileIcon className="size-4 shrink-0" />
+          <div className="relative flex-1 min-w-0 truncate">
+            <span className={cn('text-sm', isRenaming && 'invisible')}>
+              {entry.name}
+            </span>
+            {isRenaming && (
+              <input
+                ref={inputRef}
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                onBlur={handleRenameBlur}
+                className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
+                spellCheck={false}
+                autoComplete="off"
+              />
+            )}
+          </div>
+        </button>
       )}
     </li>
   )
