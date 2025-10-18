@@ -4,6 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
@@ -23,15 +24,20 @@ export function FileExplorer() {
     createNote,
     createFolder,
     deleteEntry,
+    renameNoteWithAI,
     renameEntry,
     toggleDirectory,
     setWorkspace,
     openFolderPicker,
   } = useWorkspaceStore()
   const openNote = useTabStore((state) => state.openNote)
+  const chatConfig = useAISettingsStore((state) => state.chatConfig)
 
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
+  )
+  const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
+    () => new Set()
   )
 
   // Setup workspace root as a drop target
@@ -70,23 +76,63 @@ export function FileExplorer() {
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry) => {
       try {
+        const itemPromises: Promise<MenuItem>[] = []
+
+        if (entry.name.toLowerCase().endsWith('.md')) {
+          itemPromises.push(
+            MenuItem.new({
+              id: `rename-ai-${entry.path}`,
+              text: 'Rename with AI',
+              enabled: Boolean(chatConfig),
+              action: async () => {
+                setAiRenamingEntryPaths((paths) => {
+                  const next = new Set(paths)
+                  next.add(entry.path)
+                  return next
+                })
+                try {
+                  await renameNoteWithAI(entry)
+                } catch (error) {
+                  console.error('Failed to rename entry with AI:', error)
+                } finally {
+                  setAiRenamingEntryPaths((paths) => {
+                    if (!paths.has(entry.path)) {
+                      return paths
+                    }
+                    const next = new Set(paths)
+                    next.delete(entry.path)
+                    return next
+                  })
+                }
+              },
+            })
+          )
+        }
+
+        itemPromises.push(
+          MenuItem.new({
+            id: `rename-${entry.path}`,
+            text: 'Rename',
+            action: async () => {
+              beginRenaming(entry)
+            },
+          })
+        )
+
+        itemPromises.push(
+          MenuItem.new({
+            id: `delete-${entry.path}`,
+            text: 'Delete',
+            action: async () => {
+              await deleteEntry(entry.path)
+            },
+          })
+        )
+
+        const items = await Promise.all(itemPromises)
+
         const menu = await Menu.new({
-          items: [
-            await MenuItem.new({
-              id: `rename-${entry.path}`,
-              text: 'Rename',
-              action: async () => {
-                beginRenaming(entry)
-              },
-            }),
-            await MenuItem.new({
-              id: `delete-${entry.path}`,
-              text: 'Delete',
-              action: async () => {
-                await deleteEntry(entry.path)
-              },
-            }),
-          ],
+          items,
         })
 
         await menu.popup()
@@ -94,7 +140,7 @@ export function FileExplorer() {
         console.error('Failed to open context menu:', error)
       }
     },
-    [beginRenaming, deleteEntry]
+    [beginRenaming, deleteEntry, renameNoteWithAI, chatConfig]
   )
 
   const showDirectoryMenu = useCallback(
@@ -231,6 +277,7 @@ export function FileExplorer() {
               onDirectoryContextMenu={showDirectoryMenu}
               onFileContextMenu={showEntryMenu}
               renamingEntryPath={renamingEntryPath}
+              aiRenamingEntryPaths={aiRenamingEntryPaths}
               onRenameSubmit={handleRenameSubmit}
               onRenameCancel={cancelRenaming}
             />
