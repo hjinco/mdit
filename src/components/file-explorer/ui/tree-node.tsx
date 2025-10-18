@@ -14,6 +14,7 @@ type TreeNodeProps = {
   onDirectoryContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
   onFileContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
   renamingEntryPath: string | null
+  aiRenamingEntryPaths: Set<string>
   onRenameSubmit: (entry: WorkspaceEntry, name: string) => void | Promise<void>
   onRenameCancel: () => void
 }
@@ -26,11 +27,15 @@ export function TreeNode({
   onDirectoryContextMenu,
   onFileContextMenu,
   renamingEntryPath,
+  aiRenamingEntryPaths,
   onRenameSubmit,
   onRenameCancel,
 }: TreeNodeProps) {
   const isDirectory = entry.isDirectory
   const hasChildren = (entry.children?.length ?? 0) > 0
+  const isRenaming = renamingEntryPath === entry.path
+  const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
+  const isBusy = isRenaming || isAiRenaming
 
   const openNote = useTabStore((s) => s.openNote)
   const activeTabPath = useTabStore((s) => s.tab?.path)
@@ -72,6 +77,7 @@ export function TreeNode({
       isDirectory: entry.isDirectory,
       name: entry.name,
     },
+    disabled: isBusy,
   })
 
   // Setup droppable only for directories
@@ -82,7 +88,7 @@ export function TreeNode({
       isDirectory: entry.isDirectory,
       depth,
     },
-    disabled: !entry.isDirectory,
+    disabled: !entry.isDirectory || isBusy,
   })
 
   const handleClick = () => {
@@ -98,16 +104,19 @@ export function TreeNode({
       event.preventDefault()
       event.stopPropagation()
 
+      if (isBusy) {
+        return
+      }
+
       if (isDirectory) {
         onDirectoryContextMenu(entry)
       } else {
         onFileContextMenu(entry)
       }
     },
-    [entry, isDirectory, onDirectoryContextMenu, onFileContextMenu]
+    [entry, isBusy, isDirectory, onDirectoryContextMenu, onFileContextMenu]
   )
 
-  const isRenaming = renamingEntryPath === entry.path
   const [draftName, setDraftName] = useState(baseName)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const hasSubmittedRef = useRef(false)
@@ -236,10 +245,11 @@ export function TreeNode({
               'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
               isActive &&
                 'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
-              isDragging && 'opacity-50 cursor-grabbing'
+              isDragging && 'opacity-50 cursor-grabbing',
+              isAiRenaming && 'animate-pulse'
             )}
             style={{ paddingLeft: `${12 + depth * 12}px` }}
-            disabled={isRenaming}
+            disabled={isBusy}
             {...attributes}
             {...listeners}
           >
@@ -279,6 +289,7 @@ export function TreeNode({
                   onDirectoryContextMenu={onDirectoryContextMenu}
                   onFileContextMenu={onFileContextMenu}
                   renamingEntryPath={renamingEntryPath}
+                  aiRenamingEntryPaths={aiRenamingEntryPaths}
                   onRenameSubmit={onRenameSubmit}
                   onRenameCancel={onRenameCancel}
                 />
@@ -300,10 +311,11 @@ export function TreeNode({
             'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
             isActive &&
               'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
-            isDragging && 'opacity-50 cursor-grabbing'
+            isDragging && 'opacity-50 cursor-grabbing',
+            isAiRenaming && 'animate-pulse'
           )}
           style={{ paddingLeft: `${12 + depth * 12}px` }}
-          disabled={isRenaming}
+          disabled={isBusy}
           {...attributes}
           {...listeners}
         >
