@@ -14,8 +14,6 @@ interface AIMenuContentProps {
     model: string
     apiKey: string
   } | null
-  connectedProviders: string[]
-  providers: Record<string, string[]>
   modelPopoverOpen: boolean
   isLoading: boolean
   messages: any[]
@@ -24,10 +22,6 @@ interface AIMenuContentProps {
   value: string
   menuState: EditorChatState
   onModelPopoverOpenChange: (open: boolean) => void
-  onProviderDisconnect: (provider: string) => void
-  onModelSelect: (provider: string, model: string) => void
-  onApiKeySubmit: (provider: string, apiKey: string) => void
-  onModelNameSubmit: (provider: string, modelName: string) => void
   onValueChange: (value: string) => void
   onInputChange: (value: string) => void
   onInputClick: () => void
@@ -38,7 +32,6 @@ interface AIMenuContentProps {
 
 export function AIMenuContent({
   chatConfig,
-  connectedProviders,
   modelPopoverOpen,
   isLoading,
   messages,
@@ -47,11 +40,6 @@ export function AIMenuContent({
   value,
   menuState,
   onModelPopoverOpenChange,
-  onProviderDisconnect,
-  onModelSelect,
-  onApiKeySubmit,
-  onModelNameSubmit,
-  providers,
   onValueChange,
   onInputChange,
   onInputClick,
@@ -63,15 +51,8 @@ export function AIMenuContent({
     <>
       {menuState !== 'cursorSuggestion' && (
         <AIModelSelector
-          chatConfig={chatConfig}
-          connectedProviders={connectedProviders}
-          providers={providers}
           modelPopoverOpen={modelPopoverOpen}
           onModelPopoverOpenChange={onModelPopoverOpenChange}
-          onProviderDisconnect={onProviderDisconnect}
-          onModelSelect={onModelSelect}
-          onApiKeySubmit={onApiKeySubmit}
-          onModelNameSubmit={onModelNameSubmit}
         />
       )}
       <Command

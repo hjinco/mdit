@@ -20,6 +20,7 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { aiChatPlugin } from '@/components/editor/plugins/ai-kit'
 import { EditorKit } from '@/components/editor/plugins/editor-kit'
+import type { ChatConfig } from '@/store/ai-settings-store'
 import { markdownJoinerTransform } from '../utils/markdown-joiner-transform'
 
 export type ToolName = 'comment' | 'edit' | 'generate'
@@ -195,13 +196,7 @@ const replaceMessagePlaceholders = (
   return { ...message, parts }
 }
 
-export const useChat = (
-  config: {
-    provider: string
-    apiKey: string
-    model: string
-  } | null
-) => {
+export const useChat = (config: ChatConfig | null) => {
   const editor = useEditorRef()
   const options = usePluginOption(aiChatPlugin, 'chatOptions')
   const llmRef = useRef<any>(null)
