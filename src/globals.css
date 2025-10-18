@@ -123,6 +123,6 @@
   }
 
   body {
-    @apply bg-background text-foreground overscroll-none;
+    @apply bg-background text-foreground overscroll-none antialiased font-medium;
   }
 }

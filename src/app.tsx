@@ -1,7 +1,7 @@
-import './globals.css'
 import { useEffect } from 'react'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
+import { SettingsDialog } from './components/settings/settings'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
@@ -36,6 +36,7 @@ export function App() {
           )}
         </div>
       </div>
+      <SettingsDialog />
       {/* <LicenseActivationDialog /> */}
     </DndProvider>
   )
