@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
+import { LicenseTempDialog } from './components/license/license-temp-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
@@ -34,6 +35,9 @@ export function App() {
           ) : (
             <Welcome />
           )}
+          <div className="fixed bottom-0 right-0">
+            <LicenseTempDialog />
+          </div>
         </div>
       </div>
       <SettingsDialog />
