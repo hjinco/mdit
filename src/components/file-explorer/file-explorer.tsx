@@ -3,10 +3,10 @@ import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
 import { useCallback, useState } from 'react'
+import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useTabStore } from '@/store/tab-store'
-import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { SettingsMenu } from './ui/settings-menu'
@@ -14,7 +14,8 @@ import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
 
 export function FileExplorer() {
-  const isOpen = useUIStore((state) => state.isFileExplorerOpen)
+  const { isOpen, width, isResizing, handlePointerDown } =
+    useFileExplorerResize()
   // const { licenseStatus, openLicenseDialog } = useLicenseStore()
   const {
     workspacePath,
@@ -245,9 +246,12 @@ export function FileExplorer() {
   return (
     <aside
       className={cn(
-        'shrink-0 w-64 flex flex-col bg-muted transition-[width] duration-200 border-r',
-        !isOpen && 'w-0 overflow-hidden border-none'
+        'relative shrink-0 flex flex-col bg-muted border-r',
+        !isResizing && 'transition-[width] duration-200',
+        isResizing && 'transition-none',
+        !isOpen && 'overflow-hidden border-none'
       )}
+      style={{ width: isOpen ? width : 0 }}
     >
       <header className="flex items-center justify-between px-1 pt-2">
         <WorkspaceDropdown
@@ -306,6 +310,12 @@ export function FileExplorer() {
         )} */}
         <SettingsMenu />
       </footer>
+      {isOpen && (
+        <div
+          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent transition-colors hover:bg-border"
+          onPointerDown={handlePointerDown}
+        />
+      )}
     </aside>
   )
 }
