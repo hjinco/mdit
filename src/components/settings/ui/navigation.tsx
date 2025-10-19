@@ -28,9 +28,9 @@ export function SettingsNavigation({
           size="sm"
           onClick={() => onTabChange(tab.id)}
           className={cn(
-            'justify-start',
+            'justify-start cursor-pointer',
             activeTab === tab.id
-              ? 'bg-foreground/10 hover:bg-foreground/10'
+              ? 'bg-foreground/10 hover:bg-foreground/10 dark:hover:bg-foreground/10'
               : 'text-muted-foreground hover:bg-foreground/10 hover:text-foreground'
           )}
         >
