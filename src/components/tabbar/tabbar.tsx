@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
@@ -10,8 +11,19 @@ import { Tab } from './ui/tab'
 import { ToggleButton } from './ui/toggle-button'
 
 export function Tabbar() {
-  const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const toggleFileExplorer = useUIStore((state) => state.toggleFileExplorer)
+  const {
+    isFileExplorerOpen,
+    fileExplorerWidth,
+    isFileExplorerResizing,
+    toggleFileExplorer,
+  } = useUIStore(
+    useShallow((s) => ({
+      isFileExplorerOpen: s.isFileExplorerOpen,
+      fileExplorerWidth: s.fileExplorerWidth,
+      isFileExplorerResizing: s.isFileExplorerResizing,
+      toggleFileExplorer: s.toggleFileExplorer,
+    }))
+  )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const tab = useTabStore((s) => s.tab)
 
@@ -35,9 +47,12 @@ export function Tabbar() {
     <div className="flex h-10" data-tauri-drag-region>
       <div
         className={cn(
-          'w-64 bg-muted flex items-center justify-end transition-[width] duration-250',
+          'bg-muted flex items-center justify-end',
+          !isFileExplorerResizing && 'transition-[width] duration-250',
+          isFileExplorerResizing && 'transition-none',
           isFileExplorerOpen ? 'border-r' : 'bg-background w-36'
         )}
+        style={isFileExplorerOpen ? { width: fileExplorerWidth } : undefined}
         data-tauri-drag-region
       >
         <TooltipProvider delayDuration={500} skipDelayDuration={100}>
