@@ -246,7 +246,7 @@ export function FileExplorer() {
     <aside
       className={cn(
         'shrink-0 w-64 flex flex-col bg-muted transition-[width] duration-200 border-r',
-        !isOpen && 'w-0 overflow-hidden'
+        !isOpen && 'w-0 overflow-hidden border-none'
       )}
     >
       <header className="flex items-center justify-between px-1 pt-2">
