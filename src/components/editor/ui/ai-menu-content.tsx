@@ -3,6 +3,7 @@ import { Loader2Icon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Command, CommandList } from '@/ui/command'
 import type { Command as TCommand } from '../hooks/use-ai-commands'
+import { interceptPopoverHotkeys } from '../utils/intercept-popover-hotkeys'
 import { AIMenuItems } from './ai-menu-items'
 import { AIModelSelector } from './ai-model-selector'
 
@@ -76,7 +77,10 @@ export function AIMenuContent({
             )}
             data-plate-focus
             onClick={onInputClick}
-            onKeyDown={onInputKeyDown}
+            onKeyDown={(event) => {
+              interceptPopoverHotkeys(event)
+              onInputKeyDown(event)
+            }}
             onValueChange={onInputChange}
             placeholder={
               chatConfig
