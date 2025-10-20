@@ -28,6 +28,7 @@ const insertList = (editor: PlateEditor, type: string) => {
     editor.api.create.block({
       indent: 1,
       listStyleType: type,
+      checked: type === KEYS.listTodo ? false : undefined,
     }),
     { select: true }
   )
