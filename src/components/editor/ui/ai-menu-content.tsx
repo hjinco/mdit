@@ -199,7 +199,7 @@ export function AIMenuContent({
           <Loader2Icon className="size-4 animate-spin" />
           {messages.length > 1 ? 'Editing...' : 'Thinking...'}
         </div>
-      ) : (
+      ) : menuState !== 'cursorSuggestion' ? (
         <div
           className={cn(
             'flex rounded-lg border transition-shadow',
@@ -244,28 +244,27 @@ export function AIMenuContent({
               onInput={adjustTextareaHeight}
             />
           </CommandPrimitive.Input>
-          {menuState !== 'cursorSuggestion' && (
-            <div className="flex items-center justify-end gap-2 pr-2">
-              <AIModelSelector
-                modelPopoverOpen={modelPopoverOpen}
-                onModelPopoverOpenChange={onModelPopoverOpenChange}
-              />
-              <Button
-                type="button"
-                size="icon"
-                className="size-6 rounded-full"
-                disabled={!canSubmit}
-                onClick={() => {
-                  if (!canSubmit) return
-                  onSubmit()
-                }}
-              >
-                <ArrowUpIcon />
-              </Button>
-            </div>
-          )}
+
+          <div className="flex items-center justify-end gap-2 pr-2">
+            <AIModelSelector
+              modelPopoverOpen={modelPopoverOpen}
+              onModelPopoverOpenChange={onModelPopoverOpenChange}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="size-6 rounded-full"
+              disabled={!canSubmit}
+              onClick={() => {
+                if (!canSubmit) return
+                onSubmit()
+              }}
+            >
+              <ArrowUpIcon />
+            </Button>
+          </div>
         </div>
-      )}
+      ) : null}
 
       {!isLoading && (
         <CommandList
