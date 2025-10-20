@@ -224,14 +224,14 @@ export function AIMenuItems({
   onCommandRemove,
 }: AIMenuItemsProps) {
   const editor = useEditorRef()
-  const [hiddenDefaultLabels, setHiddenDefaultLabels] = useState<string[]>(
+  const [hiddenDefaultValues, setHiddenDefaultValues] = useState<string[]>(
     () => {
       const stored = localStorage.getItem(HIDDEN_DEFAULT_COMMANDS_KEY)
       if (!stored) return []
       try {
         const parsed = JSON.parse(stored)
         if (!Array.isArray(parsed)) return []
-        return parsed.filter((item) => typeof item === 'string')
+        return parsed.filter((item): item is string => typeof item === 'string')
       } catch {
         return []
       }
@@ -243,16 +243,16 @@ export function AIMenuItems({
       .map((group) => ({
         ...group,
         items: group.items.filter(
-          (item) => !hiddenDefaultLabels.includes(item.label)
+          (item) => !hiddenDefaultValues.includes(item.value)
         ),
       }))
       .filter((group) => group.items.length > 0)
-  }, [hiddenDefaultLabels, menuState])
+  }, [hiddenDefaultValues, menuState])
 
-  const hideDefaultCommand = (label: string) => {
-    setHiddenDefaultLabels((prev) => {
-      if (prev.includes(label)) return prev
-      const next = [...prev, label]
+  const hideDefaultCommand = (value: string) => {
+    setHiddenDefaultValues((prev) => {
+      if (prev.includes(value)) return prev
+      const next = [...prev, value]
       localStorage.setItem(HIDDEN_DEFAULT_COMMANDS_KEY, JSON.stringify(next))
       return next
     })
@@ -298,7 +298,7 @@ export function AIMenuItems({
                   className="ml-auto size-5 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 group/item"
                   onClick={(e) => {
                     e.stopPropagation()
-                    hideDefaultCommand(menuItem.label)
+                    hideDefaultCommand(menuItem.value)
                   }}
                 >
                   <Trash2Icon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
