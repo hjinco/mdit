@@ -9,9 +9,9 @@ import {
   ListPlus,
   PenLine,
   PlusIcon,
-  Trash2Icon,
   Wand,
   X,
+  XIcon,
 } from 'lucide-react'
 import { NodeApi } from 'platejs'
 import { type PlateEditor, useEditorRef } from 'platejs/react'
@@ -301,7 +301,7 @@ export function AIMenuItems({
                     hideDefaultCommand(menuItem.value)
                   }}
                 >
-                  <Trash2Icon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
+                  <XIcon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
                 </button>
               )}
             </CommandItem>
@@ -331,7 +331,7 @@ export function AIMenuItems({
                     onCommandRemove('selectionCommand', command.label)
                   }}
                 >
-                  <Trash2Icon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
+                  <XIcon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
                 </button>
               </CommandItem>
             ))}
