@@ -88,7 +88,7 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
   }
 
   return (
-    <div className="w-full rounded-lg border shadow-md bg-background p-4">
+    <div className="w-full rounded-lg border shadow-xl bg-background p-4">
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FieldSet>
           <FieldLegend>Add Command</FieldLegend>

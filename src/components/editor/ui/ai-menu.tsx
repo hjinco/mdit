@@ -7,7 +7,7 @@ import {
   useHotkeys,
   usePluginOption,
 } from 'platejs/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { useAICommands } from '../hooks/use-ai-commands'
@@ -59,6 +59,18 @@ export function AIMenu() {
   }, [hasAssistantSuggestion, isSelecting])
 
   const submitMode = menuState === 'selectionCommand' ? 'chat' : 'insert'
+
+  const handleSubmit = useCallback(() => {
+    if (!chatConfig) {
+      setModelPopoverOpen(true)
+      return
+    }
+    if (value) {
+      return
+    }
+    api.aiChat.submit(input, { mode: submitMode, toolName: 'edit' })
+    setInput('')
+  }, [api.aiChat, chatConfig, input, submitMode, value])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
@@ -207,10 +219,16 @@ export function AIMenu() {
                 setModelPopoverOpen(true)
               }
             }}
+            onSubmit={handleSubmit}
             onInputKeyDown={(e) => {
-              if (isHotkey('backspace')(e) && input.length === 0) {
+              if (isHotkey('escape')(e)) {
                 e.preventDefault()
                 api.aiChat.hide()
+                return
+              }
+              if (isHotkey('backspace')(e) && input.length === 0) {
+                e.preventDefault()
+                return
               }
               if (!chatConfig) {
                 setModelPopoverOpen(true)
@@ -218,8 +236,7 @@ export function AIMenu() {
               }
               if (isHotkey('enter')(e) && !e.shiftKey && !value) {
                 e.preventDefault()
-                api.aiChat.submit(input, { mode: submitMode, toolName: 'edit' })
-                setInput('')
+                handleSubmit()
               }
             }}
             onAddCommandOpen={() => setAddCommandOpen(true)}

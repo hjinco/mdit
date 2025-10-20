@@ -1,9 +1,4 @@
-import {
-  Check,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  Settings,
-} from 'lucide-react'
+import { Check, ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useUIStore } from '@/store/ui-store'
@@ -28,14 +23,6 @@ export function AIModelSelector({
 
   return (
     <div className="flex justify-end items-center gap-1.5 py-1">
-      <button
-        type="button"
-        onClick={() => openSettingsWithTab('ai')}
-        title="AI Model Settings"
-        className="inline-flex items-center justify-center size-6 rounded-sm border border-border/60 bg-background hover:bg-accent hover:border-border transition-colors"
-      >
-        <Settings className="size-3.5 text-muted-foreground" />
-      </button>
       <DropdownMenu
         open={modelPopoverOpen}
         onOpenChange={onModelPopoverOpenChange}
@@ -43,11 +30,9 @@ export function AIModelSelector({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-sm border border-border/60 bg-background hover:bg-accent hover:border-border transition-colors"
+            className="inline-flex items-center gap-0.5 px-2 py-1 text-xs rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none"
           >
-            <span className="text-muted-foreground">
-              {chatConfig ? chatConfig.model : 'Select model'}
-            </span>
+            {chatConfig ? chatConfig.model : 'Select model'}
             <ChevronDownIcon className="size-3.5 text-muted-foreground/70" />
           </button>
         </DropdownMenuTrigger>
