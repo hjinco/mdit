@@ -15,11 +15,13 @@ import {
 } from 'lucide-react'
 import { NodeApi } from 'platejs'
 import { type PlateEditor, useEditorRef } from 'platejs/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CommandGroup, CommandItem } from '@/ui/command'
 import type { Command } from '../hooks/use-ai-commands'
 
 type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
+
+const HIDDEN_DEFAULT_COMMANDS_KEY = 'ai-hidden-default-selection-commands'
 
 const aiChatItems = {
   accept: {
@@ -213,18 +215,61 @@ export function AIMenuItems({
   onCommandRemove,
 }: AIMenuItemsProps) {
   const editor = useEditorRef()
+  const [hiddenDefaultLabels, setHiddenDefaultLabels] = useState<string[]>(
+    () => {
+      const stored = localStorage.getItem(HIDDEN_DEFAULT_COMMANDS_KEY)
+      if (!stored) return []
+      try {
+        const parsed = JSON.parse(stored)
+        if (!Array.isArray(parsed)) return []
+        return parsed.filter((item) => typeof item === 'string')
+      } catch {
+        return []
+      }
+    }
+  )
 
   const menuGroups = useMemo(() => {
-    const items = menuStateItems[menuState]
+    return menuStateItems[menuState]
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => !hiddenDefaultLabels.includes(item.label)
+        ),
+      }))
+      .filter((group) => group.items.length > 0)
+  }, [hiddenDefaultLabels, menuState])
 
-    return items
-  }, [menuState])
+  const hideDefaultCommand = (label: string) => {
+    setHiddenDefaultLabels((prev) => {
+      if (prev.includes(label)) return prev
+      const next = [...prev, label]
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(
+          HIDDEN_DEFAULT_COMMANDS_KEY,
+          JSON.stringify(next)
+        )
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
-    if (menuGroups.length > 0 && menuGroups[0].items.length > 0) {
-      setValue(menuGroups[0].items[0].value)
+    let nextValue: string | undefined
+
+    for (const group of menuGroups) {
+      if (group.items.length > 0) {
+        nextValue = group.items[0]?.value
+        break
+      }
     }
-  }, [menuGroups, setValue])
+
+    if (!nextValue && menuState === 'selectionCommand' && commands.length > 0) {
+      nextValue = commands[0].label
+    }
+
+    setValue(nextValue ?? '')
+  }, [commands, menuGroups, menuState, setValue])
 
   return (
     <>
@@ -232,7 +277,7 @@ export function AIMenuItems({
         <CommandGroup heading={group.heading} key={index}>
           {group.items.map((menuItem) => (
             <CommandItem
-              className="[&_svg]:text-muted-foreground"
+              className="group [&_svg]:text-muted-foreground"
               key={menuItem.value}
               onSelect={() => {
                 menuItem.onSelect({ editor, input })
@@ -243,6 +288,18 @@ export function AIMenuItems({
             >
               {menuItem.icon}
               <span>{menuItem.label}</span>
+              {menuState === 'selectionCommand' && (
+                <button
+                  type="button"
+                  className="ml-auto size-5 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 group/item"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    hideDefaultCommand(menuItem.label)
+                  }}
+                >
+                  <Trash2Icon className="size-3.5 text-muted-foreground group-hover/item:text-destructive/80" />
+                </button>
+              )}
             </CommandItem>
           ))}
           {menuState === 'selectionCommand' &&
