@@ -21,6 +21,7 @@ import {
 } from '@/ui/select'
 import { Textarea } from '@/ui/textarea'
 import type { Command } from '../hooks/use-ai-commands'
+import { interceptPopoverHotkeys } from '../utils/intercept-popover-hotkeys'
 import {
   DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP,
   DEFAULT_SELECTION_COMMAND_TEMPLATES,
@@ -122,6 +123,9 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                     autoComplete="off"
                     spellCheck="false"
                     autoFocus
+                    onKeyDown={(event) => {
+                      interceptPopoverHotkeys(event)
+                    }}
                   />
                 </Field>
               )}
@@ -138,6 +142,9 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                     placeholder="Summarize the selected text in 3 bullet points"
                     autoComplete="off"
                     spellCheck="false"
+                    onKeyDown={(event) => {
+                      interceptPopoverHotkeys(event)
+                    }}
                   />
                 </Field>
               )}
