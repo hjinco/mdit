@@ -1,6 +1,8 @@
 import { Command as CommandPrimitive } from 'cmdk'
-import { Loader2Icon } from 'lucide-react'
+import { ArrowUpIcon, Loader2Icon } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/ui/button'
 import { Command, CommandList } from '@/ui/command'
 import type { Command as TCommand } from '../hooks/use-ai-commands'
 import { interceptPopoverHotkeys } from '../utils/intercept-popover-hotkeys'
@@ -9,6 +11,7 @@ import { AIModelSelector } from './ai-model-selector'
 
 type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
 
+const MAX_VISIBLE_LINES = 4
 interface AIMenuContentProps {
   chatConfig: {
     provider: string
@@ -27,6 +30,7 @@ interface AIMenuContentProps {
   onInputChange: (value: string) => void
   onInputClick: () => void
   onInputKeyDown: (e: React.KeyboardEvent) => void
+  onSubmit: () => void
   onAddCommandOpen: () => void
   onCommandRemove: (type: 'selectionCommand', label: string) => void
 }
@@ -45,41 +49,178 @@ export function AIMenuContent({
   onInputChange,
   onInputClick,
   onInputKeyDown,
+  onSubmit,
   onAddCommandOpen,
   onCommandRemove,
 }: AIMenuContentProps) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [textareaLineCount, setTextareaLineCount] = useState(1)
+
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const computedStyle = window.getComputedStyle(textarea)
+    const parsedLineHeight = Number.parseFloat(computedStyle.lineHeight)
+    const parsedFontSize = Number.parseFloat(computedStyle.fontSize)
+    const lineHeight =
+      Number.isFinite(parsedLineHeight) && parsedLineHeight > 0
+        ? parsedLineHeight
+        : Number.isFinite(parsedFontSize) && parsedFontSize > 0
+          ? parsedFontSize * 1.2
+          : 16
+    const padding =
+      (Number.parseFloat(computedStyle.paddingTop) || 0) +
+      (Number.parseFloat(computedStyle.paddingBottom) || 0)
+    const border =
+      (Number.parseFloat(computedStyle.borderTopWidth) || 0) +
+      (Number.parseFloat(computedStyle.borderBottomWidth) || 0)
+
+    const minHeight = Math.ceil(lineHeight) + padding + border
+    const maxHeight =
+      Math.ceil(lineHeight * MAX_VISIBLE_LINES) + padding + border
+
+    textarea.style.height = 'auto'
+    let newHeight = textarea.scrollHeight
+    newHeight = Math.max(newHeight, minHeight)
+    newHeight = Math.min(newHeight, maxHeight)
+
+    textarea.style.overflowY = newHeight >= maxHeight ? 'auto' : 'hidden'
+    textarea.style.height = `${newHeight}px`
+
+    const contentHeight = Math.max(newHeight - padding - border, lineHeight)
+    const estimatedLines =
+      lineHeight > 0 ? Math.round(contentHeight / lineHeight) : 1
+
+    setTextareaLineCount(
+      Math.min(Math.max(estimatedLines, 1), MAX_VISIBLE_LINES)
+    )
+  }, [])
+
+  const handleShiftEnter = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key !== 'Enter' || !event.shiftKey) {
+        return false
+      }
+
+      event.preventDefault()
+
+      const textarea = textareaRef.current
+      if (!textarea) {
+        return false
+      }
+
+      const selectionStart = textarea.selectionStart ?? textarea.value.length
+      const selectionEnd =
+        textarea.selectionEnd === null ? selectionStart : textarea.selectionEnd
+
+      textarea.setRangeText('\n', selectionStart, selectionEnd, 'end')
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+
+      requestAnimationFrame(() => {
+        textarea.setSelectionRange(selectionStart + 1, selectionStart + 1)
+        adjustTextareaHeight()
+      })
+
+      return true
+    },
+    [adjustTextareaHeight]
+  )
+
+  const handleTextareaArrowNavigation = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (value) {
+        return false
+      }
+
+      if (textareaLineCount < 2) {
+        return false
+      }
+
+      if (event.altKey || event.metaKey || event.ctrlKey) {
+        return false
+      }
+
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+        return false
+      }
+
+      const textarea = textareaRef.current
+      if (!textarea || event.target !== textarea) {
+        return false
+      }
+
+      const selectionStart = textarea.selectionStart ?? textarea.value.length
+      const selectionEnd =
+        textarea.selectionEnd === null ? selectionStart : textarea.selectionEnd
+
+      if (event.key === 'ArrowUp') {
+        const precedingText = textarea.value.slice(0, selectionStart)
+        if (!precedingText.includes('\n')) {
+          return false
+        }
+      } else {
+        const followingText = textarea.value.slice(selectionEnd)
+        if (!followingText.includes('\n')) {
+          return false
+        }
+      }
+
+      event.stopPropagation()
+
+      const nativeEvent = event.nativeEvent
+      if ('stopImmediatePropagation' in nativeEvent) {
+        nativeEvent.stopImmediatePropagation()
+      }
+
+      return true
+    },
+    [textareaLineCount, value]
+  )
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    if (!isLoading) {
+      adjustTextareaHeight()
+    }
+  }, [input, isLoading, adjustTextareaHeight])
+
+  const canSubmit = Boolean(chatConfig && !isLoading && !value)
+  const isSingleLine = textareaLineCount <= 1
+
   return (
-    <>
-      {menuState !== 'cursorSuggestion' && (
-        <AIModelSelector
-          modelPopoverOpen={modelPopoverOpen}
-          onModelPopoverOpenChange={onModelPopoverOpenChange}
-        />
-      )}
-      <Command
-        className="w-full rounded-lg border shadow-md"
-        onValueChange={onValueChange}
-        value={value}
-      >
-        {isLoading ? (
-          <div className="flex grow select-none items-center gap-2 p-2 text-muted-foreground text-sm">
-            <Loader2Icon className="size-4 animate-spin" />
-            {messages.length > 1 ? 'Editing...' : 'Thinking...'}
-          </div>
-        ) : (
+    <Command
+      className="w-full h-auto overflow-visible"
+      onValueChange={onValueChange}
+      value={value}
+    >
+      {isLoading ? (
+        <div className="flex grow select-none items-center gap-2 p-2 text-muted-foreground text-sm">
+          <Loader2Icon className="size-4 animate-spin" />
+          {messages.length > 1 ? 'Editing...' : 'Thinking...'}
+        </div>
+      ) : menuState !== 'cursorSuggestion' ? (
+        <div
+          className={cn(
+            'flex rounded-lg border transition-shadow',
+            value ? 'shadow-xs' : 'shadow-xl',
+            isSingleLine ? 'flex-row items-center' : 'flex-col'
+          )}
+        >
           <CommandPrimitive.Input
+            asChild
             autoFocus
-            className={cn(
-              'flex h-9 w-full min-w-0 bg-transparent border-input border-b px-3 py-1 text-base outline-none transition-[color,box-shadow] placeholder:text-muted-foreground md:text-sm dark:bg-input/30',
-              'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
-              'focus-visible:ring-transparent',
-              !chatConfig && 'cursor-pointer'
-            )}
             data-plate-focus
             onClick={onInputClick}
             onKeyDown={(event) => {
               interceptPopoverHotkeys(event)
+              const handledShiftEnter = handleShiftEnter(event)
+              const handledTextareaArrowNavigation =
+                handleTextareaArrowNavigation(event)
               onInputKeyDown(event)
+              if (handledShiftEnter || handledTextareaArrowNavigation) {
+                return
+              }
             }}
             onValueChange={onInputChange}
             placeholder={
@@ -88,24 +229,62 @@ export function AIMenuContent({
                 : 'Select a model to get started...'
             }
             value={input}
-          />
-        )}
-
-        {!isLoading && (
-          <CommandList>
-            <AIMenuItems
-              commands={commands}
-              input={input}
-              setInput={onInputChange}
-              setValue={onValueChange}
-              disabled={!chatConfig}
-              menuState={menuState}
-              onAddCommandOpen={onAddCommandOpen}
-              onCommandRemove={onCommandRemove}
+          >
+            <textarea
+              ref={textareaRef}
+              className={cn(
+                'w-full h-auto overflow-hidden min-w-0 resize-none bg-transparent px-3 py-2 text-sm outline-none transition-[color,box-shadow,height] placeholder:text-muted-foreground',
+                'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
+                'focus-visible:ring-transparent leading-relaxed box-border',
+                !chatConfig && 'cursor-pointer',
+                isSingleLine && 'flex-1'
+              )}
+              rows={1}
+              data-plate-focus
+              onInput={adjustTextareaHeight}
             />
-          </CommandList>
-        )}
-      </Command>
-    </>
+          </CommandPrimitive.Input>
+
+          <div className="flex items-center justify-end gap-2 pr-2">
+            <AIModelSelector
+              modelPopoverOpen={modelPopoverOpen}
+              onModelPopoverOpenChange={onModelPopoverOpenChange}
+            />
+            <Button
+              type="button"
+              size="icon"
+              className="size-6 rounded-full"
+              disabled={!canSubmit}
+              onClick={() => {
+                if (!canSubmit) return
+                onSubmit()
+              }}
+            >
+              <ArrowUpIcon />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!isLoading && (
+        <CommandList
+          className={cn(
+            'rounded-lg border shadow-xl mt-2 z-40',
+            !value && 'opacity-0'
+          )}
+        >
+          <AIMenuItems
+            commands={commands}
+            input={input}
+            setInput={onInputChange}
+            setValue={onValueChange}
+            disabled={!chatConfig}
+            menuState={menuState}
+            onAddCommandOpen={onAddCommandOpen}
+            onCommandRemove={onCommandRemove}
+          />
+        </CommandList>
+      )}
+    </Command>
   )
 }
