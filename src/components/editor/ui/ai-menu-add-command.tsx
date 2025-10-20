@@ -145,10 +145,18 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
           </FieldGroup>
         </FieldSet>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={handleCancel}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={handleCancel}
+          >
             Cancel
           </Button>
-          <Button type="submit">Add</Button>
+          <Button type="submit" size="sm">
+            Add
+          </Button>
         </div>
       </form>
     </div>
