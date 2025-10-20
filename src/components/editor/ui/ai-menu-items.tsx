@@ -18,10 +18,19 @@ import { type PlateEditor, useEditorRef } from 'platejs/react'
 import { useEffect, useMemo, useState } from 'react'
 import { CommandGroup, CommandItem } from '@/ui/command'
 import type { Command } from '../hooks/use-ai-commands'
+import { DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP } from './ai-default-commands'
 
 type EditorChatState = 'cursorCommand' | 'cursorSuggestion' | 'selectionCommand'
 
 const HIDDEN_DEFAULT_COMMANDS_KEY = 'ai-hidden-default-selection-commands'
+
+const improveWritingTemplate =
+  DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP.improveWriting
+const fixSpellingTemplate = DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP.fixSpelling
+const makeLongerTemplate = DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP.makeLonger
+const makeShorterTemplate = DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP.makeShorter
+const simplifyLanguageTemplate =
+  DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP.simplifyLanguage
 
 const aiChatItems = {
   accept: {
@@ -67,55 +76,55 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
   },
   fixSpelling: {
     icon: <Check />,
-    label: 'Fix spelling & grammar',
-    value: 'fixSpelling',
+    label: fixSpellingTemplate.label,
+    value: fixSpellingTemplate.value,
     onSelect: ({ editor, input }) => {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Fix spelling and grammar',
+        prompt: fixSpellingTemplate.prompt,
         toolName: 'edit',
       })
     },
   },
   improveWriting: {
     icon: <Wand />,
-    label: 'Improve writing',
-    value: 'improveWriting',
+    label: improveWritingTemplate.label,
+    value: improveWritingTemplate.value,
     onSelect: ({ editor, input }) => {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Improve the writing',
+        prompt: improveWritingTemplate.prompt,
         toolName: 'edit',
       })
     },
   },
   makeLonger: {
     icon: <ListPlus />,
-    label: 'Make longer',
-    value: 'makeLonger',
+    label: makeLongerTemplate.label,
+    value: makeLongerTemplate.value,
     onSelect: ({ editor, input }) => {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make longer',
+        prompt: makeLongerTemplate.prompt,
         toolName: 'edit',
       })
     },
   },
   makeShorter: {
     icon: <ListMinus />,
-    label: 'Make shorter',
-    value: 'makeShorter',
+    label: makeShorterTemplate.label,
+    value: makeShorterTemplate.value,
     onSelect: ({ editor, input }) => {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make shorter',
+        prompt: makeShorterTemplate.prompt,
         toolName: 'edit',
       })
     },
   },
   simplifyLanguage: {
     icon: <FeatherIcon />,
-    label: 'Simplify language',
-    value: 'simplifyLanguage',
+    label: simplifyLanguageTemplate.label,
+    value: simplifyLanguageTemplate.value,
     onSelect: ({ editor, input }) => {
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Simplify the language',
+        prompt: simplifyLanguageTemplate.prompt,
         toolName: 'edit',
       })
     },
@@ -244,12 +253,7 @@ export function AIMenuItems({
     setHiddenDefaultLabels((prev) => {
       if (prev.includes(label)) return prev
       const next = [...prev, label]
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(
-          HIDDEN_DEFAULT_COMMANDS_KEY,
-          JSON.stringify(next)
-        )
-      }
+      localStorage.setItem(HIDDEN_DEFAULT_COMMANDS_KEY, JSON.stringify(next))
       return next
     })
   }

@@ -1,4 +1,5 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/ui/button'
@@ -11,8 +12,19 @@ import {
   FieldSet,
 } from '@/ui/field'
 import { Input } from '@/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/ui/select'
 import { Textarea } from '@/ui/textarea'
 import type { Command } from '../hooks/use-ai-commands'
+import {
+  DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP,
+  DEFAULT_SELECTION_COMMAND_TEMPLATES,
+} from './ai-default-commands'
 
 const formSchema = z.object({
   label: z.string().min(1, 'Label is required'),
@@ -27,6 +39,7 @@ type Props = {
 }
 
 export function AIMenuAddCommand({ onAdd, onClose }: Props) {
+  const [template, setTemplate] = useState('custom')
   const form = useForm<FormValues>({
     resolver: standardSchemaResolver(formSchema),
     defaultValues: {
@@ -42,12 +55,35 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
       prompt: values.prompt,
     })
     form.reset()
+    setTemplate('custom')
     onClose()
   }
 
   function handleCancel() {
     form.reset()
+    setTemplate('custom')
     onClose()
+  }
+
+  const handleTemplateChange = (value: string) => {
+    setTemplate(value)
+
+    if (value === 'custom') return
+
+    const template = DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP[value]
+
+    if (!template) return
+
+    form.setValue('label', template.label, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    })
+    form.setValue('prompt', template.prompt, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    })
   }
 
   return (
@@ -57,6 +93,22 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
           <FieldLegend>Add Command</FieldLegend>
           <FieldDescription>Add a new command to the AI menu.</FieldDescription>
           <FieldGroup>
+            <Field>
+              <FieldLabel>Template</FieldLabel>
+              <Select value={template} onValueChange={handleTemplateChange}>
+                <SelectTrigger className="w-full justify-between">
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom</SelectItem>
+                  {DEFAULT_SELECTION_COMMAND_TEMPLATES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <Controller
               name="label"
               control={form.control}
