@@ -475,7 +475,12 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
         cell: ({ row }) => {
           const updateValue = (newValue: unknown) => {
             const updatedData = data.map((item) =>
-              item.id === row.original.id ? { ...item, value: newValue } : item
+              item.id === row.original.id
+                ? {
+                    ...item,
+                    value: convertValueToType(newValue, row.original.type),
+                  }
+                : item
             )
             onChange(updatedData)
           }

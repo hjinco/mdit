@@ -1,6 +1,7 @@
 import { AIChatPlugin } from '@platejs/ai/react'
 import { insertImage } from '@platejs/media'
 import { open } from '@tauri-apps/plugin-dialog'
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs'
 import {
   CalendarIcon,
   Code2,
@@ -19,9 +20,12 @@ import {
   TableOfContentsIcon,
   TypeIcon,
 } from 'lucide-react'
+import { dirname, resolve } from 'pathe'
 import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
+import YAML from 'yaml'
+import { useTabStore } from '@/store/tab-store'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 import { insertBlock, insertInlineElement } from '../utils/transforms'
 import {
@@ -33,6 +37,134 @@ import {
   InlineComboboxInput,
   InlineComboboxItem,
 } from './inline-combobox'
+import {
+  datePattern,
+  type KVRow,
+  type ValueType,
+} from './node-frontmatter-table'
+
+const MAX_REFERENCED_NOTES = 5
+
+function createRowId() {
+  return Math.random().toString(36).slice(2, 9)
+}
+
+function detectValueType(value: unknown): ValueType | null {
+  if (value instanceof Date) return 'date'
+  if (typeof value === 'string' && datePattern.test(value)) return 'date'
+
+  if (typeof value === 'boolean') return 'boolean'
+  if (typeof value === 'number' && Number.isFinite(value)) return 'number'
+  if (Array.isArray(value)) return 'array'
+  if (value === null || value === undefined) return 'string'
+  if (typeof value === 'string') return 'string'
+
+  return null
+}
+
+const frontmatterPattern = /^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/
+
+function extractFrontmatterSource(markdown: string): string | null {
+  const trimmed = markdown.startsWith('\ufeff') ? markdown.slice(1) : markdown
+  const match = frontmatterPattern.exec(trimmed)
+
+  return match ? match[1] : null
+}
+
+async function collectFrontmatterDefaults(): Promise<KVRow[]> {
+  const tabPath = useTabStore.getState().tab?.path
+  if (!tabPath) {
+    return []
+  }
+
+  try {
+    const tabDir = dirname(tabPath)
+    const entries = await readDir(tabDir)
+    const siblingNotes = entries
+      .filter((entry) => !entry.isDirectory && entry.name.endsWith('.md'))
+      .map((entry) => ({
+        absolutePath: resolve(tabDir, entry.name),
+        name: entry.name,
+      }))
+      .filter((entry) => entry.absolutePath !== tabPath)
+      .sort((a, b) => a.absolutePath.localeCompare(b.absolutePath))
+      .slice(0, MAX_REFERENCED_NOTES)
+
+    const keyOrder: string[] = []
+    const fieldMap = new Map<string, ValueType | null>()
+
+    await Promise.all(
+      siblingNotes.map(async (entry) => {
+        try {
+          const content = await readTextFile(entry.absolutePath)
+          const source = extractFrontmatterSource(content)
+          if (!source) return
+
+          const parsed = YAML.parse(source)
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return
+          }
+
+          for (const [key, rawValue] of Object.entries(
+            parsed as Record<string, unknown>
+          )) {
+            if (!key) continue
+            const detectedType = detectValueType(rawValue)
+            if (!detectedType) continue
+
+            if (!fieldMap.has(key)) {
+              fieldMap.set(key, detectedType)
+              keyOrder.push(key)
+              continue
+            }
+
+            const existing = fieldMap.get(key)
+            if (existing === null) continue
+
+            if (existing !== detectedType) {
+              fieldMap.set(key, null)
+            }
+          }
+        } catch {
+          // Ignore read/parse errors from sibling notes
+        }
+      })
+    )
+
+    return keyOrder
+      .map((key) => {
+        const type = fieldMap.get(key)
+        if (!type) return null
+        return { key, type }
+      })
+      .filter((item): item is { key: string; type: ValueType } => item !== null)
+      .map(({ key, type }) => ({
+        id: createRowId(),
+        key,
+        type,
+        value: defaultValueForType(type),
+      }))
+  } catch {
+    return []
+  }
+}
+
+function defaultValueForType(type: ValueType): unknown {
+  switch (type) {
+    case 'boolean':
+      return false
+    case 'number':
+      return ''
+    case 'date':
+      return ''
+    case 'array':
+      return []
+    case 'string':
+      return ''
+    default:
+      return ''
+  }
+}
 
 type Group = {
   group: string
@@ -68,12 +200,14 @@ const groups: Group[] = [
         keywords: ['metadata', 'yaml', 'head', 'front matter'],
         label: 'Frontmatter',
         value: 'frontmatter',
-        onSelect: (editor: PlateEditor) => {
+        onSelect: async (editor: PlateEditor) => {
           if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
+
+          const defaults = await collectFrontmatterDefaults()
           editor.tf.replaceNodes(
             {
               type: FRONTMATTER_KEY,
-              data: [],
+              data: defaults,
               children: [{ text: '' }],
             },
             { at: [0] }
