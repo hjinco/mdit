@@ -279,7 +279,7 @@ function InlineEditableField({
               setIsOpen(false)
             }
           }}
-          className="bg-background text-foreground"
+          className="bg-background dark:bg-background text-foreground"
           autoFocus
           {...inputProps}
         />
