@@ -84,7 +84,7 @@ export function Editor() {
       <PlateContainer
         className={cn(
           'ignore-click-outside/toolbar',
-          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/15 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/15'
+          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
         )}
         onKeyDown={(e) => {
           // I wish I could just use shortcuts but it's not working as expected
