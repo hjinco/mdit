@@ -1,40 +1,11 @@
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, useEditorRef } from 'platejs/react'
-import { useMemo } from 'react'
-import {
-  detectValueType,
-  FrontmatterTable,
-  type KVRow,
-} from './node-frontmatter-table'
-
-type FrontmatterRecord = Record<string, unknown>
+import { FrontmatterTable, type KVRow } from './node-frontmatter-table'
 
 export type TFrontmatterElement = {
   type: 'frontmatter'
-  data: FrontmatterRecord
+  data: KVRow[]
   children: [{ text: string }]
-}
-
-function toRows(obj: FrontmatterRecord): KVRow[] {
-  return Object.entries(obj).map(([key, value]) => ({
-    id: uid(),
-    key,
-    value,
-    type: detectValueType(value),
-  }))
-}
-
-function toObject(rows: KVRow[]): FrontmatterRecord {
-  const out: FrontmatterRecord = {}
-  for (const r of rows) {
-    if (!r.key) continue
-    out[r.key] = r.value
-  }
-  return out
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 9)
 }
 
 export function FrontmatterElement(
@@ -42,20 +13,16 @@ export function FrontmatterElement(
 ) {
   const editor = useEditorRef()
   const element = props.element as TFrontmatterElement
-  const data = element.data ?? {}
-
-  const rows = useMemo(() => toRows(data), [data])
 
   const handleDataChange = (nextRows: KVRow[]) => {
     if (nextRows.length === 0) {
       editor.tf.removeNodes({ at: [0] })
       return
     }
-    const nextData = toObject(nextRows)
     const path = props.api.findPath(element)
 
     if (path) {
-      editor.tf.setNodes({ data: nextData }, { at: path })
+      editor.tf.setNodes({ data: nextRows }, { at: path })
     }
   }
 
@@ -66,7 +33,7 @@ export function FrontmatterElement(
         contentEditable={false}
         onContextMenu={(e) => e.stopPropagation()}
       >
-        <FrontmatterTable data={rows} onChange={handleDataChange} />
+        <FrontmatterTable data={element.data} onChange={handleDataChange} />
       </div>
     </PlateElement>
   )

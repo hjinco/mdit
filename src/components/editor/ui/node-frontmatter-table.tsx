@@ -1,3 +1,4 @@
+import { PopoverContent as PopoverContentPrimitive } from '@radix-ui/react-popover'
 import {
   type ColumnDef,
   flexRender,
@@ -10,10 +11,11 @@ import {
   ListIcon,
   PlusIcon,
   ToggleLeftIcon,
-  TrashIcon,
   TypeIcon,
+  XIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
@@ -27,7 +29,7 @@ import { Input } from '@/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Switch } from '@/ui/switch'
 
-type ValueType = 'string' | 'number' | 'boolean' | 'date' | 'array'
+export type ValueType = 'string' | 'number' | 'boolean' | 'date' | 'array'
 
 export type KVRow = {
   id: string
@@ -41,7 +43,7 @@ type FrontmatterTableProps = {
   onChange: (data: KVRow[]) => void
 }
 
-const datePattern = /^\d{4}-\d{2}-\d{2}/
+export const datePattern = /^\d{4}-\d{2}-\d{2}/
 
 function formatLocalDate(date: Date): string {
   const y = date.getFullYear()
@@ -58,20 +60,6 @@ function parseYMDToLocalDate(ymd: string) {
     .map((n) => Number(n))
   if (!y || !m || !d) return
   return new Date(y, m - 1, d)
-}
-
-export function detectValueType(value: unknown): ValueType {
-  if (typeof value === 'boolean') return 'boolean'
-  if (typeof value === 'number') return 'number'
-  if (Array.isArray(value)) return 'array'
-  if (
-    value instanceof Date ||
-    (typeof value === 'string' &&
-      !Number.isNaN(Date.parse(value)) &&
-      datePattern.test(value))
-  )
-    return 'date'
-  return 'string'
 }
 
 export function convertValueToType(
@@ -190,6 +178,149 @@ function TypeSelect({
   )
 }
 
+type InlineEditableFieldProps = {
+  value: string
+  placeholder: string
+  onCommit: (nextValue: string) => void
+  inputType?: HTMLInputTypeAttribute
+  buttonProps?: Omit<
+    ComponentPropsWithoutRef<typeof Button>,
+    'onClick' | 'className' | 'variant'
+  >
+  inputProps?: Omit<
+    ComponentPropsWithoutRef<typeof Input>,
+    'ref' | 'value' | 'onChange' | 'onBlur' | 'onKeyDown' | 'type' | 'className'
+  >
+}
+
+function InlineEditableField({
+  value,
+  placeholder,
+  onCommit,
+  inputType = 'text',
+  buttonProps,
+  inputProps,
+}: InlineEditableFieldProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const [triggerDimensions, setTriggerDimensions] = useState<{
+    width: number
+    height: number
+  }>({ width: 0, height: 0 })
+
+  useEffect(() => {
+    if (isOpen) {
+      inputRef.current?.focus()
+    }
+  }, [isOpen])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    const node = triggerRef.current
+    if (!node) return
+    setTriggerDimensions({
+      width: node.offsetWidth,
+      height: node.offsetHeight,
+    })
+  }, [isOpen])
+
+  const popoverSideOffset =
+    triggerDimensions.height > 0 ? -triggerDimensions.height : 0
+  const popoverStyle =
+    triggerDimensions.width > 0
+      ? { width: `${triggerDimensions.width}px` }
+      : undefined
+
+  return (
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onCommit(inputRef.current!.value)
+        }
+        setIsOpen(open)
+      }}
+      modal
+    >
+      <PopoverTrigger asChild>
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="ghost"
+          className={cn(
+            'w-full justify-start border border-transparent h-9 px-3 text-left truncate',
+            !value && 'text-muted-foreground italic'
+          )}
+          {...buttonProps}
+        >
+          {value || placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContentPrimitive
+        side="top"
+        align="start"
+        sideOffset={popoverSideOffset}
+        collisionPadding={0}
+        avoidCollisions={false}
+        style={popoverStyle}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault()
+          setIsOpen(false)
+        }}
+      >
+        <Input
+          ref={inputRef}
+          type={inputType}
+          defaultValue={value}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              onCommit(e.currentTarget.value)
+              setIsOpen(false)
+            }
+
+            // Handle Select All (Ctrl+A / Cmd+A)
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+              e.preventDefault()
+              e.stopPropagation()
+              inputRef.current?.select()
+            }
+
+            // Handle Cut (Ctrl+X / Cmd+X)
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+              e.preventDefault()
+              e.stopPropagation()
+              const input = inputRef.current
+              if (
+                input &&
+                input.selectionStart !== null &&
+                input.selectionEnd !== null
+              ) {
+                const selectedText = input.value.substring(
+                  input.selectionStart,
+                  input.selectionEnd
+                )
+                if (selectedText) {
+                  navigator.clipboard.writeText(selectedText).then(() => {
+                    const newValue =
+                      input.value.substring(0, input.selectionStart!) +
+                      input.value.substring(input.selectionEnd!)
+                    input.value = newValue
+                    input.dispatchEvent(new Event('input', { bubbles: true }))
+                  })
+                }
+              }
+            }
+          }}
+          className="bg-background dark:bg-background text-foreground"
+          autoFocus
+          {...inputProps}
+        />
+      </PopoverContentPrimitive>
+    </Popover>
+  )
+}
+
 function ValueEditor({
   type,
   value,
@@ -254,28 +385,34 @@ function ValueEditor({
     }
     case 'array':
       return (
-        <Input
-          defaultValue={Array.isArray(value) ? value.join(', ') : stringValue}
-          onBlur={(e) =>
+        <InlineEditableField
+          value={Array.isArray(value) ? value.join(', ') : stringValue}
+          placeholder="Item 1, Item 2, Item 3"
+          onCommit={(newValue) =>
             onValueChange(
-              e.target.value
+              newValue
                 .split(',')
                 .map((s) => s.trim())
                 .filter(Boolean)
             )
           }
-          placeholder="Item 1, Item 2, Item 3"
-          className="border-none shadow-none focus-visible:ring-0 focus:text-foreground"
         />
       )
     case 'number':
       return (
-        <Input
-          type="number"
-          defaultValue={Number(stringValue)}
-          onBlur={(e) => onValueChange(Number(e.target.value))}
+        <InlineEditableField
+          value={stringValue}
           placeholder="Enter a number"
-          className="border-none shadow-none focus-visible:ring-0 focus:text-foreground"
+          inputType="number"
+          onCommit={(newValue) => onValueChange(Number(newValue))}
+        />
+      )
+    case 'string':
+      return (
+        <InlineEditableField
+          value={stringValue}
+          placeholder="Enter text"
+          onCommit={(newValue) => onValueChange(newValue)}
         />
       )
     default:
@@ -325,11 +462,10 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
           }
 
           return (
-            <Input
-              defaultValue={row.original.key}
-              onBlur={(e) => updateKey(e.target.value)}
+            <InlineEditableField
+              value={row.original.key ?? ''}
               placeholder="Property name"
-              className="border-none shadow-none focus-visible:ring-0 focus:text-foreground"
+              onCommit={updateKey}
             />
           )
         },
@@ -370,7 +506,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
               onClick={removeRow}
               className="text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <TrashIcon />
+              <XIcon />
             </Button>
           )
         },
@@ -404,7 +540,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
   }
 
   return (
-    <div className="w-full group/frontmatter">
+    <div className="w-full">
       <table className="w-full">
         <tbody className="flex flex-col gap-2">
           {table.getRowModel().rows.map((row) => (
@@ -412,9 +548,10 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
               {row.getVisibleCells().map((cell) => (
                 <td
                   key={cell.id}
-                  style={{
-                    flex: cell.column.id === 'value' ? 1 : undefined,
-                  }}
+                  className={cn(
+                    cell.column.id === 'value' && 'flex-1 min-w-0',
+                    cell.column.id === 'key' && 'basis-48 shrink-0 w-48'
+                  )}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
@@ -425,17 +562,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
       </table>
 
       <div className="mt-2">
-        <Button
-          onClick={addRow}
-          variant="ghost"
-          size="sm"
-          className={cn(
-            'font-normal transition-opacity',
-            data.length === 0
-              ? 'opacity-100'
-              : 'opacity-0 group-hover/frontmatter:opacity-100'
-          )}
-        >
+        <Button onClick={addRow} variant="ghost" size="sm">
           <PlusIcon />
           Add property
         </Button>

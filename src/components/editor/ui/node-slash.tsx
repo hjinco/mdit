@@ -73,7 +73,7 @@ const groups: Group[] = [
           editor.tf.replaceNodes(
             {
               type: FRONTMATTER_KEY,
-              data: {},
+              data: [],
               children: [{ text: '' }],
             },
             { at: [0] }
