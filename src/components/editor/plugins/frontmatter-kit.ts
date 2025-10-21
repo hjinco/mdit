@@ -9,11 +9,6 @@ export const frontmatterPlugin = createPlatePlugin({
     component: FrontmatterElement,
     isElement: true,
   },
-  handlers: {
-    onKeyDown: ({ event }) => {
-      event.stopPropagation()
-    },
-  },
 })
 
 export const FrontmatterKit = [frontmatterPlugin]
