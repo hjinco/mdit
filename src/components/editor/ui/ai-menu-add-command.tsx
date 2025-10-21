@@ -110,6 +110,8 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                 </SelectContent>
               </Select>
             </Field>
+          </FieldGroup>
+          <FieldGroup className="gap-3">
             <Controller
               name="label"
               control={form.control}
