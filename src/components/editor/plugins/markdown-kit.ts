@@ -12,6 +12,7 @@ import remarkMath from 'remark-math'
 import YAML from 'yaml'
 import { useTabStore } from '@/store/tab-store'
 import {
+  convertValueToType,
   datePattern,
   type KVRow,
   type ValueType,
@@ -28,7 +29,7 @@ function rowsToRecord(
   if (Array.isArray(data)) {
     return data.reduce<Record<string, unknown>>((acc, row) => {
       if (!row.key) return acc
-      acc[row.key] = row.value
+      acc[row.key] = convertValueToType(row.value, row.type)
       return acc
     }, {})
   }
