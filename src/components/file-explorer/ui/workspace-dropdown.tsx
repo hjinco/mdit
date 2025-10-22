@@ -49,7 +49,7 @@ export function WorkspaceDropdown({
               <Tooltip key={path} delayDuration={200}>
                 <TooltipTrigger asChild>
                   <DropdownMenuItem onClick={() => onWorkspaceSelect(path)}>
-                    <span className="text-xs text-accent-foreground/80 truncate max-w-full">
+                    <span className="text-sm text-accent-foreground/80 truncate max-w-full">
                       {getLastFolderName(path)}
                     </span>
                   </DropdownMenuItem>
@@ -63,7 +63,7 @@ export function WorkspaceDropdown({
           </>
         ) : null}
         <DropdownMenuItem onClick={onOpenFolderPicker}>
-          <span className="text-xs text-accent-foreground/80">
+          <span className="text-sm text-accent-foreground/80">
             Open Folder...
           </span>
         </DropdownMenuItem>
