@@ -47,7 +47,7 @@ export function Tabbar() {
     <div className="flex h-10" data-tauri-drag-region>
       <div
         className={cn(
-          'bg-muted flex items-center justify-end',
+          'fixed h-10 bg-muted flex items-center justify-end',
           !isFileExplorerResizing && 'transition-[width] duration-250',
           isFileExplorerResizing && 'transition-none',
           isFileExplorerOpen ? 'border-r' : 'bg-background w-36'
@@ -63,10 +63,16 @@ export function Tabbar() {
           />
         </TooltipProvider>
       </div>
+      <div
+        style={{ width: isFileExplorerOpen ? fileExplorerWidth : 0 }}
+        className="transition-[width]"
+      />
       <div className="flex-1 flex justify-center" data-tauri-drag-region>
         {tab && <Tab name={tab?.name || 'Untitled'} />}
       </div>
-      <div className="flex items-center pr-1.5">{tab && <MoreButton />}</div>
+      <div className="fixed right-0 h-10 flex items-center pr-1.5">
+        {tab && <MoreButton />}
+      </div>
     </div>
   )
 }
