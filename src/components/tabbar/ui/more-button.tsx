@@ -1,6 +1,6 @@
-import { EllipsisVerticalIcon } from 'lucide-react'
+import { InfoIcon } from 'lucide-react'
 import { useEditorRef } from 'platejs/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { countGraphemes } from 'unicode-segmenter/grapheme'
 import { Button } from '@/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
@@ -10,11 +10,11 @@ const WORD_SPLIT_REGEX = /\s+/
 export function MoreButton() {
   const editor = useEditorRef()
   const [open, setOpen] = useState(false)
+  const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: true
-  const stats = useMemo(() => {
+  useEffect(() => {
     if (!editor || !open) {
-      return { characters: 0, words: 0, minutes: 0 }
+      return
     }
 
     const string = editor.api.string([])
@@ -26,8 +26,8 @@ export function MoreButton() {
     const wordsPerMinute = 300
     const minutes = Math.round(words / wordsPerMinute)
 
-    return { characters, words, minutes }
-  }, [open])
+    setStats({ characters, words, minutes })
+  }, [editor, open])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -37,7 +37,7 @@ export function MoreButton() {
           size="icon"
           className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent"
         >
-          <EllipsisVerticalIcon />
+          <InfoIcon />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-48" align="end">
@@ -59,4 +59,3 @@ export function MoreButton() {
     </Popover>
   )
 }
-
