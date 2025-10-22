@@ -70,7 +70,9 @@ export function Tabbar() {
       <div className="flex-1 flex justify-center" data-tauri-drag-region>
         {tab && <Tab name={tab?.name || 'Untitled'} />}
       </div>
-      <div className="flex items-center pr-1.5">{tab && <MoreButton />}</div>
+      <div className="fixed right-0 h-10 flex items-center pr-1.5">
+        {tab && <MoreButton />}
+      </div>
     </div>
   )
 }
