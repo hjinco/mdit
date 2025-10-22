@@ -241,14 +241,14 @@ export function TreeNode({
             onClick={handleClick}
             onContextMenu={handleContextMenu}
             className={cn(
-              'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
+              'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
               'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
               isActive &&
                 'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
               isDragging && 'opacity-50 cursor-grabbing',
               isAiRenaming && 'animate-pulse'
             )}
-            style={{ paddingLeft: `${12 + depth * 12}px` }}
+            style={{ paddingLeft: `${10 + depth * 10}px` }}
             disabled={isBusy}
             {...attributes}
             {...listeners}
@@ -307,14 +307,14 @@ export function TreeNode({
           onClick={handleClick}
           onContextMenu={handleContextMenu}
           className={cn(
-            'w-full text-left flex items-center gap-1.5 px-2 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
+            'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
             'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
             isActive &&
               'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
             isDragging && 'opacity-50 cursor-grabbing',
             isAiRenaming && 'animate-pulse'
           )}
-          style={{ paddingLeft: `${12 + depth * 12}px` }}
+          style={{ paddingLeft: `${10 + depth * 10}px` }}
           disabled={isBusy}
           {...attributes}
           {...listeners}

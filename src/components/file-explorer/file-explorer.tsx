@@ -288,10 +288,11 @@ export function FileExplorer() {
           ))}
         </ul>
       </div>
-      <footer className="px-2 pb-2">
+      <footer className="px-1 pb-2">
         <Button
           type="button"
           variant="ghost"
+          size="sm"
           className="w-full justify-start text-muted-foreground"
           onClick={handleFeatureBaseClick}
         >
