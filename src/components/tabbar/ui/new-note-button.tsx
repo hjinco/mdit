@@ -1,14 +1,15 @@
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { SquarePenIcon } from 'lucide-react'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 export function NewNoteButton() {
   const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
 
   return (
-    <Tooltip delayDuration={500}>
+    <TooltipPrimitive.Root data-slot="tooltip">
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
@@ -19,7 +20,7 @@ export function NewNoteButton() {
           <SquarePenIcon />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="pr-1">
         <div className="flex items-center gap-1">
           New Note
           <KbdGroup>
@@ -28,6 +29,6 @@ export function NewNoteButton() {
           </KbdGroup>
         </div>
       </TooltipContent>
-    </Tooltip>
+    </TooltipPrimitive.Root>
   )
 }

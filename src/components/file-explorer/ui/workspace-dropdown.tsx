@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
+import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 type WorkspaceDropdownProps = {
@@ -35,7 +36,8 @@ export function WorkspaceDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full justify-start hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80 text-foreground/90"
+          size="sm"
+          className="w-full justify-start hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80 text-foreground/90 font-semibold tracking-tight"
         >
           <InboxIcon />
           <span className="truncate">{currentWorkspaceName}</span>
@@ -49,7 +51,7 @@ export function WorkspaceDropdown({
               <Tooltip key={path} delayDuration={200}>
                 <TooltipTrigger asChild>
                   <DropdownMenuItem onClick={() => onWorkspaceSelect(path)}>
-                    <span className="text-sm text-accent-foreground/80 truncate max-w-full">
+                    <span className="text-sm text-accent-foreground/90 truncate max-w-full">
                       {getLastFolderName(path)}
                     </span>
                   </DropdownMenuItem>
@@ -63,9 +65,13 @@ export function WorkspaceDropdown({
           </>
         ) : null}
         <DropdownMenuItem onClick={onOpenFolderPicker}>
-          <span className="text-sm text-accent-foreground/80">
+          <span className="text-sm text-accent-foreground/90 mr-auto">
             Open Folder...
           </span>
+          <KbdGroup>
+            <Kbd>Cmd</Kbd>
+            <Kbd>O</Kbd>
+          </KbdGroup>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

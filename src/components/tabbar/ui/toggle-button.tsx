@@ -1,7 +1,8 @@
+import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 type ToggleButtonProps = {
   isOpen: boolean
@@ -10,7 +11,7 @@ type ToggleButtonProps = {
 
 export function ToggleButton({ isOpen, onToggle }: ToggleButtonProps) {
   return (
-    <Tooltip delayDuration={500}>
+    <TooltipPrimitive.Root data-slot="tooltip">
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
@@ -21,7 +22,7 @@ export function ToggleButton({ isOpen, onToggle }: ToggleButtonProps) {
           {isOpen ? <ArrowLeftToLineIcon /> : <ArrowRightToLineIcon />}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="pr-1">
         <div className="flex items-center gap-1">
           Toggle
           <KbdGroup>
@@ -30,6 +31,6 @@ export function ToggleButton({ isOpen, onToggle }: ToggleButtonProps) {
           </KbdGroup>
         </div>
       </TooltipContent>
-    </Tooltip>
+    </TooltipPrimitive.Root>
   )
 }
