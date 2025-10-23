@@ -44,6 +44,7 @@ type WorkspaceStore = {
   createFolder: (directoryPath: string) => Promise<string | null>
   createNote: (directoryPath: string) => Promise<string | null>
   createAndOpenNote: () => Promise<void>
+  deleteEntries: (paths: string[]) => Promise<boolean>
   deleteEntry: (path: string) => Promise<boolean>
   renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
   renameEntry: (
@@ -310,26 +311,35 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
   },
 
-  deleteEntry: async (path: string) => {
+  deleteEntries: async (paths: string[]) => {
     try {
       const { tab, isSaved, closeTab } = useTabStore.getState()
 
-      if (tab?.path === path) {
-        closeTab(path)
-        // Only delay if tab has unsaved changes
+      if (tab?.path && paths.includes(tab.path)) {
+        closeTab(tab.path)
+
         if (!isSaved) {
           await new Promise((resolve) => setTimeout(resolve, 400))
         }
       }
 
-      await invoke('move_to_trash', { path })
+      if (paths.length === 1) {
+        await invoke('move_to_trash', { path: paths[0] })
+      } else {
+        await invoke('move_many_to_trash', { paths })
+      }
+
       await get().refreshWorkspaceEntries()
 
       return true
     } catch (error) {
-      console.error('Failed to delete entry:', path, error)
+      console.error('Failed to delete entries:', paths, error)
       return false
     }
+  },
+
+  deleteEntry: async (path: string) => {
+    return get().deleteEntries([path])
   },
 
   renameNoteWithAI: async (entry) => {

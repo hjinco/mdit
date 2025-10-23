@@ -2,7 +2,8 @@ import { useDroppable } from '@dnd-kit/core'
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
@@ -24,7 +25,7 @@ export function FileExplorer() {
     recentWorkspacePaths,
     createNote,
     createFolder,
-    deleteEntry,
+    deleteEntries,
     renameNoteWithAI,
     renameEntry,
     toggleDirectory,
@@ -40,6 +41,46 @@ export function FileExplorer() {
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
   )
+  const [selectedEntryPaths, setSelectedEntryPaths] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(
+    null
+  )
+
+  const visibleEntryPaths = useMemo(() => {
+    const paths: string[] = []
+
+    const traverse = (nodes: WorkspaceEntry[]) => {
+      for (const node of nodes) {
+        paths.push(node.path)
+        if (
+          node.isDirectory &&
+          expandedDirectories[node.path] &&
+          node.children
+        ) {
+          traverse(node.children)
+        }
+      }
+    }
+
+    traverse(entries)
+    return paths
+  }, [entries, expandedDirectories])
+
+  const entryOrderMap = useMemo(() => {
+    const map = new Map<string, number>()
+    visibleEntryPaths.forEach((path, index) => {
+      map.set(path, index)
+    })
+    return map
+  }, [visibleEntryPaths])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    setSelectedEntryPaths(new Set())
+    setSelectionAnchorPath(null)
+  }, [workspacePath])
 
   // Setup workspace root as a drop target
   const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
@@ -74,8 +115,26 @@ export function FileExplorer() {
     [renameEntry]
   )
 
+  const handleDeleteEntries = useCallback(
+    async (paths: string[]) => {
+      if (paths.length === 0) {
+        return
+      }
+
+      const success = await deleteEntries(paths)
+
+      if (success) {
+        setSelectedEntryPaths(new Set())
+        setSelectionAnchorPath(null)
+      } else {
+        toast.error('Failed to delete')
+      }
+    },
+    [deleteEntries]
+  )
+
   const showEntryMenu = useCallback(
-    async (entry: WorkspaceEntry) => {
+    async (entry: WorkspaceEntry, selectionPaths: string[]) => {
       try {
         const itemPromises: Promise<MenuItem>[] = []
 
@@ -125,7 +184,9 @@ export function FileExplorer() {
             id: `delete-${entry.path}`,
             text: 'Delete',
             action: async () => {
-              await deleteEntry(entry.path)
+              const targets =
+                selectionPaths.length > 0 ? selectionPaths : [entry.path]
+              await handleDeleteEntries(targets)
             },
           })
         )
@@ -141,11 +202,11 @@ export function FileExplorer() {
         console.error('Failed to open context menu:', error)
       }
     },
-    [beginRenaming, deleteEntry, renameNoteWithAI, chatConfig]
+    [beginRenaming, handleDeleteEntries, renameNoteWithAI, chatConfig]
   )
 
   const showDirectoryMenu = useCallback(
-    async (directoryEntry: WorkspaceEntry) => {
+    async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
       const directoryPath = directoryEntry.path
       try {
         const items = [
@@ -186,7 +247,9 @@ export function FileExplorer() {
               id: `delete-directory-${directoryPath}`,
               text: 'Delete',
               action: async () => {
-                await deleteEntry(directoryPath)
+                const targets =
+                  selectionPaths.length > 0 ? selectionPaths : [directoryPath]
+                await handleDeleteEntries(targets)
               },
             })
           )
@@ -204,11 +267,126 @@ export function FileExplorer() {
     [
       createNote,
       createFolder,
-      deleteEntry,
       openNote,
       beginRenaming,
       workspacePath,
+      handleDeleteEntries,
     ]
+  )
+
+  const handleEntryPrimaryAction = useCallback(
+    (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
+      const path = entry.path
+      const isMulti = event.metaKey || event.ctrlKey
+      const isRange = event.shiftKey
+
+      let nextSelection = new Set(selectedEntryPaths)
+
+      if (isRange) {
+        if (
+          selectionAnchorPath &&
+          entryOrderMap.has(selectionAnchorPath) &&
+          entryOrderMap.has(path)
+        ) {
+          nextSelection = new Set()
+          const anchorIndex = entryOrderMap.get(selectionAnchorPath)!
+          const currentIndex = entryOrderMap.get(path)!
+          const start = Math.min(anchorIndex, currentIndex)
+          const end = Math.max(anchorIndex, currentIndex)
+          for (let index = start; index <= end; index += 1) {
+            const targetPath = visibleEntryPaths[index]
+            if (targetPath) {
+              nextSelection.add(targetPath)
+            }
+          }
+        } else {
+          nextSelection = new Set([path])
+        }
+      } else if (isMulti) {
+        if (nextSelection.has(path)) {
+          nextSelection.delete(path)
+        } else {
+          nextSelection.add(path)
+        }
+      } else {
+        nextSelection = new Set([path])
+      }
+
+      setSelectedEntryPaths(nextSelection)
+
+      let nextAnchor: string | null = selectionAnchorPath
+
+      if (isRange) {
+        if (
+          selectionAnchorPath &&
+          entryOrderMap.has(selectionAnchorPath) &&
+          nextSelection.has(selectionAnchorPath)
+        ) {
+          nextAnchor = selectionAnchorPath
+        } else {
+          nextAnchor = path
+        }
+      } else if (isMulti) {
+        if (nextSelection.has(path)) {
+          nextAnchor = path
+        } else if (
+          selectionAnchorPath &&
+          nextSelection.has(selectionAnchorPath)
+        ) {
+          nextAnchor = selectionAnchorPath
+        } else {
+          const firstSelected = nextSelection.values().next().value ?? null
+          nextAnchor = firstSelected ?? null
+        }
+      } else {
+        nextAnchor = path
+      }
+
+      setSelectionAnchorPath(nextSelection.size > 0 ? nextAnchor : null)
+
+      if (!isRange && !isMulti) {
+        if (entry.isDirectory) {
+          toggleDirectory(entry.path)
+        } else if (entry.name.endsWith('.md')) {
+          openNote(entry.path)
+        }
+      }
+    },
+    [
+      entryOrderMap,
+      openNote,
+      selectedEntryPaths,
+      selectionAnchorPath,
+      toggleDirectory,
+      visibleEntryPaths,
+    ]
+  )
+
+  const handleEntryContextMenu = useCallback(
+    async (entry: WorkspaceEntry) => {
+      const isSelected = selectedEntryPaths.has(entry.path)
+      let selectionTargets: string[]
+
+      if (isSelected) {
+        selectionTargets = Array.from(selectedEntryPaths)
+      } else {
+        const nextSelection = new Set(selectedEntryPaths)
+        const hadSelection = nextSelection.size > 0
+        nextSelection.add(entry.path)
+        selectionTargets = Array.from(nextSelection)
+        setSelectedEntryPaths(nextSelection)
+        if (!hadSelection) {
+          setSelectionAnchorPath(entry.path)
+        }
+      }
+
+      if (entry.isDirectory) {
+        await showDirectoryMenu(entry, selectionTargets)
+      } else {
+        await showEntryMenu(entry, selectionTargets)
+      }
+    },
+    [selectedEntryPaths, showDirectoryMenu, showEntryMenu]
   )
 
   const handleRootContextMenu = useCallback(
@@ -218,12 +396,18 @@ export function FileExplorer() {
       event.preventDefault()
       event.stopPropagation()
 
-      showDirectoryMenu({
-        path: workspacePath,
-        name: workspacePath.split('/').pop() ?? 'Workspace',
-        isDirectory: true,
-        children: entries,
-      })
+      setSelectedEntryPaths(new Set())
+      setSelectionAnchorPath(null)
+
+      showDirectoryMenu(
+        {
+          path: workspacePath,
+          name: workspacePath.split('/').pop() ?? 'Workspace',
+          isDirectory: true,
+          children: entries,
+        },
+        []
+      )
     },
     [entries, showDirectoryMenu, workspacePath]
   )
@@ -278,8 +462,9 @@ export function FileExplorer() {
               depth={0}
               expandedDirectories={expandedDirectories}
               onDirectoryClick={toggleDirectory}
-              onDirectoryContextMenu={showDirectoryMenu}
-              onFileContextMenu={showEntryMenu}
+              onEntryPrimaryAction={handleEntryPrimaryAction}
+              onEntryContextMenu={handleEntryContextMenu}
+              selectedEntryPaths={selectedEntryPaths}
               renamingEntryPath={renamingEntryPath}
               aiRenamingEntryPaths={aiRenamingEntryPaths}
               onRenameSubmit={handleRenameSubmit}
