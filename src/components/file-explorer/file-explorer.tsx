@@ -309,6 +309,9 @@ export function FileExplorer() {
         } else {
           nextSelection.add(path)
         }
+      } else if (entry.isDirectory) {
+        // Keep folder out of selection when toggled via single click.
+        nextSelection.delete(path)
       } else {
         nextSelection = new Set([path])
       }
@@ -339,8 +342,16 @@ export function FileExplorer() {
           const firstSelected = nextSelection.values().next().value ?? null
           nextAnchor = firstSelected ?? null
         }
-      } else {
+      } else if (!entry.isDirectory) {
         nextAnchor = path
+      } else if (
+        selectionAnchorPath &&
+        nextSelection.has(selectionAnchorPath)
+      ) {
+        nextAnchor = selectionAnchorPath
+      } else {
+        const firstSelected = nextSelection.values().next().value ?? null
+        nextAnchor = firstSelected ?? null
       }
 
       setSelectionAnchorPath(nextSelection.size > 0 ? nextAnchor : null)
