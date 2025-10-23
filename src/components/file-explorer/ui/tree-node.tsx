@@ -11,8 +11,12 @@ type TreeNodeProps = {
   depth: number
   expandedDirectories: Record<string, boolean>
   onDirectoryClick: (path: string) => void
-  onDirectoryContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
-  onFileContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
+  onEntryPrimaryAction: (
+    entry: WorkspaceEntry,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => void
+  onEntryContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
+  selectedEntryPaths: Set<string>
   renamingEntryPath: string | null
   aiRenamingEntryPaths: Set<string>
   onRenameSubmit: (entry: WorkspaceEntry, name: string) => void | Promise<void>
@@ -24,8 +28,9 @@ export function TreeNode({
   depth,
   expandedDirectories,
   onDirectoryClick,
-  onDirectoryContextMenu,
-  onFileContextMenu,
+  onEntryPrimaryAction,
+  onEntryContextMenu,
+  selectedEntryPaths,
   renamingEntryPath,
   aiRenamingEntryPaths,
   onRenameSubmit,
@@ -37,11 +42,11 @@ export function TreeNode({
   const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
   const isBusy = isRenaming || isAiRenaming
 
-  const openNote = useTabStore((s) => s.openNote)
   const activeTabPath = useTabStore((s) => s.tab?.path)
 
   const isExpanded = Boolean(expandedDirectories[entry.path])
   const isActive = !isDirectory && activeTabPath === entry.path
+  const isSelected = selectedEntryPaths.has(entry.path)
 
   const extension = useMemo(() => {
     if (entry.isDirectory) {
@@ -91,13 +96,15 @@ export function TreeNode({
     disabled: !entry.isDirectory || isBusy,
   })
 
-  const handleClick = () => {
-    if (isDirectory) {
-      onDirectoryClick(entry.path)
-    } else if (entry.name.endsWith('.md')) {
-      openNote(entry.path)
-    }
-  }
+  const handlePrimaryAction = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (isBusy) {
+        return
+      }
+      onEntryPrimaryAction(entry, event)
+    },
+    [entry, isBusy, onEntryPrimaryAction]
+  )
 
   const handleContextMenu = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -108,13 +115,9 @@ export function TreeNode({
         return
       }
 
-      if (isDirectory) {
-        onDirectoryContextMenu(entry)
-      } else {
-        onFileContextMenu(entry)
-      }
+      onEntryContextMenu(entry)
     },
-    [entry, isBusy, isDirectory, onDirectoryContextMenu, onFileContextMenu]
+    [entry, isBusy, onEntryContextMenu]
   )
 
   const [draftName, setDraftName] = useState(baseName)
@@ -238,12 +241,12 @@ export function TreeNode({
               buttonRef.current = node
             }}
             type="button"
-            onClick={handleClick}
+            onClick={handlePrimaryAction}
             onContextMenu={handleContextMenu}
             className={cn(
               'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
               'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
-              isActive &&
+              (isSelected || isActive) &&
                 'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
               isDragging && 'opacity-50 cursor-grabbing',
               isAiRenaming && 'animate-pulse'
@@ -278,16 +281,17 @@ export function TreeNode({
           </button>
 
           {hasChildren && isExpanded && (
-            <ul>
-              {entry.children!.map((child) => (
+            <ul className="space-y-0.5">
+              {entry.children?.map((child) => (
                 <TreeNode
                   key={child.path}
                   entry={child}
                   depth={depth + 1}
                   expandedDirectories={expandedDirectories}
                   onDirectoryClick={onDirectoryClick}
-                  onDirectoryContextMenu={onDirectoryContextMenu}
-                  onFileContextMenu={onFileContextMenu}
+                  onEntryPrimaryAction={onEntryPrimaryAction}
+                  onEntryContextMenu={onEntryContextMenu}
+                  selectedEntryPaths={selectedEntryPaths}
                   renamingEntryPath={renamingEntryPath}
                   aiRenamingEntryPaths={aiRenamingEntryPaths}
                   onRenameSubmit={onRenameSubmit}
@@ -304,12 +308,12 @@ export function TreeNode({
             buttonRef.current = node
           }}
           type="button"
-          onClick={handleClick}
+          onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
           className={cn(
             'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
             'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
-            isActive &&
+            (isSelected || isActive) &&
               'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
             isDragging && 'opacity-50 cursor-grabbing',
             isAiRenaming && 'animate-pulse'
