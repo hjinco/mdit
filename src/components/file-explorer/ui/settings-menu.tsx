@@ -10,7 +10,7 @@ export function SettingsMenu() {
       type="button"
       variant="ghost"
       size="sm"
-      className="w-full justify-start text-muted-foreground"
+      className="w-full justify-start text-muted-foreground hover:bg-stone-200/80 dark:hover:bg-stone-700/80"
       onClick={() => setSettingsDialogOpen(true)}
     >
       <SettingsIcon /> Settings

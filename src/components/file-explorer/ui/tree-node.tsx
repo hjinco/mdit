@@ -244,10 +244,10 @@ export function TreeNode({
             onClick={handlePrimaryAction}
             onContextMenu={handleContextMenu}
             className={cn(
-              'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
-              'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
+              'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/80 min-w-0 rounded-sm transition-opacity cursor-pointer',
+              'hover:bg-stone-200/80 dark:hover:bg-stone-700/80',
               (isSelected || isActive) &&
-                'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
+                'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
               isDragging && 'opacity-50 cursor-grabbing',
               isAiRenaming && 'animate-pulse'
             )}
@@ -281,7 +281,7 @@ export function TreeNode({
           </button>
 
           {hasChildren && isExpanded && (
-            <ul className="space-y-0.5">
+            <ul className="space-y-0.5 mt-0.5">
               {entry.children?.map((child) => (
                 <TreeNode
                   key={child.path}
@@ -311,10 +311,10 @@ export function TreeNode({
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
           className={cn(
-            'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/70 min-w-0 rounded-sm transition-opacity cursor-pointer',
-            'hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80',
+            'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/80 min-w-0 rounded-sm transition-opacity cursor-pointer',
+            'hover:bg-stone-200/80 dark:hover:bg-stone-700/80',
             (isSelected || isActive) &&
-              'bg-neutral-200 dark:bg-neutral-700 text-accent-foreground',
+              'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
             isDragging && 'opacity-50 cursor-grabbing',
             isAiRenaming && 'animate-pulse'
           )}
