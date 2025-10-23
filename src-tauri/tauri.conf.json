@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "Mdit",
-        "width": 1200,
+        "width": 1280,
         "height": 800,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
