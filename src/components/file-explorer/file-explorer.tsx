@@ -276,6 +276,7 @@ export function FileExplorer() {
 
   const handleEntryPrimaryAction = useCallback(
     (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
       const path = entry.path
       const isMulti = event.metaKey || event.ctrlKey
       const isRange = event.shiftKey
@@ -453,6 +454,9 @@ export function FileExplorer() {
             'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
         )}
         onContextMenu={handleRootContextMenu}
+        onClick={() => {
+          setSelectedEntryPaths(new Set())
+        }}
       >
         <ul className="space-y-0.5 min-h-full pb-4">
           {entries.map((entry) => (
