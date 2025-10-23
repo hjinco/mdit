@@ -276,6 +276,7 @@ export function FileExplorer() {
 
   const handleEntryPrimaryAction = useCallback(
     (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
       const path = entry.path
       const isMulti = event.metaKey || event.ctrlKey
       const isRange = event.shiftKey
@@ -308,6 +309,9 @@ export function FileExplorer() {
         } else {
           nextSelection.add(path)
         }
+      } else if (entry.isDirectory) {
+        // Keep folder out of selection when toggled via single click.
+        nextSelection.delete(path)
       } else {
         nextSelection = new Set([path])
       }
@@ -338,8 +342,16 @@ export function FileExplorer() {
           const firstSelected = nextSelection.values().next().value ?? null
           nextAnchor = firstSelected ?? null
         }
-      } else {
+      } else if (!entry.isDirectory) {
         nextAnchor = path
+      } else if (
+        selectionAnchorPath &&
+        nextSelection.has(selectionAnchorPath)
+      ) {
+        nextAnchor = selectionAnchorPath
+      } else {
+        const firstSelected = nextSelection.values().next().value ?? null
+        nextAnchor = firstSelected ?? null
       }
 
       setSelectionAnchorPath(nextSelection.size > 0 ? nextAnchor : null)
@@ -453,6 +465,9 @@ export function FileExplorer() {
             'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
         )}
         onContextMenu={handleRootContextMenu}
+        onClick={() => {
+          setSelectedEntryPaths(new Set())
+        }}
       >
         <ul className="space-y-0.5 min-h-full pb-4">
           {entries.map((entry) => (
