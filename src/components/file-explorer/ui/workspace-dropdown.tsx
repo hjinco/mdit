@@ -37,7 +37,7 @@ export function WorkspaceDropdown({
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start hover:bg-neutral-200/80 dark:hover:bg-neutral-700/80 text-foreground/90 font-semibold tracking-tight"
+          className="w-full justify-start hover:bg-stone-200/80 dark:hover:bg-stone-700/80 text-foreground/90 font-semibold tracking-tight"
         >
           <InboxIcon />
           <span className="truncate">{currentWorkspaceName}</span>

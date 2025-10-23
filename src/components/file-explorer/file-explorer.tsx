@@ -437,7 +437,7 @@ export function FileExplorer() {
       )}
       style={{ width: isOpen ? width : 0 }}
     >
-      <header className="flex items-center justify-between px-1 pt-2">
+      <header className="flex items-center justify-between px-2 pt-2">
         <WorkspaceDropdown
           workspacePath={workspacePath}
           recentWorkspacePaths={recentWorkspacePaths}
@@ -448,7 +448,7 @@ export function FileExplorer() {
       <div
         ref={setWorkspaceDropRef}
         className={cn(
-          'flex-1 overflow-y-auto p-1',
+          'flex-1 overflow-y-auto px-2 py-1',
           isOverWorkspace &&
             'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
         )}
@@ -473,27 +473,16 @@ export function FileExplorer() {
           ))}
         </ul>
       </div>
-      <footer className="px-1 pb-2">
+      <footer className="px-2 pb-2 space-y-0.5">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="w-full justify-start text-muted-foreground"
+          className="w-full justify-start text-muted-foreground hover:bg-stone-200/80 dark:hover:bg-stone-700/80"
           onClick={handleFeatureBaseClick}
         >
           <ExternalLink /> Feedback
         </Button>
-        {/* {!licenseStatus.hasLicense && (
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground"
-            onClick={openLicenseDialog}
-          >
-            <KeyRoundIcon />
-            {getLicenseButtonText()}
-          </Button>
-        )} */}
         <SettingsMenu />
       </footer>
       {isOpen && (

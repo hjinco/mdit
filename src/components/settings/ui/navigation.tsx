@@ -30,8 +30,8 @@ export function SettingsNavigation({
           className={cn(
             'justify-start cursor-pointer',
             activeTab === tab.id
-              ? 'bg-foreground/10 hover:bg-foreground/10 dark:hover:bg-foreground/10'
-              : 'text-muted-foreground hover:bg-foreground/10 hover:text-foreground'
+              ? 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700'
+              : 'text-accent-foreground/80 hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-accent-foreground'
           )}
         >
           {tab.label}
