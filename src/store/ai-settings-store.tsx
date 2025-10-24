@@ -11,20 +11,23 @@ export type ChatConfig = {
   apiKey: string
 }
 
-export type Models = { [provider: string]: string[] }
-export type EnabledModels = { provider: string; model: string }[]
+export type ApiModels = { [provider: string]: string[] }
+export type EnabledChatModels = { provider: string; model: string }[]
 
 type AISettingsStore = {
   connectedProviders: string[]
   chatConfig: ChatConfig | null
-  models: Models
+  renameConfig: ChatConfig | null
+  apiModels: ApiModels
   ollamaModels: string[]
-  enabledModels: EnabledModels
+  enabledChatModels: EnabledChatModels
   connectProvider: (provider: string, apiKey: string) => void
   disconnectProvider: (provider: string) => void
   addOllamaModel: (model: string) => void
   removeOllamaModel: (model: string) => void
   selectModel: (provider: string, model: string) => Promise<void>
+  selectRenameModel: (provider: string, model: string) => Promise<void>
+  clearRenameModel: () => void
   toggleModelEnabled: (
     provider: string,
     model: string,
@@ -32,14 +35,15 @@ type AISettingsStore = {
   ) => void
 }
 
-const PROVIDERS_MAP: Record<string, string[]> = {
+const API_MODELS_MAP: Record<string, string[]> = {
   google: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
   openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano'],
 }
 
 const CONNECTED_PROVIDERS_KEY = 'connected-providers'
 const CHAT_CONFIG_KEY = 'chat-config'
-const ENABLED_MODELS_KEY = 'enabled-models'
+const RENAME_CONFIG_KEY = 'rename-config'
+const ENABLED_CHAT_MODELS_KEY = 'chat-enabled-models'
 const OLLAMA_MODELS_KEY = 'ollama-models'
 
 export const useAISettingsStore = create<AISettingsStore>((set) => {
@@ -47,12 +51,14 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
   const loadPersistedSettings = () => {
     const rawConnectedProviders = localStorage.getItem(CONNECTED_PROVIDERS_KEY)
     const rawChatConfig = localStorage.getItem(CHAT_CONFIG_KEY)
-    const rawEnabledModels = localStorage.getItem(ENABLED_MODELS_KEY)
+    const rawRenameConfig = localStorage.getItem(RENAME_CONFIG_KEY)
+    const rawEnabledChatModels = localStorage.getItem(ENABLED_CHAT_MODELS_KEY)
     const rawOllamaModels = localStorage.getItem(OLLAMA_MODELS_KEY)
 
     let connectedProviders: string[] = []
     let chatConfig: ChatConfig | null = null
-    let enabledModels: EnabledModels = []
+    let renameConfig: ChatConfig | null = null
+    let enabledChatModels: EnabledChatModels = []
     let ollamaModels: string[] = []
 
     if (rawConnectedProviders) {
@@ -69,9 +75,18 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         console.error('Failed to parse chat config:', error)
       }
     }
-    if (rawEnabledModels) {
+    if (rawRenameConfig) {
       try {
-        enabledModels = JSON.parse(rawEnabledModels) as EnabledModels
+        renameConfig = JSON.parse(rawRenameConfig) as ChatConfig
+      } catch (error) {
+        console.error('Failed to parse rename config:', error)
+      }
+    }
+    if (rawEnabledChatModels) {
+      try {
+        enabledChatModels = JSON.parse(
+          rawEnabledChatModels
+        ) as EnabledChatModels
       } catch (error) {
         console.error('Failed to parse enabled models:', error)
       }
@@ -83,14 +98,20 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         console.error('Failed to parse ollama models:', error)
       }
     }
-    return { connectedProviders, chatConfig, enabledModels, ollamaModels }
+    return {
+      connectedProviders,
+      chatConfig,
+      renameConfig,
+      enabledChatModels,
+      ollamaModels,
+    }
   }
 
   const initialSettings = loadPersistedSettings()
 
   return {
     ...initialSettings,
-    models: PROVIDERS_MAP,
+    apiModels: API_MODELS_MAP,
 
     connectProvider: (provider: string, apiKey: string) => {
       set((prev) => {
@@ -119,7 +140,8 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         const newState: {
           connectedProviders: string[]
           chatConfig?: ChatConfig | null
-          enabledModels?: EnabledModels
+          renameConfig?: ChatConfig | null
+          enabledChatModels?: EnabledChatModels
         } = {
           connectedProviders: newConnectedProviders,
         }
@@ -127,17 +149,21 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
           localStorage.removeItem(CHAT_CONFIG_KEY)
           newState.chatConfig = null
         }
+        if (prev.renameConfig?.provider === provider) {
+          localStorage.removeItem(RENAME_CONFIG_KEY)
+          newState.renameConfig = null
+        }
 
         // Remove enabled models for this provider
-        const newEnabledModels = prev.enabledModels.filter(
+        const newEnabledChatModels = prev.enabledChatModels.filter(
           (m) => m.provider !== provider
         )
-        if (newEnabledModels.length !== prev.enabledModels.length) {
+        if (newEnabledChatModels.length !== prev.enabledChatModels.length) {
           localStorage.setItem(
-            ENABLED_MODELS_KEY,
-            JSON.stringify(newEnabledModels)
+            ENABLED_CHAT_MODELS_KEY,
+            JSON.stringify(newEnabledChatModels)
           )
-          newState.enabledModels = newEnabledModels
+          newState.enabledChatModels = newEnabledChatModels
         }
 
         return newState
@@ -147,18 +173,18 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
     addOllamaModel: (model: string) => {
       set((prev) => {
         const newOllamaModels = [...prev.ollamaModels, model]
-        const newEnabledModels = [
-          ...prev.enabledModels,
+        const newEnabledChatModels = [
+          ...prev.enabledChatModels,
           { provider: 'ollama', model },
         ]
         localStorage.setItem(OLLAMA_MODELS_KEY, JSON.stringify(newOllamaModels))
         localStorage.setItem(
-          ENABLED_MODELS_KEY,
-          JSON.stringify(newEnabledModels)
+          ENABLED_CHAT_MODELS_KEY,
+          JSON.stringify(newEnabledChatModels)
         )
         return {
           ollamaModels: newOllamaModels,
-          enabledModels: newEnabledModels,
+          enabledChatModels: newEnabledChatModels,
         }
       })
     },
@@ -172,7 +198,8 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         const newState: {
           ollamaModels: string[]
           chatConfig?: ChatConfig | null
-          enabledModels?: EnabledModels
+          renameConfig?: ChatConfig | null
+          enabledChatModels?: EnabledChatModels
         } = {
           ollamaModels: newOllamaModels,
         }
@@ -183,17 +210,24 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
           localStorage.removeItem(CHAT_CONFIG_KEY)
           newState.chatConfig = null
         }
+        if (
+          prev.renameConfig?.provider === 'ollama' &&
+          prev.renameConfig?.model === model
+        ) {
+          localStorage.removeItem(RENAME_CONFIG_KEY)
+          newState.renameConfig = null
+        }
 
         // Remove enabled model for this ollama model
-        const newEnabledModels = prev.enabledModels.filter(
+        const newEnabledChatModels = prev.enabledChatModels.filter(
           (m) => !(m.provider === 'ollama' && m.model === model)
         )
-        if (newEnabledModels.length !== prev.enabledModels.length) {
+        if (newEnabledChatModels.length !== prev.enabledChatModels.length) {
           localStorage.setItem(
-            ENABLED_MODELS_KEY,
-            JSON.stringify(newEnabledModels)
+            ENABLED_CHAT_MODELS_KEY,
+            JSON.stringify(newEnabledChatModels)
           )
-          newState.enabledModels = newEnabledModels
+          newState.enabledChatModels = newEnabledChatModels
         }
 
         return newState
@@ -250,25 +284,76 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
       })
     },
 
+    selectRenameModel: async (provider: string, model: string) => {
+      if (provider === 'ollama') {
+        set((prev) => {
+          if (!prev.ollamaModels.includes(model)) {
+            return {}
+          }
+
+          const newRenameConfig: ChatConfig = {
+            provider,
+            model,
+            apiKey: '',
+          }
+
+          localStorage.setItem(
+            RENAME_CONFIG_KEY,
+            JSON.stringify(newRenameConfig)
+          )
+          return { renameConfig: newRenameConfig }
+        })
+        return
+      }
+
+      const apiKey = await getPassword(`app.mdit.ai.${provider}`, 'mdit')
+      if (!apiKey) {
+        return
+      }
+
+      set((prev) => {
+        const newRenameConfig: ChatConfig = {
+          provider,
+          model,
+          apiKey:
+            prev.renameConfig?.provider === provider &&
+            prev.renameConfig?.apiKey
+              ? prev.renameConfig.apiKey
+              : apiKey,
+        }
+
+        localStorage.setItem(RENAME_CONFIG_KEY, JSON.stringify(newRenameConfig))
+
+        return { renameConfig: newRenameConfig }
+      })
+    },
+
+    clearRenameModel: () => {
+      set(() => {
+        localStorage.removeItem(RENAME_CONFIG_KEY)
+        return { renameConfig: null }
+      })
+    },
+
     toggleModelEnabled: (provider: string, model: string, checked: boolean) => {
       set((prev) => {
-        const newEnabledModels = checked
-          ? [...prev.enabledModels, { provider, model }]
-          : prev.enabledModels.filter(
+        const newEnabledChatModels = checked
+          ? [...prev.enabledChatModels, { provider, model }]
+          : prev.enabledChatModels.filter(
               (m) => m.provider !== provider || m.model !== model
             )
 
         localStorage.setItem(
-          ENABLED_MODELS_KEY,
-          JSON.stringify(newEnabledModels)
+          ENABLED_CHAT_MODELS_KEY,
+          JSON.stringify(newEnabledChatModels)
         )
 
         // Initialize chatConfig if disabling the current model
         const newState: {
-          enabledModels: EnabledModels
+          enabledChatModels: EnabledChatModels
           chatConfig?: ChatConfig | null
         } = {
-          enabledModels: newEnabledModels,
+          enabledChatModels: newEnabledChatModels,
         }
         if (
           !checked &&

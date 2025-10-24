@@ -19,7 +19,7 @@ export function AIModelSelector({
   onModelPopoverOpenChange,
 }: AIModelSelectorProps) {
   const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
-  const { enabledModels, chatConfig, selectModel } = useAISettingsStore()
+  const { enabledChatModels, chatConfig, selectModel } = useAISettingsStore()
 
   return (
     <div className="flex justify-end items-center gap-1.5 py-1">
@@ -37,8 +37,8 @@ export function AIModelSelector({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {enabledModels.length > 0 ? (
-            enabledModels.map(({ model, provider }) => {
+          {enabledChatModels.length > 0 ? (
+            enabledChatModels.map(({ model, provider }) => {
               const isSelected =
                 chatConfig?.provider === provider && chatConfig?.model === model
               return (

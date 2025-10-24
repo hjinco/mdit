@@ -343,9 +343,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   renameNoteWithAI: async (entry) => {
-    const chatConfig = useAISettingsStore.getState().chatConfig
+    const renameConfig = useAISettingsStore.getState().renameConfig
 
-    if (!chatConfig) {
+    if (!renameConfig) {
       return
     }
 
@@ -367,7 +367,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         entry.name
       )
 
-      const model = createModelFromConfig(chatConfig)
+      const model = createModelFromConfig(renameConfig)
 
       const aiResponse = await generateText({
         model,

@@ -33,7 +33,7 @@ export function FileExplorer() {
     openFolderPicker,
   } = useWorkspaceStore()
   const openNote = useTabStore((state) => state.openNote)
-  const chatConfig = useAISettingsStore((state) => state.chatConfig)
+  const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
@@ -143,7 +143,7 @@ export function FileExplorer() {
             MenuItem.new({
               id: `rename-ai-${entry.path}`,
               text: 'Rename with AI',
-              enabled: Boolean(chatConfig),
+              enabled: Boolean(renameConfig),
               action: async () => {
                 setAiRenamingEntryPaths((paths) => {
                   const next = new Set(paths)
@@ -202,7 +202,7 @@ export function FileExplorer() {
         console.error('Failed to open context menu:', error)
       }
     },
-    [beginRenaming, handleDeleteEntries, renameNoteWithAI, chatConfig]
+    [beginRenaming, handleDeleteEntries, renameNoteWithAI, renameConfig]
   )
 
   const showDirectoryMenu = useCallback(
