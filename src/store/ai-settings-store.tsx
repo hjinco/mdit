@@ -12,7 +12,7 @@ export type ChatConfig = {
 }
 
 export type ApiModels = { [provider: string]: string[] }
-export type EnabledModels = { provider: string; model: string }[]
+export type EnabledChatModels = { provider: string; model: string }[]
 
 type AISettingsStore = {
   connectedProviders: string[]
@@ -20,7 +20,7 @@ type AISettingsStore = {
   renameConfig: ChatConfig | null
   apiModels: ApiModels
   ollamaModels: string[]
-  enabledModels: EnabledModels
+  enabledChatModels: EnabledChatModels
   connectProvider: (provider: string, apiKey: string) => void
   disconnectProvider: (provider: string) => void
   addOllamaModel: (model: string) => void
@@ -43,7 +43,7 @@ const API_MODELS_MAP: Record<string, string[]> = {
 const CONNECTED_PROVIDERS_KEY = 'connected-providers'
 const CHAT_CONFIG_KEY = 'chat-config'
 const RENAME_CONFIG_KEY = 'rename-config'
-const ENABLED_MODELS_KEY = 'chat-enabled-models'
+const ENABLED_CHAT_MODELS_KEY = 'chat-enabled-models'
 const OLLAMA_MODELS_KEY = 'ollama-models'
 
 export const useAISettingsStore = create<AISettingsStore>((set) => {
@@ -52,13 +52,13 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
     const rawConnectedProviders = localStorage.getItem(CONNECTED_PROVIDERS_KEY)
     const rawChatConfig = localStorage.getItem(CHAT_CONFIG_KEY)
     const rawRenameConfig = localStorage.getItem(RENAME_CONFIG_KEY)
-    const rawEnabledModels = localStorage.getItem(ENABLED_MODELS_KEY)
+    const rawEnabledChatModels = localStorage.getItem(ENABLED_CHAT_MODELS_KEY)
     const rawOllamaModels = localStorage.getItem(OLLAMA_MODELS_KEY)
 
     let connectedProviders: string[] = []
     let chatConfig: ChatConfig | null = null
     let renameConfig: ChatConfig | null = null
-    let enabledModels: EnabledModels = []
+    let enabledChatModels: EnabledChatModels = []
     let ollamaModels: string[] = []
 
     if (rawConnectedProviders) {
@@ -82,9 +82,11 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         console.error('Failed to parse rename config:', error)
       }
     }
-    if (rawEnabledModels) {
+    if (rawEnabledChatModels) {
       try {
-        enabledModels = JSON.parse(rawEnabledModels) as EnabledModels
+        enabledChatModels = JSON.parse(
+          rawEnabledChatModels
+        ) as EnabledChatModels
       } catch (error) {
         console.error('Failed to parse enabled models:', error)
       }
@@ -100,7 +102,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
       connectedProviders,
       chatConfig,
       renameConfig,
-      enabledModels,
+      enabledChatModels,
       ollamaModels,
     }
   }
@@ -139,7 +141,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
           connectedProviders: string[]
           chatConfig?: ChatConfig | null
           renameConfig?: ChatConfig | null
-          enabledModels?: EnabledModels
+          enabledChatModels?: EnabledChatModels
         } = {
           connectedProviders: newConnectedProviders,
         }
@@ -153,15 +155,15 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         }
 
         // Remove enabled models for this provider
-        const newEnabledModels = prev.enabledModels.filter(
+        const newEnabledChatModels = prev.enabledChatModels.filter(
           (m) => m.provider !== provider
         )
-        if (newEnabledModels.length !== prev.enabledModels.length) {
+        if (newEnabledChatModels.length !== prev.enabledChatModels.length) {
           localStorage.setItem(
-            ENABLED_MODELS_KEY,
-            JSON.stringify(newEnabledModels)
+            ENABLED_CHAT_MODELS_KEY,
+            JSON.stringify(newEnabledChatModels)
           )
-          newState.enabledModels = newEnabledModels
+          newState.enabledChatModels = newEnabledChatModels
         }
 
         return newState
@@ -171,18 +173,18 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
     addOllamaModel: (model: string) => {
       set((prev) => {
         const newOllamaModels = [...prev.ollamaModels, model]
-        const newEnabledModels = [
-          ...prev.enabledModels,
+        const newEnabledChatModels = [
+          ...prev.enabledChatModels,
           { provider: 'ollama', model },
         ]
         localStorage.setItem(OLLAMA_MODELS_KEY, JSON.stringify(newOllamaModels))
         localStorage.setItem(
-          ENABLED_MODELS_KEY,
-          JSON.stringify(newEnabledModels)
+          ENABLED_CHAT_MODELS_KEY,
+          JSON.stringify(newEnabledChatModels)
         )
         return {
           ollamaModels: newOllamaModels,
-          enabledModels: newEnabledModels,
+          enabledChatModels: newEnabledChatModels,
         }
       })
     },
@@ -197,7 +199,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
           ollamaModels: string[]
           chatConfig?: ChatConfig | null
           renameConfig?: ChatConfig | null
-          enabledModels?: EnabledModels
+          enabledChatModels?: EnabledChatModels
         } = {
           ollamaModels: newOllamaModels,
         }
@@ -217,15 +219,15 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         }
 
         // Remove enabled model for this ollama model
-        const newEnabledModels = prev.enabledModels.filter(
+        const newEnabledChatModels = prev.enabledChatModels.filter(
           (m) => !(m.provider === 'ollama' && m.model === model)
         )
-        if (newEnabledModels.length !== prev.enabledModels.length) {
+        if (newEnabledChatModels.length !== prev.enabledChatModels.length) {
           localStorage.setItem(
-            ENABLED_MODELS_KEY,
-            JSON.stringify(newEnabledModels)
+            ENABLED_CHAT_MODELS_KEY,
+            JSON.stringify(newEnabledChatModels)
           )
-          newState.enabledModels = newEnabledModels
+          newState.enabledChatModels = newEnabledChatModels
         }
 
         return newState
@@ -320,10 +322,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
               : apiKey,
         }
 
-        localStorage.setItem(
-          RENAME_CONFIG_KEY,
-          JSON.stringify(newRenameConfig)
-        )
+        localStorage.setItem(RENAME_CONFIG_KEY, JSON.stringify(newRenameConfig))
 
         return { renameConfig: newRenameConfig }
       })
@@ -338,23 +337,23 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
 
     toggleModelEnabled: (provider: string, model: string, checked: boolean) => {
       set((prev) => {
-        const newEnabledModels = checked
-          ? [...prev.enabledModels, { provider, model }]
-          : prev.enabledModels.filter(
+        const newEnabledChatModels = checked
+          ? [...prev.enabledChatModels, { provider, model }]
+          : prev.enabledChatModels.filter(
               (m) => m.provider !== provider || m.model !== model
             )
 
         localStorage.setItem(
-          ENABLED_MODELS_KEY,
-          JSON.stringify(newEnabledModels)
+          ENABLED_CHAT_MODELS_KEY,
+          JSON.stringify(newEnabledChatModels)
         )
 
         // Initialize chatConfig if disabling the current model
         const newState: {
-          enabledModels: EnabledModels
+          enabledChatModels: EnabledChatModels
           chatConfig?: ChatConfig | null
         } = {
-          enabledModels: newEnabledModels,
+          enabledChatModels: newEnabledChatModels,
         }
         if (
           !checked &&

@@ -33,7 +33,7 @@ export function AITab() {
     connectedProviders,
     apiModels,
     ollamaModels,
-    enabledModels,
+    enabledChatModels,
     connectProvider,
     disconnectProvider,
     addOllamaModel,
@@ -148,7 +148,7 @@ export function AITab() {
                         </FieldContent>
                         <Switch
                           id={`${provider}-${model}`}
-                          checked={enabledModels.some(
+                          checked={enabledChatModels.some(
                             (m) => m.provider === provider && m.model === model
                           )}
                           onCheckedChange={(checked) =>
@@ -241,48 +241,6 @@ export function AITab() {
           })}
           <Field>
             <FieldLabel>Ollama</FieldLabel>
-            {/* {ollamaModels.map((model) => (
-                <Field
-                  key={model}
-                  orientation="horizontal"
-                  className={cn(
-                    'py-2',
-                    ollamaModels.indexOf(model) !== ollamaModels.length - 1 &&
-                      'border-b'
-                  )}
-                  onMouseEnter={() => setHoveredModel(model)}
-                  onMouseLeave={() => setHoveredModel(null)}
-                >
-                  <FieldLabel htmlFor={`ollama-${model}`} className="text-xs">
-                    {model}
-                  </FieldLabel>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeOllamaModel(model)}
-                      className={cn(
-                        'size-5 text-muted-foreground hover:text-destructive hover:bg-transparent',
-                        hoveredModel === model
-                          ? 'opacity-100'
-                          : 'opacity-0 pointer-events-none'
-                      )}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                    <Switch
-                      id={`ollama-${model}`}
-                      checked={enabledModels.some(
-                        (m) => m.provider === 'ollama' && m.model === model
-                      )}
-                      onCheckedChange={(checked) =>
-                        toggleModelEnabled('ollama', model, checked)
-                      }
-                    />
-                  </div>
-                </Field>
-              ))} */}
             <AddOllamaModel onAddOllamaModel={addOllamaModel} />
           </Field>
         </FieldGroup>
