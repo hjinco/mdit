@@ -11,7 +11,11 @@ import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { EditorKit } from './plugins/editor-kit'
-import { copySelection, cutSelection } from './plugins/shortcuts-kit'
+import {
+  copySelection,
+  cutSelection,
+  pasteSelection,
+} from './plugins/shortcuts-kit'
 
 export function Editor() {
   const ref = useRef<HTMLDivElement>(null)
@@ -92,11 +96,14 @@ export function Editor() {
             e.preventDefault()
             e.stopPropagation()
             cutSelection(editor)
-          }
-          if (e.key === 'c' && e.metaKey) {
+          } else if (e.key === 'c' && e.metaKey) {
             e.preventDefault()
             e.stopPropagation()
             copySelection(editor)
+          } else if (e.key === 'v' && e.metaKey) {
+            e.preventDefault()
+            e.stopPropagation()
+            pasteSelection(editor)
           }
         }}
       >

@@ -1,6 +1,6 @@
 import { MarkdownPlugin } from '@platejs/markdown'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
-import { PointApi } from 'platejs'
+import { PointApi, getPluginType, KEYS } from 'platejs'
 import { createPlatePlugin, type PlateEditor } from 'platejs/react'
 
 export function selectAllLikeCmdA(editor: PlateEditor) {
@@ -122,6 +122,77 @@ export function cutSelection(editor: PlateEditor) {
 
 export function copySelection(editor: PlateEditor) {
   copyOrCutSelection(editor, 'copy')
+}
+
+export async function pasteSelection(
+  editor: PlateEditor,
+  data?: DataTransfer | null
+) {
+  let markdown = ''
+
+  if (data) {
+    try {
+      markdown = data.getData('text/plain')
+    } catch {
+      markdown = ''
+    }
+  }
+
+  if (!markdown && navigator.clipboard?.readText) {
+    try {
+      markdown = await navigator.clipboard.readText()
+    } catch {
+      markdown = ''
+    }
+  }
+
+  if (!markdown) return
+
+  const normalizedMarkdown = markdown.replace(/\r\n?/g, '\n')
+  const markdownApi = editor.getApi(MarkdownPlugin).markdown
+
+  let fragment: any[] = []
+
+  try {
+    fragment = markdownApi.deserialize(normalizedMarkdown) as any[]
+  } catch {
+    return
+  }
+
+  if (!Array.isArray(fragment) || fragment.length === 0) return
+
+  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+  const blockSelectionTransforms = editor.getTransforms(BlockSelectionPlugin)
+  const hasBlockSelection =
+    blockSelectionApi.blockSelection.getNodes().length > 0
+
+  if (hasBlockSelection) {
+    blockSelectionTransforms.blockSelection.select()
+  }
+
+  const paragraphType = getPluginType(editor, KEYS.p)
+  const firstNode = fragment[0] as any
+  const isSingleParagraph =
+    !hasBlockSelection &&
+    fragment.length === 1 &&
+    firstNode &&
+    typeof firstNode === 'object' &&
+    'type' in firstNode &&
+    firstNode.type === paragraphType &&
+    Array.isArray(firstNode.children)
+
+  let fragmentToInsert: any[] = fragment
+
+  if (isSingleParagraph) {
+    const inlineFragment = markdownApi.deserializeInline(normalizedMarkdown)
+    fragmentToInsert =
+      inlineFragment.length > 0 ? (inlineFragment as any[]) : firstNode.children
+  }
+
+  if (!fragmentToInsert || fragmentToInsert.length === 0) return
+
+  editor.tf.insertFragment(fragmentToInsert as any)
+  editor.tf.focus()
 }
 
 export const ShortcutsPlugin = createPlatePlugin({
