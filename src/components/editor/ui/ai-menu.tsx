@@ -108,8 +108,10 @@ export function AIMenu() {
     },
     onOpenChange: (open) => {
       if (!open) {
-        setAnchorElement(null)
-        setInput('')
+        setTimeout(() => {
+          setAnchorElement(null)
+          setInput('')
+        }, 100)
       }
     },
     onOpenCursor: () => {
