@@ -17,7 +17,7 @@ export function AILeaf(props: PlateTextProps) {
   return (
     <PlateText
       className={cn(
-        'border-b-2 border-b-purple-100 bg-purple-50 text-purple-800',
+        'bg-blue-500/10 text-blue-400 no-underline',
         'transition-all duration-200 ease-in-out',
         isLast &&
           streaming &&

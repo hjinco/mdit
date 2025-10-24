@@ -190,7 +190,7 @@ export function AIMenuContent({
 
   return (
     <Command
-      className="w-full h-auto overflow-visible"
+      className="w-full h-auto overflow-visible bg-transparent"
       onValueChange={onValueChange}
       value={value}
     >
@@ -202,7 +202,7 @@ export function AIMenuContent({
       ) : menuState !== 'cursorSuggestion' ? (
         <div
           className={cn(
-            'flex rounded-lg border transition-shadow',
+            'flex rounded-lg border transition-shadow bg-popover',
             value ? 'shadow-xs' : 'shadow-xl',
             isSingleLine ? 'flex-row items-center' : 'flex-col'
           )}
@@ -233,7 +233,7 @@ export function AIMenuContent({
             <textarea
               ref={textareaRef}
               className={cn(
-                'w-full h-auto overflow-hidden min-w-0 resize-none bg-transparent px-3 py-2 text-sm outline-none transition-[color,box-shadow,height] placeholder:text-muted-foreground',
+                'w-full h-auto overflow-visible min-w-0 resize-none px-3 py-2 text-sm outline-none transition-[color,box-shadow,height] placeholder:text-muted-foreground',
                 'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
                 'focus-visible:ring-transparent leading-relaxed box-border',
                 !chatConfig && 'cursor-pointer',
@@ -269,7 +269,7 @@ export function AIMenuContent({
       {!isLoading && (
         <CommandList
           className={cn(
-            'rounded-lg border shadow-xl mt-2 z-40',
+            'rounded-lg border shadow-xl mt-2 z-40 bg-popover',
             !value && 'opacity-0'
           )}
         >
