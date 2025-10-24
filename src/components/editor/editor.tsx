@@ -1,3 +1,4 @@
+import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import {
@@ -101,6 +102,10 @@ export function Editor() {
             e.stopPropagation()
             copySelection(editor)
           } else if (e.key === 'v' && e.metaKey) {
+            const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+            if (blockSelectionApi.blockSelection.getNodes().length === 0) {
+              return
+            }
             e.preventDefault()
             e.stopPropagation()
             pasteSelection(editor)

@@ -1,6 +1,6 @@
 import { MarkdownPlugin } from '@platejs/markdown'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
-import { PointApi, getPluginType, KEYS } from 'platejs'
+import { PointApi } from 'platejs'
 import { createPlatePlugin, type PlateEditor } from 'platejs/react'
 
 export function selectAllLikeCmdA(editor: PlateEditor) {
@@ -127,7 +127,10 @@ export function copySelection(editor: PlateEditor) {
 export async function pasteSelection(
   editor: PlateEditor,
   data?: DataTransfer | null
-) {
+): Promise<void> {
+  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+  if (blockSelectionApi.blockSelection.getNodes().length === 0) return
+
   let markdown = ''
 
   if (data) {
@@ -151,8 +154,7 @@ export async function pasteSelection(
   const normalizedMarkdown = markdown.replace(/\r\n?/g, '\n')
   const markdownApi = editor.getApi(MarkdownPlugin).markdown
 
-  let fragment: any[] = []
-
+  let fragment: any[]
   try {
     fragment = markdownApi.deserialize(normalizedMarkdown) as any[]
   } catch {
@@ -161,37 +163,8 @@ export async function pasteSelection(
 
   if (!Array.isArray(fragment) || fragment.length === 0) return
 
-  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-  const blockSelectionTransforms = editor.getTransforms(BlockSelectionPlugin)
-  const hasBlockSelection =
-    blockSelectionApi.blockSelection.getNodes().length > 0
-
-  if (hasBlockSelection) {
-    blockSelectionTransforms.blockSelection.select()
-  }
-
-  const paragraphType = getPluginType(editor, KEYS.p)
-  const firstNode = fragment[0] as any
-  const isSingleParagraph =
-    !hasBlockSelection &&
-    fragment.length === 1 &&
-    firstNode &&
-    typeof firstNode === 'object' &&
-    'type' in firstNode &&
-    firstNode.type === paragraphType &&
-    Array.isArray(firstNode.children)
-
-  let fragmentToInsert: any[] = fragment
-
-  if (isSingleParagraph) {
-    const inlineFragment = markdownApi.deserializeInline(normalizedMarkdown)
-    fragmentToInsert =
-      inlineFragment.length > 0 ? (inlineFragment as any[]) : firstNode.children
-  }
-
-  if (!fragmentToInsert || fragmentToInsert.length === 0) return
-
-  editor.tf.insertFragment(fragmentToInsert as any)
+  editor.getTransforms(BlockSelectionPlugin).blockSelection.select()
+  editor.tf.insertFragment(fragment as any)
   editor.tf.focus()
 }
 
