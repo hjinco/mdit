@@ -1,4 +1,4 @@
-import { Moon, Sun } from 'lucide-react'
+import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
 import {
   Field,
@@ -6,6 +6,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
 } from '@/ui/field'
 import {
   Select,
@@ -23,41 +25,45 @@ export function PreferencesTab() {
     label: string
     icon?: React.ReactNode
   }> = [
-    { value: 'light', label: 'Light', icon: <Sun className="size-4" /> },
-    { value: 'dark', label: 'Dark', icon: <Moon className="size-4" /> },
-    { value: 'system', label: 'System', icon: null },
+    { value: 'light', label: 'Light', icon: <Sun /> },
+    { value: 'dark', label: 'Dark', icon: <Moon /> },
+    { value: 'system', label: 'System', icon: <Monitor /> },
   ]
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <FieldGroup>
-        <Field orientation="vertical">
-          <FieldLabel>Appearance</FieldLabel>
-          <FieldDescription>Choose how you want Mdit to look</FieldDescription>
-          <FieldContent>
+    <div className="flex-1 overflow-y-auto p-12">
+      <FieldSet>
+        <FieldLegend>Preferences</FieldLegend>
+        <FieldDescription>Customize your Mdit experience</FieldDescription>
+        <FieldGroup>
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>Appearance</FieldLabel>
+              <FieldDescription>
+                Choose how you want Mdit to look
+              </FieldDescription>
+            </FieldContent>
             <Select
               value={theme}
               onValueChange={(value) =>
                 setTheme(value as 'light' | 'dark' | 'system')
               }
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger size="sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="end">
                 {themeOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    <div className="flex items-center gap-2">
-                      {option.icon}
-                      <span>{option.label}</span>
-                    </div>
+                    {option.icon}
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </FieldContent>
-        </Field>
-      </FieldGroup>
+          </Field>
+        </FieldGroup>
+      </FieldSet>
     </div>
   )
 }
