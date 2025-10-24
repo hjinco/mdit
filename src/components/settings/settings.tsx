@@ -26,7 +26,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={isSettingsDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="md:max-w-3xl max-h-[600px] w-full h-full p-0 overflow-hidden flex">
+      <DialogContent className="md:max-w-4xl max-h-[660px] w-full h-full p-0 overflow-hidden flex">
         <SettingsNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="flex-1 flex flex-col">
