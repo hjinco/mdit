@@ -178,7 +178,6 @@ export function AIMenu() {
         }
         setOpen(open)
       }}
-      modal
     >
       <PopoverAnchor virtualRef={{ current: anchorElement! }} />
 
