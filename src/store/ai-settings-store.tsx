@@ -17,6 +17,7 @@ export type EnabledModels = { provider: string; model: string }[]
 type AISettingsStore = {
   connectedProviders: string[]
   chatConfig: ChatConfig | null
+  renameConfig: ChatConfig | null
   apiModels: ApiModels
   ollamaModels: string[]
   enabledModels: EnabledModels
@@ -25,6 +26,8 @@ type AISettingsStore = {
   addOllamaModel: (model: string) => void
   removeOllamaModel: (model: string) => void
   selectModel: (provider: string, model: string) => Promise<void>
+  selectRenameModel: (provider: string, model: string) => Promise<void>
+  clearRenameModel: () => void
   toggleModelEnabled: (
     provider: string,
     model: string,
@@ -39,6 +42,7 @@ const API_MODELS_MAP: Record<string, string[]> = {
 
 const CONNECTED_PROVIDERS_KEY = 'connected-providers'
 const CHAT_CONFIG_KEY = 'chat-config'
+const RENAME_CONFIG_KEY = 'rename-config'
 const ENABLED_MODELS_KEY = 'chat-enabled-models'
 const OLLAMA_MODELS_KEY = 'ollama-models'
 
@@ -47,11 +51,13 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
   const loadPersistedSettings = () => {
     const rawConnectedProviders = localStorage.getItem(CONNECTED_PROVIDERS_KEY)
     const rawChatConfig = localStorage.getItem(CHAT_CONFIG_KEY)
+    const rawRenameConfig = localStorage.getItem(RENAME_CONFIG_KEY)
     const rawEnabledModels = localStorage.getItem(ENABLED_MODELS_KEY)
     const rawOllamaModels = localStorage.getItem(OLLAMA_MODELS_KEY)
 
     let connectedProviders: string[] = []
     let chatConfig: ChatConfig | null = null
+    let renameConfig: ChatConfig | null = null
     let enabledModels: EnabledModels = []
     let ollamaModels: string[] = []
 
@@ -69,6 +75,13 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         console.error('Failed to parse chat config:', error)
       }
     }
+    if (rawRenameConfig) {
+      try {
+        renameConfig = JSON.parse(rawRenameConfig) as ChatConfig
+      } catch (error) {
+        console.error('Failed to parse rename config:', error)
+      }
+    }
     if (rawEnabledModels) {
       try {
         enabledModels = JSON.parse(rawEnabledModels) as EnabledModels
@@ -83,7 +96,13 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         console.error('Failed to parse ollama models:', error)
       }
     }
-    return { connectedProviders, chatConfig, enabledModels, ollamaModels }
+    return {
+      connectedProviders,
+      chatConfig,
+      renameConfig,
+      enabledModels,
+      ollamaModels,
+    }
   }
 
   const initialSettings = loadPersistedSettings()
@@ -119,6 +138,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         const newState: {
           connectedProviders: string[]
           chatConfig?: ChatConfig | null
+          renameConfig?: ChatConfig | null
           enabledModels?: EnabledModels
         } = {
           connectedProviders: newConnectedProviders,
@@ -126,6 +146,10 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         if (prev.chatConfig?.provider === provider) {
           localStorage.removeItem(CHAT_CONFIG_KEY)
           newState.chatConfig = null
+        }
+        if (prev.renameConfig?.provider === provider) {
+          localStorage.removeItem(RENAME_CONFIG_KEY)
+          newState.renameConfig = null
         }
 
         // Remove enabled models for this provider
@@ -172,6 +196,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         const newState: {
           ollamaModels: string[]
           chatConfig?: ChatConfig | null
+          renameConfig?: ChatConfig | null
           enabledModels?: EnabledModels
         } = {
           ollamaModels: newOllamaModels,
@@ -182,6 +207,13 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
         ) {
           localStorage.removeItem(CHAT_CONFIG_KEY)
           newState.chatConfig = null
+        }
+        if (
+          prev.renameConfig?.provider === 'ollama' &&
+          prev.renameConfig?.model === model
+        ) {
+          localStorage.removeItem(RENAME_CONFIG_KEY)
+          newState.renameConfig = null
         }
 
         // Remove enabled model for this ollama model
@@ -247,6 +279,60 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
 
         localStorage.setItem(CHAT_CONFIG_KEY, JSON.stringify(newChatConfig))
         return { chatConfig: newChatConfig }
+      })
+    },
+
+    selectRenameModel: async (provider: string, model: string) => {
+      if (provider === 'ollama') {
+        set((prev) => {
+          if (!prev.ollamaModels.includes(model)) {
+            return {}
+          }
+
+          const newRenameConfig: ChatConfig = {
+            provider,
+            model,
+            apiKey: '',
+          }
+
+          localStorage.setItem(
+            RENAME_CONFIG_KEY,
+            JSON.stringify(newRenameConfig)
+          )
+          return { renameConfig: newRenameConfig }
+        })
+        return
+      }
+
+      const apiKey = await getPassword(`app.mdit.ai.${provider}`, 'mdit')
+      if (!apiKey) {
+        return
+      }
+
+      set((prev) => {
+        const newRenameConfig: ChatConfig = {
+          provider,
+          model,
+          apiKey:
+            prev.renameConfig?.provider === provider &&
+            prev.renameConfig?.apiKey
+              ? prev.renameConfig.apiKey
+              : apiKey,
+        }
+
+        localStorage.setItem(
+          RENAME_CONFIG_KEY,
+          JSON.stringify(newRenameConfig)
+        )
+
+        return { renameConfig: newRenameConfig }
+      })
+    },
+
+    clearRenameModel: () => {
+      set(() => {
+        localStorage.removeItem(RENAME_CONFIG_KEY)
+        return { renameConfig: null }
       })
     },
 

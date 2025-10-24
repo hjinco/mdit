@@ -13,7 +13,20 @@ import {
   FieldSet,
 } from '@/ui/field'
 import { Input } from '@/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/ui/select'
 import { Switch } from '@/ui/switch'
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google Generative AI',
+  openai: 'OpenAI',
+  ollama: 'Ollama',
+}
 
 export function AITab() {
   const {
@@ -25,6 +38,9 @@ export function AITab() {
     disconnectProvider,
     addOllamaModel,
     removeOllamaModel,
+    renameConfig,
+    selectRenameModel,
+    clearRenameModel,
     toggleModelEnabled,
   } = useAISettingsStore()
 
@@ -39,70 +55,160 @@ export function AITab() {
       .concat({ provider: 'ollama', models: ollamaModels })
   }, [apiModels, ollamaModels])
 
+  const renameOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string }> = []
+
+    connectedProviders.forEach((provider) => {
+      const models = apiModels[provider] ?? []
+      models.forEach((model) => {
+        options.push({
+          value: `${provider}:${model}`,
+          label: model,
+        })
+      })
+    })
+
+    ollamaModels.forEach((model) => {
+      options.push({
+        value: `ollama:${model}`,
+        label: model,
+      })
+    })
+
+    if (renameConfig) {
+      const value = `${renameConfig.provider}:${renameConfig.model}`
+      const exists = options.some((option) => option.value === value)
+      if (!exists) {
+        options.push({
+          value,
+          label: renameConfig.model,
+        })
+      }
+    }
+
+    return options.sort((a, b) => a.label.localeCompare(b.label))
+  }, [connectedProviders, apiModels, ollamaModels, renameConfig])
+
+  const renameSelectValue = renameConfig
+    ? `${renameConfig.provider}:${renameConfig.model}`
+    : '__none__'
+
+  const hasConnectedProviders = useMemo(() => {
+    return (
+      Object.entries(apiModels).some(([provider]) =>
+        connectedProviders.includes(provider)
+      ) || ollamaModels.length > 0
+    )
+  }, [connectedProviders, apiModels, ollamaModels])
+
   return (
     <div className="flex-1 overflow-y-auto px-12 pt-12 pb-24">
-      <FieldSet>
-        <FieldLegend>AI Chat Models</FieldLegend>
-        <FieldDescription>
-          Enable models from AI providers for chat
-        </FieldDescription>
-        <FieldGroup className="gap-0">
-          {providersMap.map(({ provider, models }) => {
-            const isConnected =
-              provider === 'ollama'
-                ? true
-                : connectedProviders.includes(provider)
+      <FieldSet className="border-b pb-8">
+        <FieldLegend>AI Models</FieldLegend>
+        <FieldDescription>Enable models from AI providers</FieldDescription>
+        <div>
+          <FieldLabel>Chat</FieldLabel>
+          <FieldGroup className="gap-0 mt-2">
+            {providersMap.map(({ provider, models }) => {
+              const isConnected =
+                provider === 'ollama'
+                  ? true
+                  : connectedProviders.includes(provider)
 
-            if (!isConnected) return null
+              if (!isConnected) return null
 
-            return (
-              <Field key={provider}>
-                <FieldGroup className="gap-0">
-                  {models.map((model) => (
-                    <Field
-                      key={`${provider}-${model}`}
-                      orientation="horizontal"
-                      className="py-2"
-                    >
-                      <FieldContent className="group flex-row justify-between">
-                        <FieldLabel
-                          htmlFor={`${provider}-${model}`}
-                          className="text-xs"
-                        >
-                          {model}
-                        </FieldLabel>
-                        {provider === 'ollama' && (
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeOllamaModel(model)}
-                              className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100"
-                            >
-                              <XIcon className="size-3.5" />
-                            </Button>
-                          </div>
-                        )}
-                      </FieldContent>
-                      <Switch
-                        id={`${provider}-${model}`}
-                        checked={enabledModels.some(
-                          (m) => m.provider === provider && m.model === model
-                        )}
-                        onCheckedChange={(checked) =>
-                          toggleModelEnabled(provider, model, checked)
-                        }
-                      />
-                    </Field>
-                  ))}
-                </FieldGroup>
+              return (
+                <Field key={provider}>
+                  <FieldGroup className="gap-0">
+                    {models.map((model) => (
+                      <Field
+                        key={`${provider}-${model}`}
+                        orientation="horizontal"
+                        className="py-2"
+                      >
+                        <FieldContent className="group flex-row justify-between">
+                          <FieldLabel
+                            htmlFor={`${provider}-${model}`}
+                            className="text-xs"
+                          >
+                            {model}
+                          </FieldLabel>
+                          {provider === 'ollama' && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeOllamaModel(model)}
+                                className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100"
+                              >
+                                <XIcon className="size-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </FieldContent>
+                        <Switch
+                          id={`${provider}-${model}`}
+                          checked={enabledModels.some(
+                            (m) => m.provider === provider && m.model === model
+                          )}
+                          onCheckedChange={(checked) =>
+                            toggleModelEnabled(provider, model, checked)
+                          }
+                        />
+                      </Field>
+                    ))}
+                  </FieldGroup>
+                </Field>
+              )
+            })}
+            {!hasConnectedProviders && (
+              <div className="py-2 text-sm text-muted-foreground font-normal">
+                No chat models available. Connect a provider to get started.
+              </div>
+            )}
+            <FieldGroup className="gap-0 mt-6">
+              <Field orientation="horizontal">
+                <FieldLabel>Rename with AI</FieldLabel>
+                <Select
+                  value={renameSelectValue}
+                  onValueChange={(value) => {
+                    if (value === '__none__') {
+                      clearRenameModel()
+                      return
+                    }
+                    const separatorIndex = value.indexOf(':')
+                    if (separatorIndex === -1) {
+                      clearRenameModel()
+                      return
+                    }
+                    const provider = value.slice(0, separatorIndex)
+                    const model = value.slice(separatorIndex + 1)
+                    if (!provider || !model) {
+                      clearRenameModel()
+                      return
+                    }
+                    selectRenameModel(provider, model)
+                  }}
+                >
+                  <SelectTrigger size="sm">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="__none__">Disabled</SelectItem>
+                    {renameOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
-            )
-          })}
-        </FieldGroup>
+            </FieldGroup>
+          </FieldGroup>
+        </div>
       </FieldSet>
 
-      <FieldSet className="mt-12">
+      <FieldSet className="mt-8">
         <FieldLegend>Providers</FieldLegend>
         <FieldDescription>
           Connect to AI providers to enable their models
@@ -115,19 +221,13 @@ export function AITab() {
                 : provider === 'openai'
                   ? 'https://platform.openai.com'
                   : ''
-            const providerName =
-              provider === 'google'
-                ? 'Google Generative AI'
-                : provider === 'openai'
-                  ? 'OpenAI'
-                  : ''
             return (
               <Field key={provider}>
                 <FieldLabel
                   className="cursor-pointer hover:text-blue-500"
                   onClick={() => openUrl(url)}
                 >
-                  {providerName}
+                  {PROVIDER_LABELS[provider]}
                   <ExternalLink className="size-3 inline" />
                 </FieldLabel>
                 <ConnectProvider
