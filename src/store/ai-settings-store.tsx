@@ -11,13 +11,13 @@ export type ChatConfig = {
   apiKey: string
 }
 
-export type Models = { [provider: string]: string[] }
+export type ApiModels = { [provider: string]: string[] }
 export type EnabledModels = { provider: string; model: string }[]
 
 type AISettingsStore = {
   connectedProviders: string[]
   chatConfig: ChatConfig | null
-  models: Models
+  apiModels: ApiModels
   ollamaModels: string[]
   enabledModels: EnabledModels
   connectProvider: (provider: string, apiKey: string) => void
@@ -32,14 +32,14 @@ type AISettingsStore = {
   ) => void
 }
 
-const PROVIDERS_MAP: Record<string, string[]> = {
+const API_MODELS_MAP: Record<string, string[]> = {
   google: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
   openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano'],
 }
 
 const CONNECTED_PROVIDERS_KEY = 'connected-providers'
 const CHAT_CONFIG_KEY = 'chat-config'
-const ENABLED_MODELS_KEY = 'enabled-models'
+const ENABLED_MODELS_KEY = 'chat-enabled-models'
 const OLLAMA_MODELS_KEY = 'ollama-models'
 
 export const useAISettingsStore = create<AISettingsStore>((set) => {
@@ -90,7 +90,7 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
 
   return {
     ...initialSettings,
-    models: PROVIDERS_MAP,
+    apiModels: API_MODELS_MAP,
 
     connectProvider: (provider: string, apiKey: string) => {
       set((prev) => {
