@@ -28,11 +28,7 @@ export function Editor() {
 
   const value = useMemo(() => {
     if (!tab) return
-    const time1 = performance.now()
-    const value = editor.api.markdown.deserialize(tab.content)
-    const time2 = performance.now()
-    console.log('deserialize time', time2 - time1)
-    return value
+    return editor.api.markdown.deserialize(tab.content)
   }, [tab, editor])
 
   if (!tab) return null
