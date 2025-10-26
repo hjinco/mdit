@@ -249,6 +249,7 @@ export function TreeNode({
               (isSelected || isActive) &&
                 'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
               isDragging && 'opacity-50 cursor-grabbing',
+              isRenaming && 'ring-1 ring-ring/50',
               isAiRenaming && 'animate-pulse'
             )}
             style={{ paddingLeft: `${10 + depth * 10}px` }}
@@ -272,7 +273,7 @@ export function TreeNode({
                   onChange={(event) => setDraftName(event.target.value)}
                   onKeyDown={handleRenameKeyDown}
                   onBlur={handleRenameBlur}
-                  className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
+                  className="absolute inset-0 h-full truncate text-sm bg-stone-200 dark:bg-stone-700 border border-border rounded -ml-[1px] px-0 pt-[1px] pb-0 outline-none"
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -316,6 +317,7 @@ export function TreeNode({
             (isSelected || isActive) &&
               'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
             isDragging && 'opacity-50 cursor-grabbing',
+            isRenaming && 'ring-1 ring-ring/50',
             isAiRenaming && 'animate-pulse'
           )}
           style={{ paddingLeft: `${10 + depth * 10}px` }}
@@ -335,7 +337,7 @@ export function TreeNode({
                 onChange={(event) => setDraftName(event.target.value)}
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRenameBlur}
-                className="absolute inset-0 h-full truncate text-sm bg-background border border-border rounded px-1 py-0.5 outline-none"
+                className="absolute inset-0 h-full truncate text-sm bg-stone-200 dark:bg-stone-700 border border-border rounded -ml-[1px] px-0 pt-[1px] pb-0 outline-none"
                 spellCheck={false}
                 autoComplete="off"
               />
