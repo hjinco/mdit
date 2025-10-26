@@ -38,7 +38,6 @@ export function Editor() {
 }
 
 function EditorContent({ path, value }: { path: string; value: Value }) {
-  const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
 
@@ -76,6 +75,10 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
     }
   }, [handleSave])
 
+  useEffect(() => {
+    editor.tf.focus()
+  }, [editor])
+
   return (
     <Plate
       editor={editor}
@@ -111,7 +114,6 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
         }}
       >
         <PlateContent
-          ref={ref}
           className={cn(
             'group/editor',
             'relative w-full cursor-text overflow-x-hidden break-words whitespace-pre-wrap select-text',
