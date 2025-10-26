@@ -1,14 +1,14 @@
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
+import { createSlateEditor, type Value } from 'platejs'
 import {
   Plate,
   PlateContainer,
   PlateContent,
   usePlateEditor,
 } from 'platejs/react'
-import { useCallback, useEffect, useRef } from 'react'
-import { useShallow } from 'zustand/shallow'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { EditorKit } from './plugins/editor-kit'
@@ -19,22 +19,41 @@ import {
 } from './plugins/shortcuts-kit'
 
 export function Editor() {
+  const tab = useTabStore((s) => s.tab)
+  const editor = useMemo(() => {
+    return createSlateEditor({
+      plugins: EditorKit,
+    })
+  }, [])
+
+  const value = useMemo(() => {
+    if (!tab) return
+    const time1 = performance.now()
+    const value = editor.api.markdown.deserialize(tab.content)
+    const time2 = performance.now()
+    console.log('deserialize time', time2 - time1)
+    return value
+  }, [tab, editor])
+
+  if (!tab) return null
+  if (!value) return null
+
+  return <EditorContent key={tab.id} path={tab.path} value={value} />
+}
+
+function EditorContent({ path, value }: { path: string; value: Value }) {
   const ref = useRef<HTMLDivElement>(null)
   const isSaved = useRef(true)
-  const { tab, setTabSaved } = useTabStore(
-    useShallow((s) => ({ tab: s.tab, setTabSaved: s.setTabSaved }))
-  )
+  const setTabSaved = useTabStore((s) => s.setTabSaved)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
+    value,
   })
 
-  const tabId = tab?.id
-  const tabContent = tab?.content
-
   const handleSave = useCallback(() => {
-    if (!tab || isSaved.current) return
-    writeTextFile(tab.path, editor.api.markdown.serialize())
+    if (isSaved.current) return
+    writeTextFile(path, editor.api.markdown.serialize())
       .then(() => {
         isSaved.current = true
         setTabSaved(true)
@@ -43,22 +62,9 @@ export function Editor() {
         isSaved.current = false
         setTabSaved(false)
       })
-  }, [tab, editor, setTabSaved])
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ...
-  useEffect(() => {
-    if (tabContent === undefined) return
-    const value = editor.api.markdown.deserialize(tabContent)
-    editor.tf.reset()
-    editor.tf.withoutSaving(() => {
-      editor.tf.setValue(value)
-    })
-    editor.tf.focus()
-  }, [tabId, tabContent, editor])
+  }, [editor, path, setTabSaved])
 
   useEffect(() => {
-    if (!tab) return
-
     const appWindow = getCurrentWindow()
 
     const interval = setInterval(handleSave, 10_000)
@@ -72,11 +78,7 @@ export function Editor() {
       clearInterval(interval)
       handleSave()
     }
-  }, [tab, handleSave])
-
-  if (!tab) {
-    return null
-  }
+  }, [handleSave])
 
   return (
     <Plate
