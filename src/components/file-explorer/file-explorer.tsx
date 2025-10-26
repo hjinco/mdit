@@ -52,6 +52,7 @@ export function FileExplorer() {
   const [hasWorkspaceScroll, setHasWorkspaceScroll] = useState(false)
   const [isWorkspaceScrollAtBottom, setIsWorkspaceScrollAtBottom] =
     useState(true)
+  const [isWorkspaceScrollAtTop, setIsWorkspaceScrollAtTop] = useState(true)
 
   const visibleEntryPaths = useMemo(() => {
     const paths: string[] = []
@@ -105,6 +106,7 @@ export function FileExplorer() {
     if (!element) {
       setHasWorkspaceScroll(false)
       setIsWorkspaceScrollAtBottom(true)
+      setIsWorkspaceScrollAtTop(true)
       return
     }
 
@@ -113,12 +115,15 @@ export function FileExplorer() {
 
     if (!hasOverflow) {
       setIsWorkspaceScrollAtBottom(true)
+      setIsWorkspaceScrollAtTop(true)
       return
     }
 
     const isAtBottom =
       element.scrollHeight - element.scrollTop - element.clientHeight <= 1
+    const isAtTop = element.scrollTop <= 1
     setIsWorkspaceScrollAtBottom(isAtBottom)
+    setIsWorkspaceScrollAtTop(isAtTop)
   }, [])
 
   const handleWorkspaceScroll = useCallback(() => {
@@ -127,9 +132,13 @@ export function FileExplorer() {
 
     const isAtBottom =
       element.scrollHeight - element.scrollTop - element.clientHeight <= 1
-    if (isWorkspaceScrollAtBottom === isAtBottom) return
-    setIsWorkspaceScrollAtBottom(isAtBottom)
-  }, [isWorkspaceScrollAtBottom])
+    const isAtTop = element.scrollTop <= 1
+
+    setIsWorkspaceScrollAtBottom((prev) =>
+      prev === isAtBottom ? prev : isAtBottom
+    )
+    setIsWorkspaceScrollAtTop((prev) => (prev === isAtTop ? prev : isAtTop))
+  }, [])
 
   const handleWorkspaceContainerRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -142,6 +151,7 @@ export function FileExplorer() {
       if (!node) {
         setHasWorkspaceScroll(false)
         setIsWorkspaceScrollAtBottom(true)
+        setIsWorkspaceScrollAtTop(true)
         return
       }
 
@@ -517,7 +527,12 @@ export function FileExplorer() {
       )}
       style={{ width: isOpen ? width : 0 }}
     >
-      <header className="flex items-center justify-between px-2 pt-2">
+      <header
+        className={cn(
+          'flex items-center justify-between px-2 py-1',
+          hasWorkspaceScroll && !isWorkspaceScrollAtTop && 'border-b'
+        )}
+      >
         <WorkspaceDropdown
           workspacePath={workspacePath}
           recentWorkspacePaths={recentWorkspacePaths}
