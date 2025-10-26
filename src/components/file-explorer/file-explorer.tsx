@@ -2,7 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
 import { cn } from '@/lib/utils'
@@ -47,6 +47,11 @@ export function FileExplorer() {
   const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(
     null
   )
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const [hasWorkspaceScroll, setHasWorkspaceScroll] = useState(false)
+  const [isWorkspaceScrollAtBottom, setIsWorkspaceScrollAtBottom] =
+    useState(true)
 
   const visibleEntryPaths = useMemo(() => {
     const paths: string[] = []
@@ -93,6 +98,69 @@ export function FileExplorer() {
       },
       disabled: !workspacePath,
     })
+
+  const updateWorkspaceScrollState = useCallback(() => {
+    const element = scrollContainerRef.current
+
+    if (!element) {
+      setHasWorkspaceScroll(false)
+      setIsWorkspaceScrollAtBottom(true)
+      return
+    }
+
+    const hasOverflow = element.scrollHeight - element.clientHeight > 1
+    setHasWorkspaceScroll(hasOverflow)
+
+    if (!hasOverflow) {
+      setIsWorkspaceScrollAtBottom(true)
+      return
+    }
+
+    const isAtBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
+    setIsWorkspaceScrollAtBottom(isAtBottom)
+  }, [])
+
+  const handleWorkspaceScroll = useCallback(() => {
+    const element = scrollContainerRef.current
+    if (!element) return
+
+    const isAtBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
+    if (isWorkspaceScrollAtBottom === isAtBottom) return
+    setIsWorkspaceScrollAtBottom(isAtBottom)
+  }, [isWorkspaceScrollAtBottom])
+
+  const handleWorkspaceContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
+
+      scrollContainerRef.current = node
+      setWorkspaceDropRef(node)
+
+      if (!node) {
+        setHasWorkspaceScroll(false)
+        setIsWorkspaceScrollAtBottom(true)
+        return
+      }
+
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserverRef.current = new ResizeObserver(() => {
+          updateWorkspaceScrollState()
+        })
+        resizeObserverRef.current.observe(node)
+      }
+
+      updateWorkspaceScrollState()
+    },
+    [setWorkspaceDropRef, updateWorkspaceScrollState]
+  )
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    updateWorkspaceScrollState()
+  }, [entries, expandedDirectories, updateWorkspaceScrollState])
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -458,7 +526,7 @@ export function FileExplorer() {
         />
       </header>
       <div
-        ref={setWorkspaceDropRef}
+        ref={handleWorkspaceContainerRef}
         className={cn(
           'flex-1 overflow-y-auto px-2 py-1',
           isOverWorkspace &&
@@ -468,6 +536,7 @@ export function FileExplorer() {
         onClick={() => {
           setSelectedEntryPaths(new Set())
         }}
+        onScroll={handleWorkspaceScroll}
       >
         <ul className="space-y-0.5 min-h-full pb-4">
           {entries.map((entry) => (
@@ -488,7 +557,12 @@ export function FileExplorer() {
           ))}
         </ul>
       </div>
-      <footer className="px-2 pb-2 space-y-0.5">
+      <footer
+        className={cn(
+          'px-2 py-2 space-y-0.5 transition-[border]',
+          hasWorkspaceScroll && !isWorkspaceScrollAtBottom && 'border-t'
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
