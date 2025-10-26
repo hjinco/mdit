@@ -34,7 +34,11 @@ export function Editor() {
   if (!tab) return null
   if (!value) return null
 
-  return <EditorContent key={tab.id} path={tab.path} value={value} />
+  return (
+    <div className="font-scale-scope flex-1 h-full overflow-hidden">
+      <EditorContent key={tab.id} path={tab.path} value={value} />
+    </div>
+  )
 }
 
 function EditorContent({ path, value }: { path: string; value: Value }) {
