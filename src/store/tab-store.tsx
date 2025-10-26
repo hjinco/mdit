@@ -27,6 +27,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
     if (!path.endsWith('.md')) {
       return
     }
+    if (get().tab?.path === path) {
+      return
+    }
 
     const content = await readTextFile(path)
     const name = path.split('/').pop()?.split('.').shift()
