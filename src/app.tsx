@@ -6,12 +6,14 @@ import { SettingsDialog } from './components/settings/settings'
 import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
+import { useFontScale } from './hooks/use-font-scale'
 import { useLicenseStore } from './store/license-store'
 import { useWorkspaceStore } from './store/workspace-store'
 
 export function App() {
   const { workspacePath, isLoading, initializeWorkspace } = useWorkspaceStore()
   const checkLicenseAndTrial = useLicenseStore((s) => s.checkLicenseAndTrial)
+  useFontScale()
 
   useEffect(() => {
     initializeWorkspace()

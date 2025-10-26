@@ -45,6 +45,7 @@
 :root {
   --brand: oklch(0.623 0.214 259.815);
   --radius: 0.625rem;
+  --font-scale: 1;
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
   --card: oklch(1 0 0);
@@ -120,9 +121,53 @@
 
   html {
     overscroll-behavior: none;
+    font-size: 16px;
   }
 
   body {
     @apply bg-background text-foreground overscroll-none antialiased font-medium;
+  }
+}
+
+@layer utilities {
+  .font-scale-scope {
+    --font-scale-current: var(--font-scale, 1);
+    font-size: calc(1rem * var(--font-scale-current));
+    line-height: calc(1.5rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-xs {
+    font-size: calc(0.75rem * var(--font-scale-current));
+    line-height: calc(1rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-sm {
+    font-size: calc(0.875rem * var(--font-scale-current));
+    line-height: calc(1.25rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-base {
+    font-size: calc(1rem * var(--font-scale-current));
+    line-height: calc(1.5rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-lg {
+    font-size: calc(1.125rem * var(--font-scale-current));
+    line-height: calc(1.75rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-xl {
+    font-size: calc(1.25rem * var(--font-scale-current));
+    line-height: calc(1.75rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-2xl {
+    font-size: calc(1.5rem * var(--font-scale-current));
+    line-height: calc(2rem * var(--font-scale-current));
+  }
+
+  .font-scale-scope .text-4xl {
+    font-size: calc(2.25rem * var(--font-scale-current));
+    line-height: calc(2.5rem * var(--font-scale-current));
   }
 }

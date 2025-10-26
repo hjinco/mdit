@@ -12,11 +12,17 @@ export async function installWindowMenu({
   createNote,
   openWorkspace,
   toggleFileExplorer,
+  zoomIn,
+  zoomOut,
+  resetZoom,
 }: {
   editor: PlateEditor
   createNote: () => void | Promise<void>
   openWorkspace: () => void | Promise<void>
   toggleFileExplorer: () => void
+  zoomIn: () => void
+  zoomOut: () => void
+  resetZoom: () => void
 }) {
   const menu = await Menu.new({
     items: [
@@ -30,6 +36,9 @@ export async function installWindowMenu({
       }),
       await createViewMenu({
         toggleFileExplorer,
+        zoomIn,
+        zoomOut,
+        resetZoom,
       }),
       await createWindowMenu(),
       await createHelpMenu(),

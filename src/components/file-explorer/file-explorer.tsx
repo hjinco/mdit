@@ -520,7 +520,7 @@ export function FileExplorer() {
   return (
     <aside
       className={cn(
-        'relative shrink-0 flex flex-col bg-muted border-r',
+        'font-scale-scope relative shrink-0 flex flex-col bg-muted border-r',
         !isResizing && 'transition-[width] duration-200',
         isResizing && 'transition-none',
         !isOpen && 'overflow-hidden border-none'
