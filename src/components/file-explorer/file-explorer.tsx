@@ -32,7 +32,7 @@ export function FileExplorer() {
     setWorkspace,
     openFolderPicker,
   } = useWorkspaceStore()
-  const openNote = useTabStore((state) => state.openNote)
+  const openNote = useTabStore((s) => s.openNote)
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
@@ -86,7 +86,7 @@ export function FileExplorer() {
   useEffect(() => {
     setSelectedEntryPaths(new Set())
     setSelectionAnchorPath(null)
-  }, [workspacePath])
+  }, [workspacePath, entries])
 
   // Setup workspace root as a drop target
   const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
