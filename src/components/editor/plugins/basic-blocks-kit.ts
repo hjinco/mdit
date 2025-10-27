@@ -21,13 +21,12 @@ import {
 } from '../ui/node-heading'
 import { HrElement } from '../ui/node-hr'
 import { ParagraphElement } from '../ui/node-paragraph'
-import { withDiffStyle } from './diff-kit'
 
 export const BasicBlocksKit = [
-  ParagraphPlugin.withComponent(withDiffStyle(ParagraphElement)),
+  ParagraphPlugin.withComponent(ParagraphElement),
   H1Plugin.configure({
     node: {
-      component: withDiffStyle(H1Element),
+      component: H1Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -36,7 +35,7 @@ export const BasicBlocksKit = [
   }),
   H2Plugin.configure({
     node: {
-      component: withDiffStyle(H2Element),
+      component: H2Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -45,7 +44,7 @@ export const BasicBlocksKit = [
   }),
   H3Plugin.configure({
     node: {
-      component: withDiffStyle(H3Element),
+      component: H3Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -54,7 +53,7 @@ export const BasicBlocksKit = [
   }),
   H4Plugin.configure({
     node: {
-      component: withDiffStyle(H4Element),
+      component: H4Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -63,7 +62,7 @@ export const BasicBlocksKit = [
   }),
   H5Plugin.configure({
     node: {
-      component: withDiffStyle(H5Element),
+      component: H5Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -72,7 +71,7 @@ export const BasicBlocksKit = [
   }),
   H6Plugin.configure({
     node: {
-      component: withDiffStyle(H6Element),
+      component: H6Element,
     },
     rules: {
       break: { empty: 'reset' },
@@ -80,8 +79,8 @@ export const BasicBlocksKit = [
     shortcuts: { toggle: { keys: 'mod+alt+6' } },
   }),
   BlockquotePlugin.configure({
-    node: { component: withDiffStyle(BlockquoteElement) },
+    node: { component: BlockquoteElement },
     shortcuts: { toggle: { keys: 'mod+shift+period' } },
   }),
-  HorizontalRulePlugin.withComponent(withDiffStyle(HrElement)),
+  HorizontalRulePlugin.withComponent(HrElement),
 ]
