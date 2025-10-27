@@ -171,3 +171,12 @@
     line-height: calc(2.5rem * var(--font-scale-current));
   }
 }
+
+/**
+ * TODO: Paragraph element styling issue
+ * The className on ParagraphElement component is not being applied correctly.
+ * This is a temporary workaround - should be removed once the styling issue is resolved.
+ */
+.slate-p {
+  @apply my-0.5 px-0 py-1;
+}
