@@ -35,7 +35,9 @@ export function FileExplorer() {
     setWorkspace,
     openFolderPicker,
   } = useWorkspaceStore()
-  const openNote = useTabStore((s) => s.openNote)
+  const { tab, openNote } = useTabStore(
+    useShallow((s) => ({ tab: s.tab, openNote: s.openNote }))
+  )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
@@ -565,6 +567,7 @@ export function FileExplorer() {
             <TreeNode
               key={entry.path}
               entry={entry}
+              tab={tab}
               depth={0}
               expandedDirectories={expandedDirectories}
               onDirectoryClick={toggleDirectory}
