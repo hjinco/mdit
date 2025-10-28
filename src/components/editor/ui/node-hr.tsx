@@ -19,8 +19,8 @@ export function HrElement(props: PlateElementProps) {
       <div className="py-6" contentEditable={false}>
         <hr
           className={cn(
-            'h-0.5 rounded-sm border-none bg-muted bg-clip-content',
-            selected && focused && 'ring-2 ring-ring ring-offset-2',
+            'h-[1px] border-none bg-primary/20 bg-clip-content',
+            selected && focused && 'bg-brand/10 ring-5 ring-brand/10',
             !readOnly && 'cursor-pointer'
           )}
         />
