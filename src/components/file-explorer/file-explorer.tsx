@@ -302,7 +302,12 @@ export function FileExplorer() {
             id: `new-folder-${directoryPath}`,
             text: 'New Folder',
             action: async () => {
-              await createFolder(directoryPath)
+              const newFolderPath = await createFolder(directoryPath)
+              if (newFolderPath) {
+                setSelectedEntryPaths(new Set([newFolderPath]))
+                setSelectionAnchorPath(newFolderPath)
+                setRenamingEntryPath(newFolderPath)
+              }
             },
           }),
         ]
