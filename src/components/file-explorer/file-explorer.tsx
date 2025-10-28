@@ -4,9 +4,11 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/shallow'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
+import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
@@ -41,11 +43,20 @@ export function FileExplorer() {
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
   )
-  const [selectedEntryPaths, setSelectedEntryPaths] = useState<Set<string>>(
-    () => new Set()
-  )
-  const [selectionAnchorPath, setSelectionAnchorPath] = useState<string | null>(
-    null
+  const {
+    selectedEntryPaths,
+    selectionAnchorPath,
+    setSelectedEntryPaths,
+    setSelectionAnchorPath,
+    resetSelection,
+  } = useFileExplorerSelectionStore(
+    useShallow((state) => ({
+      selectedEntryPaths: state.selectedEntryPaths,
+      selectionAnchorPath: state.selectionAnchorPath,
+      setSelectedEntryPaths: state.setSelectedEntryPaths,
+      setSelectionAnchorPath: state.setSelectionAnchorPath,
+      resetSelection: state.resetSelection,
+    }))
   )
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
@@ -81,12 +92,6 @@ export function FileExplorer() {
     })
     return map
   }, [visibleEntryPaths])
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: true
-  useEffect(() => {
-    setSelectedEntryPaths(new Set())
-    setSelectionAnchorPath(null)
-  }, [workspacePath, entries])
 
   // Setup workspace root as a drop target
   const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
@@ -202,13 +207,12 @@ export function FileExplorer() {
       const success = await deleteEntries(paths)
 
       if (success) {
-        setSelectedEntryPaths(new Set())
-        setSelectionAnchorPath(null)
+        resetSelection()
       } else {
         toast.error('Failed to delete')
       }
     },
-    [deleteEntries]
+    [deleteEntries, resetSelection]
   )
 
   const showEntryMenu = useCallback(
@@ -304,8 +308,6 @@ export function FileExplorer() {
             action: async () => {
               const newFolderPath = await createFolder(directoryPath)
               if (newFolderPath) {
-                setSelectedEntryPaths(new Set([newFolderPath]))
-                setSelectionAnchorPath(newFolderPath)
                 setRenamingEntryPath(newFolderPath)
               }
             },
@@ -392,9 +394,6 @@ export function FileExplorer() {
         } else {
           nextSelection.add(path)
         }
-      } else if (entry.isDirectory) {
-        // Keep folder out of selection when toggled via single click.
-        nextSelection.delete(path)
       } else {
         nextSelection = new Set([path])
       }
@@ -452,6 +451,8 @@ export function FileExplorer() {
       openNote,
       selectedEntryPaths,
       selectionAnchorPath,
+      setSelectedEntryPaths,
+      setSelectionAnchorPath,
       toggleDirectory,
       visibleEntryPaths,
     ]
@@ -481,7 +482,13 @@ export function FileExplorer() {
         await showEntryMenu(entry, selectionTargets)
       }
     },
-    [selectedEntryPaths, showDirectoryMenu, showEntryMenu]
+    [
+      selectedEntryPaths,
+      setSelectedEntryPaths,
+      setSelectionAnchorPath,
+      showDirectoryMenu,
+      showEntryMenu,
+    ]
   )
 
   const handleRootContextMenu = useCallback(
@@ -491,8 +498,7 @@ export function FileExplorer() {
       event.preventDefault()
       event.stopPropagation()
 
-      setSelectedEntryPaths(new Set())
-      setSelectionAnchorPath(null)
+      resetSelection()
 
       showDirectoryMenu(
         {
@@ -504,7 +510,7 @@ export function FileExplorer() {
         []
       )
     },
-    [entries, showDirectoryMenu, workspacePath]
+    [entries, resetSelection, showDirectoryMenu, workspacePath]
   )
 
   // const getLicenseButtonText = () => {

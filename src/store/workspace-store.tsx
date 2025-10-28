@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import { create } from 'zustand'
 
 import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
+import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import { useUIStore } from './ui-store'
 
@@ -236,6 +237,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }))
 
       await get().refreshWorkspaceEntries()
+      const { setSelectedEntryPaths, setSelectionAnchorPath } =
+        useFileExplorerSelectionStore.getState()
+      setSelectedEntryPaths(new Set([folderPath]))
+      setSelectionAnchorPath(folderPath)
 
       return folderPath
     } catch (error) {
@@ -273,6 +278,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }))
 
       await get().refreshWorkspaceEntries()
+      const { setSelectedEntryPaths, setSelectionAnchorPath } =
+        useFileExplorerSelectionStore.getState()
+      setSelectedEntryPaths(new Set([filePath]))
+      setSelectionAnchorPath(filePath)
 
       return filePath
     } catch (error) {
