@@ -1,7 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { ExternalLink } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
@@ -11,18 +9,18 @@ import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
-import { Button } from '@/ui/button'
+import { TooltipProvider } from '@/ui/tooltip'
+import { useEnterToRename } from './hooks/use-enter-to-rename'
+import { useEntryMap } from './hooks/use-entry-map'
+import { FeedbackButton } from './ui/feedback-button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
-import { useEntryMap } from './hooks/use-entry-map'
-import { useEnterToRename } from './hooks/use-enter-to-rename'
 
 export function FileExplorer() {
   const fileExplorerRef = useRef<HTMLElement | null>(null)
   const { isOpen, width, isResizing, handlePointerDown } =
     useFileExplorerResize()
-  // const { licenseStatus, openLicenseDialog } = useLicenseStore()
   const {
     workspacePath,
     entries,
@@ -525,21 +523,6 @@ export function FileExplorer() {
     [entries, resetSelection, showDirectoryMenu, workspacePath]
   )
 
-  // const getLicenseButtonText = () => {
-  //   if (licenseStatus.isInTrial) {
-  //     return `Trial: ${licenseStatus.daysRemaining}d left`
-  //   }
-  //   return 'Activate License'
-  // }
-
-  const handleFeatureBaseClick = useCallback(async () => {
-    try {
-      await openUrl('https://mdit.featurebase.app')
-    } catch (error) {
-      console.error('Failed to open FeatureBase URL:', error)
-    }
-  }, [])
-
   return (
     <aside
       ref={fileExplorerRef}
@@ -598,20 +581,14 @@ export function FileExplorer() {
       </div>
       <footer
         className={cn(
-          'px-2 py-2 space-y-0.5 transition-[border]',
+          'p-2 flex transition-[border]',
           hasWorkspaceScroll && !isWorkspaceScrollAtBottom && 'border-t'
         )}
       >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-muted-foreground hover:bg-stone-200/80 dark:hover:bg-stone-700/80"
-          onClick={handleFeatureBaseClick}
-        >
-          <ExternalLink /> Feedback
-        </Button>
-        <SettingsMenu />
+        <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+          <SettingsMenu />
+          <FeedbackButton />
+        </TooltipProvider>
       </footer>
       {isOpen && (
         <div

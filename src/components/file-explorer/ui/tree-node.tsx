@@ -244,7 +244,7 @@ export function TreeNode({
             onClick={handlePrimaryAction}
             onContextMenu={handleContextMenu}
             className={cn(
-              'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/80 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+              'w-full text-left flex items-center gap-1.5 px-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
               'hover:bg-stone-200/80 dark:hover:bg-stone-700/80',
               (isSelected || isActive) &&
                 'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
@@ -312,7 +312,7 @@ export function TreeNode({
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
           className={cn(
-            'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/80 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+            'w-full text-left flex items-center gap-1.5 px-2.5 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
             'hover:bg-stone-200/80 dark:hover:bg-stone-700/80',
             isSelected &&
               'bg-stone-200 dark:bg-stone-700 text-accent-foreground',

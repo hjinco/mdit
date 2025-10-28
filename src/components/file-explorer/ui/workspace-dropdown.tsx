@@ -39,7 +39,7 @@ export function WorkspaceDropdown({
           size="sm"
           className="w-full justify-start hover:bg-stone-200/80 dark:hover:bg-stone-700/80 text-foreground/90 font-semibold tracking-tight"
         >
-          <InboxIcon />
+          <InboxIcon className="text-orange-600/80 bg-orange-600/10 rounded-sm" />
           <span className="truncate">{currentWorkspaceName}</span>
           <ChevronDown className="ml-auto" />
         </Button>
