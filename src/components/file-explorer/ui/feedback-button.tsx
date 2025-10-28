@@ -1,11 +1,18 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
-import { SettingsIcon } from 'lucide-react'
-import { useUIStore } from '@/store/ui-store'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { SendIcon } from 'lucide-react'
+import { useCallback } from 'react'
 import { Button } from '@/ui/button'
 import { TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
-export function SettingsMenu() {
-  const setSettingsDialogOpen = useUIStore((s) => s.setSettingsDialogOpen)
+export function FeedbackButton() {
+  const handleFeatureBaseClick = useCallback(async () => {
+    try {
+      await openUrl('https://mdit.featurebase.app')
+    } catch (error) {
+      console.error('Failed to open FeatureBase URL:', error)
+    }
+  }, [])
 
   return (
     <TooltipPrimitive.Root data-slot="tooltip">
@@ -15,12 +22,12 @@ export function SettingsMenu() {
           variant="ghost"
           size="icon"
           className="size-7 text-muted-foreground hover:bg-stone-200/80 dark:hover:bg-stone-700/80"
-          onClick={() => setSettingsDialogOpen(true)}
+          onClick={handleFeatureBaseClick}
         >
-          <SettingsIcon />
+          <SendIcon />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Settings</TooltipContent>
+      <TooltipContent>Feedback</TooltipContent>
     </TooltipPrimitive.Root>
   )
 }
