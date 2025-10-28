@@ -15,8 +15,11 @@ import { Button } from '@/ui/button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
+import { useEntryMap } from './hooks/use-entry-map'
+import { useEnterToRename } from './hooks/use-enter-to-rename'
 
 export function FileExplorer() {
+  const fileExplorerRef = useRef<HTMLElement | null>(null)
   const { isOpen, width, isResizing, handlePointerDown } =
     useFileExplorerResize()
   // const { licenseStatus, openLicenseDialog } = useLicenseStore()
@@ -92,6 +95,7 @@ export function FileExplorer() {
     })
     return map
   }, [visibleEntryPaths])
+  const entryMap = useEntryMap(entries)
 
   // Setup workspace root as a drop target
   const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
@@ -197,6 +201,14 @@ export function FileExplorer() {
     },
     [renameEntry]
   )
+
+  useEnterToRename({
+    containerRef: fileExplorerRef,
+    selectionAnchorPath,
+    renamingEntryPath,
+    beginRenaming,
+    entryMap,
+  })
 
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {
@@ -530,6 +542,7 @@ export function FileExplorer() {
 
   return (
     <aside
+      ref={fileExplorerRef}
       className={cn(
         'font-scale-scope relative shrink-0 flex flex-col bg-muted border-r',
         !isResizing && 'transition-[width] duration-200',
