@@ -314,7 +314,7 @@ export function TreeNode({
           className={cn(
             'w-full text-left flex items-center gap-1.5 px-2.5 py-1 text-accent-foreground/80 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
             'hover:bg-stone-200/80 dark:hover:bg-stone-700/80',
-            (isSelected || isActive) &&
+            isSelected &&
               'bg-stone-200 dark:bg-stone-700 text-accent-foreground',
             isDragging && 'opacity-50 cursor-grabbing',
             isRenaming && 'ring-1 ring-ring/50',
