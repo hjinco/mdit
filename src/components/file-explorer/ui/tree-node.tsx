@@ -3,11 +3,12 @@ import { FileIcon, FolderIcon, FolderOpenIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
-import { useTabStore } from '@/store/tab-store'
+import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
 type TreeNodeProps = {
   entry: WorkspaceEntry
+  tab: Tab | null
   depth: number
   expandedDirectories: Record<string, boolean>
   onDirectoryClick: (path: string) => void
@@ -25,6 +26,7 @@ type TreeNodeProps = {
 
 export function TreeNode({
   entry,
+  tab,
   depth,
   expandedDirectories,
   onDirectoryClick,
@@ -41,8 +43,7 @@ export function TreeNode({
   const isRenaming = renamingEntryPath === entry.path
   const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
   const isBusy = isRenaming || isAiRenaming
-
-  const activeTabPath = useTabStore((s) => s.tab?.path)
+  const activeTabPath = tab?.path
 
   const isExpanded = Boolean(expandedDirectories[entry.path])
   const isActive = !isDirectory && activeTabPath === entry.path
@@ -287,6 +288,7 @@ export function TreeNode({
                 <TreeNode
                   key={child.path}
                   entry={child}
+                  tab={tab}
                   depth={depth + 1}
                   expandedDirectories={expandedDirectories}
                   onDirectoryClick={onDirectoryClick}
@@ -343,6 +345,9 @@ export function TreeNode({
               />
             )}
           </div>
+          {isActive && (
+            <span aria-hidden="true" className="size-1 rounded-full bg-brand" />
+          )}
         </button>
       )}
     </li>
