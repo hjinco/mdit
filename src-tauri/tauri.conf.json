@@ -10,6 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Mdit",
@@ -18,6 +19,10 @@
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "dragDropEnabled": true,
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["hudWindow"]
+        },
         "trafficLightPosition": {
           "x": 16,
           "y": 18
