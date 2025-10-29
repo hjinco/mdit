@@ -57,6 +57,10 @@ type UIStore = {
   setSettingsDialogOpen: (isOpen: boolean) => void
   settingsInitialTab: SettingsTab | null
   openSettingsWithTab: (tab: SettingsTab) => void
+  isCommandPaletteOpen: boolean
+  setCommandPaletteOpen: (isOpen: boolean) => void
+  openCommandPalette: () => void
+  closeCommandPalette: () => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -83,4 +87,8 @@ export const useUIStore = create<UIStore>((set) => ({
       isSettingsDialogOpen: true,
       settingsInitialTab: tab,
     }),
+  isCommandPaletteOpen: false,
+  setCommandPaletteOpen: (isOpen) => set({ isCommandPaletteOpen: isOpen }),
+  openCommandPalette: () => set({ isCommandPaletteOpen: true }),
+  closeCommandPalette: () => set({ isCommandPaletteOpen: false }),
 }))

@@ -15,6 +15,7 @@ export async function installWindowMenu({
   zoomIn,
   zoomOut,
   resetZoom,
+  openCommandPalette,
 }: {
   editor: PlateEditor
   createNote: () => void | Promise<void>
@@ -23,6 +24,7 @@ export async function installWindowMenu({
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
+  openCommandPalette: () => void
 }) {
   const menu = await Menu.new({
     items: [
@@ -39,6 +41,7 @@ export async function installWindowMenu({
         zoomIn,
         zoomOut,
         resetZoom,
+        openCommandPalette,
       }),
       await createWindowMenu(),
       await createHelpMenu(),
