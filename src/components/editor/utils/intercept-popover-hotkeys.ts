@@ -11,12 +11,12 @@ function haltEvent(event: ReactKeyboardEvent<Element>) {
 }
 
 // The popover lives inside the editor tree, so we hijack these hotkeys and
-// emulate the native select-all and cut behaviours without bubbling upward.
+// emulate the native cut behaviours without bubbling upward.
 export function interceptPopoverHotkeys(event: ReactKeyboardEvent<Element>) {
   const isMetaCombo = event.metaKey || event.ctrlKey
   const key = event.key.toLowerCase()
 
-  if (!isMetaCombo || (key !== 'a' && key !== 'x')) {
+  if (!isMetaCombo || key !== 'x') {
     return
   }
 
@@ -29,11 +29,6 @@ export function interceptPopoverHotkeys(event: ReactKeyboardEvent<Element>) {
   haltEvent(event)
 
   if (!target) {
-    return
-  }
-
-  if (key === 'a') {
-    target.select()
     return
   }
 
