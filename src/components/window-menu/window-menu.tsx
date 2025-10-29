@@ -16,7 +16,12 @@ export function WindowMenu() {
     }))
   )
 
-  const toggleFileExplorer = useUIStore((s) => s.toggleFileExplorer)
+  const { toggleFileExplorer, openCommandPalette } = useUIStore(
+    useShallow((s) => ({
+      toggleFileExplorer: s.toggleFileExplorer,
+      openCommandPalette: s.openCommandPalette,
+    }))
+  )
   const { zoomIn, zoomOut, resetZoom } = useFontScaleStore(
     useShallow((s) => ({
       zoomIn: s.increaseFontScale,
@@ -34,6 +39,7 @@ export function WindowMenu() {
       zoomIn,
       zoomOut,
       resetZoom,
+      openCommandPalette,
     })
   }, [
     editor,
@@ -43,6 +49,7 @@ export function WindowMenu() {
     zoomIn,
     zoomOut,
     resetZoom,
+    openCommandPalette,
   ])
 
   return null
