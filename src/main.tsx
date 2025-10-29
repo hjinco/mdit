@@ -16,10 +16,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <DropProvider>
           <PlateController>
             <App />
-            <WindowMenu />
           </PlateController>
         </DropProvider>
       </ThemeProvider>
+      <WindowMenu />
       <Updater />
       <Toaster />
     </ErrorBoundary>
