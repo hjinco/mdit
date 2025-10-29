@@ -1,3 +1,4 @@
+import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { type UseChatHelpers, useChat as useBaseChat } from '@ai-sdk/react'
@@ -204,6 +205,11 @@ export const useChat = (config: ChatConfig | null) => {
   useEffect(() => {
     if (!config) return
     switch (config.provider) {
+      case 'anthropic':
+        llmRef.current = createAnthropic({
+          apiKey: config.apiKey,
+        })(config.model)
+        break
       case 'google':
         llmRef.current = createGoogleGenerativeAI({
           apiKey: config.apiKey,
