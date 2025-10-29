@@ -184,7 +184,7 @@ export function AIMenu() {
       <PopoverContent
         // For the animation
         key={addCommandOpen ? 'addCommand' : 'content'}
-        className="border-none bg-transparent p-0 shadow-none"
+        className="border-none bg-transparent backdrop-blur-none p-0 shadow-none"
         align="center"
         side="bottom"
         style={{

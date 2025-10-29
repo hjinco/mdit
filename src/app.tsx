@@ -25,19 +25,17 @@ export function App() {
     return null
   }
 
+  if (!workspacePath) {
+    return <Welcome />
+  }
+
   return (
     <DndProvider>
       <div className="h-screen flex flex-col">
         <Tabbar />
         <div className="flex-1 overflow-hidden flex">
-          {workspacePath ? (
-            <>
-              <FileExplorer />
-              <Editor />
-            </>
-          ) : (
-            <Welcome />
-          )}
+          <FileExplorer />
+          <Editor />
           <div className="fixed bottom-0 right-0">
             <LicenseTempDialog />
           </div>

@@ -529,7 +529,7 @@ export function FileExplorer() {
     <aside
       ref={fileExplorerRef}
       className={cn(
-        'font-scale-scope relative shrink-0 flex flex-col bg-muted border-r',
+        'font-scale-scope relative shrink-0 flex flex-col bg-background/50',
         !isResizing && 'transition-[width] duration-200',
         isResizing && 'transition-none',
         !isOpen && 'overflow-hidden border-none'
@@ -595,7 +595,7 @@ export function FileExplorer() {
       </footer>
       {isOpen && (
         <div
-          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent transition-colors hover:bg-border"
+          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent transition-colors hover:bg-border/50"
           onPointerDown={handlePointerDown}
         />
       )}

@@ -171,9 +171,11 @@ export function CommandPalette() {
     <CommandDialog
       open={isCommandPaletteOpen}
       onOpenChange={handleOpenChange}
+      className="bg-popover/80 backdrop-blur-xs"
       commandProps={{
         value: searchValue,
         onValueChange: setSearchValue,
+        className: 'bg-transparent',
       }}
       showCloseButton={false}
     >

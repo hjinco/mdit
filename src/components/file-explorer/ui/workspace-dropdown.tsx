@@ -44,7 +44,7 @@ export function WorkspaceDropdown({
           <ChevronDown className="ml-auto" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-64 bg-popover/90">
         {recentWorkspacePaths.length > 0 ? (
           <>
             {recentWorkspacePaths.map((path) => (
