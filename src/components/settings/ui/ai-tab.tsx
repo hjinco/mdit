@@ -26,6 +26,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google Generative AI',
   openai: 'OpenAI',
   ollama: 'Ollama',
+  anthropic: 'Anthropic',
 }
 
 export function AITab() {
@@ -220,7 +221,9 @@ export function AITab() {
                 ? 'https://aistudio.google.com'
                 : provider === 'openai'
                   ? 'https://platform.openai.com'
-                  : ''
+                  : provider === 'anthropic'
+                    ? 'https://console.anthropic.com'
+                    : ''
             return (
               <Field key={provider}>
                 <FieldLabel

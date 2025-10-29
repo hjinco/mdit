@@ -1,3 +1,4 @@
+import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { invoke } from '@tauri-apps/api/core'
@@ -704,6 +705,10 @@ const TRAILING_DOTS_REGEX = /\.+$/
 
 function createModelFromConfig(config: ChatConfig) {
   switch (config.provider) {
+    case 'anthropic':
+      return createAnthropic({
+        apiKey: config.apiKey,
+      })(config.model)
     case 'google':
       return createGoogleGenerativeAI({
         apiKey: config.apiKey,
