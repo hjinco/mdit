@@ -14,7 +14,7 @@ export function NewNoteButton() {
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent"
+          className="size-8 text-foreground/70 hover:text-foreground hover:bg-background/60"
           onClick={createAndOpenNote}
         >
           <SquarePenIcon />

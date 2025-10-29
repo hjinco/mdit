@@ -529,7 +529,7 @@ export function FileExplorer() {
     <aside
       ref={fileExplorerRef}
       className={cn(
-        'font-scale-scope relative shrink-0 flex flex-col bg-background/50',
+        'font-scale-scope relative shrink-0 flex flex-col',
         !isResizing && 'transition-[width] duration-200',
         isResizing && 'transition-none',
         !isOpen && 'overflow-hidden border-none'
@@ -539,7 +539,9 @@ export function FileExplorer() {
       <header
         className={cn(
           'flex items-center justify-between px-2 py-1',
-          hasWorkspaceScroll && !isWorkspaceScrollAtTop && 'border-b'
+          hasWorkspaceScroll &&
+            !isWorkspaceScrollAtTop &&
+            'border-b border-border/20'
         )}
       >
         <WorkspaceDropdown
@@ -585,7 +587,9 @@ export function FileExplorer() {
       <footer
         className={cn(
           'p-2 flex transition-[border]',
-          hasWorkspaceScroll && !isWorkspaceScrollAtBottom && 'border-t'
+          hasWorkspaceScroll &&
+            !isWorkspaceScrollAtBottom &&
+            'border-t border-border/20'
         )}
       >
         <TooltipProvider delayDuration={500} skipDelayDuration={0}>

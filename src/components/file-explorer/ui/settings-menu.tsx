@@ -14,7 +14,7 @@ export function SettingsMenu() {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:bg-stone-200/80 dark:hover:bg-stone-700/80"
+          className="size-8 text-foreground/70 hover:text-foreground hover:bg-background/60"
           onClick={() => setSettingsDialogOpen(true)}
         >
           <SettingsIcon />

@@ -40,17 +40,17 @@ export function Tabbar() {
   }, [toggleFileExplorer])
 
   if (!workspacePath) {
-    return <div className="h-10" data-tauri-drag-region />
+    return <div className="h-10 rounded-t-md" data-tauri-drag-region />
   }
 
   return (
     <div className="flex h-10" data-tauri-drag-region>
       <div
         className={cn(
-          'h-10 bg-background/50 flex items-center justify-end',
-          !isFileExplorerResizing && 'transition-[width] duration-250',
+          'h-10 flex items-center justify-end',
+          !isFileExplorerResizing && 'transition-[width] duration-220',
           isFileExplorerResizing && 'transition-none',
-          !isFileExplorerOpen && 'bg-background w-36'
+          !isFileExplorerOpen && 'bg-background w-36 rounded-tl-md'
         )}
         style={isFileExplorerOpen ? { width: fileExplorerWidth } : undefined}
         data-tauri-drag-region
@@ -64,12 +64,15 @@ export function Tabbar() {
         </TooltipProvider>
       </div>
       <div
-        className="flex-1 flex justify-center bg-background"
+        className={cn(
+          'flex-1 flex justify-center bg-background rounded-tr-md',
+          isFileExplorerOpen && 'rounded-tl-md'
+        )}
         data-tauri-drag-region
       >
         {tab && <Tab name={tab?.name || 'Untitled'} />}
       </div>
-      <div className="fixed right-0 h-10 flex items-center pr-1.5">
+      <div className="fixed right-0 h-10 flex items-center pr-2.5">
         {tab && <MoreButton />}
       </div>
     </div>
