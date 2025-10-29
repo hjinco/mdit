@@ -202,7 +202,7 @@ export function AIMenuContent({
       ) : menuState !== 'cursorSuggestion' ? (
         <div
           className={cn(
-            'flex rounded-lg border transition-shadow bg-popover',
+            'flex rounded-lg border transition-shadow bg-popover/80 backdrop-blur-xs',
             value ? 'shadow-xs' : 'shadow-xl',
             isSingleLine ? 'flex-row items-center' : 'flex-col'
           )}
@@ -269,7 +269,7 @@ export function AIMenuContent({
       {!isLoading && (
         <CommandList
           className={cn(
-            'rounded-lg border shadow-xl mt-2 z-40 bg-popover',
+            'rounded-lg border shadow-xl mt-2 z-40 bg-popover/80 backdrop-blur-xs',
             !value && 'opacity-0'
           )}
         >

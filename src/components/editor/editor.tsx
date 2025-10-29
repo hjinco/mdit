@@ -31,11 +31,10 @@ export function Editor() {
     return editor.api.markdown.deserialize(tab.content)
   }, [tab, editor])
 
-  if (!tab) return null
-  if (!value) return null
+  if (!tab || !value) return <div className="flex-1 h-full bg-background" />
 
   return (
-    <div className="font-scale-scope flex-1 h-full overflow-hidden">
+    <div className="font-scale-scope flex-1 h-full overflow-hidden bg-background">
       <EditorContent key={tab.id} path={tab.path} value={value} />
     </div>
   )
