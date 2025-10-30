@@ -27,6 +27,7 @@ import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
 import { useTabStore } from '@/store/tab-store'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
+import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
 import { insertBlock, insertInlineElement } from '../utils/transforms'
 import {
   InlineCombobox,
@@ -301,7 +302,12 @@ const groups: Group[] = [
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
-        insertBlock(editor, value)
+        editor.tf.withoutNormalizing(() => {
+          insertBlock(editor, value)
+          if (value === KEYS.codeBlock) {
+            applyPreviousCodeBlockLanguage(editor)
+          }
+        })
       },
     })),
   },

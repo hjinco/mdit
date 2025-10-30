@@ -12,6 +12,7 @@ import {
 import { insertEmptyCodeBlock } from '@platejs/code-block'
 import { toggleList } from '@platejs/list'
 import { KEYS } from 'platejs'
+import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
 
 const autoformatMarks: AutoformatRule[] = [
   {
@@ -127,9 +128,12 @@ const autoformatBlocks: AutoformatRule[] = [
     mode: 'block',
     type: KEYS.codeBlock,
     format: (editor) => {
-      insertEmptyCodeBlock(editor, {
-        defaultType: KEYS.p,
-        insertNodesOptions: { select: true },
+      editor.tf.withoutNormalizing(() => {
+        insertEmptyCodeBlock(editor, {
+          defaultType: KEYS.p,
+          insertNodesOptions: { select: true },
+        })
+        applyPreviousCodeBlockLanguage(editor)
       })
     },
   },
