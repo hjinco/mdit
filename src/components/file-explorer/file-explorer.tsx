@@ -538,7 +538,7 @@ export function FileExplorer() {
     >
       <header
         className={cn(
-          'flex items-center justify-between px-2 py-1',
+          'flex items-center justify-between pl-1 pr-2 py-1',
           hasWorkspaceScroll &&
             !isWorkspaceScrollAtTop &&
             'border-b border-border/20'
@@ -554,7 +554,7 @@ export function FileExplorer() {
       <div
         ref={handleWorkspaceContainerRef}
         className={cn(
-          'flex-1 overflow-y-auto px-2 py-1',
+          'flex-1 overflow-y-auto pl-1 pr-2 py-1',
           isOverWorkspace &&
             'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
         )}
@@ -586,7 +586,7 @@ export function FileExplorer() {
       </div>
       <footer
         className={cn(
-          'p-2 flex transition-[border]',
+          'pl-1 pr-2 py-1 flex transition-[border]',
           hasWorkspaceScroll &&
             !isWorkspaceScrollAtBottom &&
             'border-t border-border/20'

@@ -8,9 +8,7 @@ import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
 import { useFontScale } from './hooks/use-font-scale'
-import { cn } from './lib/utils'
 import { useLicenseStore } from './store/license-store'
-import { useUIStore } from './store/ui-store'
 import { useWorkspaceStore } from './store/workspace-store'
 
 export function App() {
@@ -33,7 +31,7 @@ export function App() {
 
   return (
     <DndProvider>
-      <Background>
+      <div className="h-screen flex flex-col p-1 bg-background/50">
         <Tabbar />
         <div className="flex-1 overflow-hidden flex">
           <FileExplorer />
@@ -42,23 +40,9 @@ export function App() {
             <LicenseTempDialog />
           </div>
         </div>
-      </Background>
+      </div>
       <SettingsDialog />
       <CommandPalette />
     </DndProvider>
-  )
-}
-
-function Background({ children }: { children: React.ReactNode }) {
-  const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
-  return (
-    <div
-      className={cn(
-        'h-screen flex flex-col p-1 bg-background/50',
-        isFileExplorerOpen && 'pl-0'
-      )}
-    >
-      {children}
-    </div>
   )
 }
