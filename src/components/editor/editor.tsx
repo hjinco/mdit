@@ -32,10 +32,10 @@ export function Editor() {
   }, [tab, editor])
 
   if (!tab || !value)
-    return <div className="flex-1 h-full bg-background rounded-b-md" />
+    return <div className="flex-1 h-full bg-background rounded-sm" />
 
   return (
-    <div className="font-scale-scope flex-1 h-full overflow-hidden bg-background rounded-b-md">
+    <div className="font-scale-scope flex-1 h-full overflow-hidden bg-background rounded-sm">
       <EditorContent key={tab.id} path={tab.path} value={value} />
     </div>
   )
