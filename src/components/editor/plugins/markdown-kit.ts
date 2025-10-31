@@ -105,11 +105,15 @@ export const MarkdownKit = [
         },
         img: {
           deserialize: (mdastNode, _, options) => {
-            const tabPath = useTabStore.getState().tab?.path
-            if (!tabPath) throw new Error('Tab path not found')
+            const url = mdastNode.url.startsWith('http')
+              ? mdastNode.url
+              : (() => {
+                  const tabPath = useTabStore.getState().tab?.path
+                  if (!tabPath) throw new Error('Tab path not found')
 
-            const tabDir = dirname(tabPath)
-            const url = resolve(tabDir, mdastNode.url)
+                  const tabDir = dirname(tabPath)
+                  return resolve(tabDir, mdastNode.url)
+                })()
 
             return {
               caption: [{ text: mdastNode.alt } as TText],
@@ -119,14 +123,16 @@ export const MarkdownKit = [
             }
           },
           serialize: ({ caption, url }) => {
-            const tabPath = useTabStore.getState().tab?.path
-            if (!tabPath) throw new Error('Tab path not found')
+            const normalizedRelUrl = url.startsWith('http')
+              ? url
+              : (() => {
+                  const tabPath = useTabStore.getState().tab?.path
+                  if (!tabPath) throw new Error('Tab path not found')
 
-            const tabDir = dirname(tabPath)
-            const relUrl = relative(tabDir, url)
-            const normalizedRelUrl = relUrl.startsWith('.')
-              ? relUrl
-              : `./${relUrl}`
+                  const tabDir = dirname(tabPath)
+                  const relUrl = relative(tabDir, url)
+                  return relUrl.startsWith('.') ? relUrl : `./${relUrl}`
+                })()
 
             const image: MdImage = {
               alt: caption
