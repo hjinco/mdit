@@ -6,6 +6,7 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
+import { Kbd, KbdGroup } from '@/ui/kbd'
 import {
   Tooltip,
   TooltipContent,
@@ -111,7 +112,15 @@ export function Tabbar() {
                     <ChevronLeft />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Back</TooltipContent>
+                <TooltipContent className="pr-1">
+                  <div className="flex items-center gap-1">
+                    Back
+                    <KbdGroup>
+                      <Kbd>Cmd</Kbd>
+                      <Kbd>[</Kbd>
+                    </KbdGroup>
+                  </div>
+                </TooltipContent>
               </Tooltip>
               <Tooltip delayDuration={500}>
                 <TooltipTrigger asChild>
@@ -127,7 +136,15 @@ export function Tabbar() {
                     <ChevronRight />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Forward</TooltipContent>
+                <TooltipContent className="pr-1">
+                  <div className="flex items-center gap-1">
+                    Forward
+                    <KbdGroup>
+                      <Kbd>Cmd</Kbd>
+                      <Kbd>]</Kbd>
+                    </KbdGroup>
+                  </div>
+                </TooltipContent>
               </Tooltip>
             </div>
             <Tab name={tab?.name || 'Untitled'} />
