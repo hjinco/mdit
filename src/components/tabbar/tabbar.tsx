@@ -1,19 +1,11 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
-import { Button } from '@/ui/button'
-import { Kbd, KbdGroup } from '@/ui/kbd'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/ui/tooltip'
-import { useTabNavigationShortcuts } from './hooks/use-tab-navigation-shortcuts'
+import { TooltipProvider } from '@/ui/tooltip'
+import { HistoryNavigation } from './ui/history-navigation'
 import { MoreButton } from './ui/more-button'
 import { NewNoteButton } from './ui/new-note-button'
 import { Tab } from './ui/tab'
@@ -34,17 +26,7 @@ export function Tabbar() {
     }))
   )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
-  const { tab, canGoBack, canGoForward, goBack, goForward } = useTabStore(
-    useShallow((s) => ({
-      tab: s.tab,
-      canGoBack: s.historyIndex > 0,
-      canGoForward: s.historyIndex < s.history.length - 1,
-      goBack: s.goBack,
-      goForward: s.goForward,
-    }))
-  )
-
-  useTabNavigationShortcuts(canGoBack, canGoForward, goBack, goForward)
+  const tab = useTabStore((s) => s.tab)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -98,54 +80,7 @@ export function Tabbar() {
                 isFileExplorerOpen ? 'left-1.5' : 'left-36.5 border-l pl-1.5'
               )}
             >
-              <Tooltip delayDuration={500}>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label="Go back"
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent disabled:opacity-40 disabled:hover:text-muted-foreground"
-                    disabled={!canGoBack}
-                    data-tauri-drag-region="no-drag"
-                    onClick={goBack}
-                  >
-                    <ChevronLeft />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="pr-1">
-                  <div className="flex items-center gap-1">
-                    Back
-                    <KbdGroup>
-                      <Kbd>Cmd</Kbd>
-                      <Kbd>[</Kbd>
-                    </KbdGroup>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip delayDuration={500}>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label="Go forward"
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent disabled:opacity-40 disabled:hover:text-muted-foreground"
-                    disabled={!canGoForward}
-                    data-tauri-drag-region="no-drag"
-                    onClick={goForward}
-                  >
-                    <ChevronRight />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="pr-1">
-                  <div className="flex items-center gap-1">
-                    Forward
-                    <KbdGroup>
-                      <Kbd>Cmd</Kbd>
-                      <Kbd>]</Kbd>
-                    </KbdGroup>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+              <HistoryNavigation />
             </div>
             <Tab name={tab?.name || 'Untitled'} />
           </div>
