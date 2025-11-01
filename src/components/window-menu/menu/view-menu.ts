@@ -5,22 +5,22 @@ export async function createViewMenu({
   zoomIn,
   zoomOut,
   resetZoom,
-  openCommandPalette,
+  openCommandMenu,
 }: {
   toggleFileExplorer: () => void
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
-  openCommandPalette: () => void
+  openCommandMenu: () => void
 }) {
   return await Submenu.new({
     text: 'View',
     items: [
       await MenuItem.new({
-        id: 'command-palette',
-        text: 'Command Palette…',
+        id: 'command-menu',
+        text: 'Command Menu…',
         accelerator: 'CmdOrCtrl+P',
-        action: () => openCommandPalette(),
+        action: () => openCommandMenu(),
       }),
       await PredefinedMenuItem.new({
         text: 'Separator',

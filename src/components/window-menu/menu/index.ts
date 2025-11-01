@@ -13,7 +13,7 @@ export async function installWindowMenu({
   zoomIn,
   zoomOut,
   resetZoom,
-  openCommandPalette,
+  openCommandMenu,
 }: {
   createNote: () => void | Promise<void>
   openWorkspace: () => void | Promise<void>
@@ -21,7 +21,7 @@ export async function installWindowMenu({
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
-  openCommandPalette: () => void
+  openCommandMenu: () => void
 }) {
   const menu = await Menu.new({
     items: [
@@ -36,7 +36,7 @@ export async function installWindowMenu({
         zoomIn,
         zoomOut,
         resetZoom,
-        openCommandPalette,
+        openCommandMenu,
       }),
       await createWindowMenu(),
       await createHelpMenu(),
