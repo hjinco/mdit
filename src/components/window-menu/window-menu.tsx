@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useFontScaleStore } from '@/store/font-scale-store'
+import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { installWindowMenu } from './menu'
@@ -26,6 +27,12 @@ export function WindowMenu() {
       resetZoom: s.resetFontScale,
     }))
   )
+  const { goBack, goForward } = useTabStore(
+    useShallow((s) => ({
+      goBack: s.goBack,
+      goForward: s.goForward,
+    }))
+  )
 
   useEffect(() => {
     installWindowMenu({
@@ -36,6 +43,8 @@ export function WindowMenu() {
       zoomOut,
       resetZoom,
       openCommandMenu,
+      goBack,
+      goForward,
     })
   }, [
     createAndOpenNote,
@@ -45,6 +54,8 @@ export function WindowMenu() {
     zoomOut,
     resetZoom,
     openCommandMenu,
+    goBack,
+    goForward,
   ])
 
   return null

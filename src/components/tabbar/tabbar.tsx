@@ -5,6 +5,7 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
+import { HistoryNavigation } from './ui/history-navigation'
 import { MoreButton } from './ui/more-button'
 import { NewNoteButton } from './ui/new-note-button'
 import { Tab } from './ui/tab'
@@ -47,7 +48,7 @@ export function Tabbar() {
     <div className="fixed w-full z-[9999] flex h-10" data-tauri-drag-region>
       <div
         className={cn(
-          'fixed h-10 flex items-center justify-end',
+          'fixed h-10 flex items-center justify-end z-50',
           !isFileExplorerResizing && 'transition-[width] duration-220',
           isFileExplorerResizing && 'transition-none',
           !isFileExplorerOpen && 'w-36'
@@ -67,12 +68,27 @@ export function Tabbar() {
         className="h-10 transition-[width]"
         style={{ width: isFileExplorerOpen ? fileExplorerWidth : 0 }}
       />
-      <div className="flex-1 flex justify-center" data-tauri-drag-region>
-        {tab && <Tab name={tab?.name || 'Untitled'} />}
-      </div>
-      <div className="fixed right-0 h-10 flex items-center pr-2.5">
-        {tab && <MoreButton />}
-      </div>
+      {tab && (
+        <>
+          <div
+            className="flex-1 flex items-center justify-center relative"
+            data-tauri-drag-region
+          >
+            <div
+              className={cn(
+                'absolute flex items-center gap-1',
+                isFileExplorerOpen ? 'left-1.5' : 'left-36.5 border-l pl-1.5'
+              )}
+            >
+              <HistoryNavigation />
+            </div>
+            <Tab name={tab?.name || 'Untitled'} />
+          </div>
+          <div className="fixed right-0 h-10 flex items-center pr-2.5">
+            <MoreButton />
+          </div>
+        </>
+      )}
     </div>
   )
 }
