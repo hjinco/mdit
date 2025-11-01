@@ -1,18 +1,18 @@
 import { useCallback, useEffect } from 'react'
 
-// Registers ⌘/Ctrl + P to toggle the command palette while keeping the latest open state in sync.
-export const useCommandPaletteHotkey = (
+// Registers ⌘/Ctrl + K to toggle the command menu.
+export const useCommandMenuHotkey = (
   isOpen: boolean,
-  openPalette: () => void,
-  closePalette: () => void
+  openMenu: () => void,
+  closeMenu: () => void
 ) => {
-  const togglePalette = useCallback(() => {
+  const toggleMenu = useCallback(() => {
     if (isOpen) {
-      closePalette()
+      closeMenu()
     } else {
-      openPalette()
+      openMenu()
     }
-  }, [closePalette, isOpen, openPalette])
+  }, [closeMenu, isOpen, openMenu])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -21,15 +21,15 @@ export const useCommandPaletteHotkey = (
       }
 
       const usesShortcutKey = event.metaKey || event.ctrlKey
-      if (!usesShortcutKey || event.key.toLowerCase() !== 'p') {
+      if (!usesShortcutKey || event.key.toLowerCase() !== 'k') {
         return
       }
 
       event.preventDefault()
-      togglePalette()
+      toggleMenu()
     }
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [togglePalette])
+  }, [toggleMenu])
 }

@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useCommandPaletteHotkey } from '@/components/command-palette/hooks/use-command-palette-hotkey'
-import { useNoteContentSearch } from '@/components/command-palette/hooks/use-note-content-search'
-import {
-  stripMarkdownExtension,
-  toRelativePath,
-  useNoteNameSearch,
-} from '@/components/command-palette/hooks/use-note-name-search'
-import { highlightQuery } from '@/components/command-palette/utils/highlight-query'
-import { getFileNameFromPath } from '@/components/command-palette/utils/path'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
@@ -21,23 +12,32 @@ import {
   CommandItem,
   CommandList,
 } from '@/ui/command'
+import { useCommandMenuHotkey } from './hooks/use-command-menu-hotkey'
+import { useNoteContentSearch } from './hooks/use-note-content-search'
+import {
+  stripMarkdownExtension,
+  toRelativePath,
+  useNoteNameSearch,
+} from './hooks/use-note-name-search'
+import { highlightQuery } from './utils/highlight-query'
+import { getFileNameFromPath } from './utils/path'
 
-export function CommandPalette() {
+export function CommandMenu() {
   const entries = useWorkspaceStore((state) => state.entries)
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
   const openNote = useTabStore((state) => state.openNote)
 
   const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    openCommandPalette,
-    closeCommandPalette,
+    isCommandMenuOpen,
+    setCommandMenuOpen,
+    openCommandMenu,
+    closeCommandMenu,
   } = useUIStore(
     useShallow((state) => ({
-      isCommandPaletteOpen: state.isCommandPaletteOpen,
-      setCommandPaletteOpen: state.setCommandPaletteOpen,
-      openCommandPalette: state.openCommandPalette,
-      closeCommandPalette: state.closeCommandPalette,
+      isCommandMenuOpen: state.isCommandMenuOpen,
+      setCommandMenuOpen: state.setCommandMenuOpen,
+      openCommandMenu: state.openCommandMenu,
+      closeCommandMenu: state.closeCommandMenu,
     }))
   )
 
@@ -60,31 +60,27 @@ export function CommandPalette() {
   const hasContentMatches = contentMatchesByNote.length > 0
   const hasAnyMatches = hasNoteMatches || hasContentMatches
 
-  useCommandPaletteHotkey(
-    isCommandPaletteOpen,
-    openCommandPalette,
-    closeCommandPalette
-  )
+  useCommandMenuHotkey(isCommandMenuOpen, openCommandMenu, closeCommandMenu)
 
   // Clear the search so the next open starts fresh.
   useEffect(() => {
-    if (!isCommandPaletteOpen) {
+    if (!isCommandMenuOpen) {
       setQuery('')
     }
-  }, [isCommandPaletteOpen])
+  }, [isCommandMenuOpen])
 
   const handleSelectNote = useCallback(
     (notePath: string) => {
-      closeCommandPalette()
+      closeCommandMenu()
       openNote(notePath)
     },
-    [closeCommandPalette, openNote]
+    [closeCommandMenu, openNote]
   )
 
   return (
     <CommandDialog
-      open={isCommandPaletteOpen}
-      onOpenChange={setCommandPaletteOpen}
+      open={isCommandMenuOpen}
+      onOpenChange={setCommandMenuOpen}
       className="bg-popover/90 backdrop-blur-xs"
       commandProps={{
         className: 'bg-transparent',

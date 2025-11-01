@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CommandPalette } from './components/command-palette/command-palette'
+import { CommandMenu } from './components/command-menu/command-menu'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
 import { LicenseTempDialog } from './components/license/license-temp-dialog'
@@ -42,7 +42,7 @@ export function App() {
         </div>
       </div>
       <SettingsDialog />
-      <CommandPalette />
+      <CommandMenu />
     </DndProvider>
   )
 }
