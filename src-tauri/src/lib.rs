@@ -2,21 +2,22 @@ use trash;
 
 #[tauri::command]
 fn move_to_trash(path: String) {
-  trash::delete(path).unwrap();
+    trash::delete(path).unwrap();
 }
 
 #[tauri::command]
 fn move_many_to_trash(paths: Vec<String>) {
-  if paths.is_empty() {
-    return;
-  }
+    if paths.is_empty() {
+        return;
+    }
 
-  trash::delete_all(paths).unwrap();
+    trash::delete_all(paths).unwrap();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_keyring::init())

@@ -23,6 +23,10 @@
         }
       ]
     },
-    "keyring:default"
+    "keyring:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [{ "cmd": "/usr/bin/grep", "name": "grep", "args": true }]
+    }
   ]
 }
