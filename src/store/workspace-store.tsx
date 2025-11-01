@@ -323,7 +323,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteEntries: async (paths: string[]) => {
     try {
-      const { tab, isSaved, closeTab } = useTabStore.getState()
+      const { tab, isSaved, closeTab, removePathFromHistory } =
+        useTabStore.getState()
 
       if (tab?.path && paths.includes(tab.path)) {
         closeTab(tab.path)
@@ -337,6 +338,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         await invoke('move_to_trash', { path: paths[0] })
       } else {
         await invoke('move_many_to_trash', { paths })
+      }
+
+      // Remove deleted paths from history
+      for (const path of paths) {
+        removePathFromHistory(path)
       }
 
       await get().refreshWorkspaceEntries()
@@ -474,8 +480,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         }))
       }
 
-      const { renameTab } = useTabStore.getState()
+      const { renameTab, updateHistoryPath } = useTabStore.getState()
       renameTab(entry.path, nextPath)
+      updateHistoryPath(entry.path, nextPath)
 
       await get().refreshWorkspaceEntries()
 
@@ -544,8 +551,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       await rename(sourcePath, newPath)
 
       // Update tab path if the moved file is currently open
-      const { renameTab } = useTabStore.getState()
+      const { renameTab, updateHistoryPath } = useTabStore.getState()
       renameTab(sourcePath, newPath)
+      updateHistoryPath(sourcePath, newPath)
 
       await get().refreshWorkspaceEntries()
       return true
