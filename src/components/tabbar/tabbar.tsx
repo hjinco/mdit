@@ -49,7 +49,7 @@ export function Tabbar() {
       <div
         className={cn(
           'fixed h-10 flex items-center justify-end z-50',
-          !isFileExplorerResizing && 'transition-[width] duration-220',
+          !isFileExplorerResizing && 'transition-[width] ease-out duration-150',
           isFileExplorerResizing && 'transition-none',
           !isFileExplorerOpen && 'w-36'
         )}
@@ -65,7 +65,7 @@ export function Tabbar() {
         </TooltipProvider>
       </div>
       <div
-        className="h-10 transition-[width]"
+        className="h-10 transition-[width] ease-out duration-150"
         style={{ width: isFileExplorerOpen ? fileExplorerWidth : 0 }}
       />
       {tab && (
