@@ -81,7 +81,7 @@ export function CommandMenu() {
     <CommandDialog
       open={isCommandMenuOpen}
       onOpenChange={setCommandMenuOpen}
-      className="bg-popover/90 backdrop-blur-xs"
+      className="bg-popover/90 backdrop-blur-xs top-[20%] translate-y-0"
       commandProps={{
         className: 'bg-transparent',
         shouldFilter: false,
