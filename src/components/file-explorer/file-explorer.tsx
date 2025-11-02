@@ -287,7 +287,7 @@ export function FileExplorer() {
       ref={fileExplorerRef}
       className={cn(
         'font-scale-scope relative shrink-0 flex flex-col mt-10',
-        !isResizing && 'transition-[width] duration-200',
+        !isResizing && 'transition-[width] ease-out duration-150',
         isResizing && 'transition-none',
         !isOpen && 'overflow-hidden border-none'
       )}
