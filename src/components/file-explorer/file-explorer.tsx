@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
@@ -13,6 +13,7 @@ import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
 import { useExpandActiveTab } from './hooks/use-expand-active-tab'
+import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
@@ -62,13 +63,6 @@ export function FileExplorer() {
       resetSelection: state.resetSelection,
     }))
   )
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
-  const resizeObserverRef = useRef<ResizeObserver | null>(null)
-  const [hasWorkspaceScroll, setHasWorkspaceScroll] = useState(false)
-  const [isWorkspaceScrollAtBottom, setIsWorkspaceScrollAtBottom] =
-    useState(true)
-  const [isWorkspaceScrollAtTop, setIsWorkspaceScrollAtTop] = useState(true)
-
   const visibleEntryPaths = useMemo(() => {
     const paths: string[] = []
 
@@ -110,77 +104,17 @@ export function FileExplorer() {
       disabled: !workspacePath,
     })
 
-  const updateWorkspaceScrollState = useCallback(() => {
-    const element = scrollContainerRef.current
-
-    if (!element) {
-      setHasWorkspaceScroll(false)
-      setIsWorkspaceScrollAtBottom(true)
-      setIsWorkspaceScrollAtTop(true)
-      return
-    }
-
-    const hasOverflow = element.scrollHeight - element.clientHeight > 1
-    setHasWorkspaceScroll(hasOverflow)
-
-    if (!hasOverflow) {
-      setIsWorkspaceScrollAtBottom(true)
-      setIsWorkspaceScrollAtTop(true)
-      return
-    }
-
-    const isAtBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
-    const isAtTop = element.scrollTop <= 1
-    setIsWorkspaceScrollAtBottom(isAtBottom)
-    setIsWorkspaceScrollAtTop(isAtTop)
-  }, [])
-
-  const handleWorkspaceScroll = useCallback(() => {
-    const element = scrollContainerRef.current
-    if (!element) return
-
-    const isAtBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
-    const isAtTop = element.scrollTop <= 1
-
-    setIsWorkspaceScrollAtBottom((prev) =>
-      prev === isAtBottom ? prev : isAtBottom
-    )
-    setIsWorkspaceScrollAtTop((prev) => (prev === isAtTop ? prev : isAtTop))
-  }, [])
-
-  const handleWorkspaceContainerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      resizeObserverRef.current?.disconnect()
-      resizeObserverRef.current = null
-
-      scrollContainerRef.current = node
-      setWorkspaceDropRef(node)
-
-      if (!node) {
-        setHasWorkspaceScroll(false)
-        setIsWorkspaceScrollAtBottom(true)
-        setIsWorkspaceScrollAtTop(true)
-        return
-      }
-
-      if (typeof ResizeObserver !== 'undefined') {
-        resizeObserverRef.current = new ResizeObserver(() => {
-          updateWorkspaceScrollState()
-        })
-        resizeObserverRef.current.observe(node)
-      }
-
-      updateWorkspaceScrollState()
-    },
-    [setWorkspaceDropRef, updateWorkspaceScrollState]
-  )
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: true
-  useEffect(() => {
-    updateWorkspaceScrollState()
-  }, [entries, expandedDirectories, updateWorkspaceScrollState])
+  const {
+    hasWorkspaceScroll,
+    isWorkspaceScrollAtBottom,
+    isWorkspaceScrollAtTop,
+    handleWorkspaceScroll,
+    handleWorkspaceContainerRef,
+  } = useFileExplorerScroll({
+    entries,
+    expandedDirectories,
+    setWorkspaceDropRef,
+  })
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
