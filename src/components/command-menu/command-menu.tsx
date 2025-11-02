@@ -58,7 +58,6 @@ export function CommandMenu() {
   // Local filtering keeps the command palette fast even with thousands of files.
   const hasNoteMatches = filteredNoteResults.length > 0
   const hasContentMatches = contentMatchesByNote.length > 0
-  const hasAnyMatches = hasNoteMatches || hasContentMatches
 
   useCommandMenuHotkey(isCommandMenuOpen, openCommandMenu, closeCommandMenu)
 
@@ -95,7 +94,7 @@ export function CommandMenu() {
         autoFocus
       />
       <CommandList>
-        {!hasAnyMatches && <CommandEmpty>No results found</CommandEmpty>}
+        <CommandEmpty>No results found</CommandEmpty>
         {hasNoteMatches && (
           <CommandGroup heading="Notes">
             {filteredNoteResults.map((note) => (

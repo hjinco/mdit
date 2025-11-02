@@ -1,6 +1,7 @@
 import { Command as CommandPrimitive } from 'cmdk'
 import { SearchIcon } from 'lucide-react'
-
+import { motion } from 'motion/react'
+import useMeasure from 'react-use-measure'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -95,15 +96,24 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const [ref, bounds] = useMeasure()
   return (
-    <CommandPrimitive.List
-      data-slot="command-list"
-      className={cn(
-        'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
-        className
-      )}
-      {...props}
-    />
+    <motion.div
+      style={{ overflow: 'hidden' }}
+      initial={false} // 최초 마운트 때 점프 방지
+      animate={{ height: bounds.height }} // 실제 콘텐츠 높이로만 애니메이션
+      transition={{ ease: 'easeOut', duration: 0.15 }}
+    >
+      <CommandPrimitive.List
+        ref={ref}
+        data-slot="command-list"
+        className={cn(
+          'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
+          className
+        )}
+        {...props}
+      />
+    </motion.div>
   )
 }
 
