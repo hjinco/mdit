@@ -1,6 +1,7 @@
 import { Command as CommandPrimitive } from 'cmdk'
 import { SearchIcon } from 'lucide-react'
-
+import { motion } from 'motion/react'
+import useMeasure from 'react-use-measure'
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -57,7 +58,7 @@ function CommandDialog({
       >
         <Command
           className={cn(
-            '[&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5',
+            '[&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5',
             commandClassName
           )}
           {...restCommandProps}
@@ -95,15 +96,24 @@ function CommandList({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const [ref, bounds] = useMeasure()
   return (
-    <CommandPrimitive.List
-      data-slot="command-list"
-      className={cn(
-        'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
-        className
-      )}
-      {...props}
-    />
+    <motion.div
+      style={{ overflow: 'hidden' }}
+      initial={false} // 최초 마운트 때 점프 방지
+      animate={{ height: bounds.height }} // 실제 콘텐츠 높이로만 애니메이션
+      transition={{ ease: 'easeOut', duration: 0.15 }}
+    >
+      <CommandPrimitive.List
+        ref={ref}
+        data-slot="command-list"
+        className={cn(
+          'max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
+          className
+        )}
+        {...props}
+      />
+    </motion.div>
   )
 }
 
@@ -113,7 +123,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-6 text-center text-sm"
+      className="py-6 text-center text-sm text-muted-foreground font-normal"
       {...props}
     />
   )
