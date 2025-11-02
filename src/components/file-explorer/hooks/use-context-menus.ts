@@ -1,5 +1,10 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
-import { type Dispatch, type SetStateAction, useCallback } from 'react'
+import {
+  type Dispatch,
+  type MouseEvent,
+  type SetStateAction,
+  useCallback,
+} from 'react'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
@@ -14,6 +19,11 @@ type UseFileExplorerMenusProps = {
   openNote: (path: string) => void
   setRenamingEntryPath: Dispatch<SetStateAction<string | null>>
   workspacePath: string | null
+  selectedEntryPaths: Set<string>
+  setSelectedEntryPaths: (paths: Set<string>) => void
+  setSelectionAnchorPath: (path: string | null) => void
+  resetSelection: () => void
+  entries: WorkspaceEntry[]
 }
 
 export const useFileExplorerMenus = ({
@@ -27,6 +37,11 @@ export const useFileExplorerMenus = ({
   openNote,
   setRenamingEntryPath,
   workspacePath,
+  selectedEntryPaths,
+  setSelectedEntryPaths,
+  setSelectionAnchorPath,
+  resetSelection,
+  entries,
 }: UseFileExplorerMenusProps) => {
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
@@ -179,8 +194,63 @@ export const useFileExplorerMenus = ({
     ]
   )
 
+  const handleEntryContextMenu = useCallback(
+    async (entry: WorkspaceEntry) => {
+      const isSelected = selectedEntryPaths.has(entry.path)
+      let selectionTargets: string[]
+
+      if (isSelected) {
+        selectionTargets = Array.from(selectedEntryPaths)
+      } else {
+        const nextSelection = new Set(selectedEntryPaths)
+        const hadSelection = nextSelection.size > 0
+        nextSelection.add(entry.path)
+        selectionTargets = Array.from(nextSelection)
+        setSelectedEntryPaths(nextSelection)
+        if (!hadSelection) {
+          setSelectionAnchorPath(entry.path)
+        }
+      }
+
+      if (entry.isDirectory) {
+        await showDirectoryMenu(entry, selectionTargets)
+      } else {
+        await showEntryMenu(entry, selectionTargets)
+      }
+    },
+    [
+      selectedEntryPaths,
+      setSelectedEntryPaths,
+      setSelectionAnchorPath,
+      showDirectoryMenu,
+      showEntryMenu,
+    ]
+  )
+
+  const handleRootContextMenu = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      if (!workspacePath) return
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      resetSelection()
+
+      showDirectoryMenu(
+        {
+          path: workspacePath,
+          name: workspacePath.split('/').pop() ?? 'Workspace',
+          isDirectory: true,
+          children: entries,
+        },
+        []
+      )
+    },
+    [entries, resetSelection, showDirectoryMenu, workspacePath]
+  )
+
   return {
-    showEntryMenu,
-    showDirectoryMenu,
+    handleEntryContextMenu,
+    handleRootContextMenu,
   }
 }

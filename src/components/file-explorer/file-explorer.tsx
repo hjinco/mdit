@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
@@ -164,21 +164,27 @@ export function FileExplorer() {
     [deleteEntries, resetSelection]
   )
 
-  const { showEntryMenu, showDirectoryMenu } = useFileExplorerMenus({
-    renameConfig,
-    renameNoteWithAI,
-    setAiRenamingEntryPaths,
-    beginRenaming,
-    handleDeleteEntries,
-    createNote,
-    createFolder,
-    openNote,
-    setRenamingEntryPath,
-    workspacePath,
-  })
+  const { handleEntryContextMenu, handleRootContextMenu } =
+    useFileExplorerMenus({
+      renameConfig,
+      renameNoteWithAI,
+      setAiRenamingEntryPaths,
+      beginRenaming,
+      handleDeleteEntries,
+      createNote,
+      createFolder,
+      openNote,
+      setRenamingEntryPath,
+      workspacePath,
+      selectedEntryPaths,
+      setSelectedEntryPaths,
+      setSelectionAnchorPath,
+      resetSelection,
+      entries,
+    })
 
   const handleEntryPrimaryAction = useCallback(
-    (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
+    (entry: WorkspaceEntry, event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
       const path = entry.path
       const isMulti = event.metaKey || event.ctrlKey
@@ -274,61 +280,6 @@ export function FileExplorer() {
       toggleDirectory,
       visibleEntryPaths,
     ]
-  )
-
-  const handleEntryContextMenu = useCallback(
-    async (entry: WorkspaceEntry) => {
-      const isSelected = selectedEntryPaths.has(entry.path)
-      let selectionTargets: string[]
-
-      if (isSelected) {
-        selectionTargets = Array.from(selectedEntryPaths)
-      } else {
-        const nextSelection = new Set(selectedEntryPaths)
-        const hadSelection = nextSelection.size > 0
-        nextSelection.add(entry.path)
-        selectionTargets = Array.from(nextSelection)
-        setSelectedEntryPaths(nextSelection)
-        if (!hadSelection) {
-          setSelectionAnchorPath(entry.path)
-        }
-      }
-
-      if (entry.isDirectory) {
-        await showDirectoryMenu(entry, selectionTargets)
-      } else {
-        await showEntryMenu(entry, selectionTargets)
-      }
-    },
-    [
-      selectedEntryPaths,
-      setSelectedEntryPaths,
-      setSelectionAnchorPath,
-      showDirectoryMenu,
-      showEntryMenu,
-    ]
-  )
-
-  const handleRootContextMenu = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      if (!workspacePath) return
-
-      event.preventDefault()
-      event.stopPropagation()
-
-      resetSelection()
-
-      showDirectoryMenu(
-        {
-          path: workspacePath,
-          name: workspacePath.split('/').pop() ?? 'Workspace',
-          isDirectory: true,
-          children: entries,
-        },
-        []
-      )
-    },
-    [entries, resetSelection, showDirectoryMenu, workspacePath]
   )
 
   return (
