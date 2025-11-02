@@ -19,7 +19,7 @@ export async function createViewMenu({
       await MenuItem.new({
         id: 'command-menu',
         text: 'Command Menu…',
-        accelerator: 'CmdOrCtrl+P',
+        accelerator: 'CmdOrCtrl+K',
         action: () => openCommandMenu(),
       }),
       await PredefinedMenuItem.new({
