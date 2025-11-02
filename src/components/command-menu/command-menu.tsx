@@ -108,7 +108,7 @@ export function CommandMenu() {
               >
                 <div className="flex flex-col">
                   <span>{note.label}</span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="text-muted-foreground/80 text-xs">
                     {note.relativePath}
                   </span>
                 </div>
@@ -144,7 +144,7 @@ export function CommandMenu() {
                 >
                   <div className="flex flex-col gap-1">
                     <span>{label}</span>
-                    <div className="text-muted-foreground text-xs flex flex-col gap-1">
+                    <div className="text-muted-foreground/80 text-[11px] flex flex-col gap-1">
                       {group.matches.map((match) => (
                         <span key={`${group.path}:${match.lineNumber}`}>
                           {highlightQuery(
