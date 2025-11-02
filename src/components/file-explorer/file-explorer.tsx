@@ -1,6 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
-import { Menu, MenuItem } from '@tauri-apps/api/menu'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
@@ -10,9 +9,11 @@ import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-s
 import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
+import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
 import { useExpandActiveTab } from './hooks/use-expand-active-tab'
+import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
@@ -62,13 +63,6 @@ export function FileExplorer() {
       resetSelection: state.resetSelection,
     }))
   )
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
-  const resizeObserverRef = useRef<ResizeObserver | null>(null)
-  const [hasWorkspaceScroll, setHasWorkspaceScroll] = useState(false)
-  const [isWorkspaceScrollAtBottom, setIsWorkspaceScrollAtBottom] =
-    useState(true)
-  const [isWorkspaceScrollAtTop, setIsWorkspaceScrollAtTop] = useState(true)
-
   const visibleEntryPaths = useMemo(() => {
     const paths: string[] = []
 
@@ -110,77 +104,17 @@ export function FileExplorer() {
       disabled: !workspacePath,
     })
 
-  const updateWorkspaceScrollState = useCallback(() => {
-    const element = scrollContainerRef.current
-
-    if (!element) {
-      setHasWorkspaceScroll(false)
-      setIsWorkspaceScrollAtBottom(true)
-      setIsWorkspaceScrollAtTop(true)
-      return
-    }
-
-    const hasOverflow = element.scrollHeight - element.clientHeight > 1
-    setHasWorkspaceScroll(hasOverflow)
-
-    if (!hasOverflow) {
-      setIsWorkspaceScrollAtBottom(true)
-      setIsWorkspaceScrollAtTop(true)
-      return
-    }
-
-    const isAtBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
-    const isAtTop = element.scrollTop <= 1
-    setIsWorkspaceScrollAtBottom(isAtBottom)
-    setIsWorkspaceScrollAtTop(isAtTop)
-  }, [])
-
-  const handleWorkspaceScroll = useCallback(() => {
-    const element = scrollContainerRef.current
-    if (!element) return
-
-    const isAtBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight <= 1
-    const isAtTop = element.scrollTop <= 1
-
-    setIsWorkspaceScrollAtBottom((prev) =>
-      prev === isAtBottom ? prev : isAtBottom
-    )
-    setIsWorkspaceScrollAtTop((prev) => (prev === isAtTop ? prev : isAtTop))
-  }, [])
-
-  const handleWorkspaceContainerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      resizeObserverRef.current?.disconnect()
-      resizeObserverRef.current = null
-
-      scrollContainerRef.current = node
-      setWorkspaceDropRef(node)
-
-      if (!node) {
-        setHasWorkspaceScroll(false)
-        setIsWorkspaceScrollAtBottom(true)
-        setIsWorkspaceScrollAtTop(true)
-        return
-      }
-
-      if (typeof ResizeObserver !== 'undefined') {
-        resizeObserverRef.current = new ResizeObserver(() => {
-          updateWorkspaceScrollState()
-        })
-        resizeObserverRef.current.observe(node)
-      }
-
-      updateWorkspaceScrollState()
-    },
-    [setWorkspaceDropRef, updateWorkspaceScrollState]
-  )
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: true
-  useEffect(() => {
-    updateWorkspaceScrollState()
-  }, [entries, expandedDirectories, updateWorkspaceScrollState])
+  const {
+    hasWorkspaceScroll,
+    isWorkspaceScrollAtBottom,
+    isWorkspaceScrollAtTop,
+    handleWorkspaceScroll,
+    handleWorkspaceContainerRef,
+  } = useFileExplorerScroll({
+    entries,
+    expandedDirectories,
+    setWorkspaceDropRef,
+  })
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -230,152 +164,27 @@ export function FileExplorer() {
     [deleteEntries, resetSelection]
   )
 
-  const showEntryMenu = useCallback(
-    async (entry: WorkspaceEntry, selectionPaths: string[]) => {
-      try {
-        const itemPromises: Promise<MenuItem>[] = []
-
-        if (entry.name.toLowerCase().endsWith('.md')) {
-          itemPromises.push(
-            MenuItem.new({
-              id: `rename-ai-${entry.path}`,
-              text: 'Rename with AI',
-              enabled: Boolean(renameConfig),
-              action: async () => {
-                setAiRenamingEntryPaths((paths) => {
-                  const next = new Set(paths)
-                  next.add(entry.path)
-                  return next
-                })
-                try {
-                  await renameNoteWithAI(entry)
-                } catch (error) {
-                  console.error('Failed to rename entry with AI:', error)
-                } finally {
-                  setAiRenamingEntryPaths((paths) => {
-                    if (!paths.has(entry.path)) {
-                      return paths
-                    }
-                    const next = new Set(paths)
-                    next.delete(entry.path)
-                    return next
-                  })
-                }
-              },
-            })
-          )
-        }
-
-        itemPromises.push(
-          MenuItem.new({
-            id: `rename-${entry.path}`,
-            text: 'Rename',
-            action: async () => {
-              beginRenaming(entry)
-            },
-          })
-        )
-
-        itemPromises.push(
-          MenuItem.new({
-            id: `delete-${entry.path}`,
-            text: 'Delete',
-            action: async () => {
-              const targets =
-                selectionPaths.length > 0 ? selectionPaths : [entry.path]
-              await handleDeleteEntries(targets)
-            },
-          })
-        )
-
-        const items = await Promise.all(itemPromises)
-
-        const menu = await Menu.new({
-          items,
-        })
-
-        await menu.popup()
-      } catch (error) {
-        console.error('Failed to open context menu:', error)
-      }
-    },
-    [beginRenaming, handleDeleteEntries, renameNoteWithAI, renameConfig]
-  )
-
-  const showDirectoryMenu = useCallback(
-    async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
-      const directoryPath = directoryEntry.path
-      try {
-        const items = [
-          await MenuItem.new({
-            id: `new-note-${directoryPath}`,
-            text: 'New Note',
-            action: async () => {
-              const filePath = await createNote(directoryPath)
-              if (filePath) {
-                openNote(filePath)
-              }
-            },
-          }),
-          await MenuItem.new({
-            id: `new-folder-${directoryPath}`,
-            text: 'New Folder',
-            action: async () => {
-              const newFolderPath = await createFolder(directoryPath)
-              if (newFolderPath) {
-                setRenamingEntryPath(newFolderPath)
-              }
-            },
-          }),
-        ]
-
-        if (!workspacePath || directoryPath !== workspacePath) {
-          items.push(
-            await MenuItem.new({
-              id: `rename-directory-${directoryPath}`,
-              text: 'Rename',
-              action: async () => {
-                beginRenaming(directoryEntry)
-              },
-            })
-          )
-        }
-
-        if (workspacePath && directoryPath !== workspacePath) {
-          items.push(
-            await MenuItem.new({
-              id: `delete-directory-${directoryPath}`,
-              text: 'Delete',
-              action: async () => {
-                const targets =
-                  selectionPaths.length > 0 ? selectionPaths : [directoryPath]
-                await handleDeleteEntries(targets)
-              },
-            })
-          )
-        }
-
-        const menu = await Menu.new({
-          items,
-        })
-
-        await menu.popup()
-      } catch (error) {
-        console.error('Failed to open context menu:', error)
-      }
-    },
-    [
+  const { handleEntryContextMenu, handleRootContextMenu } =
+    useFileExplorerMenus({
+      renameConfig,
+      renameNoteWithAI,
+      setAiRenamingEntryPaths,
+      beginRenaming,
+      handleDeleteEntries,
       createNote,
       createFolder,
       openNote,
-      beginRenaming,
+      setRenamingEntryPath,
       workspacePath,
-      handleDeleteEntries,
-    ]
-  )
+      selectedEntryPaths,
+      setSelectedEntryPaths,
+      setSelectionAnchorPath,
+      resetSelection,
+      entries,
+    })
 
   const handleEntryPrimaryAction = useCallback(
-    (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
+    (entry: WorkspaceEntry, event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
       const path = entry.path
       const isMulti = event.metaKey || event.ctrlKey
@@ -471,61 +280,6 @@ export function FileExplorer() {
       toggleDirectory,
       visibleEntryPaths,
     ]
-  )
-
-  const handleEntryContextMenu = useCallback(
-    async (entry: WorkspaceEntry) => {
-      const isSelected = selectedEntryPaths.has(entry.path)
-      let selectionTargets: string[]
-
-      if (isSelected) {
-        selectionTargets = Array.from(selectedEntryPaths)
-      } else {
-        const nextSelection = new Set(selectedEntryPaths)
-        const hadSelection = nextSelection.size > 0
-        nextSelection.add(entry.path)
-        selectionTargets = Array.from(nextSelection)
-        setSelectedEntryPaths(nextSelection)
-        if (!hadSelection) {
-          setSelectionAnchorPath(entry.path)
-        }
-      }
-
-      if (entry.isDirectory) {
-        await showDirectoryMenu(entry, selectionTargets)
-      } else {
-        await showEntryMenu(entry, selectionTargets)
-      }
-    },
-    [
-      selectedEntryPaths,
-      setSelectedEntryPaths,
-      setSelectionAnchorPath,
-      showDirectoryMenu,
-      showEntryMenu,
-    ]
-  )
-
-  const handleRootContextMenu = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      if (!workspacePath) return
-
-      event.preventDefault()
-      event.stopPropagation()
-
-      resetSelection()
-
-      showDirectoryMenu(
-        {
-          path: workspacePath,
-          name: workspacePath.split('/').pop() ?? 'Workspace',
-          isDirectory: true,
-          children: entries,
-        },
-        []
-      )
-    },
-    [entries, resetSelection, showDirectoryMenu, workspacePath]
   )
 
   return (
