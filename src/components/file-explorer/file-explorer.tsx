@@ -1,5 +1,4 @@
 import { useDroppable } from '@dnd-kit/core'
-import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
@@ -10,6 +9,7 @@ import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-s
 import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
+import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
 import { useExpandActiveTab } from './hooks/use-expand-active-tab'
@@ -230,149 +230,18 @@ export function FileExplorer() {
     [deleteEntries, resetSelection]
   )
 
-  const showEntryMenu = useCallback(
-    async (entry: WorkspaceEntry, selectionPaths: string[]) => {
-      try {
-        const itemPromises: Promise<MenuItem>[] = []
-
-        if (entry.name.toLowerCase().endsWith('.md')) {
-          itemPromises.push(
-            MenuItem.new({
-              id: `rename-ai-${entry.path}`,
-              text: 'Rename with AI',
-              enabled: Boolean(renameConfig),
-              action: async () => {
-                setAiRenamingEntryPaths((paths) => {
-                  const next = new Set(paths)
-                  next.add(entry.path)
-                  return next
-                })
-                try {
-                  await renameNoteWithAI(entry)
-                } catch (error) {
-                  console.error('Failed to rename entry with AI:', error)
-                } finally {
-                  setAiRenamingEntryPaths((paths) => {
-                    if (!paths.has(entry.path)) {
-                      return paths
-                    }
-                    const next = new Set(paths)
-                    next.delete(entry.path)
-                    return next
-                  })
-                }
-              },
-            })
-          )
-        }
-
-        itemPromises.push(
-          MenuItem.new({
-            id: `rename-${entry.path}`,
-            text: 'Rename',
-            action: async () => {
-              beginRenaming(entry)
-            },
-          })
-        )
-
-        itemPromises.push(
-          MenuItem.new({
-            id: `delete-${entry.path}`,
-            text: 'Delete',
-            action: async () => {
-              const targets =
-                selectionPaths.length > 0 ? selectionPaths : [entry.path]
-              await handleDeleteEntries(targets)
-            },
-          })
-        )
-
-        const items = await Promise.all(itemPromises)
-
-        const menu = await Menu.new({
-          items,
-        })
-
-        await menu.popup()
-      } catch (error) {
-        console.error('Failed to open context menu:', error)
-      }
-    },
-    [beginRenaming, handleDeleteEntries, renameNoteWithAI, renameConfig]
-  )
-
-  const showDirectoryMenu = useCallback(
-    async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
-      const directoryPath = directoryEntry.path
-      try {
-        const items = [
-          await MenuItem.new({
-            id: `new-note-${directoryPath}`,
-            text: 'New Note',
-            action: async () => {
-              const filePath = await createNote(directoryPath)
-              if (filePath) {
-                openNote(filePath)
-              }
-            },
-          }),
-          await MenuItem.new({
-            id: `new-folder-${directoryPath}`,
-            text: 'New Folder',
-            action: async () => {
-              const newFolderPath = await createFolder(directoryPath)
-              if (newFolderPath) {
-                setRenamingEntryPath(newFolderPath)
-              }
-            },
-          }),
-        ]
-
-        if (!workspacePath || directoryPath !== workspacePath) {
-          items.push(
-            await MenuItem.new({
-              id: `rename-directory-${directoryPath}`,
-              text: 'Rename',
-              action: async () => {
-                beginRenaming(directoryEntry)
-              },
-            })
-          )
-        }
-
-        if (workspacePath && directoryPath !== workspacePath) {
-          items.push(
-            await MenuItem.new({
-              id: `delete-directory-${directoryPath}`,
-              text: 'Delete',
-              action: async () => {
-                const targets =
-                  selectionPaths.length > 0 ? selectionPaths : [directoryPath]
-                await handleDeleteEntries(targets)
-              },
-            })
-          )
-        }
-
-        const menu = await Menu.new({
-          items,
-        })
-
-        await menu.popup()
-      } catch (error) {
-        console.error('Failed to open context menu:', error)
-      }
-    },
-    [
-      createNote,
-      createFolder,
-      openNote,
-      beginRenaming,
-      workspacePath,
-      handleDeleteEntries,
-    ]
-  )
+  const { showEntryMenu, showDirectoryMenu } = useFileExplorerMenus({
+    renameConfig,
+    renameNoteWithAI,
+    setAiRenamingEntryPaths,
+    beginRenaming,
+    handleDeleteEntries,
+    createNote,
+    createFolder,
+    openNote,
+    setRenamingEntryPath,
+    workspacePath,
+  })
 
   const handleEntryPrimaryAction = useCallback(
     (entry: WorkspaceEntry, event: React.MouseEvent<HTMLButtonElement>) => {
