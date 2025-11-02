@@ -12,6 +12,7 @@ import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
+import { useExpandActiveTab } from './hooks/use-expand-active-tab'
 import { FeedbackButton } from './ui/feedback-button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
@@ -209,6 +210,8 @@ export function FileExplorer() {
     beginRenaming,
     entryMap,
   })
+
+  useExpandActiveTab(entries, tab)
 
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {

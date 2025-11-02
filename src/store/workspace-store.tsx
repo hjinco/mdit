@@ -38,6 +38,11 @@ type WorkspaceStore = {
   isTreeLoading: boolean
   entries: WorkspaceEntry[]
   expandedDirectories: Record<string, boolean>
+  setExpandedDirectories: (
+    action: (
+      expandedDirectories: Record<string, boolean>
+    ) => Record<string, boolean>
+  ) => void
   initializeWorkspace: () => void
   setWorkspace: (path: string) => void
   openFolderPicker: () => Promise<void>
@@ -65,6 +70,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isTreeLoading: false,
   entries: [],
   expandedDirectories: {},
+
+  setExpandedDirectories: (action) => {
+    set((state) => ({ expandedDirectories: action(state.expandedDirectories) }))
+  },
 
   initializeWorkspace: () => {
     try {
@@ -270,13 +279,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       await writeTextFile(filePath, '')
-
-      set((state) => ({
-        expandedDirectories: {
-          ...state.expandedDirectories,
-          [directoryPath]: true,
-        },
-      }))
 
       await get().refreshWorkspaceEntries()
       const { setSelectedEntryPaths, setSelectionAnchorPath } =
