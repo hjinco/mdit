@@ -274,7 +274,7 @@ export function TreeNode({
                   onChange={(event) => setDraftName(event.target.value)}
                   onKeyDown={handleRenameKeyDown}
                   onBlur={handleRenameBlur}
-                  className="absolute inset-0 h-full truncate text-sm bg-stone-200 dark:bg-stone-700 border border-border rounded -ml-[1px] px-0 pt-[1px] pb-0 outline-none"
+                  className="absolute inset-0 h-full truncate text-sm px-0 pt-[1px] pb-0 outline-none"
                   spellCheck={false}
                   autoComplete="off"
                 />
@@ -339,7 +339,7 @@ export function TreeNode({
                 onChange={(event) => setDraftName(event.target.value)}
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRenameBlur}
-                className="absolute inset-0 h-full truncate text-sm bg-stone-200 dark:bg-stone-700 border border-border rounded -ml-[1px] px-0 pt-[1px] pb-0 outline-none"
+                className="absolute inset-0 h-full truncate text-sm px-0 pt-[1px] pb-0 outline-none"
                 spellCheck={false}
                 autoComplete="off"
               />
