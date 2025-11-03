@@ -21,7 +21,10 @@ export const highlightQuery = (text: string, query: string): ReactNode => {
       }
 
       fragments.push(
-        <mark key={`${match.index}-${match[0]}`} className="bg-transparent">
+        <mark
+          key={`${match.index}-${match[0]}`}
+          className="bg-transparent text-foreground"
+        >
           {match[0]}
         </mark>
       )
