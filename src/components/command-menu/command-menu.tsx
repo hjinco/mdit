@@ -1,4 +1,6 @@
+import { motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
+import useMeasure from 'react-use-measure'
 import { useShallow } from 'zustand/shallow'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useTabStore } from '@/store/tab-store'
@@ -76,6 +78,8 @@ export function CommandMenu() {
     [closeCommandMenu, openNote]
   )
 
+  const [listRef, listBounds] = useMeasure()
+
   return (
     <CommandDialog
       open={isCommandMenuOpen}
@@ -93,76 +97,84 @@ export function CommandMenu() {
         placeholder="Search notes..."
         autoFocus
       />
-      <CommandList>
-        <CommandEmpty>No results found</CommandEmpty>
-        {hasNoteMatches && (
-          <CommandGroup heading="Notes">
-            {filteredNoteResults.map((note) => (
-              <CommandItem
-                key={note.path}
-                value={note.path}
-                keywords={note.keywords}
-                onSelect={() => handleSelectNote(note.path)}
-                className="data-[selected=true]:bg-accent-foreground/10"
-              >
-                <div className="flex flex-col">
-                  <span>{note.label}</span>
-                  <span className="text-muted-foreground/80 text-xs">
-                    {note.relativePath}
-                  </span>
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
-        {hasContentMatches && (
-          <CommandGroup heading="Content Matches">
-            {contentMatchesByNote.map((group) => {
-              const note = noteResultsByPath.get(group.path)
-              const label =
-                note?.label ??
-                stripMarkdownExtension(getFileNameFromPath(group.path))
-              const relativePath =
-                note?.relativePath ?? toRelativePath(group.path, workspacePath)
-              const keywords = [
-                label,
-                relativePath,
-                ...group.matches.flatMap((match) => [
-                  match.snippet || '(empty line)',
-                  match.lineText,
-                ]),
-              ].filter(Boolean) as string[]
-
-              return (
+      <motion.div
+        style={{ overflow: 'hidden' }}
+        initial={false}
+        animate={{ height: listBounds.height }}
+        transition={{ ease: 'easeOut', duration: 0.1 }}
+      >
+        <CommandList ref={listRef}>
+          <CommandEmpty>No results found</CommandEmpty>
+          {hasNoteMatches && (
+            <CommandGroup heading="Notes">
+              {filteredNoteResults.map((note) => (
                 <CommandItem
-                  key={group.path}
-                  value={`${group.path}:content`}
-                  keywords={keywords}
-                  onSelect={() => handleSelectNote(group.path)}
+                  key={note.path}
+                  value={note.path}
+                  keywords={note.keywords}
+                  onSelect={() => handleSelectNote(note.path)}
                   className="data-[selected=true]:bg-accent-foreground/10"
                 >
-                  <div className="flex flex-col gap-1">
-                    <span>{label}</span>
-                    <div className="text-muted-foreground/80 text-[11px] flex flex-col gap-1">
-                      {group.matches.map((match) => (
-                        <span key={`${group.path}:${match.lineNumber}`}>
-                          {highlightQuery(
-                            match.snippet || '(empty line)',
-                            trimmedSearchTerm
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-muted-foreground text-xs">
-                      {relativePath}
+                  <div className="flex flex-col">
+                    <span>{note.label}</span>
+                    <span className="text-muted-foreground/80 text-xs">
+                      {note.relativePath}
                     </span>
                   </div>
                 </CommandItem>
-              )
-            })}
-          </CommandGroup>
-        )}
-      </CommandList>
+              ))}
+            </CommandGroup>
+          )}
+          {hasContentMatches && (
+            <CommandGroup heading="Content Matches">
+              {contentMatchesByNote.map((group) => {
+                const note = noteResultsByPath.get(group.path)
+                const label =
+                  note?.label ??
+                  stripMarkdownExtension(getFileNameFromPath(group.path))
+                const relativePath =
+                  note?.relativePath ??
+                  toRelativePath(group.path, workspacePath)
+                const keywords = [
+                  label,
+                  relativePath,
+                  ...group.matches.flatMap((match) => [
+                    match.snippet || '(empty line)',
+                    match.lineText,
+                  ]),
+                ].filter(Boolean) as string[]
+
+                return (
+                  <CommandItem
+                    key={group.path}
+                    value={`${group.path}:content`}
+                    keywords={keywords}
+                    onSelect={() => handleSelectNote(group.path)}
+                    className="data-[selected=true]:bg-accent-foreground/10"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span>{label}</span>
+                      <div className="text-muted-foreground/80 text-[11px] flex flex-col gap-1">
+                        {group.matches.map((match) => (
+                          <span key={`${group.path}:${match.lineNumber}`}>
+                            {highlightQuery(
+                              match.snippet || '(empty line)',
+                              trimmedSearchTerm
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-muted-foreground text-xs">
+                        {relativePath}
+                      </span>
+                    </div>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+          )}
+        </CommandList>
+      </motion.div>
     </CommandDialog>
   )
 }
