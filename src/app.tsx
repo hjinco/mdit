@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { CommandMenu } from './components/command-menu/command-menu'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
+import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
 import { LicenseTempDialog } from './components/license/license-temp-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Tabbar } from './components/tabbar/tabbar'
@@ -43,6 +44,7 @@ export function App() {
       </div>
       <SettingsDialog />
       <CommandMenu />
+      <ImagePreviewDialog />
     </DndProvider>
   )
 }

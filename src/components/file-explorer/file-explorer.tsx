@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
+import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
@@ -18,6 +19,7 @@ import { FeedbackButton } from './ui/feedback-button'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
+import { isImageFile } from './utils/file-icon'
 
 export function FileExplorer() {
   const fileExplorerRef = useRef<HTMLElement | null>(null)
@@ -41,7 +43,7 @@ export function FileExplorer() {
     useShallow((s) => ({ tab: s.tab, openNote: s.openNote }))
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
-
+  const openImagePreview = useUIStore((state) => state.openImagePreview)
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )
@@ -267,6 +269,10 @@ export function FileExplorer() {
           toggleDirectory(entry.path)
         } else if (entry.name.endsWith('.md')) {
           openNote(entry.path)
+        } else if (
+          isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
+        ) {
+          openImagePreview(entry.path)
         }
       }
     },
@@ -279,6 +285,7 @@ export function FileExplorer() {
       setSelectionAnchorPath,
       toggleDirectory,
       visibleEntryPaths,
+      openImagePreview,
     ]
   )
 

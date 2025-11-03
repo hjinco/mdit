@@ -1,10 +1,11 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { FileIcon, FolderIcon, FolderOpenIcon } from 'lucide-react'
+import { FileIcon, FolderIcon, FolderOpenIcon, ImageIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
 import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { isImageFile } from '../utils/file-icon'
 
 type TreeNodeProps = {
   entry: WorkspaceEntry
@@ -74,6 +75,8 @@ export function TreeNode({
 
     return entry.name.slice(0, entry.name.length - extension.length)
   }, [entry.isDirectory, entry.name, extension])
+
+  const isImage = useMemo(() => isImageFile(extension), [extension])
 
   // Setup draggable
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -327,7 +330,11 @@ export function TreeNode({
           {...attributes}
           {...listeners}
         >
-          <FileIcon className="size-4 shrink-0" />
+          {isImage ? (
+            <ImageIcon className="size-4 shrink-0" />
+          ) : (
+            <FileIcon className="size-4 shrink-0" />
+          )}
           <div className="relative flex-1 min-w-0 truncate">
             <span className={cn('text-sm', isRenaming && 'invisible')}>
               {entry.name}
