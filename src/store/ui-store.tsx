@@ -61,6 +61,10 @@ type UIStore = {
   setCommandMenuOpen: (isOpen: boolean) => void
   openCommandMenu: () => void
   closeCommandMenu: () => void
+  imagePreviewPath: string | null
+  setImagePreviewPath: (path: string | null) => void
+  openImagePreview: (path: string) => void
+  closeImagePreview: () => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -91,4 +95,8 @@ export const useUIStore = create<UIStore>((set) => ({
   setCommandMenuOpen: (isOpen) => set({ isCommandMenuOpen: isOpen }),
   openCommandMenu: () => set({ isCommandMenuOpen: true }),
   closeCommandMenu: () => set({ isCommandMenuOpen: false }),
+  imagePreviewPath: null,
+  setImagePreviewPath: (path) => set({ imagePreviewPath: path }),
+  openImagePreview: (path) => set({ imagePreviewPath: path }),
+  closeImagePreview: () => set({ imagePreviewPath: null }),
 }))
