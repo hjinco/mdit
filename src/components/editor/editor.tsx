@@ -124,7 +124,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/90'
+            'size-full px-16 pt-26 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/90'
           )}
           autoCapitalize="off"
           spellCheck={false}
