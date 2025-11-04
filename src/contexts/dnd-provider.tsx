@@ -3,7 +3,7 @@ import {
   DndContext,
   type DragEndEvent,
   PointerSensor,
-  rectIntersection,
+  pointerWithin,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
@@ -17,7 +17,7 @@ type DndProviderProps = {
 
 // Custom collision detection: prioritize deepest depth
 const depthAwareCollision: CollisionDetection = (args) => {
-  const collisions = rectIntersection(args)
+  const collisions = pointerWithin(args)
 
   if (collisions.length === 0) {
     return collisions
