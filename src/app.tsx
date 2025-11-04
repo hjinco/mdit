@@ -32,7 +32,7 @@ export function App() {
 
   return (
     <DndProvider>
-      <div className="h-screen flex flex-col p-1 bg-background/50">
+      <div className="h-screen flex flex-col p-1 bg-muted/70">
         <Tabbar />
         <div className="flex-1 overflow-hidden flex">
           <FileExplorer />

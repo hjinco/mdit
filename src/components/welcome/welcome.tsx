@@ -6,7 +6,7 @@ export function Welcome() {
   const { openFolderPicker } = useWorkspaceStore()
 
   return (
-    <div className="w-full h-screen flex flex-col bg-background/50">
+    <div className="w-full h-screen flex flex-col bg-muted/70">
       <div className="w-full h-10" data-tauri-drag-region />
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="max-w-sm w-full">

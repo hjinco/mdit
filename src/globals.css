@@ -44,7 +44,7 @@
 
 :root {
   --brand: oklch(0.623 0.214 259.815);
-  --radius: 0.625rem;
+  --radius: 0.6rem;
   --font-scale: 1;
   --background: oklch(1 0 0);
   --foreground: oklch(0.147 0.004 49.25);
@@ -179,4 +179,8 @@
  */
 .slate-p {
   @apply my-0.5 px-0 py-1;
+}
+
+.lucide {
+  stroke-width: 1.75;
 }
