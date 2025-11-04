@@ -3,7 +3,7 @@ import {
   DndContext,
   type DragEndEvent,
   PointerSensor,
-  rectIntersection,
+  pointerWithin,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
@@ -17,7 +17,7 @@ type DndProviderProps = {
 
 // Custom collision detection: prioritize deepest depth
 const depthAwareCollision: CollisionDetection = (args) => {
-  const collisions = rectIntersection(args)
+  const collisions = pointerWithin(args)
 
   if (collisions.length === 0) {
     return collisions
@@ -47,6 +47,11 @@ export function DndProvider({ children }: DndProviderProps) {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      const overData = event.over?.data.current as { kind?: string } | undefined
+      if (overData?.kind === 'editor') {
+        return
+      }
+
       const sourcePath = event.active.data.current?.path as string | undefined
       const dropZoneId = event.over?.id as string | undefined
 

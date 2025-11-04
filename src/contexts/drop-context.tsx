@@ -148,7 +148,6 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
           }
         })
 
-        // biome-ignore lint/nursery/noUnnecessaryConditions: stop could be true
         if (stop) {
           unlisten()
         } else {
