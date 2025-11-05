@@ -267,9 +267,7 @@ export function TreeNode({
               <FolderIcon className="size-4 shrink-0" />
             )}
             <div className="relative flex-1 min-w-0 truncate">
-              <span className={cn('text-sm', isRenaming && 'invisible')}>
-                {entry.name}
-              </span>
+              <span className="text-sm">{entry.name}</span>
               {isRenaming && (
                 <input
                   ref={inputRef}
@@ -336,9 +334,7 @@ export function TreeNode({
             <FileIcon className="size-4 shrink-0" />
           )}
           <div className="relative flex-1 min-w-0 truncate">
-            <span className={cn('text-sm', isRenaming && 'invisible')}>
-              {entry.name}
-            </span>
+            <span className="text-sm">{baseName}</span>
             {isRenaming && (
               <input
                 ref={inputRef}
