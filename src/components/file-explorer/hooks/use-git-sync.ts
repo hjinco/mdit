@@ -15,9 +15,6 @@ type GitSyncState = {
 const POLL_INTERVAL_MS = 5000
 const AUTO_SYNC_INTERVAL_MS = 60_000 // 1 minute
 
-// Regex to match git status branch.ab output: "# branch.ab +1 -2"
-const BRANCH_AB_REGEX = /# branch\.ab ([+-]\d+) ([+-]\d+)/
-
 const EMPTY_STATE: GitSyncState = {
   isGitRepo: false,
   status: 'synced',
@@ -135,9 +132,15 @@ export function useGitSync(workspacePath: string | null) {
     }))
 
     try {
+      const config = getSyncConfig(workspacePath)
+      const branchName = config.branchName.trim()
+      const branch = branchName || (await getCurrentBranch(workspacePath))
+
+      // Pull from remote first
+      await ensureGitSuccess(workspacePath, ['pull', 'origin', branch])
+
       await ensureGitSuccess(workspacePath, ['add', '--all'])
 
-      const config = getSyncConfig(workspacePath)
       const shouldCommit = await hasChangesToCommit(workspacePath)
 
       if (shouldCommit) {
@@ -155,16 +158,10 @@ export function useGitSync(workspacePath: string | null) {
         }
       }
 
-      const branchName = config.branchName.trim()
-      const branch = branchName || (await getCurrentBranch(workspacePath))
-
       await ensureGitSuccess(workspacePath, ['push', 'origin', branch])
 
-      setState((prev) => ({
-        ...prev,
-        status: 'synced',
-        error: null,
-      }))
+      // Refresh status after sync
+      await refreshStatus()
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error ?? 'Unknown')
@@ -179,7 +176,7 @@ export function useGitSync(workspacePath: string | null) {
     } finally {
       isSyncingRef.current = false
     }
-  }, [workspacePath, getSyncConfig])
+  }, [workspacePath, getSyncConfig, refreshStatus])
 
   // Auto sync interval: runs every minute when autoSync is enabled and status is unsynced
   useEffect(() => {
@@ -214,8 +211,6 @@ export function useGitSync(workspacePath: string | null) {
     }
   }, [workspacePath, state.isGitRepo, getSyncConfig, sync])
 
-  console.log('state', state)
-
   return {
     isGitRepo: state.isGitRepo,
     status: state.status,
@@ -228,12 +223,24 @@ export function useGitSync(workspacePath: string | null) {
 
 async function isGitRepository(workspacePath: string) {
   try {
-    const result = await executeGit(workspacePath, [
+    // Check if it's a git repository
+    const repoResult = await executeGit(workspacePath, [
       'rev-parse',
       '--is-inside-work-tree',
     ])
 
-    return result.code === 0 && result.stdout.trim() === 'true'
+    if (repoResult.code !== 0 || repoResult.stdout.trim() !== 'true') {
+      return false
+    }
+
+    // Check if origin remote is configured
+    const originResult = await executeGit(workspacePath, [
+      'remote',
+      'get-url',
+      'origin',
+    ])
+
+    return originResult.code === 0 && originResult.stdout.trim().length > 0
   } catch (error) {
     console.warn('Failed to detect git repository:', error)
     return false
@@ -253,54 +260,33 @@ async function ensureGitSuccess(workspacePath: string, args: string[]) {
 async function detectSyncStatus(
   workspacePath: string
 ): Promise<{ status: GitSyncStatus }> {
-  // Ask Git for a branch-aware status snapshot. The porcelain v2 format is stable
-  // to parse and includes ahead/behind counts that let us flag divergence.
+  // Check if origin remote exists
+  const originCheckResult = await executeGit(workspacePath, [
+    'remote',
+    'get-url',
+    'origin',
+  ])
+
+  const hasOrigin =
+    originCheckResult.code === 0 && originCheckResult.stdout.trim().length > 0
+
+  // Fetch from origin if it exists
+  if (hasOrigin) {
+    await ensureGitSuccess(workspacePath, ['fetch', 'origin'])
+  }
+
+  // Check for local working tree changes
   const result = await ensureGitSuccess(workspacePath, [
     'status',
     '--porcelain=2',
-    '--branch',
   ])
 
   const lines = result.stdout.split('\n')
   let hasChanges = false
-  let aheadCount = 0
-  let behindCount = 0
-  let hasUpstream = false
 
   for (const raw of lines) {
     const line = raw.trim()
-
-    if (!line) {
-      continue
-    }
-
-    if (line.startsWith('# branch.upstream')) {
-      const upstream = line.slice('# branch.upstream'.length).trim()
-      if (upstream) {
-        hasUpstream = true
-      }
-      continue
-    }
-
-    if (line.startsWith('# branch.ab')) {
-      // Example: "# branch.ab +1 -2" -> ahead of remote by one commit, behind by two.
-      const match = line.match(BRANCH_AB_REGEX)
-      if (match) {
-        const ahead = Number.parseInt(match[1], 10)
-        const behind = Number.parseInt(match[2], 10)
-        if (!Number.isNaN(ahead) && ahead > 0) {
-          aheadCount = ahead
-        }
-        if (!Number.isNaN(behind) && behind > 0) {
-          behindCount = behind
-        } else if (!Number.isNaN(behind) && behind < 0) {
-          behindCount = Math.abs(behind)
-        }
-      }
-      continue
-    }
-
-    if (!line.startsWith('#')) {
+    if (line && !line.startsWith('#')) {
       // Any non-comment line indicates staged, unstaged, or untracked changes.
       hasChanges = true
       break
@@ -311,14 +297,55 @@ async function detectSyncStatus(
     return { status: 'unsynced' }
   }
 
-  if (aheadCount > 0 || behindCount > 0) {
-    return { status: 'unsynced' }
+  // If origin doesn't exist, consider synced if local working tree is clean.
+  if (!hasOrigin) {
+    return { status: 'synced' }
   }
 
-  // If upstream is not configured, consider synced if local working tree is clean.
-  // Upstream is only needed for remote synchronization; local-only repos can be synced.
-  if (!hasUpstream) {
+  // Compare local branch with origin/branchName directly
+  const branch = await getCurrentBranch(workspacePath)
+  const originBranchCheck = await executeGit(workspacePath, [
+    'rev-parse',
+    '--verify',
+    `origin/${branch}`,
+  ])
+
+  // If origin/branch doesn't exist, consider synced
+  if (originBranchCheck.code !== 0) {
     return { status: 'synced' }
+  }
+
+  // Compare local branch with origin/branch
+  const aheadResult = await executeGit(workspacePath, [
+    'rev-list',
+    '--count',
+    `origin/${branch}..HEAD`,
+  ])
+  const behindResult = await executeGit(workspacePath, [
+    'rev-list',
+    '--count',
+    `HEAD..origin/${branch}`,
+  ])
+
+  let aheadCount = 0
+  let behindCount = 0
+
+  if (aheadResult.code === 0) {
+    const ahead = Number.parseInt(aheadResult.stdout.trim(), 10)
+    if (!Number.isNaN(ahead) && ahead > 0) {
+      aheadCount = ahead
+    }
+  }
+
+  if (behindResult.code === 0) {
+    const behind = Number.parseInt(behindResult.stdout.trim(), 10)
+    if (!Number.isNaN(behind) && behind > 0) {
+      behindCount = behind
+    }
+  }
+
+  if (aheadCount > 0 || behindCount > 0) {
+    return { status: 'unsynced' }
   }
 
   return { status: 'synced' }
