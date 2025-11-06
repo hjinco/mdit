@@ -30,7 +30,7 @@ export function GitSyncStatus({ workspacePath }: Props) {
       case 'unsynced':
         return 'unsynced'
       case 'syncing':
-        return 'unsynced'
+        return 'syncing'
       case 'error':
         return 'error'
       default:
@@ -45,7 +45,7 @@ export function GitSyncStatus({ workspacePath }: Props) {
       case 'unsynced':
         return 'bg-yellow-500'
       case 'syncing':
-        return 'bg-yellow-500'
+        return 'bg-blue-500'
       case 'error':
         return 'bg-red-500'
       default:

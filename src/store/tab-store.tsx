@@ -17,7 +17,11 @@ type TabStore = {
   isSaved: boolean
   history: string[]
   historyIndex: number
-  openTab: (path: string, skipHistory?: boolean) => Promise<void>
+  openTab: (
+    path: string,
+    skipHistory?: boolean,
+    force?: boolean
+  ) => Promise<void>
   openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
   renameTab: (oldPath: string, newPath: string) => void
@@ -35,15 +39,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
   isSaved: true,
   history: [],
   historyIndex: -1,
-  openTab: async (path: string, skipHistory = false) => {
+  openTab: async (path: string, skipHistory = false, force = false) => {
     if (!path.endsWith('.md')) {
       return
     }
 
     const state = get()
 
-    // If opening the same tab, don't do anything
-    if (state.tab?.path === path) {
+    // If opening the same tab, don't do anything (unless force is true)
+    if (!force && state.tab?.path === path) {
       return
     }
 

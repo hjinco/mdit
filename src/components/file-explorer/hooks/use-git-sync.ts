@@ -1,6 +1,8 @@
 import { Command } from '@tauri-apps/plugin-shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
+import { useTabStore } from '@/store/tab-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 
 // Finite representation of the sync lifecycle states the hook can emit.
 type GitSyncStatus = 'syncing' | 'synced' | 'unsynced' | 'error'
@@ -97,7 +99,7 @@ export function useGitSync(workspacePath: string | null) {
         return
       }
 
-      if (!workspacePath || !isRepo || state.status === 'error') {
+      if (!workspacePath || !isRepo) {
         return
       }
 
@@ -115,7 +117,7 @@ export function useGitSync(workspacePath: string | null) {
         clearInterval(intervalId)
       }
     }
-  }, [workspacePath, refreshStatus, state.status])
+  }, [workspacePath, refreshStatus])
 
   const sync = useCallback(async () => {
     if (!workspacePath || isSyncingRef.current) {
@@ -162,6 +164,14 @@ export function useGitSync(workspacePath: string | null) {
 
       // Refresh status after sync
       await refreshStatus()
+
+      // Sync succeeded - refresh workspace entries and reopen current tab
+      await useWorkspaceStore.getState().refreshWorkspaceEntries()
+      const currentTabPath = useTabStore.getState().tab?.path
+
+      if (currentTabPath) {
+        await useTabStore.getState().openTab(currentTabPath, false, true)
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error ?? 'Unknown')
