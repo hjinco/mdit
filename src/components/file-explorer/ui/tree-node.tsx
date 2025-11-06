@@ -1,5 +1,11 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { FileIcon, FolderIcon, FolderOpenIcon, ImageIcon } from 'lucide-react'
+import {
+  EyeIcon,
+  FileIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  ImageIcon,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -349,7 +355,7 @@ export function TreeNode({
             )}
           </div>
           {isActive && (
-            <span aria-hidden="true" className="size-1 rounded-full bg-brand" />
+            <EyeIcon className="size-3 shrink-0 text-muted-foreground" />
           )}
         </button>
       )}
