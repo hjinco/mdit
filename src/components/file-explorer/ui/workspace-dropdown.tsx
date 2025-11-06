@@ -37,11 +37,11 @@ export function WorkspaceDropdown({
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start hover:bg-stone-200/80 dark:hover:bg-stone-700/80 text-foreground/90 font-semibold tracking-tight"
+          className="text-foreground/90 font-semibold tracking-tight min-w-0 max-w-full"
         >
           <InboxIcon />
-          <span className="truncate">{currentWorkspaceName}</span>
-          <ChevronDown className="ml-auto" />
+          <span className="truncate flex-1">{currentWorkspaceName}</span>
+          <ChevronDown className="ml-auto shrink-0" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64 bg-popover/90">

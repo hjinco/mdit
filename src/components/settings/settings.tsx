@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@/ui/dialog'
 import { AITab } from './ui/ai-tab'
 import { SettingsNavigation, type SettingsTab } from './ui/navigation'
 import { PreferencesTab } from './ui/preferences-tab'
+import { SyncTab } from './ui/sync-tab'
 
 export function SettingsDialog() {
   const { isSettingsDialogOpen, setSettingsDialogOpen, settingsInitialTab } =
@@ -32,6 +33,7 @@ export function SettingsDialog() {
         <div className="flex-1 flex flex-col">
           {activeTab === 'preferences' && <PreferencesTab />}
           {activeTab === 'ai' && <AITab />}
+          {activeTab === 'sync' && <SyncTab />}
         </div>
       </DialogContent>
     </Dialog>

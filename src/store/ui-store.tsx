@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { SettingsTab } from '@/components/settings/ui/navigation'
 
 const FILE_EXPLORER_WIDTH_STORAGE_KEY = 'file-explorer-width'
 const DEFAULT_FILE_EXPLORER_WIDTH = 256
@@ -42,8 +43,6 @@ const persistFileExplorerWidth = (width: number) => {
     console.error('Failed to persist file explorer width', error)
   }
 }
-
-type SettingsTab = 'preferences' | 'ai'
 
 type UIStore = {
   isFileExplorerOpen: boolean

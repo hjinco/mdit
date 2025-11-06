@@ -16,6 +16,7 @@ import { useEntryMap } from './hooks/use-entry-map'
 import { useExpandActiveTab } from './hooks/use-expand-active-tab'
 import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
+import { GitSyncStatus } from './ui/git-sync-status'
 import { SettingsMenu } from './ui/settings-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
@@ -302,18 +303,22 @@ export function FileExplorer() {
     >
       <header
         className={cn(
-          'flex items-center justify-between pl-1 pr-2 py-1',
+          'flex items-center pl-1 pr-2 py-1 gap-1 overflow-hidden',
           hasWorkspaceScroll &&
             !isWorkspaceScrollAtTop &&
             'border-b border-border/20'
         )}
       >
-        <WorkspaceDropdown
-          workspacePath={workspacePath}
-          recentWorkspacePaths={recentWorkspacePaths}
-          onWorkspaceSelect={setWorkspace}
-          onOpenFolderPicker={openFolderPicker}
-        />
+        <div className="min-w-0 shrink">
+          <WorkspaceDropdown
+            workspacePath={workspacePath}
+            recentWorkspacePaths={recentWorkspacePaths}
+            onWorkspaceSelect={setWorkspace}
+            onOpenFolderPicker={openFolderPicker}
+          />
+        </div>
+        <div className="flex-1" />
+        <GitSyncStatus workspacePath={workspacePath} />
       </header>
       <div
         ref={handleWorkspaceContainerRef}

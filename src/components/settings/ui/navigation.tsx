@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { DialogTitle } from '@/ui/dialog'
 
-export type SettingsTab = 'preferences' | 'ai'
+export type SettingsTab = 'preferences' | 'ai' | 'sync'
 
 interface SettingsNavigationProps {
   activeTab: SettingsTab
@@ -16,6 +16,7 @@ export function SettingsNavigation({
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'preferences', label: 'Preferences' },
     { id: 'ai', label: 'AI' },
+    { id: 'sync', label: 'Sync' },
   ]
 
   return (
