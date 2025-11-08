@@ -1,20 +1,19 @@
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { SquarePenIcon } from 'lucide-react'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
-import { TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 export function NewNoteButton() {
   const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
 
   return (
-    <TooltipPrimitive.Root data-slot="tooltip">
+    <Tooltip>
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="size-8 text-foreground/70 hover:text-foreground hover:bg-background/60"
+          className="text-foreground/70"
           onClick={createAndOpenNote}
         >
           <SquarePenIcon />
@@ -29,6 +28,6 @@ export function NewNoteButton() {
           </KbdGroup>
         </div>
       </TooltipContent>
-    </TooltipPrimitive.Root>
+    </Tooltip>
   )
 }

@@ -32,6 +32,7 @@ type TabStore = {
   canGoForward: () => boolean
   updateHistoryPath: (oldPath: string, newPath: string) => void
   removePathFromHistory: (path: string) => void
+  clearHistory: () => void
 }
 
 export const useTabStore = create<TabStore>((set, get) => ({
@@ -249,5 +250,11 @@ export const useTabStore = create<TabStore>((set, get) => ({
         historyIndex: newIndex,
       })
     }
+  },
+  clearHistory: () => {
+    set({
+      history: [],
+      historyIndex: -1,
+    })
   },
 }))

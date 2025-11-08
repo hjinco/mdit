@@ -14,9 +14,8 @@
     "windows": [
       {
         "title": "Mdit",
-        "width": 1280,
-        "height": 800,
         "titleBarStyle": "Overlay",
+        "maximized": true,
         "hiddenTitle": true,
         "dragDropEnabled": true,
         "transparent": true,

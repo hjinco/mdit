@@ -1,9 +1,8 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import {
-  EyeIcon,
-  FileIcon,
-  FolderIcon,
-  FolderOpenIcon,
+  ChevronDown,
+  ChevronRight,
+  FileTextIcon,
   ImageIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
-import { isImageFile } from '../utils/file-icon'
+import { isImageFile } from '@/utils/file-icon'
 
 type TreeNodeProps = {
   entry: WorkspaceEntry
@@ -50,10 +49,8 @@ export function TreeNode({
   const isRenaming = renamingEntryPath === entry.path
   const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
   const isBusy = isRenaming || isAiRenaming
-  const activeTabPath = tab?.path
 
   const isExpanded = Boolean(expandedDirectories[entry.path])
-  const isActive = !isDirectory && activeTabPath === entry.path
   const isSelected = selectedEntryPaths.has(entry.path)
 
   const extension = useMemo(() => {
@@ -114,6 +111,17 @@ export function TreeNode({
       onEntryPrimaryAction(entry, event)
     },
     [entry, isBusy, onEntryPrimaryAction]
+  )
+
+  const handleChevronClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+      if (isBusy) {
+        return
+      }
+      onDirectoryClick(entry.path)
+    },
+    [entry.path, isBusy, onDirectoryClick]
   )
 
   const handleContextMenu = useCallback(
@@ -224,16 +232,6 @@ export function TreeNode({
     onDirectoryClick,
   ])
 
-  // Scroll into view when this node becomes active
-  useEffect(() => {
-    if (isActive && buttonRef.current) {
-      buttonRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-      })
-    }
-  }, [isActive])
-
   return (
     <li>
       {isDirectory ? (
@@ -245,50 +243,62 @@ export function TreeNode({
               'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
           )}
         >
-          <button
-            ref={(node) => {
-              setNodeRef(node)
-              buttonRef.current = node
-            }}
-            type="button"
-            onClick={handlePrimaryAction}
-            onContextMenu={handleContextMenu}
-            className={cn(
-              'w-full text-left flex items-center gap-1.5 px-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
-              isSelected
-                ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
-                : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-              isDragging && 'opacity-50 cursor-grabbing',
-              isRenaming && 'ring-1 ring-ring/50',
-              isAiRenaming && 'animate-pulse'
-            )}
-            style={{ paddingLeft: `${10 + depth * 10}px` }}
-            disabled={isBusy}
-            {...attributes}
-            {...listeners}
-          >
-            {isExpanded ? (
-              <FolderOpenIcon className="size-4 shrink-0" />
-            ) : (
-              <FolderIcon className="size-4 shrink-0" />
-            )}
-            <div className="relative flex-1 min-w-0 truncate">
-              <span className="text-sm">{entry.name}</span>
-              {isRenaming && (
-                <input
-                  ref={inputRef}
-                  value={draftName}
-                  onChange={(event) => setDraftName(event.target.value)}
-                  onKeyDown={handleRenameKeyDown}
-                  onBlur={handleRenameBlur}
-                  className="absolute inset-0 h-full truncate text-sm px-0 pt-[1px] pb-0 outline-none bg-stone-100 dark:bg-stone-900"
-                  spellCheck={false}
-                  autoComplete="off"
-                />
+          <div className="flex items-center">
+            <button
+              ref={(node) => {
+                setNodeRef(node)
+                buttonRef.current = node
+              }}
+              type="button"
+              onClick={handlePrimaryAction}
+              onContextMenu={handleContextMenu}
+              className={cn(
+                'flex-1 text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+                isSelected
+                  ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
+                  : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
+                isDragging && 'opacity-50 cursor-grabbing',
+                isRenaming && 'ring-1 ring-ring/50',
+                isAiRenaming && 'animate-pulse'
               )}
-            </div>
-          </button>
-
+              style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
+              disabled={isBusy}
+              {...attributes}
+              {...listeners}
+            >
+              <button
+                type="button"
+                onClick={handleChevronClick}
+                className={cn(
+                  'shrink-0 px-1.5 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
+                  'text-muted-foreground hover:text-foreground'
+                )}
+                disabled={isBusy}
+                aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="size-4" />
+                ) : (
+                  <ChevronRight className="size-4" />
+                )}
+              </button>
+              <div className="relative flex-1 min-w-0 truncate flex items-center">
+                <span className="text-sm">{entry.name}</span>
+                {isRenaming && (
+                  <input
+                    ref={inputRef}
+                    value={draftName}
+                    onChange={(event) => setDraftName(event.target.value)}
+                    onKeyDown={handleRenameKeyDown}
+                    onBlur={handleRenameBlur}
+                    className="absolute inset-0 h-full truncate text-sm outline-none bg-stone-100 dark:bg-stone-900"
+                    spellCheck={false}
+                    autoComplete="off"
+                  />
+                )}
+              </div>
+            </button>
+          </div>
           {hasChildren && isExpanded && (
             <ul className="space-y-0.5 mt-0.5">
               {entry.children?.map((child) => (
@@ -321,7 +331,7 @@ export function TreeNode({
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
           className={cn(
-            'w-full text-left flex items-center gap-1.5 px-2.5 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+            'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
             isSelected
               ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
               : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
@@ -329,15 +339,15 @@ export function TreeNode({
             isRenaming && 'ring-1 ring-ring/50',
             isAiRenaming && 'animate-pulse'
           )}
-          style={{ paddingLeft: `${10 + depth * 10}px` }}
+          style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
           disabled={isBusy}
           {...attributes}
           {...listeners}
         >
           {isImage ? (
-            <ImageIcon className="size-4 shrink-0" />
+            <ImageIcon className="size-4 mx-1.5 shrink-0" />
           ) : (
-            <FileIcon className="size-4 shrink-0" />
+            <FileTextIcon className="size-4 mx-1.5 shrink-0" />
           )}
           <div className="relative flex-1 min-w-0 truncate">
             <span className="text-sm">{baseName}</span>
@@ -348,15 +358,12 @@ export function TreeNode({
                 onChange={(event) => setDraftName(event.target.value)}
                 onKeyDown={handleRenameKeyDown}
                 onBlur={handleRenameBlur}
-                className="absolute inset-0 h-full truncate text-sm px-0 pt-[1px] pb-0 outline-none bg-stone-100 dark:bg-stone-900"
+                className="absolute inset-0 h-full truncate text-sm pt-[1px] outline-none bg-stone-100 dark:bg-stone-900"
                 spellCheck={false}
                 autoComplete="off"
               />
             )}
           </div>
-          {isActive && (
-            <EyeIcon className="size-3 shrink-0 text-muted-foreground" />
-          )}
         </button>
       )}
     </li>

@@ -16,7 +16,7 @@ export function WindowMenu() {
 
   const { toggleFileExplorer, openCommandMenu } = useUIStore(
     useShallow((s) => ({
-      toggleFileExplorer: s.toggleFileExplorer,
+      toggleFileExplorer: s.toggleFileExplorerOpen,
       openCommandMenu: s.openCommandMenu,
     }))
   )

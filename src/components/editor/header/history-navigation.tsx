@@ -6,7 +6,7 @@ import { useTabStore } from '@/store/tab-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/tooltip'
-import { useTabNavigationShortcuts } from '../hooks/use-tab-navigation-shortcuts'
+import { useTabNavigationShortcuts } from './use-tab-navigation-shortcuts'
 
 export function HistoryNavigation() {
   const { canGoBack, canGoForward, goBack, goForward } = useTabStore(
@@ -21,24 +21,26 @@ export function HistoryNavigation() {
   useTabNavigationShortcuts(canGoBack, canGoForward, goBack, goForward)
 
   return (
-    <TooltipProvider delayDuration={500} skipDelayDuration={100}>
-      <HistoryButton
-        icon={ChevronLeft}
-        ariaLabel="Go back"
-        tooltipLabel="Back"
-        shortcutKeys={['Cmd', '[']}
-        disabled={!canGoBack}
-        onClick={goBack}
-      />
-      <HistoryButton
-        icon={ChevronRight}
-        ariaLabel="Go forward"
-        tooltipLabel="Forward"
-        shortcutKeys={['Cmd', ']']}
-        disabled={!canGoForward}
-        onClick={goForward}
-      />
-    </TooltipProvider>
+    <div className="flex items-center gap-0.5">
+      <TooltipProvider delayDuration={500} skipDelayDuration={100}>
+        <HistoryButton
+          icon={ChevronLeft}
+          ariaLabel="Go back"
+          tooltipLabel="Back"
+          shortcutKeys={['Cmd', '[']}
+          disabled={!canGoBack}
+          onClick={goBack}
+        />
+        <HistoryButton
+          icon={ChevronRight}
+          ariaLabel="Go forward"
+          tooltipLabel="Forward"
+          shortcutKeys={['Cmd', ']']}
+          disabled={!canGoForward}
+          onClick={goForward}
+        />
+      </TooltipProvider>
+    </div>
   )
 }
 
@@ -66,7 +68,7 @@ function HistoryButton({
           aria-label={ariaLabel}
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent disabled:opacity-40 disabled:hover:text-muted-foreground"
+          className="text-foreground/70 disabled:hover:text-muted-foreground"
           disabled={disabled}
           data-tauri-drag-region="no-drag"
           onClick={onClick}

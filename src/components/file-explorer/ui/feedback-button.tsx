@@ -21,7 +21,7 @@ export function FeedbackButton() {
           type="button"
           variant="ghost"
           size="icon"
-          className="size-8 text-foreground/70 hover:text-foreground hover:bg-background/60"
+          className="text-foreground/50"
           onClick={handleFeatureBaseClick}
         >
           <SendIcon />
