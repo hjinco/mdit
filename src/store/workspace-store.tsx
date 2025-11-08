@@ -264,6 +264,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           [directoryPath]: true,
           [folderPath]: true,
         },
+        currentCollectionPath: folderPath,
       }))
 
       await get().refreshWorkspaceEntries()
