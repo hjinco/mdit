@@ -371,6 +371,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         removePathFromHistory(path)
       }
 
+      // Update currentCollectionPath if it's being deleted
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath && paths.includes(currentCollectionPath)) {
+        set({ currentCollectionPath: null })
+      }
+
       await get().refreshWorkspaceEntries()
 
       return true
