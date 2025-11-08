@@ -2,7 +2,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
-import { useFileExplorerResize } from '@/hooks/use-file-explorer-resize'
+import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
@@ -10,22 +10,33 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { TooltipProvider } from '@/ui/tooltip'
+import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
-import { useExpandActiveTab } from './hooks/use-expand-active-tab'
 import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
+import { SearchButton } from './ui/search-button'
 import { SettingsMenu } from './ui/settings-menu'
+import { ToggleButton } from './ui/toggle-button'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
-import { isImageFile } from './utils/file-icon'
 
 export function FileExplorer() {
   const fileExplorerRef = useRef<HTMLElement | null>(null)
-  const { isOpen, width, isResizing, handlePointerDown } =
-    useFileExplorerResize()
+  const { isFileExplorerOpen, setFileExplorerOpen } = useUIStore(
+    useShallow((state) => ({
+      isFileExplorerOpen: state.isFileExplorerOpen,
+      setFileExplorerOpen: state.setFileExplorerOpen,
+    }))
+  )
+  const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
+    storageKey: 'file-explorer-width',
+    defaultWidth: 256,
+    isOpen: isFileExplorerOpen,
+    setIsOpen: setFileExplorerOpen,
+  })
   const {
     workspacePath,
     entries,
@@ -39,6 +50,7 @@ export function FileExplorer() {
     toggleDirectory,
     setWorkspace,
     openFolderPicker,
+    setCurrentCollectionPath,
   } = useWorkspaceStore()
   const { tab, openNote } = useTabStore(
     useShallow((s) => ({ tab: s.tab, openNote: s.openNote }))
@@ -147,8 +159,6 @@ export function FileExplorer() {
     beginRenaming,
     entryMap,
   })
-
-  useExpandActiveTab(entries, tab)
 
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {
@@ -267,7 +277,9 @@ export function FileExplorer() {
 
       if (!isRange && !isMulti) {
         if (entry.isDirectory) {
-          toggleDirectory(entry.path)
+          setCurrentCollectionPath((prev) =>
+            prev === entry.path ? null : entry.path
+          )
         } else if (entry.name.endsWith('.md')) {
           openNote(entry.path)
         } else if (
@@ -284,94 +296,133 @@ export function FileExplorer() {
       selectionAnchorPath,
       setSelectedEntryPaths,
       setSelectionAnchorPath,
-      toggleDirectory,
       visibleEntryPaths,
       openImagePreview,
+      setCurrentCollectionPath,
     ]
   )
 
   return (
-    <aside
-      ref={fileExplorerRef}
-      className={cn(
-        'font-scale-scope relative shrink-0 flex flex-col mt-10',
-        !isResizing && 'transition-[width] ease-out duration-150',
-        isResizing && 'transition-none',
-        !isOpen && 'overflow-hidden border-none'
-      )}
-      style={{ width: isOpen ? width : 0 }}
-    >
-      <header
+    <>
+      <TopMenu
+        isOpen={isOpen}
+        width={width}
+        isResizing={isResizing}
+        isFileExplorerOpen={isFileExplorerOpen}
+        setFileExplorerOpen={setFileExplorerOpen}
+      />
+      <aside
+        ref={fileExplorerRef}
         className={cn(
-          'flex items-center pl-1 pr-2 py-1 gap-1 overflow-hidden',
-          hasWorkspaceScroll &&
-            !isWorkspaceScrollAtTop &&
-            'border-b border-border/20'
+          'font-scale-scope relative shrink-0 flex flex-col',
+          isResizing
+            ? 'transition-none'
+            : 'transition-[width] ease-out duration-150'
         )}
+        style={{ width: isOpen ? width : 0 }}
       >
-        <div className="min-w-0 shrink">
-          <WorkspaceDropdown
-            workspacePath={workspacePath}
-            recentWorkspacePaths={recentWorkspacePaths}
-            onWorkspaceSelect={setWorkspace}
-            onOpenFolderPicker={openFolderPicker}
-          />
-        </div>
-        <div className="flex-1" />
-        <GitSyncStatus workspacePath={workspacePath} />
-      </header>
-      <div
-        ref={handleWorkspaceContainerRef}
-        className={cn(
-          'flex-1 overflow-y-auto pl-1 pr-2 py-1',
-          isOverWorkspace &&
-            'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
-        )}
-        onContextMenu={handleRootContextMenu}
-        onClick={() => {
-          setSelectedEntryPaths(new Set())
-        }}
-        onScroll={handleWorkspaceScroll}
-      >
-        <ul className="space-y-0.5 min-h-full pb-4">
-          {entries.map((entry) => (
-            <TreeNode
-              key={entry.path}
-              entry={entry}
-              tab={tab}
-              depth={0}
-              expandedDirectories={expandedDirectories}
-              onDirectoryClick={toggleDirectory}
-              onEntryPrimaryAction={handleEntryPrimaryAction}
-              onEntryContextMenu={handleEntryContextMenu}
-              selectedEntryPaths={selectedEntryPaths}
-              renamingEntryPath={renamingEntryPath}
-              aiRenamingEntryPaths={aiRenamingEntryPaths}
-              onRenameSubmit={handleRenameSubmit}
-              onRenameCancel={cancelRenaming}
-            />
-          ))}
-        </ul>
-      </div>
-      <footer
-        className={cn(
-          'pl-1 pr-2 py-1 flex transition-[border]',
-          hasWorkspaceScroll &&
-            !isWorkspaceScrollAtBottom &&
-            'border-t border-border/20'
-        )}
-      >
-        <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-          <SettingsMenu />
-          <FeedbackButton />
-        </TooltipProvider>
-      </footer>
-      {isOpen && (
         <div
-          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent transition-colors hover:bg-border/50"
-          onPointerDown={handlePointerDown}
-        />
+          className={cn(
+            'flex items-center justify-between px-2 gap-1 overflow-hidden mt-12',
+            hasWorkspaceScroll &&
+              !isWorkspaceScrollAtTop &&
+              'border-b border-border/20'
+          )}
+        >
+          <div className="shrink-0 max-w-40">
+            <WorkspaceDropdown
+              workspacePath={workspacePath}
+              recentWorkspacePaths={recentWorkspacePaths}
+              onWorkspaceSelect={setWorkspace}
+              onOpenFolderPicker={openFolderPicker}
+            />
+          </div>
+          <GitSyncStatus workspacePath={workspacePath} />
+        </div>
+        <div
+          ref={handleWorkspaceContainerRef}
+          className={cn(
+            'flex-1 overflow-y-auto p-2',
+            isOverWorkspace &&
+              'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
+          )}
+          onContextMenu={handleRootContextMenu}
+          onClick={() => {
+            setSelectedEntryPaths(new Set())
+          }}
+          onScroll={handleWorkspaceScroll}
+        >
+          <ul className="space-y-0.5 min-h-full pb-4">
+            {entries.map((entry) => (
+              <TreeNode
+                key={entry.path}
+                entry={entry}
+                tab={tab}
+                depth={0}
+                expandedDirectories={expandedDirectories}
+                onDirectoryClick={toggleDirectory}
+                onEntryPrimaryAction={handleEntryPrimaryAction}
+                onEntryContextMenu={handleEntryContextMenu}
+                selectedEntryPaths={selectedEntryPaths}
+                renamingEntryPath={renamingEntryPath}
+                aiRenamingEntryPaths={aiRenamingEntryPaths}
+                onRenameSubmit={handleRenameSubmit}
+                onRenameCancel={cancelRenaming}
+              />
+            ))}
+          </ul>
+        </div>
+        <footer
+          className={cn(
+            'p-2 flex transition-[border]',
+            hasWorkspaceScroll &&
+              !isWorkspaceScrollAtBottom &&
+              'border-t border-border/20'
+          )}
+        >
+          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
+            <SettingsMenu />
+            <FeedbackButton />
+          </TooltipProvider>
+        </footer>
+        {isOpen && (
+          <div
+            className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent"
+            onPointerDown={handlePointerDown}
+          />
+        )}
+      </aside>
+    </>
+  )
+}
+
+function TopMenu({
+  isOpen,
+  width,
+  isResizing,
+  isFileExplorerOpen,
+  setFileExplorerOpen,
+}: {
+  isOpen: boolean
+  width: number
+  isResizing: boolean
+  isFileExplorerOpen: boolean
+  setFileExplorerOpen: (isOpen: boolean) => void
+}) {
+  return (
+    <div
+      className={cn(
+        'fixed top-0 h-12 flex items-center justify-end gap-1 px-2 z-[9999]',
+        !isResizing && 'transition-[width] ease-out duration-150'
       )}
-    </aside>
+      style={{ width: isOpen ? width : 120 }}
+      data-tauri-drag-region
+    >
+      {isFileExplorerOpen && <SearchButton />}
+      <ToggleButton
+        isOpen={isFileExplorerOpen}
+        onToggle={() => setFileExplorerOpen(!isFileExplorerOpen)}
+      />
+    </div>
   )
 }

@@ -10,6 +10,7 @@ import {
   readDir,
   readTextFile,
   rename,
+  stat,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { generateText } from 'ai'
@@ -29,6 +30,8 @@ export type WorkspaceEntry = {
   name: string
   isDirectory: boolean
   children?: WorkspaceEntry[]
+  createdAt?: Date
+  modifiedAt?: Date
 }
 
 type WorkspaceStore = {
@@ -38,10 +41,14 @@ type WorkspaceStore = {
   isTreeLoading: boolean
   entries: WorkspaceEntry[]
   expandedDirectories: Record<string, boolean>
+  currentCollectionPath: string | null
   setExpandedDirectories: (
     action: (
       expandedDirectories: Record<string, boolean>
     ) => Record<string, boolean>
+  ) => void
+  setCurrentCollectionPath: (
+    path: string | null | ((prev: string | null) => string | null)
   ) => void
   initializeWorkspace: () => void
   setWorkspace: (path: string) => void
@@ -70,9 +77,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isTreeLoading: false,
   entries: [],
   expandedDirectories: {},
+  currentCollectionPath: null,
 
   setExpandedDirectories: (action) => {
     set((state) => ({ expandedDirectories: action(state.expandedDirectories) }))
+  },
+
+  setCurrentCollectionPath: (path) => {
+    set((state) => ({
+      currentCollectionPath:
+        typeof path === 'function' ? path(state.currentCollectionPath) : path,
+    }))
   },
 
   initializeWorkspace: () => {
@@ -101,6 +116,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         entries: [],
         isTreeLoading: Boolean(workspacePath),
         expandedDirectories: {},
+        currentCollectionPath: null,
       })
 
       if (workspacePath) {
@@ -115,17 +131,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         entries: [],
         isTreeLoading: false,
         expandedDirectories: {},
+        currentCollectionPath: null,
       })
     }
   },
 
   setWorkspace: (path: string) => {
     try {
-      const { tab, closeTab } = useTabStore.getState()
+      const { tab, closeTab, clearHistory } = useTabStore.getState()
 
       if (tab) {
         closeTab(tab.path)
       }
+
+      clearHistory()
 
       const recentWorkspacePaths = get().recentWorkspacePaths
 
@@ -146,6 +165,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         entries: [],
         isTreeLoading: true,
         expandedDirectories: {},
+        currentCollectionPath: null,
       })
 
       get().refreshWorkspaceEntries()
@@ -244,6 +264,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           [directoryPath]: true,
           [folderPath]: true,
         },
+        currentCollectionPath: folderPath,
       }))
 
       await get().refreshWorkspaceEntries()
@@ -307,9 +328,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       const { tab, openTab } = useTabStore.getState()
+      const { currentCollectionPath } = get()
       let targetDirectory = workspacePath
 
-      if (tab) {
+      // Priority: currentCollectionPath > tab directory > workspace root
+      if (currentCollectionPath) {
+        targetDirectory = currentCollectionPath
+      } else if (tab) {
         targetDirectory = await dirname(tab.path)
       }
 
@@ -345,6 +370,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Remove deleted paths from history
       for (const path of paths) {
         removePathFromHistory(path)
+      }
+
+      // Update currentCollectionPath if it's being deleted
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath && paths.includes(currentCollectionPath)) {
+        set({ currentCollectionPath: null })
       }
 
       await get().refreshWorkspaceEntries()
@@ -479,6 +510,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             entry.path,
             nextPath
           ),
+          currentCollectionPath:
+            state.currentCollectionPath === entry.path
+              ? nextPath
+              : state.currentCollectionPath,
         }))
       }
 
@@ -557,6 +592,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(sourcePath, newPath)
       updateHistoryPath(sourcePath, newPath)
 
+      // Update currentCollectionPath if it's being moved
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath === sourcePath) {
+        set({ currentCollectionPath: newPath })
+      }
+
       await get().refreshWorkspaceEntries()
       return true
     } catch (error) {
@@ -589,6 +630,22 @@ async function buildWorkspaceEntries(
           path: fullPath,
           name: entry.name,
           isDirectory: entry.isDirectory,
+        }
+
+        // Fetch metadata for files (not directories to avoid performance issues)
+        if (!entry.isDirectory) {
+          try {
+            const fileMetadata = await stat(fullPath)
+            if (fileMetadata.birthtime) {
+              workspaceEntry.createdAt = new Date(fileMetadata.birthtime)
+            }
+            if (fileMetadata.mtime) {
+              workspaceEntry.modifiedAt = new Date(fileMetadata.mtime)
+            }
+          } catch (error) {
+            // Silently fail if metadata cannot be retrieved
+            console.debug('Failed to get metadata for:', fullPath, error)
+          }
         }
 
         if (entry.isDirectory) {

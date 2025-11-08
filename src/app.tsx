@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
+import { CollectionView } from './components/collection-view/collection-view'
 import { CommandMenu } from './components/command-menu/command-menu'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
 import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
 import { LicenseTempDialog } from './components/license/license-temp-dialog'
 import { SettingsDialog } from './components/settings/settings'
-import { Tabbar } from './components/tabbar/tabbar'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
 import { useFontScale } from './hooks/use-font-scale'
@@ -32,11 +32,13 @@ export function App() {
 
   return (
     <DndProvider>
-      <div className="h-screen flex flex-col p-1 bg-muted/70">
-        <Tabbar />
+      <div className="h-screen flex flex-col bg-muted/50">
         <div className="flex-1 overflow-hidden flex">
           <FileExplorer />
-          <Editor />
+          <div className="flex-1 flex">
+            <CollectionView />
+            <Editor />
+          </div>
           <div className="fixed bottom-1 right-1">
             <LicenseTempDialog />
           </div>

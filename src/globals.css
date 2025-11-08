@@ -125,7 +125,7 @@
   }
 
   body {
-    @apply text-foreground overscroll-none antialiased font-medium;
+    @apply text-foreground overscroll-none antialiased;
   }
 }
 
@@ -182,5 +182,5 @@
 }
 
 .lucide {
-  stroke-width: 1.75;
+  stroke-width: 1.6;
 }

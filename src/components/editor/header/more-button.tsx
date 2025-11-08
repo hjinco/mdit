@@ -32,11 +32,7 @@ export function MoreButton() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7 text-muted-foreground hover:text-foreground hover:bg-transparent"
-        >
+        <Button variant="ghost" size="icon" className="text-foreground/70">
           <InfoIcon />
         </Button>
       </PopoverTrigger>

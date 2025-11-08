@@ -11,6 +11,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
+import { HistoryNavigation } from './header/history-navigation'
+import { MoreButton } from './header/more-button'
+import { Tab } from './header/tab'
 import { EditorKit } from './plugins/editor-kit'
 import {
   copySelection,
@@ -31,12 +34,21 @@ export function Editor() {
     return editor.api.markdown.deserialize(tab.content)
   }, [tab, editor])
 
-  if (!tab || !value)
-    return <div className="flex-1 h-full bg-background rounded-sm" />
+  if (!tab || !value) return <div className="flex-1 h-full bg-background" />
 
   return (
-    <div className="font-scale-scope flex-1 h-full overflow-hidden bg-background rounded-sm">
-      <EditorContent key={tab.id} path={tab.path} value={value} />
+    <div className="relative flex-1 flex flex-col bg-background">
+      <div
+        className="h-12 flex items-center justify-between px-2"
+        data-tauri-drag-region
+      >
+        <HistoryNavigation />
+        <Tab />
+        <MoreButton />
+      </div>
+      <div className="font-scale-scope flex-1 overflow-hidden">
+        <EditorContent key={tab.id} path={tab.path} value={value} />
+      </div>
     </div>
   )
 }
@@ -124,7 +136,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-26 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/90'
+            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-[450]'
           )}
           autoCapitalize="off"
           spellCheck={false}

@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useDropZone } from '@/contexts/drop-context'
 import { cn } from '@/lib/utils'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
-import { isImageFile } from '@/components/file-explorer/utils/file-icon'
+import { isImageFile } from '@/utils/file-icon'
 
 type ActiveDragData = { path?: string; isDirectory?: boolean } | undefined
 
