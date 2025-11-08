@@ -591,6 +591,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(sourcePath, newPath)
       updateHistoryPath(sourcePath, newPath)
 
+      // Update currentCollectionPath if it's being moved
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath === sourcePath) {
+        set({ currentCollectionPath: newPath })
+      }
+
       await get().refreshWorkspaceEntries()
       return true
     } catch (error) {
