@@ -503,6 +503,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             entry.path,
             nextPath
           ),
+          currentCollectionPath:
+            state.currentCollectionPath === entry.path
+              ? nextPath
+              : state.currentCollectionPath,
         }))
       }
 
