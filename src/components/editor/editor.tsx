@@ -11,6 +11,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
+import { useUIStore } from '@/store/ui-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 import { HistoryNavigation } from './header/history-navigation'
 import { MoreButton } from './header/more-button'
 import { Tab } from './header/tab'
@@ -23,6 +25,10 @@ import {
 
 export function Editor() {
   const tab = useTabStore((s) => s.tab)
+  const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
+  const currentCollectionPath = useWorkspaceStore(
+    (s) => s.currentCollectionPath
+  )
   const editor = useMemo(() => {
     return createSlateEditor({
       plugins: EditorKit,
@@ -39,12 +45,23 @@ export function Editor() {
   return (
     <div className="relative flex-1 flex flex-col bg-background">
       <div
-        className="h-12 flex items-center justify-between px-2"
+        className="w-full h-12 flex items-center justify-center px-2 relative"
         data-tauri-drag-region
       >
-        <HistoryNavigation />
+        <div
+          className={cn(
+            'absolute',
+            !isFileExplorerOpen && currentCollectionPath === null
+              ? 'left-30 pl-2 border-l'
+              : 'left-2'
+          )}
+        >
+          <HistoryNavigation />
+        </div>
         <Tab />
-        <MoreButton />
+        <div className="absolute right-2">
+          <MoreButton />
+        </div>
       </div>
       <div className="font-scale-scope flex-1 overflow-hidden">
         <EditorContent key={tab.id} path={tab.path} value={value} />
