@@ -6,6 +6,7 @@ import type { WorkspaceEntry } from '@/store/workspace-store'
 type UseCollectionContextMenuProps = {
   renameConfig: ChatConfig | null
   renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
+  beginRenaming: (entry: WorkspaceEntry) => void
   handleDeleteEntries: (paths: string[]) => Promise<void>
   selectedEntryPaths: Set<string>
   setSelectedEntryPaths: (paths: Set<string>) => void
@@ -16,6 +17,7 @@ type UseCollectionContextMenuProps = {
 export function useCollectionContextMenu({
   renameConfig,
   renameNoteWithAI,
+  beginRenaming,
   handleDeleteEntries,
   selectedEntryPaths,
   setSelectedEntryPaths,
@@ -63,6 +65,16 @@ export function useCollectionContextMenu({
 
         itemPromises.push(
           MenuItem.new({
+            id: `rename-${entry.path}`,
+            text: 'Rename',
+            action: async () => {
+              beginRenaming(entry)
+            },
+          })
+        )
+
+        itemPromises.push(
+          MenuItem.new({
             id: `delete-${entry.path}`,
             text: 'Delete',
             action: async () => {
@@ -84,7 +96,7 @@ export function useCollectionContextMenu({
         console.error('Failed to open context menu:', error)
       }
     },
-    [handleDeleteEntries, renameConfig, renameNoteWithAI]
+    [beginRenaming, handleDeleteEntries, renameConfig, renameNoteWithAI]
   )
 
   const handleEntryContextMenu = useCallback(

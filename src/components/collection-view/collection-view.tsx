@@ -11,6 +11,7 @@ import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
 import { useCollectionEntries } from './hooks/use-collection-entries'
+import { useCollectionRename } from './hooks/use-collection-rename'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
 import { usePreviewCache } from './hooks/use-preview-cache'
@@ -52,10 +53,11 @@ export function CollectionView() {
   )
 
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const { deleteEntries, renameNoteWithAI } = useWorkspaceStore(
+  const { deleteEntries, renameNoteWithAI, renameEntry } = useWorkspaceStore(
     useShallow((state) => ({
       deleteEntries: state.deleteEntries,
       renameNoteWithAI: state.renameNoteWithAI,
+      renameEntry: state.renameEntry,
     }))
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
@@ -115,6 +117,13 @@ export function CollectionView() {
     openNote,
   })
 
+  const {
+    renamingEntryPath,
+    beginRenaming,
+    cancelRenaming,
+    handleRenameSubmit,
+  } = useCollectionRename({ renameEntry })
+
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {
       if (paths.length === 0) {
@@ -135,6 +144,7 @@ export function CollectionView() {
   const { handleEntryContextMenu } = useCollectionContextMenu({
     renameConfig,
     renameNoteWithAI,
+    beginRenaming,
     handleDeleteEntries,
     selectedEntryPaths,
     setSelectedEntryPaths,
@@ -232,6 +242,9 @@ export function CollectionView() {
                     onContextMenu={handleContextMenu}
                     previewText={getPreview(entry.path)}
                     setPreview={setPreview}
+                    isRenaming={renamingEntryPath === entry.path}
+                    onRenameSubmit={handleRenameSubmit}
+                    onRenameCancel={cancelRenaming}
                     style={{
                       position: 'absolute',
                       top: 0,
