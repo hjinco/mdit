@@ -40,7 +40,12 @@ export function Editor() {
     return editor.api.markdown.deserialize(tab.content)
   }, [tab, editor])
 
-  if (!tab || !value) return <div className="flex-1 h-full bg-background" />
+  if (!tab || !value)
+    return (
+      <div className="flex-1 h-full bg-background/80">
+        <div className="h-12 w-full" data-tauri-drag-region />
+      </div>
+    )
 
   return (
     <div className="relative flex-1 flex flex-col bg-background">
