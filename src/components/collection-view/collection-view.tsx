@@ -122,7 +122,7 @@ export function CollectionView() {
     beginRenaming,
     cancelRenaming,
     handleRenameSubmit,
-  } = useCollectionRename({ renameEntry })
+  } = useCollectionRename({ renameEntry, invalidatePreview })
 
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {
