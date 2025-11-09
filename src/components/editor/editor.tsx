@@ -63,7 +63,7 @@ export function Editor() {
           <MoreButton />
         </div>
       </div>
-      <div className="font-scale-scope flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         <EditorContent key={tab.id} path={tab.path} value={value} />
       </div>
     </div>
@@ -158,7 +158,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-[450]'
+            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-[450] font-scale-scope'
           )}
           autoCapitalize="off"
           spellCheck={false}
