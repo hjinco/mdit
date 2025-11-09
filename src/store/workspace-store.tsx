@@ -21,7 +21,6 @@ import { create } from 'zustand'
 import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
-import { useUIStore } from './ui-store'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -322,11 +321,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
-      const { isFileExplorerOpen, setFileExplorerOpen } = useUIStore.getState()
-      if (!isFileExplorerOpen) {
-        setFileExplorerOpen(true)
-      }
-
       const { tab, openTab } = useTabStore.getState()
       const { currentCollectionPath } = get()
       let targetDirectory = workspacePath
