@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
-const ANIMATION_DURATION_MS = 150
+const ANIMATION_DURATION_MS = 100
 
 export function useCollectionEntries(
   currentCollectionPath: string | null,

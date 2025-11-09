@@ -154,7 +154,7 @@ export function CollectionView() {
         'relative shrink-0 flex flex-col bg-background shadow-md border-r',
         isResizing
           ? 'transition-none'
-          : 'transition-[width] ease-out duration-150',
+          : 'transition-[width] ease-out duration-100',
         !isOpen && 'overflow-hidden pointer-events-none'
       )}
       style={{ width: isOpen ? width : 0 }}

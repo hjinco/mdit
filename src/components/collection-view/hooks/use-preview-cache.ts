@@ -18,7 +18,7 @@ export function usePreviewCache(currentCollectionPath: string | null) {
       timeoutRef.current = window.setTimeout(() => {
         setPreviewTexts(new Map())
         timeoutRef.current = null
-      }, 150)
+      }, 100)
     } else {
       // Clear cache immediately when collection path changes
       setPreviewTexts(new Map())
