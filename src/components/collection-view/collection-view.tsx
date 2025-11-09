@@ -1,7 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { dirname } from '@tauri-apps/api/path'
 import { FolderIcon } from 'lucide-react'
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef } from 'react'
+import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -51,21 +50,6 @@ export function CollectionView() {
       isSaved: state.isSaved,
     }))
   )
-
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-    if (tab?.path) {
-      dirname(tab.path)
-        .then((folderPath) => {
-          setCurrentCollectionPath(folderPath)
-        })
-        .catch((error) => {
-          console.error('Failed to get directory path from tab:', error)
-        })
-    }
-  }, [tab?.path, setCurrentCollectionPath, isOpen])
 
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
   const { deleteEntries, renameNoteWithAI } = useWorkspaceStore(
