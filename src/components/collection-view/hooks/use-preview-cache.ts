@@ -48,5 +48,16 @@ export function usePreviewCache(currentCollectionPath: string | null) {
     })
   }, [])
 
-  return { getPreview, setPreview }
+  const invalidatePreview = useCallback((path: string) => {
+    setPreviewTexts((prev) => {
+      if (!prev.has(path)) {
+        return prev
+      }
+      const next = new Map(prev)
+      next.delete(path)
+      return next
+    })
+  }, [])
+
+  return { getPreview, setPreview, invalidatePreview }
 }
