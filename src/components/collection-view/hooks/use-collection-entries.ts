@@ -16,7 +16,10 @@ export function useCollectionEntries(
     // Handle root case: when currentCollectionPath is the workspace root,
     // entries already contains the root-level files
     if (workspacePath && currentCollectionPath === workspacePath) {
-      return entries.filter((entry) => !entry.isDirectory)
+      return entries.filter(
+        (entry) =>
+          !entry.isDirectory && entry.name.toLowerCase().endsWith('.md')
+      )
     }
 
     // Find the folder entry by path
@@ -44,8 +47,10 @@ export function useCollectionEntries(
       return []
     }
 
-    // Return only files (exclude folders)
-    return folderEntry.children.filter((entry) => !entry.isDirectory)
+    // Return only markdown files (exclude folders and non-md files)
+    return folderEntry.children.filter(
+      (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith('.md')
+    )
   }, [currentCollectionPath, entries, workspacePath])
 
   const [displayedEntries, setDisplayedEntries] =
