@@ -8,9 +8,13 @@ type RenameEntry = (
 
 type UseCollectionRenameProps = {
   renameEntry: RenameEntry
+  invalidatePreview: (path: string) => void
 }
 
-export function useCollectionRename({ renameEntry }: UseCollectionRenameProps) {
+export function useCollectionRename({
+  renameEntry,
+  invalidatePreview,
+}: UseCollectionRenameProps) {
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )
@@ -26,14 +30,18 @@ export function useCollectionRename({ renameEntry }: UseCollectionRenameProps) {
   const handleRenameSubmit = useCallback(
     async (entry: WorkspaceEntry, newName: string) => {
       try {
-        await renameEntry(entry, newName)
+        const newPath = await renameEntry(entry, newName)
+        // Clear cache for old path if rename succeeded
+        if (newPath !== null) {
+          invalidatePreview(entry.path)
+        }
       } catch (error) {
         console.error('Failed to rename entry:', error)
       } finally {
         setRenamingEntryPath(null)
       }
     },
-    [renameEntry]
+    [renameEntry, invalidatePreview]
   )
 
   return {
