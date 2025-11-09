@@ -314,7 +314,7 @@ export function FileExplorer() {
       <aside
         ref={fileExplorerRef}
         className={cn(
-          'font-scale-scope relative shrink-0 flex flex-col overflow-hidden',
+          'relative shrink-0 flex flex-col overflow-hidden',
           isResizing
             ? 'transition-none'
             : 'transition-[width] ease-out duration-100'
