@@ -1,12 +1,54 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
 export type SortOption = 'name' | 'createdAt' | 'modifiedAt'
 export type SortDirection = 'asc' | 'desc'
 
+const COLLECTION_SORT_OPTION_KEY = 'collection-sort-option'
+const COLLECTION_SORT_DIRECTION_KEY = 'collection-sort-direction'
+
+const DEFAULT_SORT_OPTION: SortOption = 'name'
+const DEFAULT_SORT_DIRECTION: SortDirection = 'asc'
+
+const readInitialSortOption = (): SortOption => {
+  const stored = localStorage.getItem(COLLECTION_SORT_OPTION_KEY)
+  if (!stored) return DEFAULT_SORT_OPTION
+
+  if (stored === 'name' || stored === 'createdAt' || stored === 'modifiedAt') {
+    return stored
+  }
+
+  localStorage.removeItem(COLLECTION_SORT_OPTION_KEY)
+  return DEFAULT_SORT_OPTION
+}
+
+const readInitialSortDirection = (): SortDirection => {
+  const stored = localStorage.getItem(COLLECTION_SORT_DIRECTION_KEY)
+  if (!stored) return DEFAULT_SORT_DIRECTION
+
+  if (stored === 'asc' || stored === 'desc') {
+    return stored
+  }
+
+  localStorage.removeItem(COLLECTION_SORT_DIRECTION_KEY)
+  return DEFAULT_SORT_DIRECTION
+}
+
 export function useCollectionSort(entries: WorkspaceEntry[]) {
-  const [sortOption, setSortOption] = useState<SortOption>('name')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [sortOption, setSortOption] = useState<SortOption>(
+    readInitialSortOption
+  )
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    readInitialSortDirection
+  )
+
+  useEffect(() => {
+    localStorage.setItem(COLLECTION_SORT_OPTION_KEY, sortOption)
+  }, [sortOption])
+
+  useEffect(() => {
+    localStorage.setItem(COLLECTION_SORT_DIRECTION_KEY, sortDirection)
+  }, [sortDirection])
 
   const sortedEntries = useMemo(() => {
     const sorted = [...entries].sort((a, b) => {
