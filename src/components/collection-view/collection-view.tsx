@@ -1,6 +1,7 @@
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { dirname } from '@tauri-apps/api/path'
-import { FileTextIcon, FolderIcon, ImageIcon } from 'lucide-react'
-import { type MouseEvent, useCallback, useEffect, useMemo } from 'react'
+import { FolderIcon } from 'lucide-react'
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -9,12 +10,13 @@ import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
-import { isImageFile } from '@/utils/file-icon'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
 import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
+import { FileEntry } from './ui/file-entry'
 import { NewNoteButton } from './ui/new-note-button'
+import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
 
 export function CollectionView() {
@@ -82,6 +84,37 @@ export function CollectionView() {
     setSortOption,
     setSortDirection,
   } = useCollectionSort(collectionEntries)
+
+  const parentRef = useRef<HTMLDivElement>(null)
+  const previewCacheRef = useRef<Map<string, string>>(new Map())
+
+  // Clear cache when collection path changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentCollectionPath change should clear cache
+  useEffect(() => {
+    previewCacheRef.current.clear()
+  }, [currentCollectionPath])
+
+  // Stable cache access functions
+  const getPreview = useCallback((path: string) => {
+    return previewCacheRef.current.get(path)
+  }, [])
+
+  const setPreview = useCallback((path: string, preview: string) => {
+    previewCacheRef.current.set(path, preview)
+  }, [])
+
+  const virtualizer = useVirtualizer({
+    count: sortedEntries.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => {
+      const entry = sortedEntries[index]
+      const isMarkdown = entry.name.toLowerCase().endsWith('.md')
+      // NoteEntry: ~73px (name + preview + padding) + 2px spacing
+      // FileEntry: ~33px (name + padding) + 2px spacing
+      return isMarkdown ? 75 : 35
+    },
+    overscan: 5,
+  })
 
   const entryOrderMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -170,6 +203,9 @@ export function CollectionView() {
         </div>
       </div>
       <div
+        ref={(el) => {
+          parentRef.current = el
+        }}
         className="flex-1 overflow-y-auto"
         onClick={() => {
           setSelectedEntryPaths(new Set())
@@ -182,54 +218,73 @@ export function CollectionView() {
             </p>
           </div>
         ) : (
-          <ul className="space-y-0.5 px-2">
-            {sortedEntries.map((entry) => {
-              const isActive = tab?.path === entry.path
-              const isSelected = selectedEntryPaths.has(entry.path)
+          <div
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            <ul className="px-2">
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const entry = sortedEntries[virtualItem.index]
+                const isActive = tab?.path === entry.path
+                const isSelected = selectedEntryPaths.has(entry.path)
 
-              const handleClick = (event: MouseEvent<HTMLLIElement>) => {
-                handleEntryPrimaryAction(entry, event)
-              }
+                const handleClick = (event: MouseEvent<HTMLLIElement>) => {
+                  handleEntryPrimaryAction(entry, event)
+                }
 
-              const handleContextMenu = (event: MouseEvent<HTMLLIElement>) => {
-                event.preventDefault()
-                event.stopPropagation()
-                handleEntryContextMenu(entry)
-              }
+                const handleContextMenu = (
+                  event: MouseEvent<HTMLLIElement>
+                ) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  handleEntryContextMenu(entry)
+                }
 
-              // Remove extension from display name
-              const lastDotIndex = entry.name.lastIndexOf('.')
-              const displayName =
-                lastDotIndex > 0
-                  ? entry.name.slice(0, lastDotIndex)
-                  : entry.name
+                const isMarkdown = entry.name.toLowerCase().endsWith('.md')
 
-              // Check if file is an image
-              const extension =
-                lastDotIndex > 0 ? entry.name.slice(lastDotIndex) : ''
-              const isImage = isImageFile(extension)
-
-              return (
-                <li
-                  key={entry.path}
-                  onClick={handleClick}
-                  onContextMenu={handleContextMenu}
-                  className={cn(
-                    'px-2 py-1 text-sm text-foreground/80 rounded-sm flex items-center gap-2',
-                    'hover:bg-muted',
-                    (isActive || isSelected) && 'bg-accent'
-                  )}
-                >
-                  {isImage ? (
-                    <ImageIcon className="size-4 shrink-0" />
-                  ) : (
-                    <FileTextIcon className="size-4 shrink-0" />
-                  )}
-                  <span className="truncate cursor-default">{displayName}</span>
-                </li>
-              )
-            })}
-          </ul>
+                return isMarkdown ? (
+                  <NoteEntry
+                    key={entry.path}
+                    entry={entry}
+                    isActive={isActive}
+                    isSelected={isSelected}
+                    onClick={handleClick}
+                    onContextMenu={handleContextMenu}
+                    getPreview={getPreview}
+                    setPreview={setPreview}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                    data-index={virtualItem.index}
+                  />
+                ) : (
+                  <FileEntry
+                    key={entry.path}
+                    entry={entry}
+                    isActive={isActive}
+                    isSelected={isSelected}
+                    onClick={handleClick}
+                    onContextMenu={handleContextMenu}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                    data-index={virtualItem.index}
+                  />
+                )
+              })}
+            </ul>
+          </div>
         )}
       </div>
       {isOpen && (
