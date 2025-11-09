@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { FileTextIcon } from 'lucide-react'
-import { type CSSProperties, type MouseEvent, useEffect, useState } from 'react'
+import { type CSSProperties, type MouseEvent, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
@@ -10,7 +9,7 @@ type NoteEntryProps = {
   isSelected: boolean
   onClick: (event: MouseEvent<HTMLLIElement>) => void
   onContextMenu: (event: MouseEvent<HTMLLIElement>) => void
-  getPreview: (path: string) => string | undefined
+  previewText?: string
   setPreview: (path: string, preview: string) => void
   style?: CSSProperties
   'data-index'?: number
@@ -22,18 +21,14 @@ export function NoteEntry({
   isSelected,
   onClick,
   onContextMenu,
-  getPreview,
+  previewText,
   setPreview,
   style,
   'data-index': dataIndex,
 }: NoteEntryProps) {
-  const [previewText, setPreviewText] = useState<string>('')
-
   useEffect(() => {
-    // Check cache first
-    const cachedPreview = getPreview(entry.path)
-    if (cachedPreview !== undefined) {
-      setPreviewText(cachedPreview)
+    // If preview is already available, no need to fetch
+    if (previewText !== undefined) {
       return
     }
 
@@ -44,15 +39,14 @@ export function NoteEntry({
           path: entry.path,
         })
         setPreview(entry.path, text)
-        setPreviewText(text)
       } catch (error) {
         console.error('Failed to fetch note preview:', error)
-        setPreviewText('')
+        setPreview(entry.path, '')
       }
     }
 
     fetchPreview()
-  }, [entry.path, getPreview, setPreview])
+  }, [entry.path, previewText, setPreview])
 
   // Remove extension from display name
   const lastDotIndex = entry.name.lastIndexOf('.')
@@ -64,22 +58,21 @@ export function NoteEntry({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'px-2 py-1 text-sm text-foreground/80 rounded-sm flex flex-col gap-1',
+        'px-3 py-2 text-foreground/80 rounded-sm flex flex-col gap-1 mb-1',
         'hover:bg-muted',
         (isActive || isSelected) && 'bg-accent'
       )}
       style={style}
       data-index={dataIndex}
     >
-      <div className="flex items-center gap-2">
-        <FileTextIcon className="size-4 shrink-0" />
-        <span className="truncate cursor-default">{displayName}</span>
+      <div className="flex">
+        <span className="text-base font-medium truncate cursor-default">
+          {displayName}
+        </span>
       </div>
-      {previewText && (
-        <div className="text-xs text-muted-foreground line-clamp-2 pl-6">
-          {previewText}
-        </div>
-      )}
+      <div className="text-xs font-medium text-muted-foreground line-clamp-2 cursor-default min-h-8">
+        {previewText ?? '&nbsp;'}
+      </div>
     </li>
   )
 }

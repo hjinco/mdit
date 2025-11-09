@@ -14,7 +14,7 @@ import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
 import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
-import { FileEntry } from './ui/file-entry'
+import { usePreviewCache } from './hooks/use-preview-cache'
 import { NewNoteButton } from './ui/new-note-button'
 import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
@@ -86,22 +86,7 @@ export function CollectionView() {
   } = useCollectionSort(collectionEntries)
 
   const parentRef = useRef<HTMLDivElement>(null)
-  const previewCacheRef = useRef<Map<string, string>>(new Map())
-
-  // Clear cache when collection path changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: currentCollectionPath change should clear cache
-  useEffect(() => {
-    previewCacheRef.current.clear()
-  }, [currentCollectionPath])
-
-  // Stable cache access functions
-  const getPreview = useCallback((path: string) => {
-    return previewCacheRef.current.get(path)
-  }, [])
-
-  const setPreview = useCallback((path: string, preview: string) => {
-    previewCacheRef.current.set(path, preview)
-  }, [])
+  const { getPreview, setPreview } = usePreviewCache(currentCollectionPath)
 
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
@@ -109,9 +94,9 @@ export function CollectionView() {
     estimateSize: (index) => {
       const entry = sortedEntries[index]
       const isMarkdown = entry.name.toLowerCase().endsWith('.md')
-      // NoteEntry: ~73px (name + preview + padding) + 2px spacing
-      // FileEntry: ~33px (name + padding) + 2px spacing
-      return isMarkdown ? 75 : 35
+      // NoteEntry: ~76px (name + preview + padding) + 4px spacing
+      // FileEntry: ~36px (name + padding) + 4px spacing
+      return isMarkdown ? 80 : 40
     },
     overscan: 5,
   })
@@ -166,7 +151,7 @@ export function CollectionView() {
   return (
     <aside
       className={cn(
-        'font-scale-scope relative shrink-0 flex flex-col bg-background shadow-md border-r',
+        'relative shrink-0 flex flex-col bg-background shadow-md border-r',
         isResizing
           ? 'transition-none'
           : 'transition-[width] ease-out duration-150',
@@ -206,13 +191,13 @@ export function CollectionView() {
         ref={(el) => {
           parentRef.current = el
         }}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto px-3"
         onClick={() => {
           setSelectedEntryPaths(new Set())
         }}
       >
         {sortedEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full px-4 py-8 text-center">
+          <div className="flex flex-col items-center justify-center h-full">
             <p className="text-sm text-muted-foreground">
               No notes in this folder
             </p>
@@ -225,7 +210,7 @@ export function CollectionView() {
               position: 'relative',
             }}
           >
-            <ul className="px-2">
+            <ul>
               {virtualizer.getVirtualItems().map((virtualItem) => {
                 const entry = sortedEntries[virtualItem.index]
                 const isActive = tab?.path === entry.path
@@ -253,7 +238,7 @@ export function CollectionView() {
                     isSelected={isSelected}
                     onClick={handleClick}
                     onContextMenu={handleContextMenu}
-                    getPreview={getPreview}
+                    previewText={getPreview(entry.path)}
                     setPreview={setPreview}
                     style={{
                       position: 'absolute',
@@ -264,24 +249,25 @@ export function CollectionView() {
                     }}
                     data-index={virtualItem.index}
                   />
-                ) : (
-                  <FileEntry
-                    key={entry.path}
-                    entry={entry}
-                    isActive={isActive}
-                    isSelected={isSelected}
-                    onClick={handleClick}
-                    onContextMenu={handleContextMenu}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                    data-index={virtualItem.index}
-                  />
-                )
+                ) : null
+                // ) : (
+                //   <FileEntry
+                //     key={entry.path}
+                //     entry={entry}
+                //     isActive={isActive}
+                //     isSelected={isSelected}
+                //     onClick={handleClick}
+                //     onContextMenu={handleContextMenu}
+                //     style={{
+                //       position: 'absolute',
+                //       top: 0,
+                //       left: 0,
+                //       width: '100%',
+                //       transform: `translateY(${virtualItem.start}px)`,
+                //     }}
+                //     data-index={virtualItem.index}
+                //   />
+                // )
               })}
             </ul>
           </div>

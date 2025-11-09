@@ -37,7 +37,7 @@ export function FileEntry({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'px-2 py-1 text-sm text-foreground/80 rounded-sm flex items-center gap-2',
+        'px-2 py-1 text-sm text-foreground/80 rounded-sm flex items-center gap-2 mb-1',
         'hover:bg-muted',
         (isActive || isSelected) && 'bg-accent'
       )}
