@@ -59,8 +59,9 @@ export function NoteEntry({
       onContextMenu={onContextMenu}
       className={cn(
         'px-3 py-2 text-foreground/80 rounded-sm flex flex-col gap-1 mb-1',
-        'hover:bg-muted',
-        (isActive || isSelected) && 'bg-accent'
+        isActive || isSelected
+          ? 'bg-stone-100 dark:bg-stone-900'
+          : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60'
       )}
       style={style}
       data-index={dataIndex}
