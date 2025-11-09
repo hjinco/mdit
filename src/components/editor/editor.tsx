@@ -72,6 +72,7 @@ export function Editor() {
 
 function EditorContent({ path, value }: { path: string; value: Value }) {
   const isSaved = useRef(true)
+  const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
 
   const editor = usePlateEditor({
@@ -115,9 +116,13 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
   return (
     <Plate
       editor={editor}
-      onChange={() => {
-        isSaved.current = false
-        setTabSaved(false)
+      onValueChange={() => {
+        if (isInitializing.current) {
+          isInitializing.current = false
+        } else {
+          isSaved.current = false
+          setTabSaved(false)
+        }
       }}
     >
       <PlateContainer

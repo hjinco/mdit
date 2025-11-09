@@ -15,6 +15,7 @@ import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
 import { usePreviewCache } from './hooks/use-preview-cache'
+import { usePreviewInvalidation } from './hooks/use-preview-invalidation'
 import { NewNoteButton } from './ui/new-note-button'
 import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
@@ -43,8 +44,12 @@ export function CollectionView() {
       setCurrentCollectionPath((prev) => (open ? prev : null))
     },
   })
-  const { tab, openNote } = useTabStore(
-    useShallow((state) => ({ tab: state.tab, openNote: state.openNote }))
+  const { tab, openNote, isSaved } = useTabStore(
+    useShallow((state) => ({
+      tab: state.tab,
+      openNote: state.openNote,
+      isSaved: state.isSaved,
+    }))
   )
 
   useEffect(() => {
@@ -86,7 +91,9 @@ export function CollectionView() {
   } = useCollectionSort(collectionEntries)
 
   const parentRef = useRef<HTMLDivElement>(null)
-  const { getPreview, setPreview } = usePreviewCache(currentCollectionPath)
+  const { getPreview, setPreview, invalidatePreview } = usePreviewCache(
+    currentCollectionPath
+  )
 
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
@@ -108,6 +115,9 @@ export function CollectionView() {
     })
     return map
   }, [sortedEntries])
+
+  // Invalidate preview when the same file is saved (not when switching files)
+  usePreviewInvalidation(tab?.path, isSaved, invalidatePreview)
 
   const {
     selectedEntryPaths,

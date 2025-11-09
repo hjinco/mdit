@@ -72,7 +72,7 @@ export function NoteEntry({
         </span>
       </div>
       <div className="text-xs font-medium text-muted-foreground line-clamp-2 cursor-default min-h-8">
-        {previewText ?? '&nbsp;'}
+        {previewText ?? '\u00A0'}
       </div>
     </li>
   )
