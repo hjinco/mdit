@@ -82,9 +82,9 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
 
   const handleSave = useCallback(() => {
     if (isSaved.current) return
-    isSaved.current = true
     writeTextFile(path, editor.api.markdown.serialize())
       .then(() => {
+        isSaved.current = true
         setTabSaved(true)
       })
       .catch(() => {
