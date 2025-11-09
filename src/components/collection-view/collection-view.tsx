@@ -35,6 +35,7 @@ export function CollectionView() {
   const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
     defaultWidth: 256,
+    minWidth: 200,
     isOpen: isCollectionViewOpen,
     setIsOpen: (open: boolean) => {
       setCurrentCollectionPath((prev) => (open ? prev : null))
@@ -45,6 +46,9 @@ export function CollectionView() {
   )
 
   useEffect(() => {
+    if (!isOpen) {
+      return
+    }
     if (tab?.path) {
       dirname(tab.path)
         .then((folderPath) => {
@@ -54,7 +58,8 @@ export function CollectionView() {
           console.error('Failed to get directory path from tab:', error)
         })
     }
-  }, [tab?.path, setCurrentCollectionPath])
+  }, [tab?.path, setCurrentCollectionPath, isOpen])
+
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
   const { deleteEntries, renameNoteWithAI } = useWorkspaceStore(
     useShallow((state) => ({
