@@ -317,7 +317,7 @@ export function TreeNode({
                 onKeyDown={handleChevronKeyDown}
                 className={cn(
                   'shrink-0 px-1.5 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
-                  'text-muted-foreground hover:text-foreground',
+                  'text-foreground/70 hover:text-foreground',
                   'cursor-pointer',
                   isBusy && 'cursor-not-allowed opacity-50'
                 )}

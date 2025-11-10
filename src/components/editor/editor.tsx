@@ -42,29 +42,29 @@ export function Editor() {
 
   if (!tab || !value)
     return (
-      <div className="flex-1 h-full bg-background/80">
+      <div className="flex-1 h-full bg-background rounded-sm my-1 mr-1">
         <div className="h-12 w-full" data-tauri-drag-region />
       </div>
     )
 
   return (
-    <div className="relative flex-1 flex flex-col bg-background">
+    <div className="relative flex-1 flex flex-col bg-background rounded-sm my-1 mr-1">
       <div
-        className="w-full h-12 flex items-center justify-center px-2 relative"
+        className="w-full h-10 flex items-center justify-center relative"
         data-tauri-drag-region
       >
         <div
           className={cn(
             'absolute',
             !isFileExplorerOpen && currentCollectionPath === null
-              ? 'left-30 pl-2 border-l'
-              : 'left-2'
+              ? 'left-30 pl-1 border-l'
+              : 'left-1'
           )}
         >
           <HistoryNavigation />
         </div>
         <Tab />
-        <div className="absolute right-2">
+        <div className="absolute right-1">
           <MoreButton />
         </div>
       </div>
