@@ -9,6 +9,7 @@ import {
 } from '@/ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getFolderNameFromPath } from '@/utils/path-utils'
 
 type WorkspaceDropdownProps = {
   workspacePath: string | null
@@ -23,12 +24,8 @@ export function WorkspaceDropdown({
   onWorkspaceSelect,
   onOpenFolderPicker,
 }: WorkspaceDropdownProps) {
-  const getLastFolderName = (path: string) => {
-    return path.split('/').pop() || path
-  }
-
   const currentWorkspaceName = workspacePath
-    ? getLastFolderName(workspacePath)
+    ? getFolderNameFromPath(workspacePath)
     : 'No folder'
 
   return (
@@ -52,7 +49,7 @@ export function WorkspaceDropdown({
                 <TooltipTrigger asChild>
                   <DropdownMenuItem onClick={() => onWorkspaceSelect(path)}>
                     <span className="text-sm text-accent-foreground/90 truncate max-w-full">
-                      {getLastFolderName(path)}
+                      {getFolderNameFromPath(path)}
                     </span>
                   </DropdownMenuItem>
                 </TooltipTrigger>

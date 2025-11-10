@@ -14,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/ui/command'
+import { getFileNameFromPath } from '@/utils/path-utils'
 import { useCommandMenuHotkey } from './hooks/use-command-menu-hotkey'
 import { useNoteContentSearch } from './hooks/use-note-content-search'
 import {
@@ -22,7 +23,6 @@ import {
   useNoteNameSearch,
 } from './hooks/use-note-name-search'
 import { highlightQuery } from './utils/highlight-query'
-import { getFileNameFromPath } from './utils/path'
 
 export function CommandMenu() {
   const entries = useWorkspaceStore((state) => state.entries)

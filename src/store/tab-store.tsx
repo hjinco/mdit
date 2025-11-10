@@ -1,5 +1,6 @@
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
+import { getFileNameWithoutExtension } from '@/utils/path-utils'
 
 let tabIdCounter = 0
 
@@ -53,7 +54,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }
 
     const content = await readTextFile(path)
-    const name = path.split('/').pop()?.split('.').shift()
+    const name = getFileNameWithoutExtension(path)
 
     if (name) {
       set({
@@ -113,7 +114,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
       return
     }
 
-    const name = newPath.split('/').pop()?.split('.').shift()
+    const name = getFileNameWithoutExtension(newPath)
 
     if (!name) {
       set({ tab: null })
