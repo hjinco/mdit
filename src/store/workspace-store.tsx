@@ -21,6 +21,20 @@ import { create } from 'zustand'
 import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
+import {
+  addEntryToState,
+  buildWorkspaceEntries,
+  moveEntryInState,
+  removeEntriesFromState,
+  sortWorkspaceEntries,
+  updateChildPathsForMove,
+  updateEntryInState,
+} from './workspace/utils/entry-utils'
+import {
+  removeExpandedDirectories,
+  renameExpandedDirectories,
+  syncExpandedDirectoriesWithEntries,
+} from './workspace/utils/expanded-directories-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -257,16 +271,30 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await mkdir(folderPath, { recursive: true })
 
-      set((state) => ({
-        expandedDirectories: {
-          ...state.expandedDirectories,
-          [directoryPath]: true,
-          [folderPath]: true,
-        },
-        currentCollectionPath: folderPath,
-      }))
+      const newFolderEntry: WorkspaceEntry = {
+        path: folderPath,
+        name: folderName,
+        isDirectory: true,
+        children: [],
+      }
 
-      await get().refreshWorkspaceEntries()
+      set((state) => {
+        const updatedEntries =
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...state.entries, newFolderEntry])
+            : addEntryToState(state.entries, directoryPath, newFolderEntry)
+
+        return {
+          entries: updatedEntries,
+          expandedDirectories: {
+            ...state.expandedDirectories,
+            [directoryPath]: true,
+            [folderPath]: true,
+          },
+          currentCollectionPath: folderPath,
+        }
+      })
+
       const { setSelectedEntryPaths, setSelectionAnchorPath } =
         useFileExplorerSelectionStore.getState()
       setSelectedEntryPaths(new Set([folderPath]))
@@ -300,7 +328,39 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await writeTextFile(filePath, '')
 
-      await get().refreshWorkspaceEntries()
+      // Fetch file metadata
+      const fileMetadata: { createdAt?: Date; modifiedAt?: Date } = {}
+      try {
+        const statResult = await stat(filePath)
+        if (statResult.birthtime) {
+          fileMetadata.createdAt = new Date(statResult.birthtime)
+        }
+        if (statResult.mtime) {
+          fileMetadata.modifiedAt = new Date(statResult.mtime)
+        }
+      } catch (error) {
+        // Silently fail if metadata cannot be retrieved
+        console.debug('Failed to get metadata for:', filePath, error)
+      }
+
+      const newFileEntry: WorkspaceEntry = {
+        path: filePath,
+        name: fileName,
+        isDirectory: false,
+        ...fileMetadata,
+      }
+
+      set((state) => {
+        const updatedEntries =
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...state.entries, newFileEntry])
+            : addEntryToState(state.entries, directoryPath, newFileEntry)
+
+        return {
+          entries: updatedEntries,
+        }
+      })
+
       const { setSelectedEntryPaths, setSelectionAnchorPath } =
         useFileExplorerSelectionStore.getState()
       setSelectedEntryPaths(new Set([filePath]))
@@ -372,7 +432,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         set({ currentCollectionPath: null })
       }
 
-      await get().refreshWorkspaceEntries()
+      // Remove deleted entries from state without full refresh
+      set((state) => ({
+        entries: removeEntriesFromState(state.entries, paths),
+        expandedDirectories: removeExpandedDirectories(
+          state.expandedDirectories,
+          paths
+        ),
+      }))
 
       return true
     } catch (error) {
@@ -515,7 +582,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(entry.path, nextPath)
       updateHistoryPath(entry.path, nextPath)
 
-      await get().refreshWorkspaceEntries()
+      set((state) => ({
+        entries: updateEntryInState(
+          state.entries,
+          entry.path,
+          nextPath,
+          trimmedName
+        ),
+      }))
 
       return nextPath
     } catch (error) {
@@ -588,11 +662,103 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       // Update currentCollectionPath if it's being moved
       const { currentCollectionPath } = get()
-      if (currentCollectionPath === sourcePath) {
-        set({ currentCollectionPath: newPath })
-      }
+      const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
-      await get().refreshWorkspaceEntries()
+      set((state) => {
+        let updatedEntries: WorkspaceEntry[]
+
+        if (destinationPath === workspacePath) {
+          // Moving to workspace root - add directly to entries array
+          // First, remove from source location
+          const removeEntry = (
+            entryList: WorkspaceEntry[]
+          ): WorkspaceEntry[] => {
+            return entryList
+              .filter((entry) => entry.path !== sourcePath)
+              .map((entry) => {
+                if (entry.children) {
+                  return {
+                    ...entry,
+                    children: removeEntry(entry.children),
+                  }
+                }
+                return entry
+              })
+          }
+
+          const filteredEntries = removeEntry(state.entries)
+
+          // Find the entry to move
+          const findEntry = (
+            entryList: WorkspaceEntry[],
+            targetPath: string
+          ): WorkspaceEntry | null => {
+            for (const entry of entryList) {
+              if (entry.path === targetPath) {
+                return entry
+              }
+              if (entry.children) {
+                const found = findEntry(entry.children, targetPath)
+                if (found) {
+                  return found
+                }
+              }
+            }
+            return null
+          }
+
+          const entryToMove = findEntry(state.entries, sourcePath)
+          if (entryToMove) {
+            // Update paths if it's a directory
+            let updatedEntryToMove: WorkspaceEntry
+            if (entryToMove.isDirectory) {
+              updatedEntryToMove = {
+                path: newPath,
+                name: entryToMove.name,
+                isDirectory: true,
+                children: entryToMove.children
+                  ? entryToMove.children.map((child: WorkspaceEntry) =>
+                      updateChildPathsForMove(child, sourcePath, newPath)
+                    )
+                  : undefined,
+                createdAt: entryToMove.createdAt,
+                modifiedAt: entryToMove.modifiedAt,
+              }
+            } else {
+              updatedEntryToMove = {
+                path: newPath,
+                name: entryToMove.name,
+                isDirectory: false,
+                createdAt: entryToMove.createdAt,
+                modifiedAt: entryToMove.modifiedAt,
+              }
+            }
+
+            // Add directly to entries array
+            updatedEntries = sortWorkspaceEntries([
+              ...filteredEntries,
+              updatedEntryToMove,
+            ])
+          } else {
+            updatedEntries = filteredEntries
+          }
+        } else {
+          // Moving to a subdirectory - use existing logic
+          updatedEntries = moveEntryInState(
+            state.entries,
+            sourcePath,
+            destinationPath
+          )
+        }
+
+        return {
+          entries: updatedEntries,
+          currentCollectionPath: shouldUpdateCollectionPath
+            ? newPath
+            : state.currentCollectionPath,
+        }
+      })
+
       return true
     } catch (error) {
       console.error('Failed to move entry:', sourcePath, destinationPath, error)
@@ -600,158 +766,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
   },
 }))
-
-async function buildWorkspaceEntries(
-  path: string,
-  visited: Set<string> = new Set<string>()
-): Promise<WorkspaceEntry[]> {
-  if (visited.has(path)) {
-    return []
-  }
-
-  visited.add(path)
-
-  try {
-    const rawEntries = await readDir(path)
-    const visibleEntries = rawEntries.filter(
-      (entry) => Boolean(entry.name) && !entry.name.startsWith('.')
-    )
-
-    const entries = await Promise.all(
-      visibleEntries.map(async (entry) => {
-        const fullPath = await join(path, entry.name)
-        const workspaceEntry: WorkspaceEntry = {
-          path: fullPath,
-          name: entry.name,
-          isDirectory: entry.isDirectory,
-        }
-
-        // Fetch metadata for files (not directories to avoid performance issues)
-        if (!entry.isDirectory) {
-          try {
-            const fileMetadata = await stat(fullPath)
-            if (fileMetadata.birthtime) {
-              workspaceEntry.createdAt = new Date(fileMetadata.birthtime)
-            }
-            if (fileMetadata.mtime) {
-              workspaceEntry.modifiedAt = new Date(fileMetadata.mtime)
-            }
-          } catch (error) {
-            // Silently fail if metadata cannot be retrieved
-            console.debug('Failed to get metadata for:', fullPath, error)
-          }
-        }
-
-        if (entry.isDirectory) {
-          try {
-            if (visited.has(fullPath)) {
-              console.warn(
-                'Detected cyclic workspace entry, skipping recursion:',
-                fullPath
-              )
-              workspaceEntry.children = []
-            } else {
-              const children = await buildWorkspaceEntries(fullPath, visited)
-              workspaceEntry.children = children
-            }
-          } catch (error) {
-            console.error('Failed to build workspace entry:', fullPath, error)
-            workspaceEntry.children = []
-          }
-        }
-
-        return workspaceEntry
-      })
-    )
-
-    return sortWorkspaceEntries(entries)
-  } catch (error) {
-    console.error('Failed to read directory:', path, error)
-    return []
-  }
-}
-
-function sortWorkspaceEntries(entries: WorkspaceEntry[]): WorkspaceEntry[] {
-  return entries
-    .map((entry) => ({
-      ...entry,
-      children: entry.children
-        ? sortWorkspaceEntries(entry.children)
-        : undefined,
-    }))
-    .sort((a, b) => {
-      if (a.isDirectory !== b.isDirectory) {
-        return a.isDirectory ? -1 : 1
-      }
-
-      return a.name.localeCompare(b.name)
-    })
-}
-
-// Drops expanded-directory flags that no longer exist in the refreshed tree.
-function syncExpandedDirectoriesWithEntries(
-  expanded: Record<string, boolean>,
-  entries: WorkspaceEntry[]
-): Record<string, boolean> {
-  const validDirectories = new Set<string>()
-  collectDirectoryPaths(entries, validDirectories)
-
-  const normalized: Record<string, boolean> = {}
-
-  for (const path of validDirectories) {
-    if (expanded[path]) {
-      normalized[path] = true
-    }
-  }
-
-  return normalized
-}
-
-function collectDirectoryPaths(
-  entries: WorkspaceEntry[],
-  accumulator: Set<string>
-) {
-  for (const entry of entries) {
-    if (!entry.isDirectory) continue
-    accumulator.add(entry.path)
-    if (entry.children) {
-      collectDirectoryPaths(entry.children, accumulator)
-    }
-  }
-}
-
-function renameExpandedDirectories(
-  expanded: Record<string, boolean>,
-  oldPath: string,
-  newPath: string
-): Record<string, boolean> {
-  if (oldPath === newPath) {
-    return expanded
-  }
-
-  const next: Record<string, boolean> = {}
-  const oldPrefix = `${oldPath}/`
-  const newPrefix = `${newPath}/`
-
-  for (const [path, isExpanded] of Object.entries(expanded)) {
-    if (!isExpanded) continue
-
-    if (path === oldPath) {
-      next[newPath] = true
-      continue
-    }
-
-    if (path.startsWith(oldPrefix)) {
-      const suffix = path.slice(oldPrefix.length)
-      next[`${newPrefix}${suffix}`] = true
-      continue
-    }
-
-    next[path] = true
-  }
-
-  return next
-}
 
 const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
 Return only the new title without a file extension. 
