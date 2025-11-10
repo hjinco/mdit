@@ -17,6 +17,9 @@ jobs:
   release-tauri:
     permissions:
       contents: write
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
