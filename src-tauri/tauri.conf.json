@@ -20,7 +20,7 @@
         "dragDropEnabled": true,
         "transparent": true,
         "windowEffects": {
-          "effects": ["hudWindow"]
+          "effects": ["hudWindow", "blur"]
         },
         "trafficLightPosition": {
           "x": 18,
