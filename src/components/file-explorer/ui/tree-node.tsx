@@ -12,6 +12,34 @@ import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 
+import { TreeNodeRenameInput } from './tree-node-rename-input'
+
+type GetTreeNodeButtonClassNameParams = {
+  isSelected: boolean
+  isDragging: boolean
+  isRenaming: boolean
+  isAiRenaming: boolean
+  widthClass: 'flex-1' | 'w-full'
+}
+
+function getTreeNodeButtonClassName({
+  isSelected,
+  isDragging,
+  isRenaming,
+  isAiRenaming,
+  widthClass,
+}: GetTreeNodeButtonClassNameParams) {
+  return cn(
+    `${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
+    isSelected
+      ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
+      : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
+    isDragging && 'opacity-50 cursor-grabbing',
+    isRenaming && 'ring-1 ring-ring/50',
+    isAiRenaming && 'animate-pulse'
+  )
+}
+
 type TreeNodeProps = {
   entry: WorkspaceEntry
   tab: Tab | null
@@ -143,6 +171,15 @@ export function TreeNode({
   const hasSubmittedRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
+  // Common button ref callback that combines setNodeRef and buttonRef
+  const handleButtonRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      setNodeRef(node)
+      buttonRef.current = node
+    },
+    [setNodeRef]
+  )
+
   useEffect(() => {
     if (isRenaming) {
       setDraftName(baseName)
@@ -245,22 +282,17 @@ export function TreeNode({
         >
           <div className="flex items-center">
             <button
-              ref={(node) => {
-                setNodeRef(node)
-                buttonRef.current = node
-              }}
+              ref={handleButtonRef}
               type="button"
               onClick={handlePrimaryAction}
               onContextMenu={handleContextMenu}
-              className={cn(
-                'flex-1 text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
-                isSelected
-                  ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
-                  : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-                isDragging && 'opacity-50 cursor-grabbing',
-                isRenaming && 'ring-1 ring-ring/50',
-                isAiRenaming && 'animate-pulse'
-              )}
+              className={getTreeNodeButtonClassName({
+                isSelected,
+                isDragging,
+                isRenaming,
+                isAiRenaming,
+                widthClass: 'flex-1',
+              })}
               style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
               disabled={isBusy}
               {...attributes}
@@ -285,15 +317,12 @@ export function TreeNode({
               <div className="relative flex-1 min-w-0 truncate flex items-center">
                 <span className="text-sm">{entry.name}</span>
                 {isRenaming && (
-                  <input
-                    ref={inputRef}
-                    value={draftName}
-                    onChange={(event) => setDraftName(event.target.value)}
-                    onKeyDown={handleRenameKeyDown}
-                    onBlur={handleRenameBlur}
-                    className="absolute inset-0 h-full truncate text-sm outline-none bg-stone-100 dark:bg-stone-900"
-                    spellCheck={false}
-                    autoComplete="off"
+                  <TreeNodeRenameInput
+                    draftName={draftName}
+                    setDraftName={setDraftName}
+                    inputRef={inputRef}
+                    handleRenameKeyDown={handleRenameKeyDown}
+                    handleRenameBlur={handleRenameBlur}
                   />
                 )}
               </div>
@@ -323,22 +352,17 @@ export function TreeNode({
         </div>
       ) : (
         <button
-          ref={(node) => {
-            setNodeRef(node)
-            buttonRef.current = node
-          }}
+          ref={handleButtonRef}
           type="button"
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
-          className={cn(
-            'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
-            isSelected
-              ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
-              : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-            isDragging && 'opacity-50 cursor-grabbing',
-            isRenaming && 'ring-1 ring-ring/50',
-            isAiRenaming && 'animate-pulse'
-          )}
+          className={getTreeNodeButtonClassName({
+            isSelected,
+            isDragging,
+            isRenaming,
+            isAiRenaming,
+            widthClass: 'w-full',
+          })}
           style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
           disabled={isBusy}
           {...attributes}
@@ -352,15 +376,13 @@ export function TreeNode({
           <div className="relative flex-1 min-w-0 truncate">
             <span className="text-sm">{baseName}</span>
             {isRenaming && (
-              <input
-                ref={inputRef}
-                value={draftName}
-                onChange={(event) => setDraftName(event.target.value)}
-                onKeyDown={handleRenameKeyDown}
-                onBlur={handleRenameBlur}
-                className="absolute inset-0 h-full truncate text-sm pt-[1px] outline-none bg-stone-100 dark:bg-stone-900"
-                spellCheck={false}
-                autoComplete="off"
+              <TreeNodeRenameInput
+                draftName={draftName}
+                setDraftName={setDraftName}
+                inputRef={inputRef}
+                handleRenameKeyDown={handleRenameKeyDown}
+                handleRenameBlur={handleRenameBlur}
+                className="pt-[1px]"
               />
             )}
           </div>
