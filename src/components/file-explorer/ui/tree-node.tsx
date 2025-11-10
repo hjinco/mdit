@@ -142,7 +142,9 @@ export function TreeNode({
   )
 
   const handleChevronClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
+    (
+      event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
+    ) => {
       event.stopPropagation()
       if (isBusy) {
         return
@@ -150,6 +152,16 @@ export function TreeNode({
       onDirectoryClick(entry.path)
     },
     [entry.path, isBusy, onDirectoryClick]
+  )
+
+  const handleChevronKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        handleChevronClick(event)
+      }
+    },
+    [handleChevronClick]
   )
 
   const handleContextMenu = useCallback(
@@ -298,22 +310,26 @@ export function TreeNode({
               {...attributes}
               {...listeners}
             >
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={isBusy ? -1 : 0}
                 onClick={handleChevronClick}
+                onKeyDown={handleChevronKeyDown}
                 className={cn(
                   'shrink-0 px-1.5 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
-                  'text-muted-foreground hover:text-foreground'
+                  'text-muted-foreground hover:text-foreground',
+                  'cursor-pointer',
+                  isBusy && 'cursor-not-allowed opacity-50'
                 )}
-                disabled={isBusy}
                 aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+                aria-disabled={isBusy}
               >
                 {isExpanded ? (
                   <ChevronDown className="size-4" />
                 ) : (
                   <ChevronRight className="size-4" />
                 )}
-              </button>
+              </div>
               <div className="relative flex-1 min-w-0 truncate flex items-center">
                 <span className="text-sm">{entry.name}</span>
                 {isRenaming && (
