@@ -1,6 +1,11 @@
 import { join } from '@tauri-apps/api/path'
 import { readDir, stat } from '@tauri-apps/plugin-fs'
 
+import {
+  getFileNameFromPath,
+  normalizePathSeparators,
+} from '@/utils/path-utils'
+
 import type { WorkspaceEntry } from '../../workspace-store'
 
 export async function buildWorkspaceEntries(
@@ -202,11 +207,18 @@ export function updateEntryInState(
     oldParentPath: string,
     newParentPath: string
   ): WorkspaceEntry => {
-    const relativePath = entry.path.startsWith(`${oldParentPath}/`)
-      ? entry.path.slice(oldParentPath.length + 1)
-      : entry.path.split('/').pop() || entry.path
+    // Normalize paths for consistent comparison across platforms
+    const normalizedEntryPath = normalizePathSeparators(entry.path)
+    const normalizedOldParentPath = normalizePathSeparators(oldParentPath)
+    const normalizedNewParentPath = normalizePathSeparators(newParentPath)
 
-    const updatedPath = `${newParentPath}/${relativePath}`
+    const relativePath = normalizedEntryPath.startsWith(
+      `${normalizedOldParentPath}/`
+    )
+      ? normalizedEntryPath.slice(normalizedOldParentPath.length + 1)
+      : getFileNameFromPath(entry.path)
+
+    const updatedPath = `${normalizedNewParentPath}/${relativePath}`
     const updated: WorkspaceEntry = {
       ...entry,
       path: updatedPath,
@@ -229,11 +241,18 @@ export function updateChildPathsForMove(
   oldParentPath: string,
   newParentPath: string
 ): WorkspaceEntry {
-  const relativePath = entry.path.startsWith(`${oldParentPath}/`)
-    ? entry.path.slice(oldParentPath.length + 1)
-    : entry.path.split('/').pop() || entry.path
+  // Normalize paths for consistent comparison across platforms
+  const normalizedEntryPath = normalizePathSeparators(entry.path)
+  const normalizedOldParentPath = normalizePathSeparators(oldParentPath)
+  const normalizedNewParentPath = normalizePathSeparators(newParentPath)
 
-  const updatedPath = `${newParentPath}/${relativePath}`
+  const relativePath = normalizedEntryPath.startsWith(
+    `${normalizedOldParentPath}/`
+  )
+    ? normalizedEntryPath.slice(normalizedOldParentPath.length + 1)
+    : getFileNameFromPath(entry.path)
+
+  const updatedPath = `${normalizedNewParentPath}/${relativePath}`
   const updated: WorkspaceEntry = {
     ...entry,
     path: updatedPath,
@@ -296,9 +315,9 @@ export function moveEntryInState(
   const filteredEntries = removeEntry(entries)
 
   // Update paths if it's a directory
-  const fileName =
-    sourcePath.split('/').pop() || sourcePath.split('\\').pop() || ''
-  const newPath = `${destinationPath}/${fileName}`
+  const fileName = getFileNameFromPath(sourcePath)
+  const normalizedDestinationPath = normalizePathSeparators(destinationPath)
+  const newPath = `${normalizedDestinationPath}/${fileName}`
 
   let updatedEntryToMove: WorkspaceEntry
   if (entryToMove.isDirectory) {

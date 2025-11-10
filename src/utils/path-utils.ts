@@ -1,4 +1,27 @@
 const PATH_SEGMENT_REGEX = /[/\\]/
+const BACKSLASH_REGEX = /\\/g
+const MULTIPLE_SLASHES_REGEX = /\/{2,}/g
+
+/**
+ * Normalizes path separators by converting backslashes to forward slashes,
+ * collapsing multiple consecutive slashes, and removing trailing slashes.
+ * Ensures consistent path format across different operating systems.
+ *
+ * @param path - The file or directory path
+ * @returns The normalized path with forward slashes
+ *
+ * @example
+ * normalizePathSeparators('C:\\Users\\Documents') // 'C:/Users/Documents'
+ * normalizePathSeparators('/home//user//file') // '/home/user/file'
+ */
+export const normalizePathSeparators = (path: string): string => {
+  const withForwardSlashes = path.replace(BACKSLASH_REGEX, '/')
+  const collapsed = withForwardSlashes.replace(MULTIPLE_SLASHES_REGEX, '/')
+  if (collapsed.length <= 1) {
+    return collapsed
+  }
+  return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed
+}
 
 /**
  * Returns the file name (with extension) from a file path.
