@@ -17,9 +17,8 @@ import { useEntryMap } from './hooks/use-entry-map'
 import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
-import { SearchButton } from './ui/search-button'
 import { SettingsMenu } from './ui/settings-menu'
-import { ToggleButton } from './ui/toggle-button'
+import { TopMenu } from './ui/top-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
 
@@ -393,36 +392,5 @@ export function FileExplorer() {
         )}
       </aside>
     </>
-  )
-}
-
-function TopMenu({
-  isOpen,
-  width,
-  isResizing,
-  isFileExplorerOpen,
-  setFileExplorerOpen,
-}: {
-  isOpen: boolean
-  width: number
-  isResizing: boolean
-  isFileExplorerOpen: boolean
-  setFileExplorerOpen: (isOpen: boolean) => void
-}) {
-  return (
-    <div
-      className={cn(
-        'fixed top-0 h-12 flex items-center justify-end gap-1 px-2 z-[9999]',
-        !isResizing && 'transition-[width] ease-out duration-100'
-      )}
-      style={{ width: isOpen ? width : 120 }}
-      data-tauri-drag-region
-    >
-      {isFileExplorerOpen && <SearchButton />}
-      <ToggleButton
-        isOpen={isFileExplorerOpen}
-        onToggle={() => setFileExplorerOpen(!isFileExplorerOpen)}
-      />
-    </div>
   )
 }
