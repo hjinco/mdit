@@ -136,9 +136,8 @@ export function NoteEntry({
       onContextMenu={onContextMenu}
       className={cn(
         'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer',
-        'opacity-30 dark:opacity-20 group-hover:opacity-50 group-hover:dark:opacity-40 hover:opacity-100 dark:hover:opacity-100 transition-opacity',
-        (isActive || isSelected) &&
-          'opacity-100 dark:opacity-100 group-hover:opacity-100 group-hover:dark:opacity-100'
+        'opacity-10 group-hover/side:opacity-50 hover:opacity-100 transition-opacity duration-200',
+        (isActive || isSelected) && 'opacity-100 group-hover/side:opacity-100'
       )}
       style={style}
       data-index={dataIndex}

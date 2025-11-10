@@ -211,7 +211,6 @@ export function CollectionView() {
               width: '100%',
               position: 'relative',
             }}
-            className="group"
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {
               const entry = sortedEntries[virtualItem.index]

@@ -34,9 +34,11 @@ export function App() {
     <DndProvider>
       <div className="h-screen flex flex-col bg-background/50">
         <div className="flex-1 overflow-hidden flex">
-          <FileExplorer />
-          <div className="flex-1 flex">
+          <div className="group/side flex">
+            <FileExplorer />
             <CollectionView />
+          </div>
+          <div className="flex-1 flex">
             <Editor />
           </div>
           <div className="fixed bottom-1 right-1">
