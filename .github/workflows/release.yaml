@@ -83,6 +83,7 @@ jobs:
           grep '"version":' src-tauri/tauri.conf.json
 
       - name: Import Apple Developer Certificate
+        if: startsWith(matrix.platform, 'macos')
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -101,6 +102,7 @@ jobs:
           security find-identity -v -p codesigning build.keychain
 
       - name: Verify Certificate
+        if: startsWith(matrix.platform, 'macos')
         run: |
           security find-identity -v -p codesigning build.keychain
           CERT_ID=$(security find-identity -v -p codesigning build.keychain | awk -F\" '{print $2}')
