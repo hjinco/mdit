@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { formatDistanceToNow } from 'date-fns'
 import {
   type CSSProperties,
   type MouseEvent,
@@ -134,18 +135,16 @@ export function NoteEntry({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'px-3 py-2 text-foreground flex flex-col gap-1 mb-1',
-        isActive || isSelected
-          ? 'opacity-100'
-          : 'opacity-60 dark:opacity-40 hover:opacity-100 dark:hover:opacity-100'
+        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer',
+        'opacity-30 dark:opacity-20 group-hover:opacity-50 group-hover:dark:opacity-40 hover:opacity-100 dark:hover:opacity-100 transition-opacity',
+        (isActive || isSelected) &&
+          'opacity-100 dark:opacity-100 group-hover:opacity-100 group-hover:dark:opacity-100'
       )}
       style={style}
       data-index={dataIndex}
     >
       <div className="flex relative">
-        <span className="text-base font-medium truncate cursor-default">
-          {baseName}
-        </span>
+        <span className="text-base font-medium truncate">{baseName}</span>
         {isRenaming && (
           <input
             ref={inputRef}
@@ -160,9 +159,14 @@ export function NoteEntry({
           />
         )}
       </div>
-      <div className="text-xs text-foreground/60 line-clamp-2 cursor-default min-h-8">
+      <div className="text-xs text-foreground/80 line-clamp-2 min-h-8">
         {previewText ?? '\u00A0'}
       </div>
+      {entry.modifiedAt && (
+        <div className="text-xs text-foreground/70">
+          {formatDistanceToNow(entry.modifiedAt, { addSuffix: true })}
+        </div>
+      )}
     </li>
   )
 }

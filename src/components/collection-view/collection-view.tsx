@@ -87,9 +87,9 @@ export function CollectionView() {
     estimateSize: (index) => {
       const entry = sortedEntries[index]
       const isMarkdown = entry.name.toLowerCase().endsWith('.md')
-      // NoteEntry: ~76px (name + preview + padding) + 4px spacing
+      // NoteEntry: ~92px (name + preview + date + padding) + 4px spacing
       // FileEntry: ~36px (name + padding) + 4px spacing
-      return isMarkdown ? 80 : 40
+      return isMarkdown ? 96 : 40
     },
     overscan: 5,
   })
@@ -170,7 +170,7 @@ export function CollectionView() {
       >
         <div
           className={cn(
-            'flex items-center gap-1.5 px-2 shrink min-w-0 text-foreground/80',
+            'flex items-center gap-1.5 px-1.5 shrink min-w-0 text-foreground/80',
             !isFileExplorerOpen && 'hidden'
           )}
         >
@@ -205,77 +205,74 @@ export function CollectionView() {
             </p>
           </div>
         ) : (
-          <div
+          <ul
             style={{
               height: `${virtualizer.getTotalSize()}px`,
               width: '100%',
               position: 'relative',
             }}
+            className="group"
           >
-            <ul>
-              {virtualizer.getVirtualItems().map((virtualItem) => {
-                const entry = sortedEntries[virtualItem.index]
-                const isActive = tab?.path === entry.path
-                const isSelected = selectedEntryPaths.has(entry.path)
+            {virtualizer.getVirtualItems().map((virtualItem) => {
+              const entry = sortedEntries[virtualItem.index]
+              const isActive = tab?.path === entry.path
+              const isSelected = selectedEntryPaths.has(entry.path)
 
-                const handleClick = (event: MouseEvent<HTMLLIElement>) => {
-                  handleEntryPrimaryAction(entry, event)
-                }
+              const handleClick = (event: MouseEvent<HTMLLIElement>) => {
+                handleEntryPrimaryAction(entry, event)
+              }
 
-                const handleContextMenu = (
-                  event: MouseEvent<HTMLLIElement>
-                ) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  handleEntryContextMenu(entry)
-                }
+              const handleContextMenu = (event: MouseEvent<HTMLLIElement>) => {
+                event.preventDefault()
+                event.stopPropagation()
+                handleEntryContextMenu(entry)
+              }
 
-                const isMarkdown = entry.name.toLowerCase().endsWith('.md')
+              const isMarkdown = entry.name.toLowerCase().endsWith('.md')
 
-                return isMarkdown ? (
-                  <NoteEntry
-                    key={entry.path}
-                    entry={entry}
-                    isActive={isActive}
-                    isSelected={isSelected}
-                    onClick={handleClick}
-                    onContextMenu={handleContextMenu}
-                    previewText={getPreview(entry.path)}
-                    setPreview={setPreview}
-                    isRenaming={renamingEntryPath === entry.path}
-                    onRenameSubmit={handleRenameSubmit}
-                    onRenameCancel={cancelRenaming}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                    data-index={virtualItem.index}
-                  />
-                ) : null
-                // ) : (
-                //   <FileEntry
-                //     key={entry.path}
-                //     entry={entry}
-                //     isActive={isActive}
-                //     isSelected={isSelected}
-                //     onClick={handleClick}
-                //     onContextMenu={handleContextMenu}
-                //     style={{
-                //       position: 'absolute',
-                //       top: 0,
-                //       left: 0,
-                //       width: '100%',
-                //       transform: `translateY(${virtualItem.start}px)`,
-                //     }}
-                //     data-index={virtualItem.index}
-                //   />
-                // )
-              })}
-            </ul>
-          </div>
+              return isMarkdown ? (
+                <NoteEntry
+                  key={entry.path}
+                  entry={entry}
+                  isActive={isActive}
+                  isSelected={isSelected}
+                  onClick={handleClick}
+                  onContextMenu={handleContextMenu}
+                  previewText={getPreview(entry.path)}
+                  setPreview={setPreview}
+                  isRenaming={renamingEntryPath === entry.path}
+                  onRenameSubmit={handleRenameSubmit}
+                  onRenameCancel={cancelRenaming}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  data-index={virtualItem.index}
+                />
+              ) : null
+              // ) : (
+              //   <FileEntry
+              //     key={entry.path}
+              //     entry={entry}
+              //     isActive={isActive}
+              //     isSelected={isSelected}
+              //     onClick={handleClick}
+              //     onContextMenu={handleContextMenu}
+              //     style={{
+              //       position: 'absolute',
+              //       top: 0,
+              //       left: 0,
+              //       width: '100%',
+              //       transform: `translateY(${virtualItem.start}px)`,
+              //     }}
+              //     data-index={virtualItem.index}
+              //   />
+              // )
+            })}
+          </ul>
         )}
       </div>
       {isOpen && (
