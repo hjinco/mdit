@@ -155,7 +155,7 @@ export function CollectionView() {
   return (
     <aside
       className={cn(
-        'relative shrink-0 flex flex-col shadow-lg border-r',
+        'relative shrink-0 flex flex-col shadow-md',
         isResizing ? 'transition-none' : 'transition-[width] ease-out',
         !isOpen && 'overflow-hidden pointer-events-none'
       )}
