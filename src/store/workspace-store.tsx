@@ -257,16 +257,30 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await mkdir(folderPath, { recursive: true })
 
-      set((state) => ({
-        expandedDirectories: {
-          ...state.expandedDirectories,
-          [directoryPath]: true,
-          [folderPath]: true,
-        },
-        currentCollectionPath: folderPath,
-      }))
+      const newFolderEntry: WorkspaceEntry = {
+        path: folderPath,
+        name: folderName,
+        isDirectory: true,
+        children: [],
+      }
 
-      await get().refreshWorkspaceEntries()
+      set((state) => {
+        const updatedEntries =
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...state.entries, newFolderEntry])
+            : addEntryToState(state.entries, directoryPath, newFolderEntry)
+
+        return {
+          entries: updatedEntries,
+          expandedDirectories: {
+            ...state.expandedDirectories,
+            [directoryPath]: true,
+            [folderPath]: true,
+          },
+          currentCollectionPath: folderPath,
+        }
+      })
+
       const { setSelectedEntryPaths, setSelectionAnchorPath } =
         useFileExplorerSelectionStore.getState()
       setSelectedEntryPaths(new Set([folderPath]))
@@ -300,7 +314,39 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await writeTextFile(filePath, '')
 
-      await get().refreshWorkspaceEntries()
+      // Fetch file metadata
+      const fileMetadata: { createdAt?: Date; modifiedAt?: Date } = {}
+      try {
+        const statResult = await stat(filePath)
+        if (statResult.birthtime) {
+          fileMetadata.createdAt = new Date(statResult.birthtime)
+        }
+        if (statResult.mtime) {
+          fileMetadata.modifiedAt = new Date(statResult.mtime)
+        }
+      } catch (error) {
+        // Silently fail if metadata cannot be retrieved
+        console.debug('Failed to get metadata for:', filePath, error)
+      }
+
+      const newFileEntry: WorkspaceEntry = {
+        path: filePath,
+        name: fileName,
+        isDirectory: false,
+        ...fileMetadata,
+      }
+
+      set((state) => {
+        const updatedEntries =
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...state.entries, newFileEntry])
+            : addEntryToState(state.entries, directoryPath, newFileEntry)
+
+        return {
+          entries: updatedEntries,
+        }
+      })
+
       const { setSelectedEntryPaths, setSelectionAnchorPath } =
         useFileExplorerSelectionStore.getState()
       setSelectedEntryPaths(new Set([filePath]))
@@ -372,7 +418,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         set({ currentCollectionPath: null })
       }
 
-      await get().refreshWorkspaceEntries()
+      // Remove deleted entries from state without full refresh
+      set((state) => ({
+        entries: removeEntriesFromState(state.entries, paths),
+        expandedDirectories: removeExpandedDirectories(
+          state.expandedDirectories,
+          paths
+        ),
+      }))
 
       return true
     } catch (error) {
@@ -515,7 +568,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(entry.path, nextPath)
       updateHistoryPath(entry.path, nextPath)
 
-      await get().refreshWorkspaceEntries()
+      set((state) => ({
+        entries: updateEntryInState(
+          state.entries,
+          entry.path,
+          nextPath,
+          trimmedName
+        ),
+      }))
 
       return nextPath
     } catch (error) {
@@ -588,11 +648,103 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       // Update currentCollectionPath if it's being moved
       const { currentCollectionPath } = get()
-      if (currentCollectionPath === sourcePath) {
-        set({ currentCollectionPath: newPath })
-      }
+      const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
-      await get().refreshWorkspaceEntries()
+      set((state) => {
+        let updatedEntries: WorkspaceEntry[]
+
+        if (destinationPath === workspacePath) {
+          // Moving to workspace root - add directly to entries array
+          // First, remove from source location
+          const removeEntry = (
+            entryList: WorkspaceEntry[]
+          ): WorkspaceEntry[] => {
+            return entryList
+              .filter((entry) => entry.path !== sourcePath)
+              .map((entry) => {
+                if (entry.children) {
+                  return {
+                    ...entry,
+                    children: removeEntry(entry.children),
+                  }
+                }
+                return entry
+              })
+          }
+
+          const filteredEntries = removeEntry(state.entries)
+
+          // Find the entry to move
+          const findEntry = (
+            entryList: WorkspaceEntry[],
+            targetPath: string
+          ): WorkspaceEntry | null => {
+            for (const entry of entryList) {
+              if (entry.path === targetPath) {
+                return entry
+              }
+              if (entry.children) {
+                const found = findEntry(entry.children, targetPath)
+                if (found) {
+                  return found
+                }
+              }
+            }
+            return null
+          }
+
+          const entryToMove = findEntry(state.entries, sourcePath)
+          if (entryToMove) {
+            // Update paths if it's a directory
+            let updatedEntryToMove: WorkspaceEntry
+            if (entryToMove.isDirectory) {
+              updatedEntryToMove = {
+                path: newPath,
+                name: entryToMove.name,
+                isDirectory: true,
+                children: entryToMove.children
+                  ? entryToMove.children.map((child: WorkspaceEntry) =>
+                      updateChildPathsForMove(child, sourcePath, newPath)
+                    )
+                  : undefined,
+                createdAt: entryToMove.createdAt,
+                modifiedAt: entryToMove.modifiedAt,
+              }
+            } else {
+              updatedEntryToMove = {
+                path: newPath,
+                name: entryToMove.name,
+                isDirectory: false,
+                createdAt: entryToMove.createdAt,
+                modifiedAt: entryToMove.modifiedAt,
+              }
+            }
+
+            // Add directly to entries array
+            updatedEntries = sortWorkspaceEntries([
+              ...filteredEntries,
+              updatedEntryToMove,
+            ])
+          } else {
+            updatedEntries = filteredEntries
+          }
+        } else {
+          // Moving to a subdirectory - use existing logic
+          updatedEntries = moveEntryInState(
+            state.entries,
+            sourcePath,
+            destinationPath
+          )
+        }
+
+        return {
+          entries: updatedEntries,
+          currentCollectionPath: shouldUpdateCollectionPath
+            ? newPath
+            : state.currentCollectionPath,
+        }
+      })
+
       return true
     } catch (error) {
       console.error('Failed to move entry:', sourcePath, destinationPath, error)
@@ -751,6 +903,292 @@ function renameExpandedDirectories(
   }
 
   return next
+}
+
+function removeEntriesFromState(
+  entries: WorkspaceEntry[],
+  pathsToRemove: string[]
+): WorkspaceEntry[] {
+  const pathsSet = new Set(pathsToRemove)
+
+  return entries
+    .filter((entry) => !pathsSet.has(entry.path))
+    .map((entry) => {
+      if (entry.children) {
+        return {
+          ...entry,
+          children: removeEntriesFromState(entry.children, pathsToRemove),
+        }
+      }
+      return entry
+    })
+}
+
+function removeExpandedDirectories(
+  expanded: Record<string, boolean>,
+  pathsToRemove: string[]
+): Record<string, boolean> {
+  const next: Record<string, boolean> = {}
+
+  for (const [path, isExpanded] of Object.entries(expanded)) {
+    if (!isExpanded) continue
+
+    // Skip if this path or any parent path is being deleted
+    let shouldSkip = false
+    for (const pathToRemove of pathsToRemove) {
+      if (path === pathToRemove || path.startsWith(`${pathToRemove}/`)) {
+        shouldSkip = true
+        break
+      }
+    }
+
+    if (!shouldSkip) {
+      next[path] = true
+    }
+  }
+
+  return next
+}
+
+function findParentDirectory(
+  entries: WorkspaceEntry[],
+  targetPath: string
+): WorkspaceEntry | null {
+  for (const entry of entries) {
+    if (entry.isDirectory) {
+      if (entry.path === targetPath) {
+        return entry
+      }
+      if (entry.children) {
+        const found = findParentDirectory(entry.children, targetPath)
+        if (found) {
+          return found
+        }
+      }
+    }
+  }
+  return null
+}
+
+function addEntryToState(
+  entries: WorkspaceEntry[],
+  parentPath: string,
+  newEntry: WorkspaceEntry
+): WorkspaceEntry[] {
+  const parent = findParentDirectory(entries, parentPath)
+
+  if (!parent) {
+    // Parent not found, return entries as-is
+    return entries
+  }
+
+  const addToChildren = (children: WorkspaceEntry[]): WorkspaceEntry[] => {
+    const updated = [...children, newEntry]
+    return sortWorkspaceEntries(updated)
+  }
+
+  const updateEntry = (entry: WorkspaceEntry): WorkspaceEntry => {
+    if (entry.path === parentPath) {
+      return {
+        ...entry,
+        children: entry.children ? addToChildren(entry.children) : [newEntry],
+      }
+    }
+    if (entry.children) {
+      return {
+        ...entry,
+        children: entry.children.map(updateEntry),
+      }
+    }
+    return entry
+  }
+
+  return entries.map(updateEntry)
+}
+
+function updateEntryInState(
+  entries: WorkspaceEntry[],
+  oldPath: string,
+  newPath: string,
+  newName: string
+): WorkspaceEntry[] {
+  const updatePaths = (entry: WorkspaceEntry): WorkspaceEntry => {
+    if (entry.path === oldPath) {
+      const updated: WorkspaceEntry = {
+        ...entry,
+        path: newPath,
+        name: newName,
+      }
+      if (entry.isDirectory && entry.children) {
+        // Recursively update all children paths
+        updated.children = entry.children.map((child) =>
+          updateChildPaths(child, oldPath, newPath)
+        )
+      }
+      return updated
+    }
+    if (entry.children) {
+      return {
+        ...entry,
+        children: entry.children.map(updatePaths),
+      }
+    }
+    return entry
+  }
+
+  const updateChildPaths = (
+    entry: WorkspaceEntry,
+    oldParentPath: string,
+    newParentPath: string
+  ): WorkspaceEntry => {
+    const relativePath = entry.path.startsWith(`${oldParentPath}/`)
+      ? entry.path.slice(oldParentPath.length + 1)
+      : entry.path.split('/').pop() || entry.path
+
+    const updatedPath = `${newParentPath}/${relativePath}`
+    const updated: WorkspaceEntry = {
+      ...entry,
+      path: updatedPath,
+    }
+
+    if (entry.isDirectory && entry.children) {
+      updated.children = entry.children.map((child) =>
+        updateChildPaths(child, oldParentPath, newParentPath)
+      )
+    }
+
+    return updated
+  }
+
+  return entries.map(updatePaths)
+}
+
+function updateChildPathsForMove(
+  entry: WorkspaceEntry,
+  oldParentPath: string,
+  newParentPath: string
+): WorkspaceEntry {
+  const relativePath = entry.path.startsWith(`${oldParentPath}/`)
+    ? entry.path.slice(oldParentPath.length + 1)
+    : entry.path.split('/').pop() || entry.path
+
+  const updatedPath = `${newParentPath}/${relativePath}`
+  const updated: WorkspaceEntry = {
+    ...entry,
+    path: updatedPath,
+  }
+
+  if (entry.isDirectory && entry.children) {
+    updated.children = entry.children.map((child) =>
+      updateChildPathsForMove(child, oldParentPath, newParentPath)
+    )
+  }
+
+  return updated
+}
+
+function moveEntryInState(
+  entries: WorkspaceEntry[],
+  sourcePath: string,
+  destinationPath: string
+): WorkspaceEntry[] {
+  // Helper function to find entry by path
+  const findEntry = (
+    entryList: WorkspaceEntry[],
+    targetPath: string
+  ): WorkspaceEntry | null => {
+    for (const entry of entryList) {
+      if (entry.path === targetPath) {
+        return entry
+      }
+      if (entry.children) {
+        const found = findEntry(entry.children, targetPath)
+        if (found) {
+          return found
+        }
+      }
+    }
+    return null
+  }
+
+  // Find the entry to move
+  const entryToMove = findEntry(entries, sourcePath)
+  if (!entryToMove) {
+    return entries
+  }
+
+  // Remove entry from source location
+  const removeEntry = (entryList: WorkspaceEntry[]): WorkspaceEntry[] => {
+    return entryList
+      .filter((entry) => entry.path !== sourcePath)
+      .map((entry) => {
+        if (entry.children) {
+          return {
+            ...entry,
+            children: removeEntry(entry.children),
+          }
+        }
+        return entry
+      })
+  }
+
+  const filteredEntries = removeEntry(entries)
+
+  // Update paths if it's a directory
+  const fileName =
+    sourcePath.split('/').pop() || sourcePath.split('\\').pop() || ''
+  const newPath = `${destinationPath}/${fileName}`
+
+  let updatedEntryToMove: WorkspaceEntry
+  if (entryToMove.isDirectory) {
+    updatedEntryToMove = {
+      path: newPath,
+      name: entryToMove.name,
+      isDirectory: true,
+      children: entryToMove.children
+        ? entryToMove.children.map((child: WorkspaceEntry) =>
+            updateChildPathsForMove(child, sourcePath, newPath)
+          )
+        : undefined,
+      createdAt: entryToMove.createdAt,
+      modifiedAt: entryToMove.modifiedAt,
+    }
+  } else {
+    updatedEntryToMove = {
+      path: newPath,
+      name: entryToMove.name,
+      isDirectory: false,
+      createdAt: entryToMove.createdAt,
+      modifiedAt: entryToMove.modifiedAt,
+    }
+  }
+
+  // Add entry to destination
+  const addToDestination = (
+    entryList: WorkspaceEntry[],
+    targetPath: string
+  ): WorkspaceEntry[] => {
+    return entryList.map((entry) => {
+      if (entry.path === targetPath && entry.isDirectory) {
+        const updatedChildren = entry.children
+          ? [...entry.children, updatedEntryToMove]
+          : [updatedEntryToMove]
+        return {
+          ...entry,
+          children: sortWorkspaceEntries(updatedChildren),
+        }
+      }
+      if (entry.children) {
+        return {
+          ...entry,
+          children: addToDestination(entry.children, targetPath),
+        }
+      }
+      return entry
+    })
+  }
+
+  return addToDestination(filteredEntries, destinationPath)
 }
 
 const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
