@@ -49,16 +49,24 @@ fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn manual_index_workspace(
+async fn index_workspace(
     workspace_path: String,
+    embedding_provider: Option<String>,
     embedding_model: String,
     force_reindex: bool,
 ) -> Result<indexing::IndexSummary, String> {
     use std::path::PathBuf;
 
     let workspace_path = PathBuf::from(workspace_path);
-    indexing::index_workspace(&workspace_path, &embedding_model, force_reindex)
-        .map_err(|error| error.to_string())
+    let provider = embedding_provider.unwrap_or_else(|| "ollama".to_string());
+    let model = embedding_model;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        indexing::index_workspace(&workspace_path, &provider, &model, force_reindex)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -85,7 +93,7 @@ pub fn run() {
             move_many_to_trash,
             get_note_preview,
             apply_workspace_migrations,
-            manual_index_workspace,
+            index_workspace,
             get_indexing_meta
         ])
         .run(tauri::generate_context!())

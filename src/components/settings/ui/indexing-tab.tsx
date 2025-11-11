@@ -23,18 +23,8 @@ import {
   SelectValue,
 } from '@/ui/select'
 
-type ManualIndexSummary = {
-  files_discovered: number
-  files_processed: number
-  docs_inserted: number
-  docs_deleted: number
-  segments_created: number
-  segments_updated: number
-  embeddings_written: number
-  skipped_files: string[]
-}
-
 type IndexingMeta = {
+  embeddingProvider: string | null
   embeddingModel: string | null
   indexedDocCount: number
 }
@@ -42,7 +32,12 @@ type IndexingMeta = {
 export function IndexingTab() {
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
   const entries = useWorkspaceStore((state) => state.entries)
-  const { getIndexingConfig, setEmbeddingModel } = useIndexingStore()
+  const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
+  const setEmbeddingModel = useIndexingStore((state) => state.setEmbeddingModel)
+  const indexWorkspace = useIndexingStore((state) => state.indexWorkspace)
+  const isIndexing = useIndexingStore((state) =>
+    workspacePath ? state.indexingState[workspacePath] ?? false : false
+  )
   const { ollamaModels, fetchOllamaModels } = useAISettingsStore()
 
   useEffect(() => {
@@ -50,7 +45,6 @@ export function IndexingTab() {
   }, [fetchOllamaModels])
 
   const [embeddingModel, setEmbeddingModelLocal] = useState<string>('')
-  const [isIndexing, setIsIndexing] = useState(false)
   const [storedEmbeddingModel, setStoredEmbeddingModel] = useState<
     string | null
   >(null)
@@ -92,6 +86,22 @@ export function IndexingTab() {
     workspacePathRef.current = workspacePath
   }, [workspacePath])
 
+  useEffect(() => {
+    if (!workspacePath || !isIndexing) {
+      return
+    }
+
+    const poll = () => {
+      loadIndexingMeta(workspacePath)
+    }
+
+    // Trigger immediately so progress updates without waiting 5s
+    poll()
+
+    const intervalId = window.setInterval(poll, 5000)
+    return () => window.clearInterval(intervalId)
+  }, [workspacePath, isIndexing, loadIndexingMeta])
+
   // Update local state when workspacePath or config changes
   useEffect(() => {
     if (!workspacePath) {
@@ -130,25 +140,23 @@ export function IndexingTab() {
   const isIndexButtonDisabled =
     !selectedEmbeddingModel || isIndexing || isMetaLoading
 
-  const runManualIndex = async (forceReindex: boolean) => {
+  const runIndex = async (forceReindex: boolean) => {
     if (!workspacePath || !selectedEmbeddingModel) {
       return
     }
 
-    setIsIndexing(true)
     try {
-      await invoke<ManualIndexSummary>('manual_index_workspace', {
+      await indexWorkspace(
         workspacePath,
-        embeddingModel: selectedEmbeddingModel,
-        forceReindex,
-      })
+        'ollama',
+        selectedEmbeddingModel,
+        forceReindex
+      )
 
       setStoredEmbeddingModel(selectedEmbeddingModel)
       await loadIndexingMeta(workspacePath)
     } catch (error) {
       console.error('Failed to index workspace:', error)
-    } finally {
-      setIsIndexing(false)
     }
   }
 
@@ -172,7 +180,7 @@ export function IndexingTab() {
       return
     }
 
-    runManualIndex(false)
+    runIndex(false)
   }
 
   const progressLabel = `${indexedDocCount}/${totalFiles || 0} files indexed`
@@ -302,15 +310,15 @@ export function IndexingTab() {
                       >
                         Cancel
                       </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          setIsResetWarningOpen(false)
-                          runManualIndex(true)
-                        }}
-                        disabled={isIndexing}
-                      >
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setIsResetWarningOpen(false)
+                              runIndex(true)
+                            }}
+                            disabled={isIndexing}
+                          >
                         {isIndexing && (
                           <Loader2Icon className="size-4 animate-spin" />
                         )}

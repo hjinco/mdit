@@ -1,20 +1,23 @@
 use std::{
     collections::{HashMap, HashSet},
+    convert::TryFrom,
     ffi::OsStr,
     fs,
     path::{Component, Path, PathBuf},
 };
 
 use anyhow::{anyhow, Context, Result};
+use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
+use tauri::async_runtime;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::migrations;
 
 const STATE_DIR_NAME: &str = ".mdit";
-const PLACEHOLDER_EMBEDDING_DIM: i32 = 8;
 const EMBEDDING_MODEL_KEY: &str = "embedding_model";
+const EMBEDDING_PROVIDER_KEY: &str = "embedding_provider";
 
 #[derive(Debug, Default, Serialize)]
 pub struct IndexSummary {
@@ -31,6 +34,7 @@ pub struct IndexSummary {
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexingMeta {
+    pub embedding_provider: Option<String>,
     pub embedding_model: Option<String>,
     pub indexed_doc_count: usize,
 }
@@ -40,11 +44,117 @@ struct MarkdownFile {
     rel_path: String,
 }
 
+#[derive(Debug)]
+struct EmbeddingVector {
+    dim: i32,
+    bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EmbeddingProvider {
+    Ollama,
+}
+
+impl EmbeddingProvider {
+    fn from_str(value: &str) -> Result<Self> {
+        match value.trim().to_lowercase().as_str() {
+            "ollama" => Ok(Self::Ollama),
+            provider => Err(anyhow!(
+                "Unsupported embedding provider '{}'. Only 'ollama' is currently supported.",
+                provider
+            )),
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Ollama => "ollama",
+        }
+    }
+}
+
+enum EmbeddingBackend {
+    Ollama(Ollama),
+}
+
+struct EmbeddingClient {
+    provider: EmbeddingProvider,
+    model: String,
+    backend: EmbeddingBackend,
+}
+
+impl EmbeddingClient {
+    fn new(provider: &str, model: &str) -> Result<Self> {
+        if model.trim().is_empty() {
+            return Err(anyhow!("Embedding model must be provided"));
+        }
+
+        let provider = EmbeddingProvider::from_str(provider)?;
+        let backend = match provider {
+            EmbeddingProvider::Ollama => EmbeddingBackend::Ollama(Ollama::default()),
+        };
+
+        Ok(Self {
+            provider,
+            model: model.to_string(),
+            backend,
+        })
+    }
+
+    fn provider_name(&self) -> &'static str {
+        self.provider.as_str()
+    }
+
+    fn generate(&self, text: &str) -> Result<EmbeddingVector> {
+        match &self.backend {
+            EmbeddingBackend::Ollama(ollama) => self.generate_with_ollama(ollama, text),
+        }
+    }
+
+    fn generate_with_ollama(&self, ollama: &Ollama, text: &str) -> Result<EmbeddingVector> {
+        let model = self.model.clone();
+        let prompt = text.to_string();
+
+        let response = async_runtime::block_on(async {
+            let request = GenerateEmbeddingsRequest::new(model, prompt.into());
+            ollama
+                .generate_embeddings(request)
+                .await
+                .context("Failed to generate embeddings with Ollama")
+        })?;
+
+        let mut embeddings = response.embeddings.into_iter();
+        let vector = embeddings
+            .next()
+            .ok_or_else(|| anyhow!("Ollama returned an empty embeddings list"))?;
+
+        if vector.is_empty() {
+            return Err(anyhow!(
+                "Ollama returned an embedding with zero dimensions for model '{}'",
+                self.model
+            ));
+        }
+
+        let dim = i32::try_from(vector.len())
+            .map_err(|_| anyhow!("Embedding dimension {} exceeds i32::MAX", vector.len()))?;
+
+        Ok(EmbeddingVector {
+            dim,
+            bytes: f32_slice_to_le_bytes(&vector),
+        })
+    }
+}
+
 pub fn index_workspace(
     workspace_root: &Path,
+    embedding_provider: &str,
     embedding_model: &str,
     force_reindex: bool,
 ) -> Result<IndexSummary> {
+    if embedding_provider.trim().is_empty() {
+        return Err(anyhow!("Embedding provider must be provided"));
+    }
+
     if embedding_model.trim().is_empty() {
         return Err(anyhow!("Embedding model must be provided"));
     }
@@ -56,6 +166,8 @@ pub fn index_workspace(
         ));
     }
 
+    let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
+
     let db_path = migrations::apply_workspace_migrations(workspace_root)?;
     let mut conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
@@ -66,16 +178,16 @@ pub fn index_workspace(
     let stored_meta = read_embedding_meta(&conn)?;
     let reset_deleted = maybe_reset_index(
         &conn,
+        stored_meta.embedding_provider.as_deref(),
         stored_meta.embedding_model.as_deref(),
+        embedder.provider_name(),
         embedding_model,
         force_reindex,
     )?;
 
-    persist_embedding_meta(&conn, embedding_model)?;
+    persist_embedding_meta(&conn, embedder.provider_name(), embedding_model)?;
 
     let markdown_files = collect_markdown_files(workspace_root)?;
-    let placeholder_embedding =
-        vec![0u8; PLACEHOLDER_EMBEDDING_DIM as usize * std::mem::size_of::<f32>()];
 
     let mut summary = IndexSummary {
         files_discovered: markdown_files.len(),
@@ -83,12 +195,7 @@ pub fn index_workspace(
         ..Default::default()
     };
 
-    sync_documents(
-        &mut conn,
-        markdown_files,
-        &placeholder_embedding,
-        &mut summary,
-    )?;
+    sync_documents(&mut conn, markdown_files, &embedder, &mut summary)?;
 
     Ok(summary)
 }
@@ -108,7 +215,8 @@ pub fn get_indexing_meta(workspace_root: &Path) -> Result<IndexingMeta> {
     read_embedding_meta(&conn)
 }
 
-fn persist_embedding_meta(conn: &Connection, model: &str) -> Result<()> {
+fn persist_embedding_meta(conn: &Connection, provider: &str, model: &str) -> Result<()> {
+    upsert_meta(conn, EMBEDDING_PROVIDER_KEY, provider)?;
     upsert_meta(conn, EMBEDDING_MODEL_KEY, model)?;
     Ok(())
 }
@@ -125,10 +233,12 @@ fn upsert_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
 }
 
 fn read_embedding_meta(conn: &Connection) -> Result<IndexingMeta> {
+    let embedding_provider = fetch_meta_value(conn, EMBEDDING_PROVIDER_KEY)?;
     let embedding_model = fetch_meta_value(conn, EMBEDDING_MODEL_KEY)?;
     let indexed_doc_count = count_indexed_docs(conn)?;
 
     Ok(IndexingMeta {
+        embedding_provider,
         embedding_model,
         indexed_doc_count,
     })
@@ -193,21 +303,35 @@ fn collect_markdown_files(workspace_root: &Path) -> Result<Vec<MarkdownFile>> {
 
 fn maybe_reset_index(
     conn: &Connection,
+    stored_provider: Option<&str>,
     stored_model: Option<&str>,
+    requested_provider: &str,
     requested_model: &str,
     force_reindex: bool,
 ) -> Result<usize> {
-    if let Some(existing) = stored_model {
-        if existing != requested_model {
-            if force_reindex {
-                return clear_index(conn);
-            } else {
-                return Err(anyhow!(
-                    "Embedding model mismatch. Stored '{}', requested '{}'",
-                    existing,
-                    requested_model
-                ));
-            }
+    let provider_mismatch = match stored_provider {
+        Some(existing) => existing != requested_provider,
+        None => stored_model.is_some(),
+    };
+
+    let model_mismatch = match stored_model {
+        Some(existing) => existing != requested_model,
+        None => false,
+    };
+
+    if provider_mismatch || model_mismatch {
+        if force_reindex {
+            return clear_index(conn);
+        } else {
+            let stored_provider_val = stored_provider.unwrap_or("<unset>");
+            let stored_model_val = stored_model.unwrap_or("<unset>");
+            return Err(anyhow!(
+                "Embedding configuration mismatch. Stored provider/model '{}:{}', requested '{}:{}'. Run with force reindex to rebuild.",
+                stored_provider_val,
+                stored_model_val,
+                requested_provider,
+                requested_model
+            ));
         }
     }
 
@@ -224,8 +348,8 @@ fn clear_index(conn: &Connection) -> Result<usize> {
         .context("Failed to clear documents for reindex")?;
 
     conn.execute(
-        "DELETE FROM meta WHERE key = ?1",
-        params![EMBEDDING_MODEL_KEY],
+        "DELETE FROM meta WHERE key IN (?1, ?2)",
+        params![EMBEDDING_MODEL_KEY, EMBEDDING_PROVIDER_KEY],
     )
     .context("Failed to clear embedding metadata")?;
 
@@ -260,7 +384,7 @@ fn normalize_rel_path(path: &Path) -> String {
 fn sync_documents(
     conn: &mut Connection,
     files: Vec<MarkdownFile>,
-    placeholder_embedding: &[u8],
+    embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let mut existing_docs = load_docs(conn)?;
@@ -269,13 +393,7 @@ fn sync_documents(
     remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
 
     for file in files {
-        match process_file(
-            conn,
-            &file,
-            &mut existing_docs,
-            placeholder_embedding,
-            summary,
-        ) {
+        match process_file(conn, &file, &mut existing_docs, embedder, summary) {
             Ok(()) => summary.files_processed += 1,
             Err(error) => {
                 summary
@@ -335,7 +453,7 @@ fn process_file(
     conn: &Connection,
     file: &MarkdownFile,
     docs: &mut HashMap<String, i64>,
-    placeholder_embedding: &[u8],
+    embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let contents = fs::read_to_string(&file.abs_path)
@@ -358,7 +476,7 @@ fn process_file(
         }
     };
 
-    sync_segment(conn, doc_id, &hash, placeholder_embedding, summary)?;
+    sync_segment(conn, doc_id, &hash, &contents, embedder, summary)?;
     prune_extra_segments(conn, doc_id)?;
 
     Ok(())
@@ -368,7 +486,8 @@ fn sync_segment(
     conn: &Connection,
     doc_id: i64,
     content_hash: &str,
-    placeholder_embedding: &[u8],
+    contents: &str,
+    embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let mut stmt = conn
@@ -391,7 +510,7 @@ fn sync_segment(
                 )
                 .with_context(|| format!("Failed to update segment for doc {}", doc_id))?;
                 summary.segments_updated += 1;
-                upsert_embedding(conn, segment_id, placeholder_embedding, summary)?;
+                write_embedding_for_segment(conn, segment_id, contents, embedder, summary)?;
             }
         }
         None => {
@@ -402,7 +521,7 @@ fn sync_segment(
             .with_context(|| format!("Failed to insert segment for doc {}", doc_id))?;
             let segment_id = conn.last_insert_rowid();
             summary.segments_created += 1;
-            upsert_embedding(conn, segment_id, placeholder_embedding, summary)?;
+            write_embedding_for_segment(conn, segment_id, contents, embedder, summary)?;
         }
     }
 
@@ -419,19 +538,39 @@ fn prune_extra_segments(conn: &Connection, doc_id: i64) -> Result<()> {
     Ok(())
 }
 
+fn write_embedding_for_segment(
+    conn: &Connection,
+    segment_id: i64,
+    contents: &str,
+    embedder: &EmbeddingClient,
+    summary: &mut IndexSummary,
+) -> Result<()> {
+    let embedding = embedder.generate(contents)?;
+    upsert_embedding(conn, segment_id, embedding.dim, &embedding.bytes, summary)
+}
+
 fn upsert_embedding(
     conn: &Connection,
     segment_id: i64,
-    placeholder_embedding: &[u8],
+    dim: i32,
+    embedding_bytes: &[u8],
     summary: &mut IndexSummary,
 ) -> Result<()> {
     conn.execute(
         "INSERT INTO embedding (segment_id, dim, vec) VALUES (?1, ?2, ?3) \
          ON CONFLICT(segment_id) DO UPDATE SET dim = excluded.dim, vec = excluded.vec",
-        params![segment_id, PLACEHOLDER_EMBEDDING_DIM, placeholder_embedding],
+        params![segment_id, dim, embedding_bytes],
     )
     .with_context(|| format!("Failed to upsert embedding for segment {}", segment_id))?;
 
     summary.embeddings_written += 1;
     Ok(())
+}
+
+fn f32_slice_to_le_bytes(values: &[f32]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(values.len() * std::mem::size_of::<f32>());
+    for value in values {
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
+    bytes
 }
