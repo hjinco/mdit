@@ -165,11 +165,8 @@ export function CollectionView() {
 
   return (
     <aside
-      className={cn(
-        'relative shrink-0 flex flex-col',
-        !isOpen && 'overflow-hidden pointer-events-none'
-      )}
-      style={{ width, display: isOpen ? 'block' : 'none' }}
+      className="relative shrink-0 flex flex-col"
+      style={{ width, display: isOpen ? 'flex' : 'none' }}
     >
       <div
         className={cn(
