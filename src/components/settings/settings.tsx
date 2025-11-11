@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useUIStore } from '@/store/ui-store'
 import { Dialog, DialogContent } from '@/ui/dialog'
 import { AITab } from './ui/ai-tab'
+import { IndexingTab } from './ui/indexing-tab'
 import { SettingsNavigation, type SettingsTab } from './ui/navigation'
 import { PreferencesTab } from './ui/preferences-tab'
 import { SyncTab } from './ui/sync-tab'
@@ -34,6 +35,7 @@ export function SettingsDialog() {
           {activeTab === 'preferences' && <PreferencesTab />}
           {activeTab === 'ai' && <AITab />}
           {activeTab === 'sync' && <SyncTab />}
+          {activeTab === 'indexing' && <IndexingTab />}
         </div>
       </DialogContent>
     </Dialog>
