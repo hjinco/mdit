@@ -14,8 +14,8 @@ import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
+import { useEntryUpdateOnSave } from './hooks/use-entry-update-on-save'
 import { usePreviewCache } from './hooks/use-preview-cache'
-import { usePreviewInvalidation } from './hooks/use-preview-invalidation'
 import { NewNoteButton } from './ui/new-note-button'
 import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
@@ -35,7 +35,7 @@ export function CollectionView() {
     }))
   )
   const isCollectionViewOpen = currentCollectionPath !== null
-  const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
+  const { isOpen, width, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
     defaultWidth: 256,
     minWidth: 200,
@@ -53,11 +53,17 @@ export function CollectionView() {
   )
 
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const { deleteEntries, renameNoteWithAI, renameEntry } = useWorkspaceStore(
+  const {
+    deleteEntries,
+    renameNoteWithAI,
+    renameEntry,
+    updateEntryModifiedDate,
+  } = useWorkspaceStore(
     useShallow((state) => ({
       deleteEntries: state.deleteEntries,
       renameNoteWithAI: state.renameNoteWithAI,
       renameEntry: state.renameEntry,
+      updateEntryModifiedDate: state.updateEntryModifiedDate,
     }))
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
@@ -102,8 +108,13 @@ export function CollectionView() {
     return map
   }, [sortedEntries])
 
-  // Invalidate preview when the same file is saved (not when switching files)
-  usePreviewInvalidation(tab?.path, isSaved, invalidatePreview)
+  // Update entry metadata (preview and modified date) when the same file is saved (not when switching files)
+  useEntryUpdateOnSave(
+    tab?.path,
+    isSaved,
+    invalidatePreview,
+    updateEntryModifiedDate
+  )
 
   const {
     selectedEntryPaths,
@@ -154,12 +165,8 @@ export function CollectionView() {
 
   return (
     <aside
-      className={cn(
-        'relative shrink-0 flex flex-col',
-        isResizing ? 'transition-none' : 'transition-[width] ease-out',
-        !isOpen && 'overflow-hidden pointer-events-none'
-      )}
-      style={{ width: isOpen ? width : 0 }}
+      className="relative shrink-0 flex flex-col"
+      style={{ width, display: isOpen ? 'flex' : 'none' }}
     >
       <div
         className={cn(
@@ -276,7 +283,7 @@ export function CollectionView() {
       </div>
       {isOpen && (
         <div
-          className="absolute top-0 right-0 z-10 h-full w-1 cursor-col-resize bg-transparent"
+          className="absolute top-0 -right-0.5 z-10 h-full w-1 cursor-col-resize bg-transparent"
           onPointerDown={handlePointerDown}
         />
       )}

@@ -370,3 +370,32 @@ export function moveEntryInState(
 
   return addToDestination(filteredEntries, destinationPath)
 }
+
+export function updateEntryMetadata(
+  entries: WorkspaceEntry[],
+  targetPath: string,
+  metadata: { modifiedAt?: Date; createdAt?: Date }
+): WorkspaceEntry[] {
+  const updateEntry = (entry: WorkspaceEntry): WorkspaceEntry => {
+    if (entry.path === targetPath) {
+      return {
+        ...entry,
+        ...(metadata.modifiedAt !== undefined && {
+          modifiedAt: metadata.modifiedAt,
+        }),
+        ...(metadata.createdAt !== undefined && {
+          createdAt: metadata.createdAt,
+        }),
+      }
+    }
+    if (entry.children) {
+      return {
+        ...entry,
+        children: entry.children.map(updateEntry),
+      }
+    }
+    return entry
+  }
+
+  return entries.map(updateEntry)
+}

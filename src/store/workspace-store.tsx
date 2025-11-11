@@ -29,6 +29,7 @@ import {
   sortWorkspaceEntries,
   updateChildPathsForMove,
   updateEntryInState,
+  updateEntryMetadata,
 } from './workspace/utils/entry-utils'
 import {
   removeExpandedDirectories,
@@ -79,6 +80,7 @@ type WorkspaceStore = {
     newName: string
   ) => Promise<string | null>
   moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
+  updateEntryModifiedDate: (path: string) => Promise<void>
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -763,6 +765,27 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (error) {
       console.error('Failed to move entry:', sourcePath, destinationPath, error)
       return false
+    }
+  },
+
+  updateEntryModifiedDate: async (path: string) => {
+    try {
+      const fileMetadata = await stat(path)
+      const metadata: { modifiedAt?: Date; createdAt?: Date } = {}
+
+      if (fileMetadata.mtime) {
+        metadata.modifiedAt = new Date(fileMetadata.mtime)
+      }
+      if (fileMetadata.birthtime) {
+        metadata.createdAt = new Date(fileMetadata.birthtime)
+      }
+
+      set((state) => ({
+        entries: updateEntryMetadata(state.entries, path, metadata),
+      }))
+    } catch (error) {
+      // Silently fail if metadata cannot be retrieved
+      console.debug('Failed to update entry modified date:', path, error)
     }
   },
 }))
