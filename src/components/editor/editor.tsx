@@ -26,8 +26,8 @@ import {
 export function Editor() {
   const tab = useTabStore((s) => s.tab)
   const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
-  const currentCollectionPath = useWorkspaceStore(
-    (s) => s.currentCollectionPath
+  const isCollectionViewOpen = useWorkspaceStore(
+    (s) => s.currentCollectionPath !== null
   )
   const editor = useMemo(() => {
     return createSlateEditor({
@@ -42,13 +42,25 @@ export function Editor() {
 
   if (!tab || !value)
     return (
-      <div className="flex-1 h-full bg-background rounded-sm my-1 mr-1">
-        <div className="h-12 w-full" data-tauri-drag-region />
+      <div
+        className={cn(
+          'flex-1 h-full py-1 pr-1',
+          !isFileExplorerOpen && !isCollectionViewOpen && 'pl-1'
+        )}
+      >
+        <div className="h-full bg-background rounded-sm">
+          <div className="h-12 w-full" data-tauri-drag-region />
+        </div>
       </div>
     )
 
   return (
-    <div className="relative flex-1 flex flex-col bg-background rounded-sm my-1 mr-1">
+    <div
+      className={cn(
+        'relative flex-1 flex flex-col bg-background rounded-sm my-1 mr-1 overflow-hidden',
+        !isFileExplorerOpen && !isCollectionViewOpen && 'ml-1'
+      )}
+    >
       <div
         className="w-full h-10 flex items-center justify-center relative"
         data-tauri-drag-region
@@ -56,7 +68,7 @@ export function Editor() {
         <div
           className={cn(
             'absolute',
-            !isFileExplorerOpen && currentCollectionPath === null
+            !isFileExplorerOpen && !isCollectionViewOpen
               ? 'left-30 pl-1 border-l'
               : 'left-1'
           )}
@@ -163,7 +175,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-[450] font-scale-scope'
+            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-scale-scope'
           )}
           autoCapitalize="off"
           spellCheck={false}

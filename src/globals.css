@@ -122,6 +122,7 @@
   html {
     overscroll-behavior: none;
     font-size: 16px;
+    font-weight: 450;
   }
 
   body {
