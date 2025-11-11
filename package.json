@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.39",
@@ -73,6 +74,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.44.7",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.539.0",
     "mime": "^4.0.7",
@@ -109,6 +111,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "drizzle-kit": "^0.31.6",
     "husky": "^9.1.7",
     "tailwindcss": "^4.1.12",
     "tw-animate-css": "^1.3.7",
