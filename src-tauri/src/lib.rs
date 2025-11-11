@@ -1,3 +1,4 @@
+mod indexing;
 mod migrations;
 
 use std::fs::File;
@@ -47,6 +48,27 @@ fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn manual_index_workspace(
+    workspace_path: String,
+    embedding_model: String,
+    force_reindex: bool,
+) -> Result<indexing::IndexSummary, String> {
+    use std::path::PathBuf;
+
+    let workspace_path = PathBuf::from(workspace_path);
+    indexing::index_workspace(&workspace_path, &embedding_model, force_reindex)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn get_indexing_meta(workspace_path: String) -> Result<indexing::IndexingMeta, String> {
+    use std::path::PathBuf;
+
+    let workspace_path = PathBuf::from(workspace_path);
+    indexing::get_indexing_meta(&workspace_path).map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -62,7 +84,9 @@ pub fn run() {
             move_to_trash,
             move_many_to_trash,
             get_note_preview,
-            apply_workspace_migrations
+            apply_workspace_migrations,
+            manual_index_workspace,
+            get_indexing_meta
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
