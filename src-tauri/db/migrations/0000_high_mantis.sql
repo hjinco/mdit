@@ -22,7 +22,7 @@ CREATE TABLE `segment` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`doc_id` integer NOT NULL,
 	`ordinal` integer NOT NULL,
-	`last_hash` text,
+	`last_hash` text NOT NULL,
 	FOREIGN KEY (`doc_id`) REFERENCES `doc`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

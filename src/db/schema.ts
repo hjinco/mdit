@@ -19,7 +19,7 @@ export const segments = sqliteTable(
       .notNull()
       .references(() => documents.id, { onDelete: 'cascade' }),
     ordinal: integer('ordinal').notNull(), // 0..N-1
-    lastHash: text('last_hash'),
+    lastHash: text('last_hash').notNull(),
   },
   (t) => [uniqueIndex('uniq_seg_doc_ord').on(t.docId, t.ordinal)]
 )

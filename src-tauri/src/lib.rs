@@ -1,3 +1,5 @@
+mod migrations;
+
 use std::fs::File;
 use std::io::Read;
 use trash;
@@ -35,6 +37,16 @@ fn get_note_preview(path: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
+    use std::path::PathBuf;
+
+    let workspace_path = PathBuf::from(workspace_path);
+    migrations::apply_workspace_migrations(&workspace_path)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -49,7 +61,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             move_to_trash,
             move_many_to_trash,
-            get_note_preview
+            get_note_preview,
+            apply_workspace_migrations
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

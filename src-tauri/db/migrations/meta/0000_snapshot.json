@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c7b7faf0-8baa-4801-8782-a6f66425e39a",
+  "id": "06f46797-3b15-4e4d-bedc-c9c53729ad5b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "doc": {
@@ -148,7 +148,7 @@
           "name": "last_hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         }
       },
