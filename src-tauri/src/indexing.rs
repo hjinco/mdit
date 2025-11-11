@@ -490,27 +490,29 @@ fn sync_segment(
     embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
-    let mut stmt = conn
-        .prepare("SELECT id, last_hash FROM segment WHERE doc_id = ?1 AND ordinal = 0")
-        .context("Failed to prepare segment lookup")?;
+    let existing_segment = {
+        let mut stmt = conn
+            .prepare("SELECT id, last_hash FROM segment WHERE doc_id = ?1 AND ordinal = 0")
+            .context("Failed to prepare segment lookup")?;
 
-    let existing_segment = stmt
-        .query_row(params![doc_id], |row| {
+        stmt.query_row(params![doc_id], |row| {
             Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
         })
         .optional()
-        .context("Failed to query existing segment")?;
+        .context("Failed to query existing segment")?
+    };
 
     match existing_segment {
         Some((segment_id, last_hash)) => {
             if last_hash != content_hash {
+                write_embedding_for_segment(conn, segment_id, contents, embedder, summary)
+                    .context("Failed to refresh embedding for updated segment")?;
                 conn.execute(
                     "UPDATE segment SET last_hash = ?1 WHERE id = ?2",
                     params![content_hash, segment_id],
                 )
                 .with_context(|| format!("Failed to update segment for doc {}", doc_id))?;
                 summary.segments_updated += 1;
-                write_embedding_for_segment(conn, segment_id, contents, embedder, summary)?;
             }
         }
         None => {
@@ -520,8 +522,24 @@ fn sync_segment(
             )
             .with_context(|| format!("Failed to insert segment for doc {}", doc_id))?;
             let segment_id = conn.last_insert_rowid();
-            summary.segments_created += 1;
-            write_embedding_for_segment(conn, segment_id, contents, embedder, summary)?;
+            match write_embedding_for_segment(conn, segment_id, contents, embedder, summary) {
+                Ok(()) => summary.segments_created += 1,
+                Err(err) => {
+                    if let Err(cleanup_err) = conn.execute(
+                        "DELETE FROM segment WHERE id = ?1",
+                        params![segment_id],
+                    ) {
+                        return Err(anyhow!(
+                            "Failed to clean up segment {} after embedding error: {}. Original error: {:#}",
+                            segment_id,
+                            cleanup_err,
+                            err
+                        ));
+                    }
+
+                    return Err(err).context("Failed to write embedding for new segment");
+                }
+            }
         }
     }
 
