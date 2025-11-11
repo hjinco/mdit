@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
-import { AlertTriangleIcon, Loader2Icon, XIcon } from 'lucide-react'
+import { AlertTriangleIcon, Loader2Icon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useIndexingStore } from '@/store/indexing-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
@@ -13,7 +14,6 @@ import {
   FieldLegend,
   FieldSet,
 } from '@/ui/field'
-import { Input } from '@/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import {
   Select,
@@ -42,13 +42,12 @@ type IndexingMeta = {
 export function IndexingTab() {
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
   const entries = useWorkspaceStore((state) => state.entries)
-  const {
-    ollamaEmbeddingModels,
-    getIndexingConfig,
-    setEmbeddingModel,
-    addOllamaEmbeddingModel,
-    removeOllamaEmbeddingModel,
-  } = useIndexingStore()
+  const { getIndexingConfig, setEmbeddingModel } = useIndexingStore()
+  const { ollamaModels, fetchOllamaModels } = useAISettingsStore()
+
+  useEffect(() => {
+    fetchOllamaModels()
+  }, [fetchOllamaModels])
 
   const [embeddingModel, setEmbeddingModelLocal] = useState<string>('')
   const [isIndexing, setIsIndexing] = useState(false)
@@ -124,8 +123,7 @@ export function IndexingTab() {
 
   const isEmbeddingModelConfigured = embeddingModel !== ''
   const isEmbeddingModelAvailable =
-    isEmbeddingModelConfigured &&
-    ollamaEmbeddingModels.includes(embeddingModel)
+    isEmbeddingModelConfigured && ollamaModels.includes(embeddingModel)
   const selectedEmbeddingModel = isEmbeddingModelAvailable
     ? embeddingModel
     : null
@@ -215,8 +213,8 @@ export function IndexingTab() {
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent align="end">
-                {ollamaEmbeddingModels.length > 0 ? (
-                  ollamaEmbeddingModels.map((model) => (
+                {ollamaModels.length > 0 ? (
+                  ollamaModels.map((model) => (
                     <SelectItem key={model} value={model}>
                       {model}
                     </SelectItem>
@@ -341,72 +339,28 @@ export function IndexingTab() {
             <FieldContent>
               <FieldLabel>Ollama Embedding Models</FieldLabel>
               <FieldDescription>
-                Add and manage Ollama embedding models
+                Models are automatically fetched from your local Ollama instance
               </FieldDescription>
             </FieldContent>
             <FieldGroup className="gap-0 mt-2">
-              {ollamaEmbeddingModels.map((model) => (
-                <Field key={model} orientation="horizontal" className="py-2">
-                  <FieldContent className="group flex-row justify-between">
-                    <FieldLabel className="text-xs">{model}</FieldLabel>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOllamaEmbeddingModel(model)}
-                        className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100"
-                      >
-                        <XIcon className="size-3.5" />
-                      </Button>
-                    </div>
-                  </FieldContent>
-                </Field>
-              ))}
-              {ollamaEmbeddingModels.length === 0 && (
+              {ollamaModels.length === 0 ? (
                 <div className="py-2 text-sm text-muted-foreground font-normal">
-                  No Ollama embedding models added yet.
+                  No Ollama embedding models available. Make sure Ollama is
+                  installed and running.
                 </div>
+              ) : (
+                ollamaModels.map((model) => (
+                  <Field key={model} orientation="horizontal" className="py-2">
+                    <FieldContent>
+                      <FieldLabel className="text-xs">{model}</FieldLabel>
+                    </FieldContent>
+                  </Field>
+                ))
               )}
             </FieldGroup>
-            <AddOllamaEmbeddingModel
-              onAddOllamaEmbeddingModel={addOllamaEmbeddingModel}
-            />
           </Field>
         </FieldGroup>
       </FieldSet>
-    </div>
-  )
-}
-
-function AddOllamaEmbeddingModel({
-  onAddOllamaEmbeddingModel,
-}: {
-  onAddOllamaEmbeddingModel: (model: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleAddModel = () => {
-    const model = inputRef.current?.value.trim()
-    if (model) {
-      onAddOllamaEmbeddingModel(model)
-      if (inputRef.current) {
-        inputRef.current.value = ''
-      }
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-2 mt-4">
-      <Input
-        ref={inputRef}
-        type="text"
-        placeholder="Model Name"
-        autoComplete="off"
-        spellCheck="false"
-      />
-      <Button variant="outline" onClick={handleAddModel}>
-        Add
-      </Button>
     </div>
   )
 }
