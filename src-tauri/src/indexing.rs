@@ -14,6 +14,7 @@ use std::{
     ffi::OsStr,
     fs,
     path::{Component, Path, PathBuf},
+    sync::OnceLock,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -24,6 +25,7 @@ use tauri::async_runtime;
 use walkdir::{DirEntry, WalkDir};
 
 use crate::migrations;
+use tiktoken_rs::{cl100k_base, CoreBPE};
 
 const STATE_DIR_NAME: &str = ".mdit";
 const TARGET_CHUNKING_VERSION: i64 = 1;
@@ -494,53 +496,119 @@ fn hash_content(contents: &str) -> String {
     blake3::hash(contents.as_bytes()).to_hex().to_string()
 }
 
-const MAX_CHARS_PER_CHUNK_V1: usize = 1200;
+const MAX_TOKENS_PER_CHUNK_V1: usize = 1000;
 
-/// Break Markdown into roughly paragraph-sized chunks while staying under the size limit.
+/// Chunk Markdown by major headings and enforce a 1000-token ceiling per chunk.
 fn chunk_markdown_v1(contents: &str) -> Vec<String> {
+    let sections = split_major_sections(contents);
     let mut chunks = Vec::new();
-    let mut buffer = String::new();
 
-    for paragraph in contents.split("\n\n") {
-        let paragraph = paragraph.trim();
-        if paragraph.is_empty() {
+    for section in sections {
+        let section = section.trim();
+        if section.is_empty() {
             continue;
         }
 
-        // Estimate how long the buffer would be if we appended this paragraph including spacing.
-        let projected_len = if buffer.is_empty() {
-            paragraph.len()
+        if count_tokens(section) <= MAX_TOKENS_PER_CHUNK_V1 {
+            chunks.push(section.to_string());
         } else {
-            buffer.len() + 2 + paragraph.len()
-        };
-
-        if !buffer.is_empty() && projected_len > MAX_CHARS_PER_CHUNK_V1 {
-            chunks.push(buffer.trim().to_string());
-            buffer.clear();
+            chunks.extend(split_section_by_tokens(section, MAX_TOKENS_PER_CHUNK_V1));
         }
-
-        if !buffer.is_empty() {
-            buffer.push_str("\n\n");
-        }
-
-        buffer.push_str(paragraph);
-
-        // Flush early if an individual paragraph is already too large.
-        if buffer.len() >= MAX_CHARS_PER_CHUNK_V1 {
-            chunks.push(buffer.trim().to_string());
-            buffer.clear();
-        }
-    }
-
-    if !buffer.trim().is_empty() {
-        chunks.push(buffer.trim().to_string());
     }
 
     if chunks.is_empty() && !contents.trim().is_empty() {
-        chunks.push(contents.trim().to_string());
+        if count_tokens(contents) <= MAX_TOKENS_PER_CHUNK_V1 {
+            chunks.push(contents.trim().to_string());
+        } else {
+            chunks.extend(split_section_by_tokens(contents, MAX_TOKENS_PER_CHUNK_V1));
+        }
     }
 
     chunks
+}
+
+fn split_major_sections(contents: &str) -> Vec<String> {
+    let mut sections = Vec::new();
+    let mut current = String::new();
+
+    for line in contents.lines() {
+        let is_heading = is_major_heading_line(line);
+        if is_heading {
+            if !current.trim().is_empty() {
+                sections.push(current.trim().to_string());
+            }
+            current.clear();
+        }
+
+        if !current.is_empty() {
+            current.push('\n');
+        }
+        current.push_str(line);
+    }
+
+    if !current.trim().is_empty() {
+        sections.push(current.trim().to_string());
+    }
+
+    if sections.is_empty() && !contents.trim().is_empty() {
+        sections.push(contents.trim().to_string());
+    }
+
+    sections
+}
+
+fn is_major_heading_line(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    if !trimmed.starts_with('#') {
+        return false;
+    }
+
+    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
+    if hashes == 0 || hashes > 2 {
+        return false;
+    }
+
+    match trimmed.chars().nth(hashes) {
+        Some(ch) if ch.is_whitespace() => true,
+        None => true,
+        _ => false,
+    }
+}
+
+fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
+    if section.trim().is_empty() || max_tokens == 0 {
+        return Vec::new();
+    }
+
+    let tokenizer = tokenizer();
+    let tokens = tokenizer.encode_ordinary(section);
+    if tokens.is_empty() {
+        return Vec::new();
+    }
+
+    tokens
+        .chunks(max_tokens)
+        .filter_map(|chunk| {
+            if chunk.is_empty() {
+                return None;
+            }
+
+            tokenizer
+                .decode(chunk.to_vec())
+                .ok()
+                .map(|decoded| decoded.trim().to_string())
+        })
+        .filter(|chunk| !chunk.is_empty())
+        .collect()
+}
+
+fn count_tokens(text: &str) -> usize {
+    tokenizer().encode_ordinary(text).len()
+}
+
+fn tokenizer() -> &'static CoreBPE {
+    static TOKENIZER: OnceLock<CoreBPE> = OnceLock::new();
+    TOKENIZER.get_or_init(|| cl100k_base().expect("failed to initialize cl100k tokenizer"))
 }
 
 fn rebuild_doc_chunks(
