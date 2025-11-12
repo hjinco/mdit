@@ -9,6 +9,7 @@ import {
 export const documents = sqliteTable('doc', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   relPath: text('rel_path').notNull().unique(),
+  chunkingVersion: integer('chunking_version').notNull(),
 })
 
 export const segments = sqliteTable(
@@ -30,11 +31,7 @@ export const embeddings = sqliteTable('embedding', {
     .notNull()
     .references(() => segments.id, { onDelete: 'cascade' })
     .unique(),
+  model: text('model').notNull(),
   dim: integer('dim').notNull(),
   vec: blob('vec').notNull().$type<Uint8Array>(), // Float32Array bytes (LE)
-})
-
-export const meta = sqliteTable('meta', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(), // 'embedding_model', 'embedding_dim', 'chunking_version', etc.
 })

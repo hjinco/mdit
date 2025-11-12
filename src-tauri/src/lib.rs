@@ -62,7 +62,12 @@ async fn index_workspace(
     let model = embedding_model;
 
     tauri::async_runtime::spawn_blocking(move || {
-        indexing::index_workspace(&workspace_path, &provider, &model, force_reindex)
+        indexing::index_workspace(
+            &workspace_path,
+            &provider,
+            &model,
+            force_reindex,
+        )
     })
     .await
     .map_err(|error| error.to_string())?

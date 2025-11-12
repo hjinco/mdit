@@ -1,5 +1,15 @@
+//! Indexing pipeline for Markdown files inside a workspace directory.
+//!
+//! The overall flow is:
+//! 1. `index_workspace` prepares the SQLite database, collects Markdown files,
+//!    and orchestrates synchronization for every document.
+//! 2. New or changed documents are chunked based on the requested chunking
+//!    version, persisted as `segment` rows, and receive fresh embeddings.
+//! 3. Deleted documents and surplus segments are removed to keep the database
+//!    tidy while the `IndexSummary` keeps track of everything that happened.
+
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     convert::TryFrom,
     ffi::OsStr,
     fs,
@@ -8,7 +18,7 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection};
 use serde::Serialize;
 use tauri::async_runtime;
 use walkdir::{DirEntry, WalkDir};
@@ -16,29 +26,54 @@ use walkdir::{DirEntry, WalkDir};
 use crate::migrations;
 
 const STATE_DIR_NAME: &str = ".mdit";
-const EMBEDDING_MODEL_KEY: &str = "embedding_model";
-const EMBEDDING_PROVIDER_KEY: &str = "embedding_provider";
+const TARGET_CHUNKING_VERSION: i64 = 1;
 
+/// Human readable summary of what happened during an indexing run.
 #[derive(Debug, Default, Serialize)]
 pub struct IndexSummary {
+    /// Total Markdown files found in the workspace walk.
     pub files_discovered: usize,
+    /// Files that were successfully processed (even if nothing changed).
     pub files_processed: usize,
+    /// Newly inserted `doc` rows.
     pub docs_inserted: usize,
+    /// `doc` rows that were deleted because the file disappeared or
+    /// a forced re-index was requested.
     pub docs_deleted: usize,
+    /// New `segment` rows created while chunking documents.
     pub segments_created: usize,
+    /// Existing segments whose content hash changed.
     pub segments_updated: usize,
+    /// Number of embeddings written or refreshed.
     pub embeddings_written: usize,
+    /// Detailed per-file errors that prevented indexing.
     pub skipped_files: Vec<String>,
 }
 
+/// Lightweight metadata returned for quick status checks.
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexingMeta {
-    pub embedding_provider: Option<String>,
-    pub embedding_model: Option<String>,
     pub indexed_doc_count: usize,
 }
 
+/// Cached database representation of a Markdown document.
+#[derive(Debug, Clone)]
+struct DocRecord {
+    id: i64,
+    chunking_version: i64,
+}
+
+/// Cached representation of a chunk/segment row so we can diff against disk.
+#[derive(Debug)]
+struct SegmentRecord {
+    id: i64,
+    last_hash: String,
+    embedding_model: Option<String>,
+    embedding_dim: Option<i32>,
+}
+
+/// Convenience holder for absolute + relative path of a Markdown source file.
 struct MarkdownFile {
     abs_path: PathBuf,
     rel_path: String,
@@ -50,12 +85,14 @@ struct EmbeddingVector {
     bytes: Vec<u8>,
 }
 
+/// Supported providers that can generate embedding vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EmbeddingProvider {
     Ollama,
 }
 
 impl EmbeddingProvider {
+    /// Parse human input (e.g., CLI argument) into a provider enum.
     fn from_str(value: &str) -> Result<Self> {
         match value.trim().to_lowercase().as_str() {
             "ollama" => Ok(Self::Ollama),
@@ -65,12 +102,6 @@ impl EmbeddingProvider {
             )),
         }
     }
-
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Ollama => "ollama",
-        }
-    }
 }
 
 enum EmbeddingBackend {
@@ -78,12 +109,12 @@ enum EmbeddingBackend {
 }
 
 struct EmbeddingClient {
-    provider: EmbeddingProvider,
     model: String,
     backend: EmbeddingBackend,
 }
 
 impl EmbeddingClient {
+    /// Instantiate a concrete backend client for the requested provider.
     fn new(provider: &str, model: &str) -> Result<Self> {
         if model.trim().is_empty() {
             return Err(anyhow!("Embedding model must be provided"));
@@ -95,16 +126,16 @@ impl EmbeddingClient {
         };
 
         Ok(Self {
-            provider,
             model: model.to_string(),
             backend,
         })
     }
 
-    fn provider_name(&self) -> &'static str {
-        self.provider.as_str()
+    fn model_name(&self) -> &str {
+        &self.model
     }
 
+    /// Generate an embedding vector for the supplied chunk using the selected backend.
     fn generate(&self, text: &str) -> Result<EmbeddingVector> {
         match &self.backend {
             EmbeddingBackend::Ollama(ollama) => self.generate_with_ollama(ollama, text),
@@ -145,12 +176,21 @@ impl EmbeddingClient {
     }
 }
 
+/// Resolve the embedding dimension for a given provider and model by generating
+/// a test embedding and extracting its dimension.
+fn resolve_embedding_dimension(provider: &str, model: &str) -> Result<i32> {
+    let embedder = EmbeddingClient::new(provider, model)?;
+    let test_embedding = embedder.generate("test")?;
+    Ok(test_embedding.dim)
+}
+
 pub fn index_workspace(
     workspace_root: &Path,
     embedding_provider: &str,
     embedding_model: &str,
     force_reindex: bool,
 ) -> Result<IndexSummary> {
+    // Validate user-provided configuration up front for clearer errors.
     if embedding_provider.trim().is_empty() {
         return Err(anyhow!("Embedding provider must be provided"));
     }
@@ -166,6 +206,17 @@ pub fn index_workspace(
         ));
     }
 
+    // Resolve embedding dimension by generating a test embedding.
+    let target_dim = resolve_embedding_dimension(embedding_provider, embedding_model)?;
+
+    if target_dim <= 0 {
+        return Err(anyhow!(
+            "Target embedding dimension must be positive (received {})",
+            target_dim
+        ));
+    }
+
+    // Embedder handles communication with the chosen vector backend.
     let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
 
     let db_path = migrations::apply_workspace_migrations(workspace_root)?;
@@ -175,17 +226,8 @@ pub fn index_workspace(
     conn.pragma_update(None, "foreign_keys", &1)
         .context("Failed to enable foreign keys for workspace database")?;
 
-    let stored_meta = read_embedding_meta(&conn)?;
-    let reset_deleted = maybe_reset_index(
-        &conn,
-        stored_meta.embedding_provider.as_deref(),
-        stored_meta.embedding_model.as_deref(),
-        embedder.provider_name(),
-        embedding_model,
-        force_reindex,
-    )?;
-
-    persist_embedding_meta(&conn, embedder.provider_name(), embedding_model)?;
+    // Force reindex wipes doc/segment tables so they can be recreated cleanly.
+    let reset_deleted = if force_reindex { clear_index(&conn)? } else { 0 };
 
     let markdown_files = collect_markdown_files(workspace_root)?;
 
@@ -195,7 +237,13 @@ pub fn index_workspace(
         ..Default::default()
     };
 
-    sync_documents(&mut conn, markdown_files, &embedder, &mut summary)?;
+    sync_documents(
+        &mut conn,
+        markdown_files,
+        &embedder,
+        target_dim,
+        &mut summary,
+    )?;
 
     Ok(summary)
 }
@@ -212,46 +260,9 @@ pub fn get_indexing_meta(workspace_root: &Path) -> Result<IndexingMeta> {
     let conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
 
-    read_embedding_meta(&conn)
-}
-
-fn persist_embedding_meta(conn: &Connection, provider: &str, model: &str) -> Result<()> {
-    upsert_meta(conn, EMBEDDING_PROVIDER_KEY, provider)?;
-    upsert_meta(conn, EMBEDDING_MODEL_KEY, model)?;
-    Ok(())
-}
-
-fn upsert_meta(conn: &Connection, key: &str, value: &str) -> Result<()> {
-    conn.execute(
-        "INSERT INTO meta (key, value) VALUES (?1, ?2) \
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        params![key, value],
-    )
-    .with_context(|| format!("Failed to upsert meta key {}", key))?;
-
-    Ok(())
-}
-
-fn read_embedding_meta(conn: &Connection) -> Result<IndexingMeta> {
-    let embedding_provider = fetch_meta_value(conn, EMBEDDING_PROVIDER_KEY)?;
-    let embedding_model = fetch_meta_value(conn, EMBEDDING_MODEL_KEY)?;
-    let indexed_doc_count = count_indexed_docs(conn)?;
-
     Ok(IndexingMeta {
-        embedding_provider,
-        embedding_model,
-        indexed_doc_count,
+        indexed_doc_count: count_indexed_docs(&conn)?,
     })
-}
-
-fn fetch_meta_value(conn: &Connection, key: &str) -> Result<Option<String>> {
-    conn.query_row(
-        "SELECT value FROM meta WHERE key = ?1",
-        params![key],
-        |row| row.get::<_, String>(0),
-    )
-    .optional()
-    .context("Failed to query meta")
 }
 
 fn count_indexed_docs(conn: &Connection) -> Result<usize> {
@@ -269,6 +280,7 @@ fn count_indexed_docs(conn: &Connection) -> Result<usize> {
 }
 
 fn collect_markdown_files(workspace_root: &Path) -> Result<Vec<MarkdownFile>> {
+    // Walk the tree lazily, skipping dot-directories such as the state folder.
     let walker = WalkDir::new(workspace_root)
         .follow_links(false)
         .into_iter()
@@ -301,57 +313,10 @@ fn collect_markdown_files(workspace_root: &Path) -> Result<Vec<MarkdownFile>> {
     Ok(files)
 }
 
-fn maybe_reset_index(
-    conn: &Connection,
-    stored_provider: Option<&str>,
-    stored_model: Option<&str>,
-    requested_provider: &str,
-    requested_model: &str,
-    force_reindex: bool,
-) -> Result<usize> {
-    let provider_mismatch = match stored_provider {
-        Some(existing) => existing != requested_provider,
-        None => stored_model.is_some(),
-    };
-
-    let model_mismatch = match stored_model {
-        Some(existing) => existing != requested_model,
-        None => false,
-    };
-
-    if provider_mismatch || model_mismatch {
-        if force_reindex {
-            return clear_index(conn);
-        } else {
-            let stored_provider_val = stored_provider.unwrap_or("<unset>");
-            let stored_model_val = stored_model.unwrap_or("<unset>");
-            return Err(anyhow!(
-                "Embedding configuration mismatch. Stored provider/model '{}:{}', requested '{}:{}'. Run with force reindex to rebuild.",
-                stored_provider_val,
-                stored_model_val,
-                requested_provider,
-                requested_model
-            ));
-        }
-    }
-
-    if force_reindex {
-        return clear_index(conn);
-    }
-
-    Ok(0)
-}
-
 fn clear_index(conn: &Connection) -> Result<usize> {
     let deleted_docs = conn
         .execute("DELETE FROM doc", [])
         .context("Failed to clear documents for reindex")?;
-
-    conn.execute(
-        "DELETE FROM meta WHERE key IN (?1, ?2)",
-        params![EMBEDDING_MODEL_KEY, EMBEDDING_PROVIDER_KEY],
-    )
-    .context("Failed to clear embedding metadata")?;
 
     Ok(deleted_docs as usize)
 }
@@ -385,15 +350,24 @@ fn sync_documents(
     conn: &mut Connection,
     files: Vec<MarkdownFile>,
     embedder: &EmbeddingClient,
+    target_dim: i32,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let mut existing_docs = load_docs(conn)?;
     let discovered: HashSet<String> = files.iter().map(|file| file.rel_path.clone()).collect();
 
+    // Remove rows for files that no longer exist before processing additions/updates.
     remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
 
     for file in files {
-        match process_file(conn, &file, &mut existing_docs, embedder, summary) {
+        match process_file(
+            conn,
+            &file,
+            &mut existing_docs,
+            embedder,
+            target_dim,
+            summary,
+        ) {
             Ok(()) => summary.files_processed += 1,
             Err(error) => {
                 summary
@@ -406,21 +380,31 @@ fn sync_documents(
     Ok(())
 }
 
-fn load_docs(conn: &Connection) -> Result<HashMap<String, i64>> {
+fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
     let mut stmt = conn
-        .prepare("SELECT id, rel_path FROM doc")
+        .prepare("SELECT id, rel_path, chunking_version FROM doc")
         .context("Failed to prepare statement to load documents")?;
 
     let rows = stmt
         .query_map([], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
         })
         .context("Failed to read documents")?;
 
     let mut docs = HashMap::new();
     for row in rows {
-        let (id, rel_path) = row?;
-        docs.insert(rel_path, id);
+        let (id, rel_path, chunking_version) = row?;
+        docs.insert(
+            rel_path,
+            DocRecord {
+                id,
+                chunking_version,
+            },
+        );
     }
 
     Ok(docs)
@@ -428,7 +412,7 @@ fn load_docs(conn: &Connection) -> Result<HashMap<String, i64>> {
 
 fn remove_deleted_docs(
     conn: &Connection,
-    docs: &mut HashMap<String, i64>,
+    docs: &mut HashMap<String, DocRecord>,
     discovered: &HashSet<String>,
     summary: &mut IndexSummary,
 ) -> Result<()> {
@@ -439,8 +423,8 @@ fn remove_deleted_docs(
         .collect();
 
     for rel_path in to_delete {
-        if let Some(doc_id) = docs.remove(&rel_path) {
-            conn.execute("DELETE FROM doc WHERE id = ?1", params![doc_id])
+        if let Some(doc) = docs.remove(&rel_path) {
+            conn.execute("DELETE FROM doc WHERE id = ?1", params![doc.id])
                 .with_context(|| format!("Failed to delete doc for rel_path {}", rel_path))?;
             summary.docs_deleted += 1;
         }
@@ -450,108 +434,276 @@ fn remove_deleted_docs(
 }
 
 fn process_file(
-    conn: &Connection,
+    conn: &mut Connection,
     file: &MarkdownFile,
-    docs: &mut HashMap<String, i64>,
+    docs: &mut HashMap<String, DocRecord>,
     embedder: &EmbeddingClient,
+    target_dim: i32,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let contents = fs::read_to_string(&file.abs_path)
         .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
 
-    let hash = blake3::hash(contents.as_bytes()).to_hex().to_string();
-
-    let doc_id = match docs.get(&file.rel_path) {
-        Some(id) => *id,
-        None => {
+    let doc_record = match docs.entry(file.rel_path.clone()) {
+        Entry::Occupied(entry) => entry.into_mut(),
+        Entry::Vacant(entry) => {
             conn.execute(
-                "INSERT INTO doc (rel_path) VALUES (?1)",
-                params![file.rel_path],
+                "INSERT INTO doc (rel_path, chunking_version) VALUES (?1, ?2)",
+                params![file.rel_path, TARGET_CHUNKING_VERSION],
             )
             .with_context(|| format!("Failed to insert doc for {}", file.rel_path))?;
             let doc_id = conn.last_insert_rowid();
-            docs.insert(file.rel_path.clone(), doc_id);
             summary.docs_inserted += 1;
-            doc_id
+            entry.insert(DocRecord {
+                id: doc_id,
+                chunking_version: TARGET_CHUNKING_VERSION,
+            })
         }
     };
 
-    sync_segment(conn, doc_id, &hash, &contents, embedder, summary)?;
-    prune_extra_segments(conn, doc_id)?;
+    let doc_id = doc_record.id;
+    let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
 
-    Ok(())
-}
-
-fn sync_segment(
-    conn: &Connection,
-    doc_id: i64,
-    content_hash: &str,
-    contents: &str,
-    embedder: &EmbeddingClient,
-    summary: &mut IndexSummary,
-) -> Result<()> {
-    let existing_segment = {
-        let mut stmt = conn
-            .prepare("SELECT id, last_hash FROM segment WHERE doc_id = ?1 AND ordinal = 0")
-            .context("Failed to prepare segment lookup")?;
-
-        stmt.query_row(params![doc_id], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-        })
-        .optional()
-        .context("Failed to query existing segment")?
-    };
-
-    match existing_segment {
-        Some((segment_id, last_hash)) => {
-            if last_hash != content_hash {
-                write_embedding_for_segment(conn, segment_id, contents, embedder, summary)
-                    .context("Failed to refresh embedding for updated segment")?;
-                conn.execute(
-                    "UPDATE segment SET last_hash = ?1 WHERE id = ?2",
-                    params![content_hash, segment_id],
-                )
-                .with_context(|| format!("Failed to update segment for doc {}", doc_id))?;
-                summary.segments_updated += 1;
-            }
-        }
-        None => {
-            conn.execute(
-                "INSERT INTO segment (doc_id, ordinal, last_hash) VALUES (?1, 0, ?2)",
-                params![doc_id, content_hash],
-            )
-            .with_context(|| format!("Failed to insert segment for doc {}", doc_id))?;
-            let segment_id = conn.last_insert_rowid();
-            match write_embedding_for_segment(conn, segment_id, contents, embedder, summary) {
-                Ok(()) => summary.segments_created += 1,
-                Err(err) => {
-                    if let Err(cleanup_err) = conn.execute(
-                        "DELETE FROM segment WHERE id = ?1",
-                        params![segment_id],
-                    ) {
-                        return Err(anyhow!(
-                            "Failed to clean up segment {} after embedding error: {}. Original error: {:#}",
-                            segment_id,
-                            cleanup_err,
-                            err
-                        ));
-                    }
-
-                    return Err(err).context("Failed to write embedding for new segment");
-                }
-            }
-        }
+    if doc_record.chunking_version != TARGET_CHUNKING_VERSION {
+        // Chunking algorithm changed, rebuild every segment and embedding.
+        rebuild_doc_chunks(
+            conn,
+            doc_id,
+            &chunks,
+            embedder,
+            summary,
+        )?;
+        doc_record.chunking_version = TARGET_CHUNKING_VERSION;
+    } else {
+        // Fast path: only touch segments whose hash/model/dim drifted.
+        sync_segments_for_doc(conn, doc_id, &chunks, embedder, target_dim, summary)?;
     }
 
     Ok(())
 }
 
-fn prune_extra_segments(conn: &Connection, doc_id: i64) -> Result<()> {
-    conn.execute(
-        "DELETE FROM segment WHERE doc_id = ?1 AND ordinal != 0",
-        params![doc_id],
+/// Dispatch to the correct chunker for the requested version.
+fn chunk_document(contents: &str, chunking_version: i64) -> Vec<String> {
+    match chunking_version {
+        1 => chunk_markdown_v1(contents),
+        _ => chunk_markdown_v1(contents),
+    }
+}
+
+fn hash_content(contents: &str) -> String {
+    blake3::hash(contents.as_bytes()).to_hex().to_string()
+}
+
+const MAX_CHARS_PER_CHUNK_V1: usize = 1200;
+
+/// Break Markdown into roughly paragraph-sized chunks while staying under the size limit.
+fn chunk_markdown_v1(contents: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut buffer = String::new();
+
+    for paragraph in contents.split("\n\n") {
+        let paragraph = paragraph.trim();
+        if paragraph.is_empty() {
+            continue;
+        }
+
+        // Estimate how long the buffer would be if we appended this paragraph including spacing.
+        let projected_len = if buffer.is_empty() {
+            paragraph.len()
+        } else {
+            buffer.len() + 2 + paragraph.len()
+        };
+
+        if !buffer.is_empty() && projected_len > MAX_CHARS_PER_CHUNK_V1 {
+            chunks.push(buffer.trim().to_string());
+            buffer.clear();
+        }
+
+        if !buffer.is_empty() {
+            buffer.push_str("\n\n");
+        }
+
+        buffer.push_str(paragraph);
+
+        // Flush early if an individual paragraph is already too large.
+        if buffer.len() >= MAX_CHARS_PER_CHUNK_V1 {
+            chunks.push(buffer.trim().to_string());
+            buffer.clear();
+        }
+    }
+
+    if !buffer.trim().is_empty() {
+        chunks.push(buffer.trim().to_string());
+    }
+
+    if chunks.is_empty() && !contents.trim().is_empty() {
+        chunks.push(contents.trim().to_string());
+    }
+
+    chunks
+}
+
+fn rebuild_doc_chunks(
+    conn: &mut Connection,
+    doc_id: i64,
+    chunks: &[String],
+    embedder: &EmbeddingClient,
+    summary: &mut IndexSummary,
+) -> Result<()> {
+    let tx = conn
+        .transaction()
+        .with_context(|| format!("Failed to start chunk rebuild transaction for doc {}", doc_id))?;
+
+    // Start from a clean slate so we do not mix chunking versions in the same doc.
+    tx.execute("DELETE FROM segment WHERE doc_id = ?1", params![doc_id])
+        .with_context(|| format!("Failed to clear segments for doc {}", doc_id))?;
+
+    for (ordinal, chunk) in chunks.iter().enumerate() {
+        let hash = hash_content(chunk);
+        let segment_id = insert_segment(&tx, doc_id, ordinal as i64, &hash)?;
+        summary.segments_created += 1;
+        write_embedding_for_segment(&tx, segment_id, chunk, embedder, summary)?;
+    }
+
+    tx.execute(
+        "UPDATE doc SET chunking_version = ?1 WHERE id = ?2",
+        params![TARGET_CHUNKING_VERSION, doc_id],
     )
-    .with_context(|| format!("Failed to prune extra segments for doc {}", doc_id))?;
+    .with_context(|| format!("Failed to update chunking version for doc {}", doc_id))?;
+
+    tx.commit()
+        .with_context(|| format!("Failed to commit chunk rebuild for doc {}", doc_id))?;
+
+    if chunks.is_empty() {
+        // Ensure any stale rows are removed even if the document produced zero chunks.
+        prune_extra_segments(conn, doc_id, 0)?;
+    }
+
+    Ok(())
+}
+
+fn sync_segments_for_doc(
+    conn: &Connection,
+    doc_id: i64,
+    chunks: &[String],
+    embedder: &EmbeddingClient,
+    target_dim: i32,
+    summary: &mut IndexSummary,
+) -> Result<()> {
+    let existing = load_segments_for_doc(conn, doc_id)?;
+
+    for (ordinal, chunk) in chunks.iter().enumerate() {
+        let hash = hash_content(chunk);
+        let ordinal_key = ordinal as i64;
+        if let Some(segment) = existing.get(&ordinal_key) {
+            let hash_changed = segment.last_hash != hash;
+            if hash_changed {
+                conn.execute(
+                    "UPDATE segment SET last_hash = ?1 WHERE id = ?2",
+                    params![hash, segment.id],
+                )
+                .with_context(|| format!("Failed to update segment {} for doc {}", segment.id, doc_id))?;
+                summary.segments_updated += 1;
+            }
+
+            let mut needs_embedding = hash_changed;
+            if !needs_embedding {
+                // Re-embed if the stored metadata indicates a different model/dimension.
+                let model_mismatch = segment
+                    .embedding_model
+                    .as_deref()
+                    .map(|model| model != embedder.model_name())
+                    .unwrap_or(true);
+                let dim_mismatch = segment
+                    .embedding_dim
+                    .map(|dim| dim != target_dim)
+                    .unwrap_or(true);
+                needs_embedding = model_mismatch || dim_mismatch;
+            }
+
+            if needs_embedding {
+                write_embedding_for_segment(conn, segment.id, chunk, embedder, summary)?;
+            }
+        } else {
+            let segment_id = insert_segment(conn, doc_id, ordinal_key, &hash)?;
+            summary.segments_created += 1;
+            if let Err(error) = write_embedding_for_segment(conn, segment_id, chunk, embedder, summary) {
+                // Best-effort cleanup keeps the database consistent if embedding generation fails.
+                let cleanup_result = conn.execute(
+                    "DELETE FROM segment WHERE id = ?1",
+                    params![segment_id],
+                );
+                if let Err(cleanup_err) = cleanup_result {
+                    return Err(error).context(anyhow!(
+                        "Failed to clean up segment {} after embedding error: {}",
+                        segment_id,
+                        cleanup_err
+                    ));
+                }
+
+                return Err(error).context("Failed to write embedding for new segment");
+            }
+        }
+    }
+
+    prune_extra_segments(conn, doc_id, chunks.len())
+}
+
+fn load_segments_for_doc(conn: &Connection, doc_id: i64) -> Result<HashMap<i64, SegmentRecord>> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT s.id, s.ordinal, s.last_hash, e.model, e.dim \
+             FROM segment s \
+             LEFT JOIN embedding e ON e.segment_id = s.id \
+             WHERE s.doc_id = ?1",
+        )
+        .with_context(|| format!("Failed to prepare segment load for doc {}", doc_id))?;
+
+    let rows = stmt
+        .query_map(params![doc_id], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<i32>>(4)?,
+            ))
+        })
+        .with_context(|| format!("Failed to load segments for doc {}", doc_id))?;
+
+    let mut segments = HashMap::new();
+    for row in rows {
+        let (id, ordinal, last_hash, embedding_model, embedding_dim) = row?;
+        segments.insert(
+            ordinal,
+            SegmentRecord {
+                id,
+                last_hash,
+                embedding_model,
+                embedding_dim,
+            },
+        );
+    }
+
+    Ok(segments)
+}
+
+fn insert_segment(conn: &Connection, doc_id: i64, ordinal: i64, last_hash: &str) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO segment (doc_id, ordinal, last_hash) VALUES (?1, ?2, ?3)",
+        params![doc_id, ordinal, last_hash],
+    )
+    .with_context(|| format!("Failed to insert segment {} for doc {}", ordinal, doc_id))?;
+
+    Ok(conn.last_insert_rowid())
+}
+
+fn prune_extra_segments(conn: &Connection, doc_id: i64, desired_segments: usize) -> Result<()> {
+    conn.execute(
+        "DELETE FROM segment WHERE doc_id = ?1 AND ordinal >= ?2",
+        params![doc_id, desired_segments as i64],
+    )
+    .with_context(|| format!("Failed to prune segments for doc {}", doc_id))?;
 
     Ok(())
 }
@@ -563,21 +715,30 @@ fn write_embedding_for_segment(
     embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
+    // Embedding is computed outside SQL so we only persist the binary payload.
     let embedding = embedder.generate(contents)?;
-    upsert_embedding(conn, segment_id, embedding.dim, &embedding.bytes, summary)
+    upsert_embedding(
+        conn,
+        segment_id,
+        embedder.model_name(),
+        embedding.dim,
+        &embedding.bytes,
+        summary,
+    )
 }
 
 fn upsert_embedding(
     conn: &Connection,
     segment_id: i64,
+    model: &str,
     dim: i32,
     embedding_bytes: &[u8],
     summary: &mut IndexSummary,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO embedding (segment_id, dim, vec) VALUES (?1, ?2, ?3) \
-         ON CONFLICT(segment_id) DO UPDATE SET dim = excluded.dim, vec = excluded.vec",
-        params![segment_id, dim, embedding_bytes],
+        "INSERT INTO embedding (segment_id, model, dim, vec) VALUES (?1, ?2, ?3, ?4) \
+         ON CONFLICT(segment_id) DO UPDATE SET model = excluded.model, dim = excluded.dim, vec = excluded.vec",
+        params![segment_id, model, dim, embedding_bytes],
     )
     .with_context(|| format!("Failed to upsert embedding for segment {}", segment_id))?;
 

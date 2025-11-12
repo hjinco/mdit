@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { create } from 'zustand'
 
 type IndexingConfig = {
+  embeddingProvider: string
   embeddingModel: string
 }
 
@@ -33,6 +34,7 @@ const getStoredIndexingConfig = (
 
     const parsed = JSON.parse(stored) as Partial<IndexingConfig>
     return {
+      embeddingProvider: parsed.embeddingProvider ?? '',
       embeddingModel: parsed.embeddingModel ?? '',
     }
   } catch (error) {
@@ -59,8 +61,13 @@ const persistIndexingConfig = (
 
 type IndexingStore = {
   indexingState: IndexingState
+  configs: Record<string, IndexingConfig>
   getIndexingConfig: (workspacePath: string | null) => IndexingConfig | null
-  setEmbeddingModel: (workspacePath: string, embeddingModel: string) => void
+  setIndexingConfig: (
+    workspacePath: string,
+    embeddingProvider: string,
+    embeddingModel: string
+  ) => void
   indexWorkspace: (
     workspacePath: string,
     embeddingProvider: string,
@@ -69,75 +76,88 @@ type IndexingStore = {
   ) => Promise<WorkspaceIndexSummary>
 }
 
-const DEFAULT_CONFIG: IndexingConfig = {
-  embeddingModel: '',
-}
+export const useIndexingStore = create<IndexingStore>((set, get) => ({
+  indexingState: {},
+  configs: {},
 
-export const useIndexingStore = create<IndexingStore>((set, get) => {
-  return {
-    indexingState: {},
-    getIndexingConfig: (workspacePath: string | null) => {
-      if (!workspacePath) {
-        return null
-      }
+  getIndexingConfig: (workspacePath: string | null) => {
+    if (!workspacePath) {
+      return null
+    }
 
-      const stored = getStoredIndexingConfig(workspacePath)
-      return stored ?? null
-    },
+    // Check store state first
+    const state = get()
+    if (state.configs[workspacePath]) {
+      return state.configs[workspacePath]
+    }
 
-    setEmbeddingModel: (workspacePath: string, embeddingModel: string) => {
-      const currentConfig =
-        get().getIndexingConfig(workspacePath) ?? DEFAULT_CONFIG
-      const newConfig: IndexingConfig = {
-        ...currentConfig,
+    // Fallback to localStorage and cache in store
+    const stored = getStoredIndexingConfig(workspacePath)
+    if (stored) {
+      set((state) => ({
+        configs: {
+          ...state.configs,
+          [workspacePath]: stored,
+        },
+      }))
+      return stored
+    }
+
+    return null
+  },
+
+  setIndexingConfig: (
+    workspacePath: string,
+    embeddingProvider: string,
+    embeddingModel: string
+  ) => {
+    const newConfig: IndexingConfig = {
+      embeddingProvider,
+      embeddingModel,
+    }
+
+    // Update both store state and localStorage
+    persistIndexingConfig(workspacePath, newConfig)
+    set((state) => ({
+      configs: {
+        ...state.configs,
+        [workspacePath]: newConfig,
+      },
+    }))
+  },
+
+  indexWorkspace: async (
+    workspacePath: string,
+    embeddingProvider: string,
+    embeddingModel: string,
+    forceReindex: boolean
+  ) => {
+    const isRunning = get().indexingState[workspacePath]
+    if (isRunning) {
+      throw new Error('Indexing is already running for this workspace')
+    }
+
+    set((state) => ({
+      indexingState: {
+        ...state.indexingState,
+        [workspacePath]: true,
+      },
+    }))
+
+    try {
+      return await invoke<WorkspaceIndexSummary>('index_workspace', {
+        workspacePath,
+        embeddingProvider,
         embeddingModel,
-      }
-      persistIndexingConfig(workspacePath, newConfig)
-    },
-
-    indexWorkspace: async (
-      workspacePath: string,
-      embeddingProvider: string,
-      embeddingModel: string,
-      forceReindex: boolean
-    ) => {
-      if (!workspacePath) {
-        throw new Error('Workspace path is required for indexing')
-      }
-
-      if (!embeddingModel) {
-        throw new Error('Embedding model is required for indexing')
-      }
-
-      const isRunning = get().indexingState[workspacePath]
-      if (isRunning) {
-        throw new Error('Indexing is already running for this workspace')
-      }
-
+        forceReindex,
+      })
+    } finally {
       set((state) => ({
         indexingState: {
           ...state.indexingState,
-          [workspacePath]: true,
+          [workspacePath]: false,
         },
       }))
-
-      try {
-        const summary = await invoke<WorkspaceIndexSummary>('index_workspace', {
-          workspacePath,
-          embeddingProvider,
-          embeddingModel,
-          forceReindex,
-        })
-
-        return summary
-      } finally {
-        set((state) => ({
-          indexingState: {
-            ...state.indexingState,
-            [workspacePath]: false,
-          },
-        }))
-      }
-    },
-  }
-})
+    }
+  },
+}))

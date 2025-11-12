@@ -66,7 +66,7 @@ export function AITab() {
       const models = apiModels[provider] ?? []
       models.forEach((model) => {
         options.push({
-          value: `${provider}:${model}`,
+          value: `${provider}|${model}`,
           label: model,
         })
       })
@@ -74,13 +74,13 @@ export function AITab() {
 
     ollamaModels.forEach((model) => {
       options.push({
-        value: `ollama:${model}`,
+        value: `ollama|${model}`,
         label: model,
       })
     })
 
     if (renameConfig) {
-      const value = `${renameConfig.provider}:${renameConfig.model}`
+      const value = `${renameConfig.provider}|${renameConfig.model}`
       const exists = options.some((option) => option.value === value)
       if (!exists) {
         options.push({
@@ -94,7 +94,7 @@ export function AITab() {
   }, [connectedProviders, apiModels, ollamaModels, renameConfig])
 
   const renameSelectValue = renameConfig
-    ? `${renameConfig.provider}:${renameConfig.model}`
+    ? `${renameConfig.provider}|${renameConfig.model}`
     : '__none__'
 
   const hasConnectedProviders = useMemo(() => {
@@ -176,7 +176,7 @@ export function AITab() {
                       clearRenameModel()
                       return
                     }
-                    const separatorIndex = value.indexOf(':')
+                    const separatorIndex = value.indexOf('|')
                     if (separatorIndex === -1) {
                       clearRenameModel()
                       return

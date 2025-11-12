@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
-import { AlertTriangleIcon, Loader2Icon } from 'lucide-react'
+import { Loader2Icon, RefreshCcwIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useIndexingStore } from '@/store/indexing-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
@@ -14,7 +15,6 @@ import {
   FieldLegend,
   FieldSet,
 } from '@/ui/field'
-import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import {
   Select,
   SelectContent,
@@ -24,37 +24,61 @@ import {
 } from '@/ui/select'
 
 type IndexingMeta = {
-  embeddingProvider: string | null
-  embeddingModel: string | null
   indexedDocCount: number
 }
 
 export function IndexingTab() {
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
   const entries = useWorkspaceStore((state) => state.entries)
-  const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
-  const setEmbeddingModel = useIndexingStore((state) => state.setEmbeddingModel)
-  const indexWorkspace = useIndexingStore((state) => state.indexWorkspace)
-  const isIndexing = useIndexingStore((state) =>
-    workspacePath ? state.indexingState[workspacePath] ?? false : false
+  const {
+    getIndexingConfig,
+    setIndexingConfig,
+    indexWorkspace,
+    indexingState,
+    configs,
+  } = useIndexingStore(
+    useShallow((state) => ({
+      getIndexingConfig: state.getIndexingConfig,
+      setIndexingConfig: state.setIndexingConfig,
+      indexWorkspace: state.indexWorkspace,
+      indexingState: state.indexingState,
+      configs: state.configs,
+    }))
   )
+  const isIndexing = workspacePath
+    ? (indexingState[workspacePath] ?? false)
+    : false
   const { ollamaModels, fetchOllamaModels } = useAISettingsStore()
 
-  useEffect(() => {
-    fetchOllamaModels()
-  }, [fetchOllamaModels])
+  const currentConfig = useMemo(() => {
+    if (!workspacePath) {
+      return {
+        embeddingProvider: '',
+        embeddingModel: '',
+      }
+    }
+    // Check store state first, then fallback to getIndexingConfig (which loads from localStorage)
+    return (
+      configs[workspacePath] ??
+      getIndexingConfig(workspacePath) ?? {
+        embeddingProvider: '',
+        embeddingModel: '',
+      }
+    )
+  }, [workspacePath, configs, getIndexingConfig])
 
-  const [embeddingModel, setEmbeddingModelLocal] = useState<string>('')
-  const [storedEmbeddingModel, setStoredEmbeddingModel] = useState<
-    string | null
-  >(null)
+  const embeddingProvider = currentConfig.embeddingProvider
+  const embeddingModel = currentConfig.embeddingModel
   const [isMetaLoading, setIsMetaLoading] = useState(false)
-  const [isResetWarningOpen, setIsResetWarningOpen] = useState(false)
   const [indexingProgress, setIndexingProgress] = useState(0)
   const [indexedDocCount, setIndexedDocCount] = useState(0)
   const workspacePathRef = useRef<string | null>(null)
 
   const totalFiles = useMemo(() => countMarkdownFiles(entries), [entries])
+
+  useEffect(() => {
+    fetchOllamaModels()
+  }, [fetchOllamaModels])
 
   const loadIndexingMeta = useCallback(async (path: string) => {
     setIsMetaLoading(true)
@@ -67,12 +91,10 @@ export function IndexingTab() {
         return
       }
 
-      setStoredEmbeddingModel(meta.embeddingModel ?? null)
       setIndexedDocCount(meta.indexedDocCount ?? 0)
     } catch (error) {
       if (workspacePathRef.current === path) {
         console.error('Failed to load indexing metadata:', error)
-        setStoredEmbeddingModel(null)
         setIndexedDocCount(0)
       }
     } finally {
@@ -95,23 +117,19 @@ export function IndexingTab() {
       loadIndexingMeta(workspacePath)
     }
 
-    // Trigger immediately so progress updates without waiting 5s
     poll()
-
     const intervalId = window.setInterval(poll, 5000)
     return () => window.clearInterval(intervalId)
   }, [workspacePath, isIndexing, loadIndexingMeta])
 
-  // Update local state when workspacePath or config changes
   useEffect(() => {
     if (!workspacePath) {
+      setIndexedDocCount(0)
       return
     }
 
-    const currentConfig = getIndexingConfig(workspacePath)
-    setEmbeddingModelLocal(currentConfig?.embeddingModel ?? '')
     loadIndexingMeta(workspacePath)
-  }, [workspacePath, getIndexingConfig, loadIndexingMeta])
+  }, [workspacePath, loadIndexingMeta])
 
   useEffect(() => {
     if (!totalFiles) {
@@ -125,62 +143,51 @@ export function IndexingTab() {
   }, [totalFiles, indexedDocCount])
 
   const handleEmbeddingModelChange = (value: string) => {
-    setEmbeddingModelLocal(value)
-    if (workspacePath) {
-      setEmbeddingModel(workspacePath, value)
+    if (!workspacePath) {
+      return
+    }
+
+    // Parse provider|model format
+    const parts = value.split('|')
+    if (parts.length >= 2) {
+      const [provider, ...modelParts] = parts
+      const model = modelParts.join('|')
+      setIndexingConfig(workspacePath, provider, model)
     }
   }
 
   const isEmbeddingModelConfigured = embeddingModel !== ''
   const isEmbeddingModelAvailable =
-    isEmbeddingModelConfigured && ollamaModels.includes(embeddingModel)
-  const selectedEmbeddingModel = isEmbeddingModelAvailable
-    ? embeddingModel
-    : null
+    isEmbeddingModelConfigured &&
+    embeddingProvider !== '' &&
+    ollamaModels.includes(embeddingModel)
+  const selectedEmbeddingModel =
+    isEmbeddingModelAvailable && embeddingProvider
+      ? `${embeddingProvider}|${embeddingModel}`
+      : null
   const isIndexButtonDisabled =
     !selectedEmbeddingModel || isIndexing || isMetaLoading
 
   const runIndex = async (forceReindex: boolean) => {
-    if (!workspacePath || !selectedEmbeddingModel) {
+    if (
+      !workspacePath ||
+      !selectedEmbeddingModel ||
+      !isEmbeddingModelAvailable
+    ) {
       return
     }
 
     try {
       await indexWorkspace(
         workspacePath,
-        'ollama',
-        selectedEmbeddingModel,
+        embeddingProvider,
+        embeddingModel,
         forceReindex
       )
-
-      setStoredEmbeddingModel(selectedEmbeddingModel)
       await loadIndexingMeta(workspacePath)
     } catch (error) {
       console.error('Failed to index workspace:', error)
     }
-  }
-
-  const requiresReset = Boolean(
-    storedEmbeddingModel && storedEmbeddingModel !== embeddingModel
-  )
-
-  useEffect(() => {
-    if (!requiresReset) {
-      setIsResetWarningOpen(false)
-    }
-  }, [requiresReset])
-
-  const handleIndexClick = () => {
-    if (!selectedEmbeddingModel) {
-      return
-    }
-
-    if (requiresReset) {
-      setIsResetWarningOpen(true)
-      return
-    }
-
-    runIndex(false)
   }
 
   const progressLabel = `${indexedDocCount}/${totalFiles || 0} files indexed`
@@ -222,11 +229,13 @@ export function IndexingTab() {
               </SelectTrigger>
               <SelectContent align="end">
                 {ollamaModels.length > 0 ? (
-                  ollamaModels.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))
+                  ollamaModels.map((model) => {
+                    return (
+                      <SelectItem key={model} value={`ollama|${model}`}>
+                        {model}
+                      </SelectItem>
+                    )
+                  })
                 ) : (
                   <div className="px-3 py-2 text-xs text-muted-foreground">
                     No models available
@@ -263,83 +272,25 @@ export function IndexingTab() {
                 indexed content may differ slightly.
               </p>
             </div>
-            <div className="flex justify-end">
-              {requiresReset ? (
-                <Popover
-                  open={isResetWarningOpen}
-                  onOpenChange={setIsResetWarningOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <span>
-                      <Button
-                        onClick={handleIndexClick}
-                        variant="outline"
-                        size="sm"
-                        disabled={isIndexButtonDisabled}
-                      >
-                        {isIndexing && (
-                          <Loader2Icon className="size-4 animate-spin" />
-                        )}
-                        {isIndexing ? 'Indexing...' : 'Manually Index'}
-                      </Button>
-                    </span>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangleIcon className="size-4 text-amber-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Reset required</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          The stored embedding model is{' '}
-                          <span className="font-semibold">
-                            {storedEmbeddingModel ?? 'unknown'}
-                          </span>
-                          . Indexing with{' '}
-                          <span className="font-semibold">
-                            {embeddingModel}
-                          </span>{' '}
-                          will delete existing embeddings and rebuild them.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsResetWarningOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              setIsResetWarningOpen(false)
-                              runIndex(true)
-                            }}
-                            disabled={isIndexing}
-                          >
-                        {isIndexing && (
-                          <Loader2Icon className="size-4 animate-spin" />
-                        )}
-                        Reset & Index
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              ) : (
-                <Button
-                  onClick={handleIndexClick}
-                  variant="outline"
-                  size="sm"
-                  disabled={isIndexButtonDisabled}
-                >
-                  {isIndexing && (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  )}
-                  {isIndexing ? 'Indexing...' : 'Manually Index'}
-                </Button>
-              )}
+            <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
+              <Button
+                onClick={() => runIndex(false)}
+                variant="outline"
+                size="sm"
+                disabled={isIndexButtonDisabled}
+              >
+                {isIndexing && <Loader2Icon className="size-4 animate-spin" />}
+                {isIndexing ? 'Indexing...' : 'Manually Index'}
+              </Button>
+              <Button
+                onClick={() => runIndex(true)}
+                variant="destructive"
+                size="sm"
+                disabled={isIndexing}
+              >
+                <RefreshCcwIcon className="size-4" />
+                Force Rebuild
+              </Button>
             </div>
           </Field>
 
