@@ -214,17 +214,6 @@ fn sync_segments_for_doc(
         let ordinal_key = ordinal as i64;
         if let Some(segment) = existing.get(&ordinal_key) {
             let hash_changed = segment.last_hash != hash;
-            if hash_changed {
-                conn.execute(
-                    "UPDATE segment SET last_hash = ?1 WHERE id = ?2",
-                    params![hash, segment.id],
-                )
-                .with_context(|| {
-                    format!("Failed to update segment {} for doc {}", segment.id, doc_id)
-                })?;
-                summary.segments_updated += 1;
-            }
-
             let mut needs_embedding = hash_changed;
             if !needs_embedding {
                 // Re-embed if the stored metadata indicates a different model/dimension.
@@ -242,6 +231,16 @@ fn sync_segments_for_doc(
 
             if needs_embedding {
                 write_embedding_for_segment(conn, segment.id, chunk, embedder, summary)?;
+                if hash_changed {
+                    conn.execute(
+                        "UPDATE segment SET last_hash = ?1 WHERE id = ?2",
+                        params![hash, segment.id],
+                    )
+                    .with_context(|| {
+                        format!("Failed to update segment {} for doc {}", segment.id, doc_id)
+                    })?;
+                    summary.segments_updated += 1;
+                }
             }
         } else {
             let segment_id = insert_segment(conn, doc_id, ordinal_key, &hash)?;
