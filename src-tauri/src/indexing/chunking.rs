@@ -2,7 +2,9 @@ use std::sync::OnceLock;
 
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
-const MAX_TOKENS_PER_CHUNK_V1: usize = 1000;
+// Default to a conservative chunk size until we can detect the embedding model's
+// context window dynamically.
+const MAX_TOKENS_PER_CHUNK_V1: usize = 512;
 
 /// Dispatch to the correct chunker for the requested version.
 pub(crate) fn chunk_document(contents: &str, chunking_version: i64) -> Vec<String> {
@@ -104,20 +106,44 @@ fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
         return Vec::new();
     }
 
-    tokens
-        .chunks(max_tokens)
-        .filter_map(|chunk| {
-            if chunk.is_empty() {
-                return None;
+    let mut chunks = Vec::new();
+    let mut start = 0;
+
+    while start < tokens.len() {
+        let mut end = usize::min(start + max_tokens, tokens.len());
+
+        loop {
+            if start >= end {
+                break;
             }
 
-            tokenizer
-                .decode(chunk.to_vec())
-                .ok()
-                .map(|decoded| decoded.trim().to_string())
-        })
-        .filter(|chunk| !chunk.is_empty())
-        .collect()
+            match tokenizer.decode(tokens[start..end].to_vec()) {
+                Ok(decoded) => {
+                    let trimmed = decoded.trim().to_string();
+                    if !trimmed.is_empty() {
+                        chunks.push(trimmed);
+                    }
+                    break;
+                }
+                Err(error) => {
+                    if end >= tokens.len() {
+                        println!(
+                            "[split_section_by_tokens] Failed to decode final chunk starting at token {}: {:?}",
+                            start,
+                            error
+                        );
+                        break;
+                    }
+
+                    end += 1;
+                }
+            }
+        }
+
+        start = end;
+    }
+
+    chunks
 }
 
 fn count_tokens(text: &str) -> usize {

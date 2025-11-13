@@ -10,6 +10,9 @@ export const documents = sqliteTable('doc', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   relPath: text('rel_path').notNull().unique(),
   chunkingVersion: integer('chunking_version').notNull(),
+  lastHash: text('last_hash').notNull(),
+  lastEmbeddingModel: text('last_embedding_model').notNull(),
+  lastEmbeddingDim: integer('last_embedding_dim').notNull(),
 })
 
 export const segments = sqliteTable(

@@ -17,6 +17,27 @@ use super::{
 struct DocRecord {
     id: i64,
     chunking_version: i64,
+    last_hash: Option<String>,
+    last_embedding_model: Option<String>,
+    last_embedding_dim: Option<i32>,
+}
+
+impl DocRecord {
+    fn is_up_to_date(&self, doc_hash: &str, model: &str, target_dim: i32) -> bool {
+        self.last_hash
+            .as_deref()
+            .map(|hash| hash == doc_hash)
+            .unwrap_or(false)
+            && self
+                .last_embedding_model
+                .as_deref()
+                .map(|stored| stored == model)
+                .unwrap_or(false)
+            && self
+                .last_embedding_dim
+                .map(|dim| dim == target_dim)
+                .unwrap_or(false)
+    }
 }
 
 #[derive(Debug)]
@@ -63,7 +84,9 @@ pub(crate) fn sync_documents(
 
 fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
     let mut stmt = conn
-        .prepare("SELECT id, rel_path, chunking_version FROM doc")
+        .prepare(
+            "SELECT id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim FROM doc",
+        )
         .context("Failed to prepare statement to load documents")?;
 
     let rows = stmt
@@ -72,23 +95,45 @@ fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
                 row.get::<_, i64>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, i32>(5)?,
             ))
         })
         .context("Failed to read documents")?;
 
     let mut docs = HashMap::new();
     for row in rows {
-        let (id, rel_path, chunking_version) = row?;
+        let (id, rel_path, chunking_version, last_hash, last_model, last_dim) = row?;
         docs.insert(
             rel_path,
             DocRecord {
                 id,
                 chunking_version,
+                last_hash: option_from_string(last_hash),
+                last_embedding_model: option_from_string(last_model),
+                last_embedding_dim: option_from_dim(last_dim),
             },
         );
     }
 
     Ok(docs)
+}
+
+fn option_from_string(value: String) -> Option<String> {
+    if value.trim().is_empty() {
+        None
+    } else {
+        Some(value)
+    }
+}
+
+fn option_from_dim(value: i32) -> Option<i32> {
+    if value <= 0 {
+        None
+    } else {
+        Some(value)
+    }
 }
 
 fn remove_deleted_docs(
@@ -124,13 +169,14 @@ fn process_file(
 ) -> Result<()> {
     let contents = fs::read_to_string(&file.abs_path)
         .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
+    let doc_hash = hash_content(&contents);
 
     let doc_record = match docs.entry(file.rel_path.clone()) {
         Entry::Occupied(entry) => entry.into_mut(),
         Entry::Vacant(entry) => {
             conn.execute(
-                "INSERT INTO doc (rel_path, chunking_version) VALUES (?1, ?2)",
-                params![file.rel_path, TARGET_CHUNKING_VERSION],
+                "INSERT INTO doc (rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![file.rel_path, TARGET_CHUNKING_VERSION, "", "", 0],
             )
             .with_context(|| format!("Failed to insert doc for {}", file.rel_path))?;
             let doc_id = conn.last_insert_rowid();
@@ -138,21 +184,57 @@ fn process_file(
             entry.insert(DocRecord {
                 id: doc_id,
                 chunking_version: TARGET_CHUNKING_VERSION,
+                last_hash: None,
+                last_embedding_model: None,
+                last_embedding_dim: None,
             })
         }
     };
 
     let doc_id = doc_record.id;
-    let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
 
     if doc_record.chunking_version != TARGET_CHUNKING_VERSION {
+        let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
         // Chunking algorithm changed, rebuild every segment and embedding.
         rebuild_doc_chunks(conn, doc_id, &chunks, embedder, summary)?;
-        doc_record.chunking_version = TARGET_CHUNKING_VERSION;
-    } else {
-        // Fast path: only touch segments whose hash/model/dim drifted.
-        sync_segments_for_doc(conn, doc_id, &chunks, embedder, target_dim, summary)?;
+        update_doc_metadata(conn, doc_record, &doc_hash, embedder, target_dim)?;
+        return Ok(());
     }
+
+    if doc_record.is_up_to_date(&doc_hash, embedder.model_name(), target_dim) {
+        return Ok(());
+    }
+
+    let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
+    // Fast path: only touch segments whose hash/model/dim drifted.
+    sync_segments_for_doc(conn, doc_id, &chunks, embedder, target_dim, summary)?;
+    update_doc_metadata(conn, doc_record, &doc_hash, embedder, target_dim)
+}
+
+fn update_doc_metadata(
+    conn: &Connection,
+    doc_record: &mut DocRecord,
+    doc_hash: &str,
+    embedder: &EmbeddingClient,
+    target_dim: i32,
+) -> Result<()> {
+    let model = embedder.model_name();
+    conn.execute(
+        "UPDATE doc SET chunking_version = ?1, last_hash = ?2, last_embedding_model = ?3, last_embedding_dim = ?4 WHERE id = ?5",
+        params![
+            TARGET_CHUNKING_VERSION,
+            doc_hash,
+            model,
+            target_dim,
+            doc_record.id
+        ],
+    )
+    .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
+
+    doc_record.chunking_version = TARGET_CHUNKING_VERSION;
+    doc_record.last_hash = Some(doc_hash.to_string());
+    doc_record.last_embedding_model = Some(model.to_string());
+    doc_record.last_embedding_dim = Some(target_dim);
 
     Ok(())
 }
@@ -181,12 +263,6 @@ fn rebuild_doc_chunks(
         summary.segments_created += 1;
         write_embedding_for_segment(&tx, segment_id, chunk, embedder, summary)?;
     }
-
-    tx.execute(
-        "UPDATE doc SET chunking_version = ?1 WHERE id = ?2",
-        params![TARGET_CHUNKING_VERSION, doc_id],
-    )
-    .with_context(|| format!("Failed to update chunking version for doc {}", doc_id))?;
 
     tx.commit()
         .with_context(|| format!("Failed to commit chunk rebuild for doc {}", doc_id))?;

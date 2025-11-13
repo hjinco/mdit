@@ -1,7 +1,10 @@
 CREATE TABLE `doc` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`rel_path` text NOT NULL,
-	`chunking_version` integer NOT NULL
+	`chunking_version` integer NOT NULL,
+	`last_hash` text NOT NULL,
+	`last_embedding_model` text NOT NULL,
+	`last_embedding_dim` integer NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `doc_rel_path_unique` ON `doc` (`rel_path`);--> statement-breakpoint
