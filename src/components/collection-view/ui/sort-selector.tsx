@@ -5,6 +5,7 @@ import {
   CalendarClockIcon,
   CalendarIcon,
   CaseSensitiveIcon,
+  SparklesIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/ui/button'
@@ -23,6 +24,7 @@ const SORT_LABELS: Record<SortOption, string> = {
   name: 'Name',
   createdAt: 'Created Date',
   modifiedAt: 'Modified Date',
+  tagRelevance: 'Relevance',
 }
 
 interface SortSelectorProps {
@@ -30,6 +32,7 @@ interface SortSelectorProps {
   onValueChange: (value: SortOption) => void
   sortDirection: SortDirection
   onDirectionChange: (direction: SortDirection) => void
+  enableTagRelevance?: boolean
 }
 
 export function SortSelector({
@@ -37,6 +40,7 @@ export function SortSelector({
   onValueChange,
   sortDirection,
   onDirectionChange,
+  enableTagRelevance = false,
 }: SortSelectorProps) {
   const [open, setOpen] = useState(false)
 
@@ -44,9 +48,13 @@ export function SortSelector({
     if (
       newValue === 'name' ||
       newValue === 'createdAt' ||
-      newValue === 'modifiedAt'
+      newValue === 'modifiedAt' ||
+      (enableTagRelevance && newValue === 'tagRelevance')
     ) {
       onValueChange(newValue)
+      if (newValue === 'tagRelevance') {
+        onDirectionChange('desc')
+      }
     } else if (newValue === 'asc' || newValue === 'desc') {
       onDirectionChange(newValue)
     }
@@ -83,6 +91,12 @@ export function SortSelector({
             <CalendarClockIcon />
             {SORT_LABELS.modifiedAt}
           </DropdownMenuRadioItem>
+          {enableTagRelevance && (
+            <DropdownMenuRadioItem value="tagRelevance">
+              <SparklesIcon />
+              {SORT_LABELS.tagRelevance}
+            </DropdownMenuRadioItem>
+          )}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup

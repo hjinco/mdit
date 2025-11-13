@@ -87,7 +87,7 @@ export function CollectionView() {
     sortDirection,
     setSortOption,
     setSortDirection,
-  } = useCollectionSort(collectionEntries)
+  } = useCollectionSort(collectionEntries, { isTagPath })
 
   const parentRef = useRef<HTMLDivElement>(null)
   const { getPreview, setPreview, invalidatePreview } = usePreviewCache(
@@ -203,6 +203,7 @@ export function CollectionView() {
             onValueChange={setSortOption}
             sortDirection={sortDirection}
             onDirectionChange={setSortDirection}
+            enableTagRelevance={isTagPath}
           />
           <NewNoteButton />
         </div>

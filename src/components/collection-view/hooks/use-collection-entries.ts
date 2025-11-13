@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useIndexingStore } from '@/store/indexing-store'
+import { useTagStore } from '@/store/tag-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
 const ANIMATION_DURATION_MS = 100
@@ -8,6 +10,36 @@ export function useCollectionEntries(
   entries: WorkspaceEntry[],
   workspacePath: string | null
 ): WorkspaceEntry[] {
+  const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
+  const indexingConfig = useIndexingStore((state) =>
+    workspacePath ? (state.configs[workspacePath] ?? null) : null
+  )
+  const embeddingProvider = indexingConfig?.embeddingProvider ?? ''
+  const embeddingModel = indexingConfig?.embeddingModel ?? ''
+  const tagEntries = useTagStore((state) => state.tagEntries)
+  const loadTagEntries = useTagStore((state) => state.loadTagEntries)
+
+  useEffect(() => {
+    if (workspacePath) {
+      getIndexingConfig(workspacePath)
+    }
+  }, [workspacePath, getIndexingConfig])
+
+  useEffect(() => {
+    loadTagEntries(
+      currentCollectionPath,
+      workspacePath,
+      embeddingProvider,
+      embeddingModel
+    )
+  }, [
+    currentCollectionPath,
+    workspacePath,
+    embeddingProvider,
+    embeddingModel,
+    loadTagEntries,
+  ])
+
   const computedEntries = useMemo(() => {
     if (!currentCollectionPath) {
       return []
@@ -15,9 +47,7 @@ export function useCollectionEntries(
 
     // Handle tag path: when currentCollectionPath starts with "#", it's a tag
     if (currentCollectionPath.startsWith('#')) {
-      // TODO: Implement tag filtering logic
-      // For now, return empty array as placeholder
-      return []
+      return tagEntries
     }
 
     // Handle root case: when currentCollectionPath is the workspace root,
@@ -58,7 +88,7 @@ export function useCollectionEntries(
     return folderEntry.children.filter(
       (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith('.md')
     )
-  }, [currentCollectionPath, entries, workspacePath])
+  }, [currentCollectionPath, entries, tagEntries, workspacePath])
 
   const [displayedEntries, setDisplayedEntries] =
     useState<WorkspaceEntry[]>(computedEntries)

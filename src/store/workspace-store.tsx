@@ -56,6 +56,7 @@ export type WorkspaceEntry = {
   children?: WorkspaceEntry[]
   createdAt?: Date
   modifiedAt?: Date
+  tagSimilarity?: number
 }
 
 type WorkspaceStore = {

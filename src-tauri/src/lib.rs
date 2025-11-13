@@ -77,6 +77,25 @@ fn get_indexing_meta(workspace_path: String) -> Result<indexing::IndexingMeta, S
     indexing::get_indexing_meta(&workspace_path).map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+async fn search_query_entries(
+    workspace_path: String,
+    query: String,
+    embedding_provider: String,
+    embedding_model: String,
+) -> Result<Vec<indexing::SemanticNoteEntry>, String> {
+    use std::path::PathBuf;
+
+    let workspace_path = PathBuf::from(workspace_path);
+
+    tauri::async_runtime::spawn_blocking(move || {
+        indexing::search_notes_for_query(&workspace_path, &query, &embedding_provider, &embedding_model)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -94,7 +113,8 @@ pub fn run() {
             get_note_preview,
             apply_workspace_migrations,
             index_workspace,
-            get_indexing_meta
+            get_indexing_meta,
+            search_query_entries
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
