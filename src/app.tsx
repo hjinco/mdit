@@ -34,7 +34,7 @@ export function App() {
 
   return (
     <DndProvider>
-      <div className="h-screen flex flex-col bg-background/60">
+      <div className="h-screen flex flex-col bg-muted/80">
         <div className="flex-1 overflow-hidden flex">
           <div className="group/side flex">
             <FileExplorer />

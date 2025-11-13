@@ -42,41 +42,31 @@ export function Editor() {
 
   if (!tab || !value)
     return (
-      <div
-        className={cn(
-          'flex-1 h-full py-1 pr-1',
-          !isFileExplorerOpen && !isCollectionViewOpen && 'pl-1'
-        )}
-      >
-        <div className="h-full bg-background rounded-sm">
+      <div className={cn('flex-1 h-full')}>
+        <div className="h-full bg-background">
           <div className="h-12 w-full" data-tauri-drag-region />
         </div>
       </div>
     )
 
   return (
-    <div
-      className={cn(
-        'relative flex-1 flex flex-col bg-background rounded-sm my-1 mr-1 overflow-hidden',
-        !isFileExplorerOpen && !isCollectionViewOpen && 'ml-1'
-      )}
-    >
+    <div className={cn('relative flex-1 flex flex-col bg-background')}>
       <div
-        className="w-full h-10 flex items-center justify-center relative"
+        className="w-full h-12 flex items-center justify-center relative"
         data-tauri-drag-region
       >
         <div
           className={cn(
             'absolute',
             !isFileExplorerOpen && !isCollectionViewOpen
-              ? 'left-30 pl-1 border-l'
-              : 'left-1'
+              ? 'left-30 pl-2 border-l'
+              : 'left-2'
           )}
         >
           <HistoryNavigation />
         </div>
         <Tab />
-        <div className="absolute right-1">
+        <div className="absolute right-2">
           <MoreButton />
         </div>
       </div>
