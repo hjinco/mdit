@@ -47,13 +47,28 @@ fn chunk_markdown_v1(contents: &str) -> Vec<String> {
     chunks
 }
 
+#[derive(Clone, Copy)]
+struct FenceState {
+    fence_char: char,
+    fence_len: usize,
+}
+
 fn split_major_sections(contents: &str) -> Vec<String> {
     let mut sections = Vec::new();
     let mut current = String::new();
+    let mut fence_state: Option<FenceState> = None;
 
     for line in contents.lines() {
+        if let Some(state) = fence_state {
+            if is_fence_closing_line(line, state) {
+                fence_state = None;
+            }
+        } else if let Some(state) = detect_fence_line(line) {
+            fence_state = Some(state);
+        }
+
         let is_heading = is_major_heading_line(line);
-        let is_hr = is_horizontal_rule_line(line);
+        let is_hr = fence_state.is_none() && is_horizontal_rule_line(line);
         if is_heading || is_hr {
             if !current.trim().is_empty() {
                 sections.push(current.trim().to_string());
@@ -116,6 +131,46 @@ fn is_horizontal_rule_line(line: &str) -> bool {
     }
 
     count >= 3
+}
+
+fn detect_fence_line(line: &str) -> Option<FenceState> {
+    fence_delimiter_info(line).map(|(fence_char, fence_len, _)| FenceState {
+        fence_char,
+        fence_len,
+    })
+}
+
+fn is_fence_closing_line(line: &str, fence: FenceState) -> bool {
+    match fence_delimiter_info(line) {
+        Some((ch, len, rest)) => {
+            ch == fence.fence_char && len >= fence.fence_len && rest.trim().is_empty()
+        }
+        None => false,
+    }
+}
+
+fn fence_delimiter_info(line: &str) -> Option<(char, usize, &str)> {
+    let trimmed = line.trim_start();
+    let bytes = trimmed.as_bytes();
+    if bytes.len() < 3 {
+        return None;
+    }
+
+    let first = bytes[0];
+    if first != b'`' && first != b'~' {
+        return None;
+    }
+
+    let mut len = 1;
+    while len < bytes.len() && bytes[len] == first {
+        len += 1;
+    }
+
+    if len < 3 {
+        return None;
+    }
+
+    Some((first as char, len, &trimmed[len..]))
 }
 
 fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
