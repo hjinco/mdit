@@ -26,10 +26,11 @@ export function SyncTab() {
   // Update local state when workspacePath or config changes
   useEffect(() => {
     if (workspacePath) {
-      const currentConfig = getSyncConfig(workspacePath)
-      setBranchNameLocal(currentConfig.branchName)
-      setCommitMessageLocal(currentConfig.commitMessage)
-      setAutoSyncLocal(currentConfig.autoSync)
+      getSyncConfig(workspacePath).then((currentConfig) => {
+        setBranchNameLocal(currentConfig.branchName)
+        setCommitMessageLocal(currentConfig.commitMessage)
+        setAutoSyncLocal(currentConfig.autoSync)
+      })
     } else {
       setBranchNameLocal('')
       setCommitMessageLocal('')
@@ -37,24 +38,24 @@ export function SyncTab() {
     }
   }, [workspacePath, getSyncConfig])
 
-  const handleBranchNameChange = (value: string) => {
+  const handleBranchNameChange = async (value: string) => {
     setBranchNameLocal(value)
     if (workspacePath) {
-      setBranchName(workspacePath, value)
+      await setBranchName(workspacePath, value)
     }
   }
 
-  const handleCommitMessageChange = (value: string) => {
+  const handleCommitMessageChange = async (value: string) => {
     setCommitMessageLocal(value)
     if (workspacePath) {
-      setCommitMessage(workspacePath, value)
+      await setCommitMessage(workspacePath, value)
     }
   }
 
-  const handleAutoSyncChange = (checked: boolean) => {
+  const handleAutoSyncChange = async (checked: boolean) => {
     setAutoSyncLocal(checked)
     if (workspacePath) {
-      setAutoSync(workspacePath, checked)
+      await setAutoSync(workspacePath, checked)
     }
   }
 

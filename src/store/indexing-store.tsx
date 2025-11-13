@@ -1,10 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { create } from 'zustand'
+import { loadSettings, saveSettings } from '@/lib/settings-utils'
 
 type IndexingConfig = {
   embeddingProvider: string
   embeddingModel: string
-  autoIndexingEnabled?: boolean
+  autoIndex?: boolean
 }
 
 type IndexingState = Record<string, boolean>
@@ -20,57 +21,18 @@ export type WorkspaceIndexSummary = {
   skipped_files: string[]
 }
 
-const getStorageKey = (workspacePath: string) => {
-  return `w:${workspacePath}:indexing-config`
-}
-
-const getStoredIndexingConfig = (
-  workspacePath: string
-): IndexingConfig | null => {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const stored = window.localStorage.getItem(getStorageKey(workspacePath))
-    if (!stored) return null
-
-    const parsed = JSON.parse(stored) as Partial<IndexingConfig>
-    return {
-      embeddingProvider: parsed.embeddingProvider ?? '',
-      embeddingModel: parsed.embeddingModel ?? '',
-      autoIndexingEnabled: parsed.autoIndexingEnabled ?? false,
-    }
-  } catch (error) {
-    console.error('Failed to read indexing config from storage:', error)
-    return null
-  }
-}
-
-const persistIndexingConfig = (
-  workspacePath: string,
-  config: IndexingConfig
-) => {
-  if (typeof window === 'undefined') return
-
-  try {
-    window.localStorage.setItem(
-      getStorageKey(workspacePath),
-      JSON.stringify(config)
-    )
-  } catch (error) {
-    console.error('Failed to persist indexing config:', error)
-  }
-}
-
 type IndexingStore = {
   indexingState: IndexingState
   configs: Record<string, IndexingConfig>
-  getIndexingConfig: (workspacePath: string | null) => IndexingConfig | null
+  getIndexingConfig: (
+    workspacePath: string | null
+  ) => Promise<IndexingConfig | null>
   setIndexingConfig: (
     workspacePath: string,
     embeddingProvider: string,
     embeddingModel: string,
-    autoIndexingEnabled?: boolean
-  ) => void
+    autoIndex?: boolean
+  ) => Promise<void>
   indexWorkspace: (
     workspacePath: string,
     embeddingProvider: string,
@@ -83,7 +45,7 @@ export const useIndexingStore = create<IndexingStore>((set, get) => ({
   indexingState: {},
   configs: {},
 
-  getIndexingConfig: (workspacePath: string | null) => {
+  getIndexingConfig: async (workspacePath: string | null) => {
     if (!workspacePath) {
       return null
     }
@@ -94,40 +56,57 @@ export const useIndexingStore = create<IndexingStore>((set, get) => ({
       return state.configs[workspacePath]
     }
 
-    // Fallback to localStorage and cache in store
-    const stored = getStoredIndexingConfig(workspacePath)
-    if (stored) {
+    // Load from settings file and cache in store
+    const settings = await loadSettings(workspacePath)
+    const indexing = settings.indexing
+
+    if (indexing) {
+      const config: IndexingConfig = {
+        embeddingProvider: indexing.embeddingProvider ?? '',
+        embeddingModel: indexing.embeddingModel ?? '',
+        autoIndex: indexing.autoIndex ?? false,
+      }
+
       set((state) => ({
         configs: {
           ...state.configs,
-          [workspacePath]: stored,
+          [workspacePath]: config,
         },
       }))
-      return stored
+
+      return config
     }
 
     return null
   },
 
-  setIndexingConfig: (
+  setIndexingConfig: async (
     workspacePath: string,
     embeddingProvider: string,
     embeddingModel: string,
-    autoIndexingEnabled?: boolean
+    autoIndex?: boolean
   ) => {
-    // Get existing config to preserve autoIndexingEnabled if not provided
-    const existingConfig =
-      get().configs[workspacePath] ?? getStoredIndexingConfig(workspacePath)
+    const settings = await loadSettings(workspacePath)
+    const existingIndexing = settings.indexing
+
+    // Preserve autoIndex if not provided
+    const newAutoIndex =
+      autoIndex !== undefined
+        ? autoIndex
+        : (existingIndexing?.autoIndex ?? false)
 
     const newConfig: IndexingConfig = {
       embeddingProvider,
       embeddingModel,
-      autoIndexingEnabled:
-        autoIndexingEnabled ?? existingConfig?.autoIndexingEnabled ?? false,
+      autoIndex: newAutoIndex,
     }
 
-    // Update both store state and localStorage
-    persistIndexingConfig(workspacePath, newConfig)
+    // Update both store state and settings file
+    await saveSettings(workspacePath, {
+      ...settings,
+      indexing: newConfig,
+    })
+
     set((state) => ({
       configs: {
         ...state.configs,
