@@ -19,7 +19,9 @@ export function useCollectionEntries(
 
   useEffect(() => {
     if (workspacePath) {
-      getIndexingConfig(workspacePath)
+      getIndexingConfig(workspacePath).catch((error) => {
+        console.error('Failed to load indexing config:', error)
+      })
     }
   }, [workspacePath, getIndexingConfig])
 

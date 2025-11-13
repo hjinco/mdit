@@ -16,7 +16,9 @@ export function useAutoIndexing(workspacePath: string | null) {
 
   useEffect(() => {
     if (workspacePath) {
-      getIndexingConfig(workspacePath)
+      getIndexingConfig(workspacePath).catch((error) => {
+        console.error('Failed to load indexing config:', error)
+      })
     }
   }, [workspacePath, getIndexingConfig])
 
@@ -33,7 +35,7 @@ export function useAutoIndexing(workspacePath: string | null) {
       return
     }
 
-    if (!config.autoIndexingEnabled) {
+    if (!config.autoIndex) {
       return
     }
 

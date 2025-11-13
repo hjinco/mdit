@@ -46,27 +46,58 @@ export function IndexingTab() {
     : false
   const { ollamaModels, fetchOllamaModels } = useAISettingsStore()
 
-  const currentConfig = useMemo(() => {
+  const [currentConfig, setCurrentConfig] = useState<{
+    embeddingProvider: string
+    embeddingModel: string
+    autoIndex?: boolean
+  }>({
+    embeddingProvider: '',
+    embeddingModel: '',
+    autoIndex: false,
+  })
+
+  useEffect(() => {
     if (!workspacePath) {
-      return {
+      setCurrentConfig({
         embeddingProvider: '',
         embeddingModel: '',
-        autoIndexingEnabled: false,
-      }
+        autoIndex: false,
+      })
+      return
     }
-    // Use configs from store (pre-loaded by useAutoIndexing hook)
-    return (
-      configs[workspacePath] ?? {
-        embeddingProvider: '',
-        embeddingModel: '',
-        autoIndexingEnabled: false,
+
+    // Check store cache first
+    if (configs[workspacePath]) {
+      setCurrentConfig({
+        embeddingProvider: configs[workspacePath].embeddingProvider,
+        embeddingModel: configs[workspacePath].embeddingModel,
+        autoIndex: configs[workspacePath].autoIndex ?? false,
+      })
+      return
+    }
+
+    // Load from settings file
+    const { getIndexingConfig } = useIndexingStore.getState()
+    getIndexingConfig(workspacePath).then((config) => {
+      if (config) {
+        setCurrentConfig({
+          embeddingProvider: config.embeddingProvider,
+          embeddingModel: config.embeddingModel,
+          autoIndex: config.autoIndex ?? false,
+        })
+      } else {
+        setCurrentConfig({
+          embeddingProvider: '',
+          embeddingModel: '',
+          autoIndex: false,
+        })
       }
-    )
+    })
   }, [workspacePath, configs])
 
   const embeddingProvider = currentConfig.embeddingProvider
   const embeddingModel = currentConfig.embeddingModel
-  const autoIndexingEnabled = currentConfig.autoIndexingEnabled ?? false
+  const autoIndexingEnabled = currentConfig.autoIndex ?? false
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [indexingProgress, setIndexingProgress] = useState(0)
   const [indexedDocCount, setIndexedDocCount] = useState(0)
@@ -145,7 +176,7 @@ export function IndexingTab() {
     setIndexingProgress(progress)
   }, [totalFiles, indexedDocCount])
 
-  const handleEmbeddingModelChange = (value: string) => {
+  const handleEmbeddingModelChange = async (value: string) => {
     if (!workspacePath) {
       return
     }
@@ -170,7 +201,12 @@ export function IndexingTab() {
       }
 
       // No warning needed, update model directly
-      setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
+      await setIndexingConfig(
+        workspacePath,
+        provider,
+        model,
+        autoIndexingEnabled
+      )
     }
   }
 
@@ -182,7 +218,7 @@ export function IndexingTab() {
     const { provider, model } = pendingModelChange
 
     // Update model first
-    setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
+    await setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
 
     // Then immediately run force reindex
     try {
@@ -200,12 +236,17 @@ export function IndexingTab() {
     setShowModelChangeDialog(false)
   }
 
-  const handleAutoIndexingChange = (checked: boolean) => {
+  const handleAutoIndexingChange = async (checked: boolean) => {
     if (!workspacePath) {
       return
     }
     // Preserve embedding config when updating auto-indexing
-    setIndexingConfig(workspacePath, embeddingProvider, embeddingModel, checked)
+    await setIndexingConfig(
+      workspacePath,
+      embeddingProvider,
+      embeddingModel,
+      checked
+    )
   }
 
   const isEmbeddingModelConfigured = embeddingModel !== ''

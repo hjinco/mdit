@@ -1,20 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
-import { join } from '@tauri-apps/api/path'
-import {
-  exists,
-  mkdir,
-  readTextFile,
-  writeTextFile,
-} from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
+import { loadSettings, saveSettings } from '@/lib/settings-utils'
 import type { WorkspaceEntry } from './workspace-store'
-
-const WORKSPACE_STATE_DIR = '.mdit'
-const WORKSPACE_CONFIG_FILE = 'workspace.json'
-
-type WorkspaceConfig = {
-  tags: string[]
-}
 
 type QuerySearchEntry = {
   path: string
@@ -49,25 +36,10 @@ type TagStore = {
   updateTagEntry: (oldPath: string, newPath: string, newName: string) => void
 }
 
-const getWorkspaceConfigPath = async (
-  workspacePath: string
-): Promise<string> => {
-  const stateDir = await join(workspacePath, WORKSPACE_STATE_DIR)
-  return await join(stateDir, WORKSPACE_CONFIG_FILE)
-}
-
 const loadTagsFromFile = async (workspacePath: string): Promise<string[]> => {
   try {
-    const configPath = await getWorkspaceConfigPath(workspacePath)
-
-    if (!(await exists(configPath))) {
-      return []
-    }
-
-    const content = await readTextFile(configPath)
-    const config: WorkspaceConfig = JSON.parse(content)
-
-    return config.tags || []
+    const settings = await loadSettings(workspacePath)
+    return settings.tags || []
   } catch (error) {
     console.error('Failed to load tags from file:', error)
     return []
@@ -79,16 +51,7 @@ const saveTagsToFile = async (
   tags: string[]
 ): Promise<void> => {
   try {
-    const stateDir = await join(workspacePath, WORKSPACE_STATE_DIR)
-
-    // Ensure the .mdit directory exists before writing
-    if (!(await exists(stateDir))) {
-      await mkdir(stateDir, { recursive: true })
-    }
-
-    const configPath = await getWorkspaceConfigPath(workspacePath)
-    const config: WorkspaceConfig = { tags }
-    await writeTextFile(configPath, JSON.stringify(config, null, 2))
+    await saveSettings(workspacePath, { tags })
   } catch (error) {
     console.error('Failed to save tags to file:', error)
   }
