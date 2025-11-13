@@ -5,14 +5,22 @@ import { useIndexingStore } from '@/store/indexing-store'
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
-  const { getIndexingConfig, indexWorkspace } = useIndexingStore(
+  const { getIndexingConfig, indexWorkspace, config } = useIndexingStore(
     useShallow((state) => ({
       getIndexingConfig: state.getIndexingConfig,
       indexWorkspace: state.indexWorkspace,
+      config: workspacePath ? state.configs[workspacePath] : null,
     }))
   )
   const intervalRef = useRef<number | null>(null)
 
+  useEffect(() => {
+    if (workspacePath) {
+      getIndexingConfig(workspacePath)
+    }
+  }, [workspacePath, getIndexingConfig])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to run the effect when the config changes
   useEffect(() => {
     // Clear any existing interval
     if (intervalRef.current !== null) {
@@ -21,19 +29,11 @@ export function useAutoIndexing(workspacePath: string | null) {
     }
 
     // Check if we should start auto-indexing
-    if (!workspacePath) {
+    if (!workspacePath || !config) {
       return
     }
 
-    const config = getIndexingConfig(workspacePath)
-
-    // Need workspace path, config, and toggle enabled
-    if (
-      !config ||
-      !config.embeddingProvider ||
-      !config.embeddingModel ||
-      !config.autoIndexingEnabled
-    ) {
+    if (!config.autoIndexingEnabled) {
       return
     }
 
@@ -75,5 +75,5 @@ export function useAutoIndexing(workspacePath: string | null) {
         intervalRef.current = null
       }
     }
-  }, [workspacePath, getIndexingConfig, indexWorkspace])
+  }, [config, indexWorkspace])
 }
