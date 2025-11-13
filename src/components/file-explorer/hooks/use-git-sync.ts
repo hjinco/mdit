@@ -134,7 +134,7 @@ export function useGitSync(workspacePath: string | null) {
     }))
 
     try {
-      const config = getSyncConfig(workspacePath)
+      const config = await getSyncConfig(workspacePath)
       const branchName = config.branchName.trim()
       const branch = branchName || (await getCurrentBranch(workspacePath))
 
@@ -194,27 +194,39 @@ export function useGitSync(workspacePath: string | null) {
       return
     }
 
-    const config = getSyncConfig(workspacePath)
-    if (!config.autoSync) {
-      return
-    }
-
     let autoSyncIntervalId: ReturnType<typeof setInterval> | null = null
+    let isDisposed = false
 
-    const tryAutoSync = async () => {
-      // Only sync if status is unsynced and no sync is already in progress
-      // Use ref to get the latest status, not the stale closure value
-      if (!isSyncingRef.current) {
-        await sync()
+    const initialize = async () => {
+      const config = await getSyncConfig(workspacePath)
+
+      if (isDisposed) {
+        return
       }
+
+      if (!config.autoSync) {
+        return
+      }
+
+      const tryAutoSync = async () => {
+        // Only sync if status is unsynced and no sync is already in progress
+        // Use ref to get the latest status, not the stale closure value
+        if (!isSyncingRef.current) {
+          await sync()
+        }
+      }
+
+      // Set up interval to check and sync every minute
+      autoSyncIntervalId = setInterval(() => {
+        tryAutoSync()
+      }, AUTO_SYNC_INTERVAL_MS)
     }
 
-    // Set up interval to check and sync every minute
-    autoSyncIntervalId = setInterval(() => {
-      tryAutoSync()
-    }, AUTO_SYNC_INTERVAL_MS)
+    initialize()
 
     return () => {
+      isDisposed = true
+
       if (autoSyncIntervalId) {
         clearInterval(autoSyncIntervalId)
       }
