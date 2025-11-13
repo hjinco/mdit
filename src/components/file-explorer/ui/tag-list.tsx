@@ -1,19 +1,28 @@
+import { invoke } from '@tauri-apps/api/core'
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { HashIcon, PlusIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useTagStore } from '@/store/tag-store'
+import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Input } from '@/ui/input'
 
+type IndexingMeta = {
+  indexedDocCount: number
+}
+
 export function TagList() {
-  const { currentCollectionPath, setCurrentCollectionPath } = useWorkspaceStore(
-    useShallow((state) => ({
-      currentCollectionPath: state.currentCollectionPath,
-      setCurrentCollectionPath: state.setCurrentCollectionPath,
-    }))
-  )
+  const { currentCollectionPath, setCurrentCollectionPath, workspacePath } =
+    useWorkspaceStore(
+      useShallow((state) => ({
+        currentCollectionPath: state.currentCollectionPath,
+        setCurrentCollectionPath: state.setCurrentCollectionPath,
+        workspacePath: state.workspacePath,
+      }))
+    )
   const tags = useTagStore((state) => state.tags)
   const addTag = useTagStore((state) => state.addTag)
   const removeTag = useTagStore((state) => state.removeTag)
@@ -35,10 +44,44 @@ export function TagList() {
     [setCurrentCollectionPath]
   )
 
-  const handleAddButtonClick = useCallback(() => {
+  const handleAddButtonClick = useCallback(async () => {
+    // Check if workspace is indexed before allowing tag addition
+    if (workspacePath) {
+      try {
+        const meta = await invoke<IndexingMeta>('get_indexing_meta', {
+          workspacePath,
+        })
+
+        if (meta.indexedDocCount === 0) {
+          toast.warning('Workspace must be indexed before adding tags', {
+            action: {
+              label: 'Settings',
+              onClick: () => {
+                useUIStore.getState().openSettingsWithTab('indexing')
+              },
+            },
+            position: 'bottom-left',
+          })
+          return
+        }
+      } catch (error) {
+        console.error('Failed to check indexing status:', error)
+        // If we can't check indexing status, block tag addition to be safe
+        toast.warning('Could not verify indexing status', {
+          action: {
+            label: 'Settings',
+            onClick: () => {
+              useUIStore.getState().openSettingsWithTab('indexing')
+            },
+          },
+        })
+        return
+      }
+    }
+
     setIsAddingTag(true)
     setInputValue('')
-  }, [])
+  }, [workspacePath])
 
   const handleInputSubmit = useCallback(async () => {
     const trimmedValue = inputValue.trim()
