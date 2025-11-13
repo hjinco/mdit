@@ -1,6 +1,11 @@
 import { invoke } from '@tauri-apps/api/core'
 import { join } from '@tauri-apps/api/path'
-import { exists, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import {
+  exists,
+  mkdir,
+  readTextFile,
+  writeTextFile,
+} from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 import type { WorkspaceEntry } from './workspace-store'
 
@@ -74,8 +79,14 @@ const saveTagsToFile = async (
   tags: string[]
 ): Promise<void> => {
   try {
-    const configPath = await getWorkspaceConfigPath(workspacePath)
+    const stateDir = await join(workspacePath, WORKSPACE_STATE_DIR)
 
+    // Ensure the .mdit directory exists before writing
+    if (!(await exists(stateDir))) {
+      await mkdir(stateDir, { recursive: true })
+    }
+
+    const configPath = await getWorkspaceConfigPath(workspacePath)
     const config: WorkspaceConfig = { tags }
     await writeTextFile(configPath, JSON.stringify(config, null, 2))
   } catch (error) {
