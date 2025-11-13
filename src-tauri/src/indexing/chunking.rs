@@ -67,8 +67,10 @@ fn split_major_sections(contents: &str) -> Vec<String> {
             fence_state = Some(state);
         }
 
+        let is_indented_code_block = is_indented_code_block_line(line);
         let is_heading = is_major_heading_line(line);
-        let is_hr = fence_state.is_none() && is_horizontal_rule_line(line);
+        let is_hr =
+            fence_state.is_none() && !is_indented_code_block && is_horizontal_rule_line(line);
         if is_heading || is_hr {
             if !current.trim().is_empty() {
                 sections.push(current.trim().to_string());
@@ -131,6 +133,25 @@ fn is_horizontal_rule_line(line: &str) -> bool {
     }
 
     count >= 3
+}
+
+/// Detects whether the line is indented enough to be treated as a Markdown code block.
+fn is_indented_code_block_line(line: &str) -> bool {
+    let mut spaces = 0;
+    for ch in line.chars() {
+        match ch {
+            ' ' => {
+                spaces += 1;
+                if spaces >= 4 {
+                    return true;
+                }
+            }
+            '\t' => return true,
+            _ => return false,
+        }
+    }
+
+    false
 }
 
 fn detect_fence_line(line: &str) -> Option<FenceState> {
