@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useIndexingStore } from '@/store/indexing-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
@@ -12,6 +13,9 @@ export function useAutoIndexing(workspacePath: string | null) {
       config: workspacePath ? state.configs[workspacePath] : null,
     }))
   )
+  const isMigrationsComplete = useWorkspaceStore(
+    (state) => state.isMigrationsComplete
+  )
   const intervalRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export function useAutoIndexing(workspacePath: string | null) {
     }
   }, [workspacePath, getIndexingConfig])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to run the effect when the config changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to run the effect when config or migrations complete status changes
   useEffect(() => {
     // Clear any existing interval
     if (intervalRef.current !== null) {
@@ -31,7 +35,8 @@ export function useAutoIndexing(workspacePath: string | null) {
     }
 
     // Check if we should start auto-indexing
-    if (!workspacePath || !config) {
+    // Wait for migrations to complete before starting indexing
+    if (!workspacePath || !config || !isMigrationsComplete) {
       return
     }
 
@@ -77,5 +82,5 @@ export function useAutoIndexing(workspacePath: string | null) {
         intervalRef.current = null
       }
     }
-  }, [config, indexWorkspace])
+  }, [config, indexWorkspace, isMigrationsComplete])
 }
