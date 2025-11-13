@@ -21,6 +21,7 @@ import { create } from 'zustand'
 import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
+import { useTagStore } from './tag-store'
 import {
   addEntryToState,
   buildWorkspaceEntries,
@@ -55,6 +56,7 @@ export type WorkspaceEntry = {
   children?: WorkspaceEntry[]
   createdAt?: Date
   modifiedAt?: Date
+  tagSimilarity?: number
 }
 
 type WorkspaceStore = {
@@ -146,6 +148,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       if (workspacePath) {
         ensureWorkspaceMigrations(workspacePath)
         get().refreshWorkspaceEntries()
+        useTagStore.getState().loadTags(workspacePath)
+      } else {
+        useTagStore.getState().loadTags(null)
       }
     } catch (error) {
       console.error('Failed to initialize workspace:', error)
@@ -195,6 +200,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       ensureWorkspaceMigrations(path)
       get().refreshWorkspaceEntries()
+      useTagStore.getState().loadTags(path)
     } catch (error) {
       console.error('Failed to set workspace:', error)
     }
@@ -445,6 +451,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         set({ currentCollectionPath: null })
       }
 
+      // If deleting from a tag collection, also remove from tagEntries
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().removeTagEntries(paths)
+      }
+
       // Remove deleted entries from state without full refresh
       set((state) => ({
         entries: removeEntriesFromState(state.entries, paths),
@@ -595,6 +606,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(entry.path, nextPath)
       updateHistoryPath(entry.path, nextPath)
 
+      // If renaming in a tag collection, also update tagEntries
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().updateTagEntry(entry.path, nextPath, trimmedName)
+      }
+
       set((state) => ({
         entries: updateEntryInState(
           state.entries,
@@ -673,8 +690,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(sourcePath, newPath)
       updateHistoryPath(sourcePath, newPath)
 
-      // Update currentCollectionPath if it's being moved
+      // If moving in a tag collection, also update tagEntries
       const { currentCollectionPath } = get()
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().updateTagEntry(sourcePath, newPath, fileName)
+      }
+
+      // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
       set((state) => {

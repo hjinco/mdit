@@ -19,10 +19,12 @@ use crate::migrations;
 mod chunking;
 mod embedding;
 mod files;
+mod search;
 mod sync;
 
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
+pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::sync_documents;
 
 const TARGET_CHUNKING_VERSION: i64 = 1;

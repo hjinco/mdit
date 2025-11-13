@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FolderIcon } from 'lucide-react'
+import { FolderIcon, HashIcon } from 'lucide-react'
 import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
@@ -68,6 +68,13 @@ export function CollectionView() {
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
+  const isTagPath = currentCollectionPath?.startsWith('#') ?? false
+  const tagName =
+    isTagPath && currentCollectionPath ? currentCollectionPath.slice(1) : null
+  const displayName = isTagPath
+    ? tagName
+    : currentCollectionPath?.split('/').pop()
+
   const collectionEntries = useCollectionEntries(
     currentCollectionPath,
     entries,
@@ -80,7 +87,7 @@ export function CollectionView() {
     sortDirection,
     setSortOption,
     setSortDirection,
-  } = useCollectionSort(collectionEntries)
+  } = useCollectionSort(collectionEntries, { isTagPath })
 
   const parentRef = useRef<HTMLDivElement>(null)
   const { getPreview, setPreview, invalidatePreview } = usePreviewCache(
@@ -181,9 +188,13 @@ export function CollectionView() {
             !isFileExplorerOpen && 'hidden'
           )}
         >
-          <FolderIcon className="size-4.5 shrink-0" />
+          {isTagPath ? (
+            <HashIcon className="size-4.5 shrink-0" />
+          ) : (
+            <FolderIcon className="size-4.5 shrink-0" />
+          )}
           <h2 className="text-sm font-medium truncate cursor-default">
-            {currentCollectionPath?.split('/').pop()}
+            {displayName}
           </h2>
         </div>
         <div className="flex items-center gap-1">
@@ -192,8 +203,9 @@ export function CollectionView() {
             onValueChange={setSortOption}
             sortDirection={sortDirection}
             onDirectionChange={setSortDirection}
+            enableTagRelevance={isTagPath}
           />
-          <NewNoteButton />
+          {!isTagPath && <NewNoteButton />}
         </div>
       </div>
       <div

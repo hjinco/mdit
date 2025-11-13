@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
-export type SortOption = 'name' | 'createdAt' | 'modifiedAt'
+export type SortOption =
+  | 'name'
+  | 'createdAt'
+  | 'modifiedAt'
+  | 'tagRelevance'
 export type SortDirection = 'asc' | 'desc'
 
 const COLLECTION_SORT_OPTION_KEY = 'collection-sort-option'
@@ -14,7 +18,12 @@ const readInitialSortOption = (): SortOption => {
   const stored = localStorage.getItem(COLLECTION_SORT_OPTION_KEY)
   if (!stored) return DEFAULT_SORT_OPTION
 
-  if (stored === 'name' || stored === 'createdAt' || stored === 'modifiedAt') {
+  if (
+    stored === 'name' ||
+    stored === 'createdAt' ||
+    stored === 'modifiedAt' ||
+    stored === 'tagRelevance'
+  ) {
     return stored
   }
 
@@ -34,21 +43,37 @@ const readInitialSortDirection = (): SortDirection => {
   return DEFAULT_SORT_DIRECTION
 }
 
-export function useCollectionSort(entries: WorkspaceEntry[]) {
-  const [sortOption, setSortOption] = useState<SortOption>(
+export function useCollectionSort(
+  entries: WorkspaceEntry[],
+  options?: { isTagPath?: boolean }
+) {
+  const isTagPath = options?.isTagPath ?? false
+  const [sortOptionState, setSortOptionState] = useState<SortOption>(
     readInitialSortOption
   )
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    readInitialSortDirection
-  )
+  const [sortDirectionState, setSortDirectionState] =
+    useState<SortDirection>(readInitialSortDirection)
 
   useEffect(() => {
-    localStorage.setItem(COLLECTION_SORT_OPTION_KEY, sortOption)
-  }, [sortOption])
+    localStorage.setItem(COLLECTION_SORT_OPTION_KEY, sortOptionState)
+  }, [sortOptionState])
 
   useEffect(() => {
-    localStorage.setItem(COLLECTION_SORT_DIRECTION_KEY, sortDirection)
-  }, [sortDirection])
+    localStorage.setItem(COLLECTION_SORT_DIRECTION_KEY, sortDirectionState)
+  }, [sortDirectionState])
+
+  useEffect(() => {
+    if (isTagPath && sortOptionState === 'tagRelevance' && sortDirectionState !== 'desc') {
+      setSortDirectionState('desc')
+    }
+  }, [isTagPath, sortOptionState, sortDirectionState])
+
+  const sortOption =
+    sortOptionState === 'tagRelevance' && !isTagPath
+      ? DEFAULT_SORT_OPTION
+      : sortOptionState
+
+  const sortDirection = sortDirectionState
 
   const sortedEntries = useMemo(() => {
     const sorted = [...entries].sort((a, b) => {
@@ -94,6 +119,13 @@ export function useCollectionSort(entries: WorkspaceEntry[]) {
           }
           break
 
+        case 'tagRelevance': {
+          const aScore = a.tagSimilarity ?? Number.NEGATIVE_INFINITY
+          const bScore = b.tagSimilarity ?? Number.NEGATIVE_INFINITY
+          comparison = aScore - bScore
+          break
+        }
+
         default:
       }
 
@@ -107,7 +139,7 @@ export function useCollectionSort(entries: WorkspaceEntry[]) {
     sortedEntries,
     sortOption,
     sortDirection,
-    setSortOption,
-    setSortDirection,
+    setSortOption: setSortOptionState,
+    setSortDirection: setSortDirectionState,
   }
 }
