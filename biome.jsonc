@@ -33,7 +33,8 @@
         "noShadow": "off",
         "useSortedClasses": "off",
         "useConsistentTypeDefinitions": "off",
-        "noUnnecessaryConditions": "off"
+        "noUnnecessaryConditions": "off",
+        "useMaxParams": "off"
       },
       "suspicious": {
         "noArrayIndexKey": "off",

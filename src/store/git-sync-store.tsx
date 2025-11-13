@@ -7,7 +7,7 @@ type SyncConfig = {
 }
 
 const getStorageKey = (workspacePath: string) => {
-  return `git-sync-config:${workspacePath}`
+  return `w:${workspacePath}:git-sync-config`
 }
 
 const getStoredSyncConfig = (workspacePath: string): SyncConfig | null => {

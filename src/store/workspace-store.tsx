@@ -38,6 +38,15 @@ import {
 } from './workspace/utils/expanded-directories-utils'
 
 const MAX_HISTORY_LENGTH = 5
+const ensureWorkspaceMigrations = (workspacePath: string) => {
+  if (!workspacePath) {
+    return
+  }
+
+  invoke('apply_workspace_migrations', { workspacePath }).catch((error) => {
+    console.error('Failed to apply workspace migrations:', error)
+  })
+}
 
 export type WorkspaceEntry = {
   path: string
@@ -135,6 +144,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       })
 
       if (workspacePath) {
+        ensureWorkspaceMigrations(workspacePath)
         get().refreshWorkspaceEntries()
       }
     } catch (error) {
@@ -183,6 +193,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         currentCollectionPath: null,
       })
 
+      ensureWorkspaceMigrations(path)
       get().refreshWorkspaceEntries()
     } catch (error) {
       console.error('Failed to set workspace:', error)

@@ -1,6 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { ExternalLink, XIcon } from 'lucide-react'
-import { useMemo, useRef } from 'react'
+import { ExternalLink } from 'lucide-react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { Button } from '@/ui/button'
 import {
@@ -37,13 +37,16 @@ export function AITab() {
     enabledChatModels,
     connectProvider,
     disconnectProvider,
-    addOllamaModel,
-    removeOllamaModel,
+    fetchOllamaModels,
     renameConfig,
     selectRenameModel,
     clearRenameModel,
     toggleModelEnabled,
   } = useAISettingsStore()
+
+  useEffect(() => {
+    fetchOllamaModels()
+  }, [fetchOllamaModels])
 
   const providersMap = useMemo(() => {
     return Object.entries(apiModels)
@@ -63,7 +66,7 @@ export function AITab() {
       const models = apiModels[provider] ?? []
       models.forEach((model) => {
         options.push({
-          value: `${provider}:${model}`,
+          value: `${provider}|${model}`,
           label: model,
         })
       })
@@ -71,13 +74,13 @@ export function AITab() {
 
     ollamaModels.forEach((model) => {
       options.push({
-        value: `ollama:${model}`,
+        value: `ollama|${model}`,
         label: model,
       })
     })
 
     if (renameConfig) {
-      const value = `${renameConfig.provider}:${renameConfig.model}`
+      const value = `${renameConfig.provider}|${renameConfig.model}`
       const exists = options.some((option) => option.value === value)
       if (!exists) {
         options.push({
@@ -91,7 +94,7 @@ export function AITab() {
   }, [connectedProviders, apiModels, ollamaModels, renameConfig])
 
   const renameSelectValue = renameConfig
-    ? `${renameConfig.provider}:${renameConfig.model}`
+    ? `${renameConfig.provider}|${renameConfig.model}`
     : '__none__'
 
   const hasConnectedProviders = useMemo(() => {
@@ -121,43 +124,39 @@ export function AITab() {
               return (
                 <Field key={provider}>
                   <FieldGroup className="gap-0">
-                    {models.map((model) => (
-                      <Field
-                        key={`${provider}-${model}`}
-                        orientation="horizontal"
-                        className="py-2"
-                      >
-                        <FieldContent className="group flex-row justify-between">
-                          <FieldLabel
-                            htmlFor={`${provider}-${model}`}
-                            className="text-xs"
-                          >
-                            {model}
-                          </FieldLabel>
-                          {provider === 'ollama' && (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeOllamaModel(model)}
-                                className="size-5 text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100"
-                              >
-                                <XIcon className="size-3.5" />
-                              </Button>
-                            </div>
-                          )}
-                        </FieldContent>
-                        <Switch
-                          id={`${provider}-${model}`}
-                          checked={enabledChatModels.some(
-                            (m) => m.provider === provider && m.model === model
-                          )}
-                          onCheckedChange={(checked) =>
-                            toggleModelEnabled(provider, model, checked)
-                          }
-                        />
-                      </Field>
-                    ))}
+                    {models.length === 0 && provider === 'ollama' ? (
+                      <div className="py-2 text-sm text-muted-foreground font-normal">
+                        No Ollama models available. Make sure Ollama is
+                        installed and running.
+                      </div>
+                    ) : (
+                      models.map((model) => (
+                        <Field
+                          key={`${provider}-${model}`}
+                          orientation="horizontal"
+                          className="py-2"
+                        >
+                          <FieldContent className="group flex-row justify-between">
+                            <FieldLabel
+                              htmlFor={`${provider}-${model}`}
+                              className="text-xs"
+                            >
+                              {model}
+                            </FieldLabel>
+                          </FieldContent>
+                          <Switch
+                            id={`${provider}-${model}`}
+                            checked={enabledChatModels.some(
+                              (m) =>
+                                m.provider === provider && m.model === model
+                            )}
+                            onCheckedChange={(checked) =>
+                              toggleModelEnabled(provider, model, checked)
+                            }
+                          />
+                        </Field>
+                      ))
+                    )}
                   </FieldGroup>
                 </Field>
               )
@@ -177,7 +176,7 @@ export function AITab() {
                       clearRenameModel()
                       return
                     }
-                    const separatorIndex = value.indexOf(':')
+                    const separatorIndex = value.indexOf('|')
                     if (separatorIndex === -1) {
                       clearRenameModel()
                       return
@@ -242,9 +241,29 @@ export function AITab() {
               </Field>
             )
           })}
-          <Field>
-            <FieldLabel>Ollama</FieldLabel>
-            <AddOllamaModel onAddOllamaModel={addOllamaModel} />
+          <Field orientation="vertical" className="mt-8">
+            <FieldContent>
+              <FieldLabel>Ollama</FieldLabel>
+              <FieldDescription>
+                Models are automatically fetched from your local Ollama instance
+              </FieldDescription>
+            </FieldContent>
+            <FieldGroup className="gap-0 mt-2">
+              {ollamaModels.length === 0 ? (
+                <div className="py-2 text-sm text-muted-foreground font-normal">
+                  No Ollama models available. Make sure Ollama is installed and
+                  running.
+                </div>
+              ) : (
+                ollamaModels.map((model) => (
+                  <Field key={model} orientation="horizontal" className="py-2">
+                    <FieldContent>
+                      <FieldLabel className="text-xs">{model}</FieldLabel>
+                    </FieldContent>
+                  </Field>
+                ))
+              )}
+            </FieldGroup>
           </Field>
         </FieldGroup>
       </FieldSet>
@@ -293,39 +312,6 @@ function ConnectProvider({
       />
       <Button variant="outline" onClick={handleConnect}>
         {isConnected ? 'Disconnect' : 'Connect'}
-      </Button>
-    </div>
-  )
-}
-
-function AddOllamaModel({
-  onAddOllamaModel,
-}: {
-  onAddOllamaModel: (model: string) => void
-}) {
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleAddModel = () => {
-    const model = inputRef.current?.value.trim()
-    if (model) {
-      onAddOllamaModel(model)
-      if (inputRef.current) {
-        inputRef.current.value = ''
-      }
-    }
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <Input
-        ref={inputRef}
-        type="text"
-        placeholder="Model Name"
-        autoComplete="off"
-        spellCheck="false"
-      />
-      <Button variant="outline" onClick={handleAddModel}>
-        Add
       </Button>
     </div>
   )
