@@ -53,11 +53,16 @@ fn split_major_sections(contents: &str) -> Vec<String> {
 
     for line in contents.lines() {
         let is_heading = is_major_heading_line(line);
-        if is_heading {
+        let is_hr = is_horizontal_rule_line(line);
+        if is_heading || is_hr {
             if !current.trim().is_empty() {
                 sections.push(current.trim().to_string());
             }
             current.clear();
+        }
+
+        if is_hr {
+            continue;
         }
 
         if !current.is_empty() {
@@ -93,6 +98,24 @@ fn is_major_heading_line(line: &str) -> bool {
         None => true,
         _ => false,
     }
+}
+
+fn is_horizontal_rule_line(line: &str) -> bool {
+    let mut chars = line.chars().filter(|c| !c.is_whitespace());
+    let first = match chars.next() {
+        Some(ch) if ch == '-' || ch == '*' || ch == '_' => ch,
+        _ => return false,
+    };
+
+    let mut count = 1;
+    for ch in chars {
+        if ch != first {
+            return false;
+        }
+        count += 1;
+    }
+
+    count >= 3
 }
 
 fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
