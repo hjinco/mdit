@@ -15,7 +15,7 @@ use serde::Serialize;
 use super::embedding::EmbeddingClient;
 use crate::migrations;
 
-const MIN_QUERY_SIMILARITY: f32 = 0.35;
+const MIN_QUERY_SIMILARITY: f32 = 0.4;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
