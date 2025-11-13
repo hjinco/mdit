@@ -8,7 +8,7 @@ use rusqlite::{params, Connection};
 
 use super::{
     chunking::{chunk_document, hash_content},
-    embedding::EmbeddingClient,
+    embedding::{EmbeddingClient, EmbeddingVector},
     files::MarkdownFile,
     IndexSummary, TARGET_CHUNKING_VERSION,
 };
@@ -246,6 +246,24 @@ fn rebuild_doc_chunks(
     embedder: &EmbeddingClient,
     summary: &mut IndexSummary,
 ) -> Result<()> {
+    struct PreparedSegmentEmbedding {
+        ordinal: i64,
+        hash: String,
+        vector: EmbeddingVector,
+    }
+
+    // Generate all embeddings before taking the SQLite write lock so readers are not blocked.
+    let mut prepared_segments = Vec::with_capacity(chunks.len());
+    for (ordinal, chunk) in chunks.iter().enumerate() {
+        let hash = hash_content(chunk);
+        let vector = embedder.generate(chunk)?;
+        prepared_segments.push(PreparedSegmentEmbedding {
+            ordinal: ordinal as i64,
+            hash,
+            vector,
+        });
+    }
+
     let tx = conn.transaction().with_context(|| {
         format!(
             "Failed to start chunk rebuild transaction for doc {}",
@@ -257,11 +275,17 @@ fn rebuild_doc_chunks(
     tx.execute("DELETE FROM segment WHERE doc_id = ?1", params![doc_id])
         .with_context(|| format!("Failed to clear segments for doc {}", doc_id))?;
 
-    for (ordinal, chunk) in chunks.iter().enumerate() {
-        let hash = hash_content(chunk);
-        let segment_id = insert_segment(&tx, doc_id, ordinal as i64, &hash)?;
+    for prepared in &prepared_segments {
+        let segment_id = insert_segment(&tx, doc_id, prepared.ordinal, &prepared.hash)?;
         summary.segments_created += 1;
-        write_embedding_for_segment(&tx, segment_id, chunk, embedder, summary)?;
+        upsert_embedding(
+            &tx,
+            segment_id,
+            embedder.model_name(),
+            prepared.vector.dim,
+            &prepared.vector.bytes,
+            summary,
+        )?;
     }
 
     tx.commit()
