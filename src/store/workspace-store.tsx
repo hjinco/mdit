@@ -39,14 +39,17 @@ import {
 } from './workspace/utils/expanded-directories-utils'
 
 const MAX_HISTORY_LENGTH = 5
-const ensureWorkspaceMigrations = (workspacePath: string) => {
+const ensureWorkspaceMigrations = async (workspacePath: string) => {
   if (!workspacePath) {
     return
   }
 
-  invoke('apply_workspace_migrations', { workspacePath }).catch((error) => {
+  try {
+    await invoke('apply_workspace_migrations', { workspacePath })
+  } catch (error) {
     console.error('Failed to apply workspace migrations:', error)
-  })
+    throw error
+  }
 }
 
 export type WorkspaceEntry = {
@@ -67,6 +70,7 @@ type WorkspaceStore = {
   entries: WorkspaceEntry[]
   expandedDirectories: Record<string, boolean>
   currentCollectionPath: string | null
+  isMigrationsComplete: boolean
   setExpandedDirectories: (
     action: (
       expandedDirectories: Record<string, boolean>
@@ -75,8 +79,8 @@ type WorkspaceStore = {
   setCurrentCollectionPath: (
     path: string | null | ((prev: string | null) => string | null)
   ) => void
-  initializeWorkspace: () => void
-  setWorkspace: (path: string) => void
+  initializeWorkspace: () => Promise<void>
+  setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
   refreshWorkspaceEntries: () => Promise<void>
   toggleDirectory: (path: string) => void
@@ -104,6 +108,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   entries: [],
   expandedDirectories: {},
   currentCollectionPath: null,
+  isMigrationsComplete: false,
 
   setExpandedDirectories: (action) => {
     set((state) => ({ expandedDirectories: action(state.expandedDirectories) }))
@@ -116,7 +121,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }))
   },
 
-  initializeWorkspace: () => {
+  initializeWorkspace: async () => {
     try {
       let recentWorkspacePaths: string[] = []
 
@@ -143,13 +148,27 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         isTreeLoading: Boolean(workspacePath),
         expandedDirectories: {},
         currentCollectionPath: null,
+        isMigrationsComplete: false,
       })
 
       if (workspacePath) {
-        ensureWorkspaceMigrations(workspacePath)
+        try {
+          await ensureWorkspaceMigrations(workspacePath)
+          // Verify workspace path still matches before marking migrations complete
+          if (get().workspacePath === workspacePath) {
+            set({ isMigrationsComplete: true })
+          }
+        } catch (error) {
+          console.error('Failed to apply workspace migrations:', error)
+          // Only set to false if this workspace is still active
+          if (get().workspacePath === workspacePath) {
+            set({ isMigrationsComplete: false })
+          }
+        }
         get().refreshWorkspaceEntries()
         useTagStore.getState().loadTags(workspacePath)
       } else {
+        set({ isMigrationsComplete: true })
         useTagStore.getState().loadTags(null)
       }
     } catch (error) {
@@ -162,11 +181,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         isTreeLoading: false,
         expandedDirectories: {},
         currentCollectionPath: null,
+        isMigrationsComplete: false,
       })
     }
   },
 
-  setWorkspace: (path: string) => {
+  setWorkspace: async (path: string) => {
     try {
       const { tab, closeTab, clearHistory } = useTabStore.getState()
 
@@ -196,9 +216,22 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         isTreeLoading: true,
         expandedDirectories: {},
         currentCollectionPath: null,
+        isMigrationsComplete: false,
       })
 
-      ensureWorkspaceMigrations(path)
+      try {
+        await ensureWorkspaceMigrations(path)
+        // Verify workspace path still matches before marking migrations complete
+        if (get().workspacePath === path) {
+          set({ isMigrationsComplete: true })
+        }
+      } catch (error) {
+        console.error('Failed to apply workspace migrations:', error)
+        // Only set to false if this workspace is still active
+        if (get().workspacePath === path) {
+          set({ isMigrationsComplete: false })
+        }
+      }
       get().refreshWorkspaceEntries()
       useTagStore.getState().loadTags(path)
     } catch (error) {
