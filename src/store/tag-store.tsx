@@ -40,6 +40,8 @@ type TagStore = {
     embeddingProvider: string,
     embeddingModel: string
   ) => Promise<void>
+  removeTagEntries: (paths: string[]) => void
+  updateTagEntry: (oldPath: string, newPath: string, newName: string) => void
 }
 
 const getWorkspaceConfigPath = async (
@@ -224,5 +226,27 @@ export const useTagStore = create<TagStore>((set, get) => ({
       console.error('Failed to fetch query entries:', error)
       set({ tagEntries: [] })
     }
+  },
+
+  removeTagEntries: (paths: string[]) => {
+    set((state) => ({
+      tagEntries: state.tagEntries.filter(
+        (entry) => !paths.includes(entry.path)
+      ),
+    }))
+  },
+
+  updateTagEntry: (oldPath: string, newPath: string, newName: string) => {
+    set((state) => ({
+      tagEntries: state.tagEntries.map((entry) =>
+        entry.path === oldPath
+          ? {
+              ...entry,
+              path: newPath,
+              name: newName,
+            }
+          : entry
+      ),
+    }))
   },
 }))

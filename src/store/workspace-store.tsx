@@ -451,6 +451,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         set({ currentCollectionPath: null })
       }
 
+      // If deleting from a tag collection, also remove from tagEntries
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().removeTagEntries(paths)
+      }
+
       // Remove deleted entries from state without full refresh
       set((state) => ({
         entries: removeEntriesFromState(state.entries, paths),
@@ -600,6 +605,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       const { renameTab, updateHistoryPath } = useTabStore.getState()
       renameTab(entry.path, nextPath)
       updateHistoryPath(entry.path, nextPath)
+
+      // If renaming in a tag collection, also update tagEntries
+      const { currentCollectionPath } = get()
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().updateTagEntry(entry.path, nextPath, trimmedName)
+      }
 
       set((state) => ({
         entries: updateEntryInState(

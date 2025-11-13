@@ -205,7 +205,7 @@ export function CollectionView() {
             onDirectionChange={setSortDirection}
             enableTagRelevance={isTagPath}
           />
-          <NewNoteButton />
+          {!isTagPath && <NewNoteButton />}
         </div>
       </div>
       <div

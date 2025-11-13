@@ -1,3 +1,4 @@
+import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { HashIcon, PlusIcon } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
@@ -15,6 +16,7 @@ export function TagList() {
   )
   const tags = useTagStore((state) => state.tags)
   const addTag = useTagStore((state) => state.addTag)
+  const removeTag = useTagStore((state) => state.removeTag)
   const [isAddingTag, setIsAddingTag] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -72,6 +74,37 @@ export function TagList() {
     handleInputSubmit()
   }, [handleInputSubmit])
 
+  const handleTagContextMenu = useCallback(
+    async (tagName: string, event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault()
+      event.stopPropagation()
+
+      try {
+        const menu = await Menu.new({
+          items: [
+            await MenuItem.new({
+              id: `delete-tag-${tagName}`,
+              text: 'Delete',
+              action: async () => {
+                const tagPath = `#${tagName}`
+                // If the deleted tag is currently selected, clear the collection path
+                if (currentCollectionPath === tagPath) {
+                  setCurrentCollectionPath(null)
+                }
+                await removeTag(tagName)
+              },
+            }),
+          ],
+        })
+
+        await menu.popup()
+      } catch (error) {
+        console.error('Failed to open tag context menu:', error)
+      }
+    },
+    [currentCollectionPath, removeTag, setCurrentCollectionPath]
+  )
+
   const hasTags = tags.length > 0
 
   return (
@@ -87,6 +120,7 @@ export function TagList() {
                 <button
                   type="button"
                   onClick={() => handleTagClick(tagName)}
+                  onContextMenu={(e) => handleTagContextMenu(tagName, e)}
                   className={cn(
                     'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
                     isSelected
