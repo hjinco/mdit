@@ -98,20 +98,24 @@ export function SortSelector({
             </DropdownMenuRadioItem>
           )}
         </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioGroup
-          value={sortDirection}
-          onValueChange={handleValueChange}
-        >
-          <DropdownMenuRadioItem value="asc">
-            <ArrowUpIcon className="size-4" />
-            Ascending
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="desc">
-            <ArrowDownIcon className="size-4" />
-            Descending
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        {value !== 'tagRelevance' && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              value={sortDirection}
+              onValueChange={handleValueChange}
+            >
+              <DropdownMenuRadioItem value="asc">
+                <ArrowUpIcon className="size-4" />
+                Ascending
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="desc">
+                <ArrowDownIcon className="size-4" />
+                Descending
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

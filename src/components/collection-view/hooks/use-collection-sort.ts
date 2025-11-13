@@ -63,10 +63,10 @@ export function useCollectionSort(
   }, [sortDirectionState])
 
   useEffect(() => {
-    if (sortOptionState === 'tagRelevance' && sortDirectionState !== 'desc') {
+    if (isTagPath && sortOptionState === 'tagRelevance' && sortDirectionState !== 'desc') {
       setSortDirectionState('desc')
     }
-  }, [sortOptionState, sortDirectionState])
+  }, [isTagPath, sortOptionState, sortDirectionState])
 
   const sortOption =
     sortOptionState === 'tagRelevance' && !isTagPath
