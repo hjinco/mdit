@@ -4,6 +4,7 @@ import { create } from 'zustand'
 type IndexingConfig = {
   embeddingProvider: string
   embeddingModel: string
+  autoIndexingEnabled?: boolean
 }
 
 type IndexingState = Record<string, boolean>
@@ -36,6 +37,7 @@ const getStoredIndexingConfig = (
     return {
       embeddingProvider: parsed.embeddingProvider ?? '',
       embeddingModel: parsed.embeddingModel ?? '',
+      autoIndexingEnabled: parsed.autoIndexingEnabled ?? false,
     }
   } catch (error) {
     console.error('Failed to read indexing config from storage:', error)
@@ -66,7 +68,8 @@ type IndexingStore = {
   setIndexingConfig: (
     workspacePath: string,
     embeddingProvider: string,
-    embeddingModel: string
+    embeddingModel: string,
+    autoIndexingEnabled?: boolean
   ) => void
   indexWorkspace: (
     workspacePath: string,
@@ -109,11 +112,18 @@ export const useIndexingStore = create<IndexingStore>((set, get) => ({
   setIndexingConfig: (
     workspacePath: string,
     embeddingProvider: string,
-    embeddingModel: string
+    embeddingModel: string,
+    autoIndexingEnabled?: boolean
   ) => {
+    // Get existing config to preserve autoIndexingEnabled if not provided
+    const existingConfig =
+      get().configs[workspacePath] ?? getStoredIndexingConfig(workspacePath)
+
     const newConfig: IndexingConfig = {
       embeddingProvider,
       embeddingModel,
+      autoIndexingEnabled:
+        autoIndexingEnabled ?? existingConfig?.autoIndexingEnabled ?? false,
     }
 
     // Update both store state and localStorage

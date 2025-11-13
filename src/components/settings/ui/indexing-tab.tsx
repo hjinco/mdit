@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
+import { Switch } from '@/ui/switch'
 
 type IndexingMeta = {
   indexedDocCount: number
@@ -30,21 +31,15 @@ type IndexingMeta = {
 export function IndexingTab() {
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
   const entries = useWorkspaceStore((state) => state.entries)
-  const {
-    getIndexingConfig,
-    setIndexingConfig,
-    indexWorkspace,
-    indexingState,
-    configs,
-  } = useIndexingStore(
-    useShallow((state) => ({
-      getIndexingConfig: state.getIndexingConfig,
-      setIndexingConfig: state.setIndexingConfig,
-      indexWorkspace: state.indexWorkspace,
-      indexingState: state.indexingState,
-      configs: state.configs,
-    }))
-  )
+  const { setIndexingConfig, indexWorkspace, indexingState, configs } =
+    useIndexingStore(
+      useShallow((state) => ({
+        setIndexingConfig: state.setIndexingConfig,
+        indexWorkspace: state.indexWorkspace,
+        indexingState: state.indexingState,
+        configs: state.configs,
+      }))
+    )
   const isIndexing = workspacePath
     ? (indexingState[workspacePath] ?? false)
     : false
@@ -55,20 +50,22 @@ export function IndexingTab() {
       return {
         embeddingProvider: '',
         embeddingModel: '',
+        autoIndexingEnabled: false,
       }
     }
-    // Check store state first, then fallback to getIndexingConfig (which loads from localStorage)
+    // Use configs from store (pre-loaded by useAutoIndexing hook)
     return (
-      configs[workspacePath] ??
-      getIndexingConfig(workspacePath) ?? {
+      configs[workspacePath] ?? {
         embeddingProvider: '',
         embeddingModel: '',
+        autoIndexingEnabled: false,
       }
     )
-  }, [workspacePath, configs, getIndexingConfig])
+  }, [workspacePath, configs])
 
   const embeddingProvider = currentConfig.embeddingProvider
   const embeddingModel = currentConfig.embeddingModel
+  const autoIndexingEnabled = currentConfig.autoIndexingEnabled ?? false
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [indexingProgress, setIndexingProgress] = useState(0)
   const [indexedDocCount, setIndexedDocCount] = useState(0)
@@ -152,8 +149,17 @@ export function IndexingTab() {
     if (parts.length >= 2) {
       const [provider, ...modelParts] = parts
       const model = modelParts.join('|')
-      setIndexingConfig(workspacePath, provider, model)
+      // Preserve autoIndexingEnabled when updating model
+      setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
     }
+  }
+
+  const handleAutoIndexingChange = (checked: boolean) => {
+    if (!workspacePath) {
+      return
+    }
+    // Preserve embedding config when updating auto-indexing
+    setIndexingConfig(workspacePath, embeddingProvider, embeddingModel, checked)
   }
 
   const isEmbeddingModelConfigured = embeddingModel !== ''
@@ -193,16 +199,7 @@ export function IndexingTab() {
   const progressLabel = `${indexedDocCount}/${totalFiles || 0} files indexed`
 
   if (!workspacePath) {
-    return (
-      <div className="flex-1 overflow-y-auto p-12">
-        <FieldSet>
-          <FieldLegend>Indexing</FieldLegend>
-          <FieldDescription>
-            Please open a workspace to configure indexing settings.
-          </FieldDescription>
-        </FieldSet>
-      </div>
-    )
+    return null
   }
 
   return (
@@ -243,6 +240,20 @@ export function IndexingTab() {
                 )}
               </SelectContent>
             </Select>
+          </Field>
+
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>Automatic Indexing</FieldLabel>
+              <FieldDescription>
+                Automatically index workspace every 10 minutes
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              checked={autoIndexingEnabled}
+              onCheckedChange={handleAutoIndexingChange}
+              disabled={!isEmbeddingModelAvailable}
+            />
           </Field>
 
           <Field>

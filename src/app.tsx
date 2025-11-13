@@ -8,6 +8,7 @@ import { LicenseTempDialog } from './components/license/license-temp-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
+import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useFontScale } from './hooks/use-font-scale'
 import { useLicenseStore } from './store/license-store'
 import { useWorkspaceStore } from './store/workspace-store'
@@ -16,6 +17,7 @@ export function App() {
   const { workspacePath, isLoading, initializeWorkspace } = useWorkspaceStore()
   const checkLicenseAndTrial = useLicenseStore((s) => s.checkLicenseAndTrial)
   useFontScale()
+  useAutoIndexing(workspacePath)
 
   useEffect(() => {
     initializeWorkspace()
