@@ -181,18 +181,33 @@ export const useTagStore = create<TagStore>((set, get) => ({
   ): Promise<void> => {
     // If tag path is null or doesn't start with "#", clear entries
     if (!tagPath || !tagPath.startsWith('#')) {
-      set({ tagEntries: [], currentTagPath: null })
+      const state = get()
+      set({
+        tagEntries: [],
+        currentTagPath: null,
+        currentRequestId: state.currentRequestId + 1,
+      })
       return
     }
 
     const tagName = tagPath.slice(1).trim()
     if (!tagName || !workspacePath) {
-      set({ tagEntries: [], currentTagPath: null })
+      const state = get()
+      set({
+        tagEntries: [],
+        currentTagPath: null,
+        currentRequestId: state.currentRequestId + 1,
+      })
       return
     }
 
     if (!embeddingProvider || !embeddingModel) {
-      set({ tagEntries: [], currentTagPath: null })
+      const state = get()
+      set({
+        tagEntries: [],
+        currentTagPath: null,
+        currentRequestId: state.currentRequestId + 1,
+      })
       return
     }
 
