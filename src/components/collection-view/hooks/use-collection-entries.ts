@@ -13,6 +13,13 @@ export function useCollectionEntries(
       return []
     }
 
+    // Handle tag path: when currentCollectionPath starts with "#", it's a tag
+    if (currentCollectionPath.startsWith('#')) {
+      // TODO: Implement tag filtering logic
+      // For now, return empty array as placeholder
+      return []
+    }
+
     // Handle root case: when currentCollectionPath is the workspace root,
     // entries already contains the root-level files
     if (workspacePath && currentCollectionPath === workspacePath) {

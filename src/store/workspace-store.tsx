@@ -21,6 +21,7 @@ import { create } from 'zustand'
 import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
+import { useTagStore } from './tag-store'
 import {
   addEntryToState,
   buildWorkspaceEntries,
@@ -146,6 +147,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       if (workspacePath) {
         ensureWorkspaceMigrations(workspacePath)
         get().refreshWorkspaceEntries()
+        useTagStore.getState().loadTags(workspacePath)
+      } else {
+        useTagStore.getState().loadTags(null)
       }
     } catch (error) {
       console.error('Failed to initialize workspace:', error)
@@ -195,6 +199,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       ensureWorkspaceMigrations(path)
       get().refreshWorkspaceEntries()
+      useTagStore.getState().loadTags(path)
     } catch (error) {
       console.error('Failed to set workspace:', error)
     }

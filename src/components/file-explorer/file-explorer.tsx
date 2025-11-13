@@ -18,6 +18,7 @@ import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
 import { SettingsMenu } from './ui/settings-menu'
+import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
@@ -351,6 +352,7 @@ export function FileExplorer() {
           }}
           onScroll={handleWorkspaceScroll}
         >
+          <TagList />
           <ul className="space-y-0.5 min-h-full pb-4">
             {entries.map((entry) => (
               <TreeNode
