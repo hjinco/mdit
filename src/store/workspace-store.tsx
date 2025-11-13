@@ -690,8 +690,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       renameTab(sourcePath, newPath)
       updateHistoryPath(sourcePath, newPath)
 
-      // Update currentCollectionPath if it's being moved
+      // If moving in a tag collection, also update tagEntries
       const { currentCollectionPath } = get()
+      if (currentCollectionPath?.startsWith('#')) {
+        useTagStore.getState().updateTagEntry(sourcePath, newPath, fileName)
+      }
+
+      // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
       set((state) => {
