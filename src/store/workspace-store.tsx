@@ -154,10 +154,16 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       if (workspacePath) {
         try {
           await ensureWorkspaceMigrations(workspacePath)
-          set({ isMigrationsComplete: true })
+          // Verify workspace path still matches before marking migrations complete
+          if (get().workspacePath === workspacePath) {
+            set({ isMigrationsComplete: true })
+          }
         } catch (error) {
           console.error('Failed to apply workspace migrations:', error)
-          set({ isMigrationsComplete: false })
+          // Only set to false if this workspace is still active
+          if (get().workspacePath === workspacePath) {
+            set({ isMigrationsComplete: false })
+          }
         }
         get().refreshWorkspaceEntries()
         useTagStore.getState().loadTags(workspacePath)
@@ -215,10 +221,16 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       try {
         await ensureWorkspaceMigrations(path)
-        set({ isMigrationsComplete: true })
+        // Verify workspace path still matches before marking migrations complete
+        if (get().workspacePath === path) {
+          set({ isMigrationsComplete: true })
+        }
       } catch (error) {
         console.error('Failed to apply workspace migrations:', error)
-        set({ isMigrationsComplete: false })
+        // Only set to false if this workspace is still active
+        if (get().workspacePath === path) {
+          set({ isMigrationsComplete: false })
+        }
       }
       get().refreshWorkspaceEntries()
       useTagStore.getState().loadTags(path)
