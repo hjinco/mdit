@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/ui/select'
 import { Switch } from '@/ui/switch'
+import { EmbeddingModelChangeDialog } from './embedding-model-change-dialog'
 
 type IndexingMeta = {
   indexedDocCount: number
@@ -70,6 +71,11 @@ export function IndexingTab() {
   const [indexingProgress, setIndexingProgress] = useState(0)
   const [indexedDocCount, setIndexedDocCount] = useState(0)
   const workspacePathRef = useRef<string | null>(null)
+  const [showModelChangeDialog, setShowModelChangeDialog] = useState(false)
+  const [pendingModelChange, setPendingModelChange] = useState<{
+    provider: string
+    model: string
+  } | null>(null)
 
   const totalFiles = useMemo(() => countMarkdownFiles(entries), [entries])
 
@@ -149,9 +155,49 @@ export function IndexingTab() {
     if (parts.length >= 2) {
       const [provider, ...modelParts] = parts
       const model = modelParts.join('|')
-      // Preserve autoIndexingEnabled when updating model
+
+      // Check if model is actually changing
+      const isModelChanging =
+        embeddingProvider !== provider || embeddingModel !== model
+
+      // Show warning dialog if:
+      // 1. Model is actually changing (not initial setup)
+      // 2. There are indexed documents
+      if (isModelChanging && indexedDocCount > 0) {
+        setPendingModelChange({ provider, model })
+        setShowModelChangeDialog(true)
+        return
+      }
+
+      // No warning needed, update model directly
       setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
     }
+  }
+
+  const handleConfirmModelChange = async () => {
+    if (!workspacePath || !pendingModelChange) {
+      return
+    }
+
+    const { provider, model } = pendingModelChange
+
+    // Update model first
+    setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
+
+    // Then immediately run force reindex
+    try {
+      await indexWorkspace(workspacePath, provider, model, true)
+      await loadIndexingMeta(workspacePath)
+    } catch (error) {
+      console.error('Failed to reindex workspace:', error)
+    }
+
+    setPendingModelChange(null)
+  }
+
+  const handleDialogCancel = () => {
+    setPendingModelChange(null)
+    setShowModelChangeDialog(false)
   }
 
   const handleAutoIndexingChange = (checked: boolean) => {
@@ -203,135 +249,155 @@ export function IndexingTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-12">
-      <FieldSet>
-        <FieldLegend>Indexing</FieldLegend>
-        <FieldDescription>
-          Configure embedding model and manage workspace indexing
-        </FieldDescription>
-        <FieldGroup>
-          <Field orientation="horizontal">
-            <FieldContent>
-              <FieldLabel>Embedding Model</FieldLabel>
-              <FieldDescription>
-                Select the embedding model to use for indexing
-              </FieldDescription>
-            </FieldContent>
-            <Select
-              value={selectedEmbeddingModel ?? undefined}
-              onValueChange={handleEmbeddingModelChange}
-            >
-              <SelectTrigger size="sm">
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent align="end">
-                {ollamaModels.length > 0 ? (
-                  ollamaModels.map((model) => {
-                    return (
-                      <SelectItem key={model} value={`ollama|${model}`}>
-                        {model}
-                      </SelectItem>
-                    )
-                  })
-                ) : (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    No models available
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          <Field orientation="horizontal">
-            <FieldContent>
-              <FieldLabel>Automatic Indexing</FieldLabel>
-              <FieldDescription>
-                Automatically index workspace every 10 minutes
-              </FieldDescription>
-            </FieldContent>
-            <Switch
-              checked={autoIndexingEnabled}
-              onCheckedChange={handleAutoIndexingChange}
-              disabled={!isEmbeddingModelAvailable}
-            />
-          </Field>
-
-          <Field>
-            <FieldContent>
-              <FieldLabel>Indexing Progress</FieldLabel>
-              <FieldDescription>
-                Current indexing progress for the workspace
-              </FieldDescription>
-            </FieldContent>
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">
-                  {indexingProgress}%
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {progressLabel}
-                </span>
-              </div>
-              <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${indexingProgress}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Progress is estimated using the visible workspace files; actual
-                indexed content may differ slightly.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
-              <Button
-                onClick={() => runIndex(false)}
-                variant="outline"
-                size="sm"
-                disabled={isIndexButtonDisabled}
+    <>
+      <EmbeddingModelChangeDialog
+        open={showModelChangeDialog}
+        onOpenChange={(open) => {
+          if (open) {
+            setShowModelChangeDialog(true)
+          } else {
+            handleDialogCancel()
+          }
+        }}
+        onConfirm={handleConfirmModelChange}
+      />
+      <div className="flex-1 overflow-y-auto p-12">
+        <FieldSet>
+          <FieldLegend>Indexing</FieldLegend>
+          <FieldDescription>
+            Configure embedding model and manage workspace indexing
+          </FieldDescription>
+          <FieldGroup>
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldLabel>Embedding Model</FieldLabel>
+                <FieldDescription>
+                  Select the embedding model to use for indexing
+                </FieldDescription>
+              </FieldContent>
+              <Select
+                value={selectedEmbeddingModel ?? undefined}
+                onValueChange={handleEmbeddingModelChange}
               >
-                {isIndexing && <Loader2Icon className="size-4 animate-spin" />}
-                {isIndexing ? 'Indexing...' : 'Manually Index'}
-              </Button>
-              <Button
-                onClick={() => runIndex(true)}
-                variant="destructive"
-                size="sm"
-                disabled={isIndexing}
-              >
-                <RefreshCcwIcon className="size-4" />
-                Force Rebuild
-              </Button>
-            </div>
-          </Field>
+                <SelectTrigger size="sm">
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {ollamaModels.length > 0 ? (
+                    ollamaModels.map((model) => {
+                      return (
+                        <SelectItem key={model} value={`ollama|${model}`}>
+                          {model}
+                        </SelectItem>
+                      )
+                    })
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">
+                      No models available
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <Field orientation="vertical">
-            <FieldContent>
-              <FieldLabel>Ollama Embedding Models</FieldLabel>
-              <FieldDescription>
-                Models are automatically fetched from your local Ollama instance
-              </FieldDescription>
-            </FieldContent>
-            <FieldGroup className="gap-0 mt-2">
-              {ollamaModels.length === 0 ? (
-                <div className="py-2 text-sm text-muted-foreground font-normal">
-                  No Ollama embedding models available. Make sure Ollama is
-                  installed and running.
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldLabel>Automatic Indexing</FieldLabel>
+                <FieldDescription>
+                  Automatically index workspace every 10 minutes
+                </FieldDescription>
+              </FieldContent>
+              <Switch
+                checked={autoIndexingEnabled}
+                onCheckedChange={handleAutoIndexingChange}
+                disabled={!isEmbeddingModelAvailable}
+              />
+            </Field>
+
+            <Field>
+              <FieldContent>
+                <FieldLabel>Indexing Progress</FieldLabel>
+                <FieldDescription>
+                  Current indexing progress for the workspace
+                </FieldDescription>
+              </FieldContent>
+              <div className="w-full">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">
+                    {indexingProgress}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {progressLabel}
+                  </span>
                 </div>
-              ) : (
-                ollamaModels.map((model) => (
-                  <Field key={model} orientation="horizontal" className="py-2">
-                    <FieldContent>
-                      <FieldLabel className="text-xs">{model}</FieldLabel>
-                    </FieldContent>
-                  </Field>
-                ))
-              )}
-            </FieldGroup>
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all duration-300"
+                    style={{ width: `${indexingProgress}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Progress is estimated using the visible workspace files;
+                  actual indexed content may differ slightly.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-4">
+                <Button
+                  onClick={() => runIndex(false)}
+                  variant="outline"
+                  size="sm"
+                  disabled={isIndexButtonDisabled}
+                >
+                  {isIndexing && (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  )}
+                  {isIndexing ? 'Indexing...' : 'Manually Index'}
+                </Button>
+                <Button
+                  onClick={() => runIndex(true)}
+                  variant="destructive"
+                  size="sm"
+                  disabled={isIndexing}
+                >
+                  <RefreshCcwIcon className="size-4" />
+                  Force Rebuild
+                </Button>
+              </div>
+            </Field>
+
+            <Field orientation="vertical">
+              <FieldContent>
+                <FieldLabel>Ollama Embedding Models</FieldLabel>
+                <FieldDescription>
+                  Models are automatically fetched from your local Ollama
+                  instance
+                </FieldDescription>
+              </FieldContent>
+              <FieldGroup className="gap-0 mt-2">
+                {ollamaModels.length === 0 ? (
+                  <div className="py-2 text-sm text-muted-foreground font-normal">
+                    No Ollama embedding models available. Make sure Ollama is
+                    installed and running.
+                  </div>
+                ) : (
+                  ollamaModels.map((model) => (
+                    <Field
+                      key={model}
+                      orientation="horizontal"
+                      className="py-2"
+                    >
+                      <FieldContent>
+                        <FieldLabel className="text-xs">{model}</FieldLabel>
+                      </FieldContent>
+                    </Field>
+                  ))
+                )}
+              </FieldGroup>
+            </Field>
+          </FieldGroup>
+        </FieldSet>
+      </div>
+    </>
   )
 }
 
