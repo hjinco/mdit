@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useIndexingStore } from '@/store/indexing-store'
 import { useTagStore } from '@/store/tag-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
-
-const ANIMATION_DURATION_MS = 100
 
 export function useCollectionEntries(
   currentCollectionPath: string | null,
@@ -90,23 +88,5 @@ export function useCollectionEntries(
     )
   }, [currentCollectionPath, entries, tagEntries, workspacePath])
 
-  const [displayedEntries, setDisplayedEntries] =
-    useState<WorkspaceEntry[]>(computedEntries)
-
-  useEffect(() => {
-    if (currentCollectionPath === null) {
-      // Delay clearing entries until animation completes
-      const timeoutId = setTimeout(() => {
-        setDisplayedEntries([])
-      }, ANIMATION_DURATION_MS)
-
-      return () => {
-        clearTimeout(timeoutId)
-      }
-    }
-    // Immediately update entries when opening
-    setDisplayedEntries(computedEntries)
-  }, [currentCollectionPath, computedEntries])
-
-  return displayedEntries
+  return computedEntries
 }
