@@ -143,7 +143,14 @@ export function NoteEntry({
       data-index={dataIndex}
     >
       <div className="flex relative">
-        <span className="text-base font-medium truncate">{baseName}</span>
+        <span
+          className={cn(
+            'text-base font-medium truncate',
+            isRenaming && 'invisible'
+          )}
+        >
+          {baseName}
+        </span>
         {isRenaming && (
           <input
             ref={inputRef}

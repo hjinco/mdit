@@ -353,7 +353,7 @@ export function FileExplorer() {
           onScroll={handleWorkspaceScroll}
         >
           <TagList />
-          <ul className="space-y-0.5 min-h-full pb-4">
+          <ul className="space-y-0.5 pb-4">
             {entries.map((entry) => (
               <TreeNode
                 key={entry.path}

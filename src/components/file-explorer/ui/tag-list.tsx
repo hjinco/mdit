@@ -183,7 +183,7 @@ export function TagList() {
       )}
       {isAddingTag ? (
         <div className="mt-0.5">
-          <div className="flex items-center pr-2 py-0.5">
+          <div className="flex items-center pr-2 py-1">
             <HashIcon className="size-4 mx-1.5 shrink-0" />
             <Input
               ref={inputRef}
@@ -192,8 +192,8 @@ export function TagList() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
-              placeholder="Tag name"
-              className="h-auto py-0 px-2 text-sm border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
+              placeholder="Tag"
+              className="h-auto py-0 px-0 text-sm rounded-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
             />
           </div>
         </div>
@@ -204,7 +204,7 @@ export function TagList() {
           className={cn(
             'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
             'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-            !hasTags && 'mt-0.5'
+            hasTags && 'mt-0.5'
           )}
         >
           <PlusIcon className="size-4 mx-1.5 shrink-0" />
