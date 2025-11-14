@@ -1,15 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { create } from 'zustand'
 import { loadSettings, saveSettings } from '@/lib/settings-utils'
+import type { QuerySearchEntry } from '@/types/query-search-entry'
 import type { WorkspaceEntry } from './workspace-store'
-
-type QuerySearchEntry = {
-  path: string
-  name: string
-  createdAt?: number
-  modifiedAt?: number
-  similarity: number
-}
 
 type TagStore = {
   tags: string[]
