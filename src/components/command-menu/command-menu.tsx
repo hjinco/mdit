@@ -47,7 +47,7 @@ export function CommandMenu() {
   const [isInitialMeasureDebounced, setIsInitialMeasureDebounced] =
     useState(false)
   // Debounce intensive lookups so we only search once a user pauses typing.
-  const debouncedQuery = useDebounce(query, 300)
+  const debouncedQuery = useDebounce(query, 250)
   // Build an index of notes in the workspace and pre-filter by the current search.
   const { filteredNoteResults, noteResultsByPath } = useNoteNameSearch(
     entries,
@@ -127,7 +127,9 @@ export function CommandMenu() {
         <CommandList ref={listRef} className="max-h-88">
           <CommandEmpty>No results found</CommandEmpty>
           {hasNoteMatches && (
-            <CommandGroup heading="Notes">
+            <CommandGroup
+              heading={debouncedQuery.trim() ? 'Notes' : 'Recent Notes'}
+            >
               {filteredNoteResults.map((note) => (
                 <CommandItem
                   key={note.path}

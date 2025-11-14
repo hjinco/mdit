@@ -7,6 +7,7 @@ export type NoteResult = {
   label: string
   relativePath: string
   keywords: string[]
+  modifiedAt?: Date
 }
 
 const MARKDOWN_EXTENSION_REGEX = /\.md$/i
@@ -50,7 +51,12 @@ const buildKeywords = (label: string, relativePath: string) => {
     .filter((segment) => segment.length > 0)
 
   return Array.from(
-    new Set([label, relativePath, relativePathWithoutExtension, ...relativeSegments])
+    new Set([
+      label,
+      relativePath,
+      relativePathWithoutExtension,
+      ...relativeSegments,
+    ])
   )
 }
 
@@ -67,10 +73,14 @@ const createNoteResult = (
     label,
     relativePath,
     keywords: buildKeywords(label, relativePath),
+    modifiedAt: entry.modifiedAt,
   }
 }
 
-const collectNotes = (entries: WorkspaceEntry[], workspacePath: string | null) => {
+const collectNotes = (
+  entries: WorkspaceEntry[],
+  workspacePath: string | null
+) => {
   const results: NoteResult[] = []
   const stack: WorkspaceEntry[] = [...entries]
 
@@ -86,7 +96,7 @@ const collectNotes = (entries: WorkspaceEntry[], workspacePath: string | null) =
     }
   }
 
-  return results.sort((a, b) => a.label.localeCompare(b.label))
+  return results
 }
 
 export const useNoteNameSearch = (
@@ -113,7 +123,16 @@ export const useNoteNameSearch = (
 
   const filteredNoteResults = useMemo(() => {
     if (!normalizedQuery) {
-      return noteResults
+      // When query is empty, show 5 most recently modified notes
+      return [...noteResults]
+        .sort((a, b) => {
+          // Sort by modifiedAt descending (most recent first)
+          // Notes without modifiedAt are treated as oldest
+          const aTime = a.modifiedAt?.getTime() ?? 0
+          const bTime = b.modifiedAt?.getTime() ?? 0
+          return bTime - aTime
+        })
+        .slice(0, 5)
     }
 
     return noteResults.filter((note) => {
