@@ -17,6 +17,7 @@ type TagStore = {
   tagEntries: WorkspaceEntry[]
   currentTagPath: string | null
   currentRequestId: number
+  isLoadingTagEntries: boolean
   addTag: (tagName: string) => Promise<void>
   removeTag: (tagName: string) => Promise<void>
   loadTags: (workspacePath: string | null) => Promise<void>
@@ -63,6 +64,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
   tagEntries: [],
   currentTagPath: null,
   currentRequestId: 0,
+  isLoadingTagEntries: false,
 
   loadTags: async (workspacePath: string | null) => {
     if (!workspacePath) {
@@ -160,6 +162,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
         tagEntries: [],
         currentTagPath: null,
         currentRequestId: state.currentRequestId + 1,
+        isLoadingTagEntries: false,
       })
       return
     }
@@ -171,6 +174,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
         tagEntries: [],
         currentTagPath: null,
         currentRequestId: state.currentRequestId + 1,
+        isLoadingTagEntries: false,
       })
       return
     }
@@ -181,6 +185,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
         tagEntries: [],
         currentTagPath: null,
         currentRequestId: state.currentRequestId + 1,
+        isLoadingTagEntries: false,
       })
       return
     }
@@ -188,7 +193,12 @@ export const useTagStore = create<TagStore>((set, get) => ({
     // Increment request ID to cancel previous requests
     const state = get()
     const requestId = state.currentRequestId + 1
-    set({ currentRequestId: requestId, currentTagPath: tagPath })
+    set({
+      currentRequestId: requestId,
+      currentTagPath: tagPath,
+      tagEntries: [],
+      isLoadingTagEntries: true,
+    })
 
     try {
       const result = await get().fetchTagEntries(
@@ -204,7 +214,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
         return
       }
 
-      set({ tagEntries: result })
+      set({ tagEntries: result, isLoadingTagEntries: false })
     } catch (error) {
       // Check if this request is still current
       const currentState = get()
@@ -213,7 +223,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
       }
 
       console.error('Failed to fetch query entries:', error)
-      set({ tagEntries: [] })
+      set({ tagEntries: [], isLoadingTagEntries: false })
     }
   },
 

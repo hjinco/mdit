@@ -7,7 +7,7 @@ export function useCollectionEntries(
   currentCollectionPath: string | null,
   entries: WorkspaceEntry[],
   workspacePath: string | null
-): WorkspaceEntry[] {
+): { entries: WorkspaceEntry[]; isLoadingTagEntries: boolean } {
   const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
   const indexingConfig = useIndexingStore((state) =>
     workspacePath ? (state.configs[workspacePath] ?? null) : null
@@ -15,6 +15,9 @@ export function useCollectionEntries(
   const embeddingProvider = indexingConfig?.embeddingProvider ?? ''
   const embeddingModel = indexingConfig?.embeddingModel ?? ''
   const tagEntries = useTagStore((state) => state.tagEntries)
+  const isLoadingTagEntries = useTagStore(
+    (state) => state.isLoadingTagEntries
+  )
   const loadTagEntries = useTagStore((state) => state.loadTagEntries)
 
   useEffect(() => {
@@ -90,5 +93,5 @@ export function useCollectionEntries(
     )
   }, [currentCollectionPath, entries, tagEntries, workspacePath])
 
-  return computedEntries
+  return { entries: computedEntries, isLoadingTagEntries }
 }
