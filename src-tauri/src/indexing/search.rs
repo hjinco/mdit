@@ -16,7 +16,6 @@ use super::embedding::EmbeddingClient;
 use crate::migrations;
 
 const MIN_QUERY_SIMILARITY: f32 = 0.4;
-const TOP_K_SEGMENTS: usize = 3;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -129,31 +128,28 @@ pub(crate) fn search_notes_for_query(
     for aggregate in doc_vectors.into_values() {
         let DocAggregate {
             rel_path,
-            mut segment_similarities,
+            segment_similarities,
         } = aggregate;
 
         if segment_similarities.is_empty() {
             continue;
         }
 
-        segment_similarities
-            .sort_by(|a, b| b.partial_cmp(a).unwrap_or_else(|| Ordering::Equal));
-
-        let mut sum_similarity = 0.0;
-        let mut used = 0;
-        for similarity in segment_similarities.into_iter().take(TOP_K_SEGMENTS) {
+        let mut max_similarity: Option<f32> = None;
+        for similarity in segment_similarities.into_iter() {
             if !similarity.is_finite() {
                 continue;
             }
-            sum_similarity += similarity;
-            used += 1;
+
+            max_similarity = match max_similarity {
+                Some(current_max) if similarity <= current_max => Some(current_max),
+                _ => Some(similarity),
+            };
         }
 
-        if used == 0 {
+        let Some(similarity) = max_similarity else {
             continue;
-        }
-
-        let similarity = sum_similarity / used as f32;
+        };
         if !similarity.is_finite() || similarity < MIN_QUERY_SIMILARITY {
             continue;
         }
