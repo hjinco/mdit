@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FolderIcon, HashIcon } from 'lucide-react'
+import { FolderIcon, HashIcon, Loader2Icon } from 'lucide-react'
 import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
@@ -75,11 +75,8 @@ export function CollectionView() {
     ? tagName
     : currentCollectionPath?.split('/').pop()
 
-  const collectionEntries = useCollectionEntries(
-    currentCollectionPath,
-    entries,
-    workspacePath
-  )
+  const { entries: collectionEntries, isLoadingTagEntries } =
+    useCollectionEntries(currentCollectionPath, entries, workspacePath)
 
   const {
     sortedEntries,
@@ -93,6 +90,7 @@ export function CollectionView() {
   const { getPreview, setPreview, invalidatePreview } = usePreviewCache(
     currentCollectionPath
   )
+  const showTagLoadingState = isTagPath && isLoadingTagEntries
 
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
@@ -217,7 +215,11 @@ export function CollectionView() {
           setSelectedEntryPaths(new Set())
         }}
       >
-        {sortedEntries.length === 0 ? (
+        {showTagLoadingState ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+            <Loader2Icon className="size-4 animate-spin" />
+          </div>
+        ) : sortedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <p className="text-sm text-muted-foreground">
               No notes in this folder
