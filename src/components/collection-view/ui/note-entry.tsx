@@ -130,14 +130,20 @@ export function NoteEntry({
     await submitRename()
   }, [submitRename])
 
+  const isPreviewLoaded = previewText !== undefined
+
   return (
     <li
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer',
-        'opacity-20 group-hover/side:opacity-50 hover:opacity-100 transition-opacity duration-200',
-        (isActive || isSelected) && 'opacity-100 group-hover/side:opacity-100'
+        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer transition-opacity duration-200',
+        !isPreviewLoaded && 'opacity-0',
+        isPreviewLoaded &&
+          'opacity-20 group-hover/side:opacity-50 hover:opacity-100',
+        isPreviewLoaded &&
+          (isActive || isSelected) &&
+          'opacity-100 group-hover/side:opacity-100'
       )}
       style={style}
       data-index={dataIndex}
@@ -166,7 +172,7 @@ export function NoteEntry({
         )}
       </div>
       <div className="text-xs text-foreground/80 line-clamp-2 min-h-8">
-        {previewText ?? '\u00A0'}
+        {previewText}
       </div>
       {entry.modifiedAt && (
         <div className="text-xs text-foreground/70">
