@@ -66,9 +66,15 @@ export function CommandMenu() {
   useCommandMenuHotkey(isCommandMenuOpen, openCommandMenu, closeCommandMenu)
 
   // Clear the search so the next open starts fresh.
+  // Delay clearing to avoid showing placeholder during close animation
   useEffect(() => {
     if (!isCommandMenuOpen) {
-      setQuery('')
+      const timeout = setTimeout(() => {
+        setQuery('')
+      }, 250)
+      return () => {
+        clearTimeout(timeout)
+      }
     }
   }, [isCommandMenuOpen])
 
