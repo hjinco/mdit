@@ -22,7 +22,7 @@ export function TopMenu({
   return (
     <div
       className={cn(
-        'fixed top-0 h-12 flex items-center justify-end gap-1 px-2 z-[9999]',
+        'fixed top-0 h-12 flex items-center justify-end gap-1 px-2 z-49',
         !isResizing && 'transition-[width] ease-out duration-100'
       )}
       style={{ width: isOpen ? width : closedWidth }}
