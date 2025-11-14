@@ -388,7 +388,7 @@ export function FileExplorer() {
         </footer>
         {isOpen && (
           <div
-            className="absolute top-0 -right-0.5 z-10 h-full w-1 cursor-col-resize bg-transparent"
+            className="absolute top-0 -right-1 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-foreground/20 transition-colors delay-100"
             onPointerDown={handlePointerDown}
           />
         )}
