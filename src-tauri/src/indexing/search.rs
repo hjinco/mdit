@@ -16,6 +16,7 @@ use super::embedding::EmbeddingClient;
 use crate::migrations;
 
 const MIN_QUERY_SIMILARITY: f32 = 0.4;
+const TOP_K_SEGMENTS: usize = 3;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,8 +30,7 @@ pub(crate) struct SemanticNoteEntry {
 
 struct DocAggregate {
     rel_path: String,
-    sum_vector: Vec<f32>,
-    count: usize,
+    segment_similarities: Vec<f32>,
 }
 
 pub(crate) fn search_notes_for_query(
@@ -106,46 +106,59 @@ pub(crate) fn search_notes_for_query(
             continue;
         }
 
+        let segment_norm = l2_norm(&segment_vector);
+        if segment_norm == 0.0 || !segment_norm.is_finite() {
+            continue;
+        }
+
+        let similarity = dot_product(&query_vector, &segment_vector) / (query_norm * segment_norm);
+        if !similarity.is_finite() {
+            continue;
+        }
+
         let entry = doc_vectors.entry(doc_id).or_insert_with(|| DocAggregate {
             rel_path: rel_path.clone(),
-            sum_vector: vec![0.0; query_vector.len()],
-            count: 0,
+            segment_similarities: Vec::new(),
         });
 
-        for (sum, value) in entry.sum_vector.iter_mut().zip(segment_vector.iter()) {
-            *sum += value;
-        }
-        entry.count += 1;
+        entry.segment_similarities.push(similarity);
     }
 
     let mut scored_entries = Vec::new();
 
     for aggregate in doc_vectors.into_values() {
-        if aggregate.count == 0 {
+        let DocAggregate {
+            rel_path,
+            mut segment_similarities,
+        } = aggregate;
+
+        if segment_similarities.is_empty() {
             continue;
         }
 
-        let mut avg_vector = aggregate.sum_vector;
-        let segment_count = aggregate.count as f32;
-        if segment_count == 0.0 {
+        segment_similarities
+            .sort_by(|a, b| b.partial_cmp(a).unwrap_or_else(|| Ordering::Equal));
+
+        let mut sum_similarity = 0.0;
+        let mut used = 0;
+        for similarity in segment_similarities.into_iter().take(TOP_K_SEGMENTS) {
+            if !similarity.is_finite() {
+                continue;
+            }
+            sum_similarity += similarity;
+            used += 1;
+        }
+
+        if used == 0 {
             continue;
         }
 
-        for value in avg_vector.iter_mut() {
-            *value /= segment_count;
-        }
-
-        let doc_norm = l2_norm(&avg_vector);
-        if doc_norm == 0.0 || !doc_norm.is_finite() {
-            continue;
-        }
-
-        let similarity = dot_product(&query_vector, &avg_vector) / (query_norm * doc_norm);
+        let similarity = sum_similarity / used as f32;
         if !similarity.is_finite() || similarity < MIN_QUERY_SIMILARITY {
             continue;
         }
 
-        let absolute_path = workspace_root.join(&aggregate.rel_path);
+        let absolute_path = workspace_root.join(&rel_path);
         if !absolute_path.exists() {
             continue;
         }
