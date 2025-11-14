@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import useMeasure from 'react-use-measure'
 import { useShallow } from 'zustand/shallow'
 import { useDebounce } from '@/hooks/use-debounce'
+import { useSemanticNoteSearch } from '@/hooks/use-semantic-note-search'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
@@ -59,9 +60,14 @@ export function CommandMenu() {
     debouncedQuery,
     workspacePath
   )
+  const { results: semanticResults } = useSemanticNoteSearch(
+    debouncedQuery,
+    workspacePath
+  )
   // Local filtering keeps the command palette fast even with thousands of files.
   const hasNoteMatches = filteredNoteResults.length > 0
   const hasContentMatches = contentMatchesByNote.length > 0
+  const hasSemanticMatches = semanticResults.length > 0
 
   useCommandMenuHotkey(isCommandMenuOpen, openCommandMenu, closeCommandMenu)
 
@@ -194,6 +200,42 @@ export function CommandMenu() {
                         ))}
                       </div>
                       <span className="text-muted-foreground text-xs">
+                        {relativePath}
+                      </span>
+                    </div>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+          )}
+          {hasSemanticMatches && (
+            <CommandGroup heading="AI Suggestions">
+              {semanticResults.map((result) => {
+                const note = noteResultsByPath.get(result.path)
+                const label =
+                  note?.label ??
+                  stripMarkdownExtension(result.name) ??
+                  result.name
+                const relativePath =
+                  note?.relativePath ??
+                  toRelativePath(result.path, workspacePath)
+                const keywords = [label, relativePath, 'semantic', 'ai'].filter(
+                  Boolean
+                ) as string[]
+
+                return (
+                  <CommandItem
+                    key={`${result.path}:semantic`}
+                    value={`${result.path}:semantic`}
+                    keywords={keywords}
+                    onSelect={() => handleSelectNote(result.path)}
+                    className="data-[selected=true]:bg-accent-foreground/10"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="truncate">{label}</span>
+                      </div>
+                      <span className="text-muted-foreground/80 text-xs">
                         {relativePath}
                       </span>
                     </div>
