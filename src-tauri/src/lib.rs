@@ -107,6 +107,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard::init())
         .invoke_handler(tauri::generate_handler![
             move_to_trash,
             move_many_to_trash,
