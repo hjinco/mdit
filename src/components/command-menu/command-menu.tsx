@@ -44,6 +44,8 @@ export function CommandMenu() {
   )
 
   const [query, setQuery] = useState('')
+  const [isInitialMeasureDebounced, setIsInitialMeasureDebounced] =
+    useState(false)
   // Debounce intensive lookups so we only search once a user pauses typing.
   const debouncedQuery = useDebounce(query, 300)
   // Build an index of notes in the workspace and pre-filter by the current search.
@@ -78,13 +80,32 @@ export function CommandMenu() {
     [closeCommandMenu, openNote]
   )
 
-  const [listRef, listBounds] = useMeasure()
+  const [listRef, listBounds] = useMeasure({
+    debounce: isInitialMeasureDebounced ? 220 : 0,
+  })
+
+  useEffect(() => {
+    if (!isCommandMenuOpen) {
+      setIsInitialMeasureDebounced(false)
+      return
+    }
+
+    setIsInitialMeasureDebounced(true)
+
+    const timeout = window.setTimeout(() => {
+      setIsInitialMeasureDebounced(false)
+    }, 220)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [isCommandMenuOpen])
 
   return (
     <CommandDialog
       open={isCommandMenuOpen}
       onOpenChange={setCommandMenuOpen}
-      className="bg-popover/90 backdrop-blur-xs top-[20%] translate-y-0"
+      className="bg-popover/90 backdrop-blur-xs top-[20%] translate-y-0 sm:max-w-2xl"
       commandProps={{
         className: 'bg-transparent',
         shouldFilter: false,
@@ -100,10 +121,10 @@ export function CommandMenu() {
       <motion.div
         style={{ overflow: 'hidden' }}
         initial={false}
-        animate={{ height: listBounds.height }}
+        animate={listBounds.height ? { height: listBounds.height } : {}}
         transition={{ ease: 'easeOut', duration: 0.1 }}
       >
-        <CommandList ref={listRef}>
+        <CommandList ref={listRef} className="max-h-88">
           <CommandEmpty>No results found</CommandEmpty>
           {hasNoteMatches && (
             <CommandGroup heading="Notes">
