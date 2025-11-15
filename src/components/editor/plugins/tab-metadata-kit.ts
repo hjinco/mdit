@@ -23,6 +23,11 @@ function isHeadingType(type: string) {
 }
 
 /**
+ * Regex pattern to match "Untitled {number}" format
+ */
+const UNTITLED_PATTERN = /^Untitled \d+$/
+
+/**
  * Calculate Levenshtein distance (edit distance) between two strings
  */
 function levenshteinDistance(a: string, b: string): number {
@@ -87,9 +92,14 @@ const TabMetadataPlugin = createPlatePlugin({
           if (focusPath.length === 1 && focusPath[0] === 0) {
             const firstHeading = extractTextFromNode(firstBlock)
             useTabStore.setState((prev) => {
+              // Always update tab name for "Untitled {number}" files to enable auto-renaming
+              const isUntitledPattern =
+                prev.tab?.name && UNTITLED_PATTERN.test(prev.tab.name)
+
               // This prevents overwriting tab name when user manually renamed file to match heading
               if (
                 prev.tab &&
+                !isUntitledPattern &&
                 levenshteinDistance(firstHeading, prev.tab.name) > 1
               ) {
                 return prev
