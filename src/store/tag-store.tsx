@@ -11,6 +11,7 @@ type TagStore = {
   currentTagPath: string | null
   currentRequestId: number
   isLoadingTagEntries: boolean
+  tagCache: Record<string, WorkspaceEntry[]>
   addTag: (tagName: string) => Promise<void>
   removeTag: (tagName: string) => Promise<void>
   loadTags: (workspacePath: string | null) => Promise<void>
@@ -28,6 +29,7 @@ type TagStore = {
   ) => Promise<void>
   removeTagEntries: (paths: string[]) => void
   updateTagEntry: (oldPath: string, newPath: string, newName: string) => void
+  invalidateTagCache: () => void
 }
 
 const loadTagsFromFile = async (workspacePath: string): Promise<string[]> => {
@@ -58,6 +60,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
   currentTagPath: null,
   currentRequestId: 0,
   isLoadingTagEntries: false,
+  tagCache: {},
 
   loadTags: async (workspacePath: string | null) => {
     if (!workspacePath) {
@@ -183,9 +186,22 @@ export const useTagStore = create<TagStore>((set, get) => ({
       return
     }
 
+    // Check cache first
+    const cachedEntries = get().tagCache[tagName]
+
+    if (cachedEntries) {
+      // Use cached entries immediately while cancelling any in-flight requests
+      set((prevState) => ({
+        currentRequestId: prevState.currentRequestId + 1,
+        currentTagPath: tagPath,
+        tagEntries: cachedEntries,
+        isLoadingTagEntries: false,
+      }))
+      return
+    }
+
     // Increment request ID to cancel previous requests
-    const state = get()
-    const requestId = state.currentRequestId + 1
+    const requestId = get().currentRequestId + 1
     set({
       currentRequestId: requestId,
       currentTagPath: tagPath,
@@ -207,7 +223,15 @@ export const useTagStore = create<TagStore>((set, get) => ({
         return
       }
 
-      set({ tagEntries: result, isLoadingTagEntries: false })
+      // Save to cache
+      set((prevState) => ({
+        tagEntries: result,
+        isLoadingTagEntries: false,
+        tagCache: {
+          ...prevState.tagCache,
+          [tagName]: result,
+        },
+      }))
     } catch (error) {
       // Check if this request is still current
       const currentState = get()
@@ -221,24 +245,47 @@ export const useTagStore = create<TagStore>((set, get) => ({
   },
 
   removeTagEntries: (paths: string[]) => {
-    set((state) => ({
-      tagEntries: state.tagEntries.filter(
-        (entry) => !paths.includes(entry.path)
-      ),
-    }))
+    set((state) => {
+      const filterEntries = (entries: WorkspaceEntry[]) =>
+        entries.filter((entry) => !paths.includes(entry.path))
+
+      const updatedCache = Object.fromEntries(
+        Object.entries(state.tagCache).map(([tag, entries]) => [
+          tag,
+          filterEntries(entries),
+        ])
+      )
+
+      return {
+        tagEntries: filterEntries(state.tagEntries),
+        tagCache: updatedCache,
+      }
+    })
   },
 
   updateTagEntry: (oldPath: string, newPath: string, newName: string) => {
-    set((state) => ({
-      tagEntries: state.tagEntries.map((entry) =>
+    set((state) => {
+      const updateEntry = (entry: WorkspaceEntry) =>
         entry.path === oldPath
-          ? {
-              ...entry,
-              path: newPath,
-              name: newName,
-            }
+          ? { ...entry, path: newPath, name: newName }
           : entry
-      ),
-    }))
+
+      const updatedCache = Object.fromEntries(
+        Object.entries(state.tagCache).map(([tag, entries]) => [
+          tag,
+          entries.map(updateEntry),
+        ])
+      )
+
+      return {
+        tagEntries: state.tagEntries.map(updateEntry),
+        tagCache: updatedCache,
+      }
+    })
+  },
+
+  invalidateTagCache: () => {
+    // Clear all tag cache entries since workspace change invalidates all caches
+    set({ tagCache: {} })
   },
 }))

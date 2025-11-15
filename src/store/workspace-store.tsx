@@ -192,6 +192,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   setWorkspace: async (path: string) => {
     try {
       const { tab, closeTab, clearHistory } = useTabStore.getState()
+      const prevWorkspacePath = get().workspacePath
 
       if (tab) {
         closeTab(tab.path)
@@ -237,6 +238,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
       get().refreshWorkspaceEntries()
       useTagStore.getState().loadTags(path)
+      if (prevWorkspacePath && prevWorkspacePath !== path) {
+        useTagStore.getState().invalidateTagCache()
+      }
     } catch (error) {
       console.error('Failed to set workspace:', error)
     }
