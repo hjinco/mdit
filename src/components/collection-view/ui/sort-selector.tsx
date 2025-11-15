@@ -79,17 +79,17 @@ export function SortSelector({
       </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup value={value} onValueChange={handleValueChange}>
-          <DropdownMenuRadioItem value="name">
-            <CaseSensitiveIcon />
-            {SORT_LABELS.name}
+          <DropdownMenuRadioItem value="modifiedAt">
+            <CalendarClockIcon />
+            {SORT_LABELS.modifiedAt}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="createdAt">
             <CalendarIcon />
             {SORT_LABELS.createdAt}
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="modifiedAt">
-            <CalendarClockIcon />
-            {SORT_LABELS.modifiedAt}
+          <DropdownMenuRadioItem value="name">
+            <CaseSensitiveIcon />
+            {SORT_LABELS.name}
           </DropdownMenuRadioItem>
           {enableTagRelevance && (
             <DropdownMenuRadioItem value="tagRelevance">

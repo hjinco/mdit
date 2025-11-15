@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
-export type SortOption =
-  | 'name'
-  | 'createdAt'
-  | 'modifiedAt'
-  | 'tagRelevance'
+export type SortOption = 'name' | 'createdAt' | 'modifiedAt' | 'tagRelevance'
 export type SortDirection = 'asc' | 'desc'
 
 const COLLECTION_SORT_OPTION_KEY = 'collection-sort-option'
 const COLLECTION_SORT_DIRECTION_KEY = 'collection-sort-direction'
 
-const DEFAULT_SORT_OPTION: SortOption = 'name'
-const DEFAULT_SORT_DIRECTION: SortDirection = 'asc'
+const DEFAULT_SORT_OPTION: SortOption = 'modifiedAt'
+const DEFAULT_SORT_DIRECTION: SortDirection = 'desc'
 
 const readInitialSortOption = (): SortOption => {
   const stored = localStorage.getItem(COLLECTION_SORT_OPTION_KEY)
@@ -51,8 +47,9 @@ export function useCollectionSort(
   const [sortOptionState, setSortOptionState] = useState<SortOption>(
     readInitialSortOption
   )
-  const [sortDirectionState, setSortDirectionState] =
-    useState<SortDirection>(readInitialSortDirection)
+  const [sortDirectionState, setSortDirectionState] = useState<SortDirection>(
+    readInitialSortDirection
+  )
 
   useEffect(() => {
     localStorage.setItem(COLLECTION_SORT_OPTION_KEY, sortOptionState)
@@ -63,7 +60,11 @@ export function useCollectionSort(
   }, [sortDirectionState])
 
   useEffect(() => {
-    if (isTagPath && sortOptionState === 'tagRelevance' && sortDirectionState !== 'desc') {
+    if (
+      isTagPath &&
+      sortOptionState === 'tagRelevance' &&
+      sortDirectionState !== 'desc'
+    ) {
       setSortDirectionState('desc')
     }
   }, [isTagPath, sortOptionState, sortDirectionState])
