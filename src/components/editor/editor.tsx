@@ -16,6 +16,7 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 import { HistoryNavigation } from './header/history-navigation'
 import { MoreButton } from './header/more-button'
 import { Tab } from './header/tab'
+import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
 import { EditorKit } from './plugins/editor-kit'
 import {
   copySelection,
@@ -87,18 +88,21 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
     value,
   })
 
+  const { handleRenameAfterSave } = useAutoRenameOnSave(path)
+
   const handleSave = useCallback(() => {
     if (isSaved.current) return
     writeTextFile(path, editor.api.markdown.serialize())
       .then(() => {
         isSaved.current = true
         setTabSaved(true)
+        handleRenameAfterSave()
       })
       .catch(() => {
         isSaved.current = false
         setTabSaved(false)
       })
-  }, [editor, path, setTabSaved])
+  }, [editor, path, setTabSaved, handleRenameAfterSave])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
