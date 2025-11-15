@@ -254,6 +254,7 @@ export function CollectionView() {
                 <NoteEntry
                   key={entry.path}
                   entry={entry}
+                  name={isActive ? tab.name : entry.name}
                   isActive={isActive}
                   isSelected={isSelected}
                   onClick={handleClick}

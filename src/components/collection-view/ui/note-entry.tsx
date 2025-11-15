@@ -13,6 +13,7 @@ import type { WorkspaceEntry } from '@/store/workspace-store'
 
 type NoteEntryProps = {
   entry: WorkspaceEntry
+  name: string
   isActive: boolean
   isSelected: boolean
   onClick: (event: MouseEvent<HTMLLIElement>) => void
@@ -28,6 +29,7 @@ type NoteEntryProps = {
 
 export function NoteEntry({
   entry,
+  name,
   isActive,
   isSelected,
   onClick,
@@ -63,10 +65,13 @@ export function NoteEntry({
   }, [entry.path, previewText, setPreview])
 
   // Remove extension from display name
-  const lastDotIndex = entry.name.lastIndexOf('.')
-  const baseName =
-    lastDotIndex > 0 ? entry.name.slice(0, lastDotIndex) : entry.name
-  const extension = lastDotIndex > 0 ? entry.name.slice(lastDotIndex) : ''
+  // Use entry.name for extension extraction since it always includes the extension
+  const entryLastDotIndex = entry.name.lastIndexOf('.')
+  const extension =
+    entryLastDotIndex > 0 ? entry.name.slice(entryLastDotIndex) : ''
+  // baseName is for display, use name prop (which may or may not have extension)
+  const nameLastDotIndex = name.lastIndexOf('.')
+  const baseName = nameLastDotIndex > 0 ? name.slice(0, nameLastDotIndex) : name
 
   const [draftName, setDraftName] = useState(baseName)
   const inputRef = useRef<HTMLInputElement | null>(null)

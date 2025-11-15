@@ -21,12 +21,14 @@ import { MediaKit } from './media-kit'
 import { ShortcutsKit } from './shortcuts-kit'
 import { SlashKit } from './slash-kit'
 import { SuggestionKit } from './suggestion-kit'
+import { TabMetadataKit } from './tab-metadata-kit'
 import { TableKit } from './table-kit'
 import { TocKit } from './toc-kit'
 import { UtilsKit } from './utils-kit'
 
 export const EditorKit = [
   ...FilePasteKit,
+  ...TabMetadataKit,
   ...AIKit,
   ...AutoformatKit,
   ...BasicBlocksKit,
