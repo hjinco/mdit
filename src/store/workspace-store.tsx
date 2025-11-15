@@ -32,14 +32,16 @@ import {
   updateEntryInState,
   updateEntryMetadata,
 } from './workspace/utils/entry-utils'
-import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
 import {
   removeExpandedDirectories,
   renameExpandedDirectories,
   syncExpandedDirectoriesWithEntries,
 } from './workspace/utils/expanded-directories-utils'
+import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
+import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
 
 const MAX_HISTORY_LENGTH = 5
+
 const ensureWorkspaceMigrations = async (workspacePath: string) => {
   if (!workspacePath) {
     return
@@ -457,15 +459,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteEntries: async (paths: string[]) => {
     try {
-      const { tab, isSaved, closeTab, removePathFromHistory } =
-        useTabStore.getState()
+      let tabState = useTabStore.getState()
+      const activeTabPath = tabState.tab?.path
 
-      if (tab?.path && paths.includes(tab.path)) {
-        closeTab(tab.path)
-
-        if (!isSaved) {
-          await new Promise((resolve) => setTimeout(resolve, 400))
-        }
+      if (activeTabPath && paths.includes(activeTabPath)) {
+        tabState = await waitForUnsavedTabToSettle(activeTabPath, () =>
+          useTabStore.getState()
+        )
+        tabState.closeTab(activeTabPath)
       }
 
       if (paths.length === 1) {
@@ -476,7 +477,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       // Remove deleted paths from history
       for (const path of paths) {
-        removePathFromHistory(path)
+        tabState.removePathFromHistory(path)
       }
 
       // Update currentCollectionPath if it's being deleted
@@ -608,6 +609,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
+      const tabState = await waitForUnsavedTabToSettle(entry.path, () =>
+        useTabStore.getState()
+      )
+
       const directoryPath = await dirname(entry.path)
       const nextPath = await join(directoryPath, trimmedName)
 
@@ -636,9 +641,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         }))
       }
 
-      const { renameTab, updateHistoryPath } = useTabStore.getState()
-      await renameTab(entry.path, nextPath)
-      updateHistoryPath(entry.path, nextPath)
+      await tabState.renameTab(entry.path, nextPath)
+      tabState.updateHistoryPath(entry.path, nextPath)
 
       // If renaming in a tag collection, also update tagEntries
       const { currentCollectionPath } = get()
@@ -700,6 +704,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
+      const tabState = await waitForUnsavedTabToSettle(sourcePath, () =>
+        useTabStore.getState()
+      )
+
       // Get the file/folder name from source path
       const fileName =
         sourcePath.split('/').pop() || sourcePath.split('\\').pop()
@@ -717,8 +725,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         return false
       }
 
-      let markdownRewriteContext: { content: string; sourceDir: string } | null =
-        null
+      let markdownRewriteContext: {
+        content: string
+        sourceDir: string
+      } | null = null
       let shouldRefreshTab = false
 
       if (MARKDOWN_EXT_REGEX.test(fileName)) {
@@ -756,11 +766,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       // Update tab path if the moved file is currently open
-      const { renameTab, updateHistoryPath } = useTabStore.getState()
-      await renameTab(sourcePath, newPath, {
+      await tabState.renameTab(sourcePath, newPath, {
         refreshContent: shouldRefreshTab,
       })
-      updateHistoryPath(sourcePath, newPath)
+      tabState.updateHistoryPath(sourcePath, newPath)
 
       // If moving in a tag collection, also update tagEntries
       const { currentCollectionPath } = get()
