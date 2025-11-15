@@ -11,6 +11,7 @@ type TagStore = {
   currentTagPath: string | null
   currentRequestId: number
   isLoadingTagEntries: boolean
+  tagCache: Record<string, WorkspaceEntry[]>
   addTag: (tagName: string) => Promise<void>
   removeTag: (tagName: string) => Promise<void>
   loadTags: (workspacePath: string | null) => Promise<void>
@@ -28,6 +29,7 @@ type TagStore = {
   ) => Promise<void>
   removeTagEntries: (paths: string[]) => void
   updateTagEntry: (oldPath: string, newPath: string, newName: string) => void
+  invalidateTagCache: () => void
 }
 
 const loadTagsFromFile = async (workspacePath: string): Promise<string[]> => {
@@ -58,6 +60,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
   currentTagPath: null,
   currentRequestId: 0,
   isLoadingTagEntries: false,
+  tagCache: {},
 
   loadTags: async (workspacePath: string | null) => {
     if (!workspacePath) {
@@ -183,9 +186,21 @@ export const useTagStore = create<TagStore>((set, get) => ({
       return
     }
 
+    // Check cache first
+    const cachedEntries = get().tagCache[tagName]
+
+    if (cachedEntries) {
+      // Use cached entries immediately
+      set({
+        currentTagPath: tagPath,
+        tagEntries: cachedEntries,
+        isLoadingTagEntries: false,
+      })
+      return
+    }
+
     // Increment request ID to cancel previous requests
-    const state = get()
-    const requestId = state.currentRequestId + 1
+    const requestId = get().currentRequestId + 1
     set({
       currentRequestId: requestId,
       currentTagPath: tagPath,
@@ -207,7 +222,15 @@ export const useTagStore = create<TagStore>((set, get) => ({
         return
       }
 
-      set({ tagEntries: result, isLoadingTagEntries: false })
+      // Save to cache
+      set((prevState) => ({
+        tagEntries: result,
+        isLoadingTagEntries: false,
+        tagCache: {
+          ...prevState.tagCache,
+          [tagName]: result,
+        },
+      }))
     } catch (error) {
       // Check if this request is still current
       const currentState = get()
@@ -240,5 +263,10 @@ export const useTagStore = create<TagStore>((set, get) => ({
           : entry
       ),
     }))
+  },
+
+  invalidateTagCache: () => {
+    // Clear all tag cache entries since workspace change invalidates all caches
+    set({ tagCache: {} })
   },
 }))
