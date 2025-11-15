@@ -190,12 +190,13 @@ export const useTagStore = create<TagStore>((set, get) => ({
     const cachedEntries = get().tagCache[tagName]
 
     if (cachedEntries) {
-      // Use cached entries immediately
-      set({
+      // Use cached entries immediately while cancelling any in-flight requests
+      set((prevState) => ({
+        currentRequestId: prevState.currentRequestId + 1,
         currentTagPath: tagPath,
         tagEntries: cachedEntries,
         isLoadingTagEntries: false,
-      })
+      }))
       return
     }
 
@@ -244,25 +245,43 @@ export const useTagStore = create<TagStore>((set, get) => ({
   },
 
   removeTagEntries: (paths: string[]) => {
-    set((state) => ({
-      tagEntries: state.tagEntries.filter(
-        (entry) => !paths.includes(entry.path)
-      ),
-    }))
+    set((state) => {
+      const filterEntries = (entries: WorkspaceEntry[]) =>
+        entries.filter((entry) => !paths.includes(entry.path))
+
+      const updatedCache = Object.fromEntries(
+        Object.entries(state.tagCache).map(([tag, entries]) => [
+          tag,
+          filterEntries(entries),
+        ])
+      )
+
+      return {
+        tagEntries: filterEntries(state.tagEntries),
+        tagCache: updatedCache,
+      }
+    })
   },
 
   updateTagEntry: (oldPath: string, newPath: string, newName: string) => {
-    set((state) => ({
-      tagEntries: state.tagEntries.map((entry) =>
+    set((state) => {
+      const updateEntry = (entry: WorkspaceEntry) =>
         entry.path === oldPath
-          ? {
-              ...entry,
-              path: newPath,
-              name: newName,
-            }
+          ? { ...entry, path: newPath, name: newName }
           : entry
-      ),
-    }))
+
+      const updatedCache = Object.fromEntries(
+        Object.entries(state.tagCache).map(([tag, entries]) => [
+          tag,
+          entries.map(updateEntry),
+        ])
+      )
+
+      return {
+        tagEntries: state.tagEntries.map(updateEntry),
+        tagCache: updatedCache,
+      }
+    })
   },
 
   invalidateTagCache: () => {
