@@ -70,8 +70,7 @@ export function NoteEntry({
   const extension =
     entryLastDotIndex > 0 ? entry.name.slice(entryLastDotIndex) : ''
   // baseName is for display, use name prop (which may or may not have extension)
-  const nameLastDotIndex = name.lastIndexOf('.')
-  const baseName = nameLastDotIndex > 0 ? name.slice(0, nameLastDotIndex) : name
+  const baseName = isActive ? name : entry.name.slice(0, entryLastDotIndex)
 
   const [draftName, setDraftName] = useState(baseName)
   const inputRef = useRef<HTMLInputElement | null>(null)
