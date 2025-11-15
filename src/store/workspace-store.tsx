@@ -32,6 +32,7 @@ import {
   updateEntryInState,
   updateEntryMetadata,
 } from './workspace/utils/entry-utils'
+import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
 import {
   removeExpandedDirectories,
   renameExpandedDirectories,
@@ -636,7 +637,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       const { renameTab, updateHistoryPath } = useTabStore.getState()
-      renameTab(entry.path, nextPath)
+      await renameTab(entry.path, nextPath)
       updateHistoryPath(entry.path, nextPath)
 
       // If renaming in a tag collection, also update tagEntries
@@ -716,11 +717,49 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         return false
       }
 
+      let markdownRewriteContext: { content: string; sourceDir: string } | null =
+        null
+      let shouldRefreshTab = false
+
+      if (MARKDOWN_EXT_REGEX.test(fileName)) {
+        try {
+          const sourceDirectory = await dirname(sourcePath)
+          if (sourceDirectory !== destinationPath) {
+            const noteContent = await readTextFile(sourcePath)
+            markdownRewriteContext = {
+              content: noteContent,
+              sourceDir: sourceDirectory,
+            }
+          }
+        } catch (error) {
+          console.error('Failed to prepare markdown link updates:', error)
+        }
+      }
+
       await rename(sourcePath, newPath)
+
+      if (markdownRewriteContext) {
+        try {
+          const updatedContent = rewriteMarkdownRelativeLinks(
+            markdownRewriteContext.content,
+            markdownRewriteContext.sourceDir,
+            destinationPath
+          )
+
+          if (updatedContent !== markdownRewriteContext.content) {
+            await writeTextFile(newPath, updatedContent)
+            shouldRefreshTab = true
+          }
+        } catch (error) {
+          console.error('Failed to rewrite markdown links after move:', error)
+        }
+      }
 
       // Update tab path if the moved file is currently open
       const { renameTab, updateHistoryPath } = useTabStore.getState()
-      renameTab(sourcePath, newPath)
+      await renameTab(sourcePath, newPath, {
+        refreshContent: shouldRefreshTab,
+      })
       updateHistoryPath(sourcePath, newPath)
 
       // If moving in a tag collection, also update tagEntries

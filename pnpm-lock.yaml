@@ -260,6 +260,12 @@ importers:
       remark-math:
         specifier: ^6.0.0
         version: 6.0.0
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-stringify:
+        specifier: ^11.0.0
+        version: 11.0.0
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -275,6 +281,12 @@ importers:
       unicode-segmenter:
         specifier: ^0.14.0
         version: 0.14.0
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
+      unist-util-visit:
+        specifier: ^5.0.0
+        version: 5.0.0
       yaml:
         specifier: ^2.8.1
         version: 2.8.1
@@ -294,6 +306,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.9.4
         version: 2.9.4
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       '@types/node':
         specifier: ^24.3.0
         version: 24.3.0

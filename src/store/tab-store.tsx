@@ -13,6 +13,10 @@ export type Tab = {
   content: string
 }
 
+type RenameTabOptions = {
+  refreshContent?: boolean
+}
+
 type TabStore = {
   tab: Tab | null
   isSaved: boolean
@@ -25,7 +29,11 @@ type TabStore = {
   ) => Promise<void>
   openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
-  renameTab: (oldPath: string, newPath: string) => void
+  renameTab: (
+    oldPath: string,
+    newPath: string,
+    options?: RenameTabOptions
+  ) => Promise<void>
   setTabSaved: (isSaved: boolean) => void
   goBack: () => Promise<boolean>
   goForward: () => Promise<boolean>
@@ -107,7 +115,8 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
     set({ tab: null })
   },
-  renameTab: (oldPath, newPath) => {
+  renameTab: async (oldPath, newPath, options) => {
+    const refreshContent = options?.refreshContent ?? false
     const tab = get().tab
 
     if (!tab || tab.path !== oldPath) {
@@ -121,11 +130,28 @@ export const useTabStore = create<TabStore>((set, get) => ({
       return
     }
 
+    let content = tab.content
+    let nextId = tab.id
+
+    if (refreshContent) {
+      nextId = ++tabIdCounter
+
+      if (newPath.endsWith('.md')) {
+        try {
+          content = await readTextFile(newPath)
+        } catch (error) {
+          console.error('Failed to refresh tab content after rename:', error)
+        }
+      }
+    }
+
     set({
       tab: {
         ...tab,
+        id: nextId,
         path: newPath,
         name,
+        content,
       },
     })
   },
