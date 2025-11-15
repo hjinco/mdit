@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.39",
@@ -123,7 +124,8 @@
     "tw-animate-css": "^1.3.7",
     "typescript": "~5.8.3",
     "ultracite": "5.2.5",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^4.0.9"
   },
   "packageManager": "pnpm@10.14.0"
 }
