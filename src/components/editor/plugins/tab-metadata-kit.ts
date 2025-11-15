@@ -23,9 +23,9 @@ function isHeadingType(type: string) {
 }
 
 /**
- * Regex pattern to match "Untitled {number}" format
+ * Regex pattern to match "Untitled" or "Untitled {number}" format
  */
-const UNTITLED_PATTERN = /^Untitled \d+$/
+const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 
 /**
  * Calculate Levenshtein distance (edit distance) between two strings
