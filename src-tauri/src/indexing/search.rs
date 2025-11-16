@@ -1,6 +1,6 @@
 use std::{
-    collections::HashMap,
     cmp::Ordering,
+    collections::HashMap,
     convert::TryFrom,
     ffi::OsStr,
     fs,
@@ -16,7 +16,7 @@ use super::embedding::EmbeddingClient;
 use crate::migrations;
 
 const MIN_QUERY_SIMILARITY: f32 = 0.4;
-const MIN_NOTE_BYTES: u64 = 512;
+const MIN_NOTE_BYTES: u64 = 256;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,11 +62,7 @@ pub(crate) fn search_notes_for_query(
     let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
     let query_embedding = embedder.generate(trimmed_query)?;
     let query_vector = bytes_to_f32_vec(&query_embedding.bytes)?;
-    if query_vector.is_empty() {
-        return Ok(Vec::new());
-    }
-    let query_norm = l2_norm(&query_vector);
-    if query_norm == 0.0 || !query_norm.is_finite() {
+    if query_vector.is_empty() || !query_vector.iter().all(|value| value.is_finite()) {
         return Ok(Vec::new());
     }
 
@@ -106,12 +102,7 @@ pub(crate) fn search_notes_for_query(
             continue;
         }
 
-        let segment_norm = l2_norm(&segment_vector);
-        if segment_norm == 0.0 || !segment_norm.is_finite() {
-            continue;
-        }
-
-        let similarity = dot_product(&query_vector, &segment_vector) / (query_norm * segment_norm);
+        let similarity = dot_product(&query_vector, &segment_vector);
         if !similarity.is_finite() {
             continue;
         }
@@ -184,10 +175,6 @@ fn bytes_to_f32_vec(bytes: &[u8]) -> Result<Vec<f32>> {
         values.push(f32::from_le_bytes(arr));
     }
     Ok(values)
-}
-
-fn l2_norm(values: &[f32]) -> f32 {
-    values.iter().map(|v| v * v).sum::<f32>().sqrt()
 }
 
 fn dot_product(a: &[f32], b: &[f32]) -> f32 {
