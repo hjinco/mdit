@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export function usePreviewCache(currentCollectionPath: string | null) {
@@ -40,21 +41,35 @@ export function usePreviewCache(currentCollectionPath: string | null) {
     [previewTexts]
   )
 
-  const setPreview = useCallback((path: string, preview: string) => {
-    setPreviewTexts((prev) => {
-      const next = new Map(prev)
-      next.set(path, preview)
-      return next
-    })
+  const setPreview = useCallback(async (path: string) => {
+    try {
+      const preview = await invoke<string>('get_note_preview', {
+        path,
+      })
+      setPreviewTexts((prev) => {
+        const next = new Map(prev)
+        next.set(path, preview)
+        return next
+      })
+    } catch (_e) {
+      setPreviewTexts((prev) => {
+        const next = new Map(prev)
+        next.set(path, '')
+        return next
+      })
+    }
   }, [])
 
-  const invalidatePreview = useCallback((path: string) => {
+  const invalidatePreview = useCallback(async (path: string) => {
+    const preview = await invoke<string>('get_note_preview', {
+      path,
+    })
     setPreviewTexts((prev) => {
       if (!prev.has(path)) {
         return prev
       }
       const next = new Map(prev)
-      next.delete(path)
+      next.set(path, preview)
       return next
     })
   }, [])

@@ -1,4 +1,3 @@
-import { invoke } from '@tauri-apps/api/core'
 import { formatDistanceToNow } from 'date-fns'
 import {
   type CSSProperties,
@@ -19,7 +18,7 @@ type NoteEntryProps = {
   onClick: (event: MouseEvent<HTMLLIElement>) => void
   onContextMenu: (event: MouseEvent<HTMLLIElement>) => void
   previewText?: string
-  setPreview: (path: string, preview: string) => void
+  setPreview: (path: string) => Promise<void>
   isRenaming?: boolean
   onRenameSubmit: (entry: WorkspaceEntry, newName: string) => Promise<void>
   onRenameCancel: () => void
@@ -48,20 +47,7 @@ export function NoteEntry({
       return
     }
 
-    // Fetch if not in cache
-    const fetchPreview = async () => {
-      try {
-        const text = await invoke<string>('get_note_preview', {
-          path: entry.path,
-        })
-        setPreview(entry.path, text)
-      } catch (error) {
-        console.error('Failed to fetch note preview:', error)
-        setPreview(entry.path, '')
-      }
-    }
-
-    fetchPreview()
+    setPreview(entry.path)
   }, [entry.path, previewText, setPreview])
 
   // Remove extension from display name
@@ -141,13 +127,13 @@ export function NoteEntry({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer transition-opacity duration-200',
-        !isPreviewLoaded && 'opacity-0',
+        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer transition-opacity duration-300',
         isPreviewLoaded &&
           'opacity-20 group-hover/side:opacity-50 hover:opacity-100',
         isPreviewLoaded &&
           (isActive || isSelected) &&
-          'opacity-100 group-hover/side:opacity-100'
+          'opacity-100 group-hover/side:opacity-100',
+        !isPreviewLoaded && 'opacity-0'
       )}
       style={style}
       data-index={dataIndex}
