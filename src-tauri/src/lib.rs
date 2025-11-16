@@ -3,8 +3,8 @@ mod migrations;
 
 use std::fs::File;
 use std::io::Read;
-use trash;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
+use trash;
 
 #[tauri::command]
 fn move_to_trash(path: String) {
@@ -90,7 +90,12 @@ async fn search_query_entries(
     let workspace_path = PathBuf::from(workspace_path);
 
     tauri::async_runtime::spawn_blocking(move || {
-        indexing::search_notes_for_query(&workspace_path, &query, &embedding_provider, &embedding_model)
+        indexing::search_notes_for_query(
+            &workspace_path,
+            &query,
+            &embedding_provider,
+            &embedding_model,
+        )
     })
     .await
     .map_err(|error| error.to_string())?

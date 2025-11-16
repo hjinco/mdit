@@ -46,7 +46,8 @@ fn splits_gfm_sections_with_headings_and_tables() {
         "# Overview\nWelcome to **Mdit**.",
         "## TODOs\n- [ ] Outline pulldown flow\n- [x] Wire chunk tests",
         "# Data",
-        "| Column | Type |\n| ------ | ---- |\n| id | number |\n| title | text |",
+        "Column: id | Type: number",
+        "Column: title | Type: text",
         "```rust\nfn main() {\n    println!(\"hello gfm\");\n}\n```",
     ]
     .into_iter()
@@ -108,7 +109,10 @@ fn falls_back_to_token_split_for_single_large_paragraph() {
     let section = "Rep".repeat(60);
     let chunks = split_section_by_tokens(&section, 10);
 
-    assert!(chunks.len() > 1, "single oversized paragraph should be token split");
+    assert!(
+        chunks.len() > 1,
+        "single oversized paragraph should be token split"
+    );
 }
 
 #[test]
