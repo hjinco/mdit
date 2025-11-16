@@ -182,7 +182,7 @@ export function TagList() {
         </ul>
       )}
       {isAddingTag ? (
-        <div className="mt-0.5">
+        <div className={cn(hasTags && 'mt-0.5')}>
           <div className="flex items-center pr-2 py-1">
             <HashIcon className="size-4 mx-1.5 shrink-0" />
             <Input
@@ -193,7 +193,7 @@ export function TagList() {
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
               placeholder="Tag"
-              className="h-auto py-0 px-0 text-sm rounded-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
+              className="h-auto py-0 px-0 text-sm font-normal rounded-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
             />
           </div>
         </div>
