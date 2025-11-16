@@ -114,7 +114,7 @@ export const useTagStore = create<TagStore>((set, get) => ({
     embeddingModel: string
   ): Promise<WorkspaceEntry[]> => {
     try {
-      const query = `Notes about ${tagName}`
+      const query = tagName
       const result = await invoke<QuerySearchEntry[]>('search_query_entries', {
         workspacePath,
         query,
