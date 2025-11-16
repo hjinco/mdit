@@ -15,10 +15,10 @@
       {
         "title": "Mdit",
         "titleBarStyle": "Overlay",
-        "maximized": true,
         "hiddenTitle": true,
         "dragDropEnabled": true,
         "transparent": true,
+        "visible": false,
         "windowEffects": {
           "effects": ["hudWindow", "blur"]
         },

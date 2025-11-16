@@ -13,6 +13,7 @@
     "fs:read-all",
     "fs:write-all",
     "clipboard:read-all",
+    "window-state:default",
     {
       "identifier": "fs:scope",
       "allow": [

@@ -4,6 +4,7 @@ mod migrations;
 use std::fs::File;
 use std::io::Read;
 use trash;
+use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
 #[tauri::command]
 fn move_to_trash(path: String) {
@@ -108,6 +109,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard::init())
+        .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
             move_to_trash,
             move_many_to_trash,
