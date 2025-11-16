@@ -42,14 +42,22 @@ export function usePreviewCache(currentCollectionPath: string | null) {
   )
 
   const setPreview = useCallback(async (path: string) => {
-    const preview = await invoke<string>('get_note_preview', {
-      path,
-    })
-    setPreviewTexts((prev) => {
-      const next = new Map(prev)
-      next.set(path, preview)
-      return next
-    })
+    try {
+      const preview = await invoke<string>('get_note_preview', {
+        path,
+      })
+      setPreviewTexts((prev) => {
+        const next = new Map(prev)
+        next.set(path, preview)
+        return next
+      })
+    } catch (_e) {
+      setPreviewTexts((prev) => {
+        const next = new Map(prev)
+        next.set(path, '')
+        return next
+      })
+    }
   }, [])
 
   const invalidatePreview = useCallback(async (path: string) => {
