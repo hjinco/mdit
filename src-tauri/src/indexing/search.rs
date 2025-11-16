@@ -15,7 +15,7 @@ use serde::Serialize;
 use super::embedding::EmbeddingClient;
 use crate::migrations;
 
-const MIN_QUERY_SIMILARITY: f32 = 0.4;
+const MIN_QUERY_SIMILARITY: f32 = 0.35;
 const MIN_NOTE_BYTES: u64 = 256;
 
 #[derive(Debug, Serialize)]
