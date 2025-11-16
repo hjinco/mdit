@@ -1,16 +1,17 @@
 use std::sync::OnceLock;
 
+use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
 // Default to a conservative chunk size until we can detect the embedding model's
 // context window dynamically.
-const MAX_TOKENS_PER_CHUNK_V1: usize = 512;
+const MAX_TOKENS_PER_CHUNK_V2: usize = 512;
 
 /// Dispatch to the correct chunker for the requested version.
 pub(crate) fn chunk_document(contents: &str, chunking_version: i64) -> Vec<String> {
     match chunking_version {
-        1 => chunk_markdown_v1(contents),
-        _ => chunk_markdown_v1(contents),
+        2 => chunk_markdown_v2(contents),
+        _ => chunk_markdown_v2(contents),
     }
 }
 
@@ -19,7 +20,7 @@ pub(crate) fn hash_content(contents: &str) -> String {
 }
 
 /// Chunk Markdown by major headings and enforce a token ceiling per chunk.
-fn chunk_markdown_v1(contents: &str) -> Vec<String> {
+fn chunk_markdown_v2(contents: &str) -> Vec<String> {
     let sections = split_major_sections(contents);
     let mut chunks = Vec::new();
 
@@ -29,169 +30,102 @@ fn chunk_markdown_v1(contents: &str) -> Vec<String> {
             continue;
         }
 
-        if count_tokens(section) <= MAX_TOKENS_PER_CHUNK_V1 {
+        if count_tokens(section) <= MAX_TOKENS_PER_CHUNK_V2 {
             chunks.push(section.to_string());
         } else {
-            chunks.extend(split_section_by_tokens(section, MAX_TOKENS_PER_CHUNK_V1));
+            chunks.extend(split_section_by_tokens(section, MAX_TOKENS_PER_CHUNK_V2));
         }
     }
 
     if chunks.is_empty() && !contents.trim().is_empty() {
-        if count_tokens(contents) <= MAX_TOKENS_PER_CHUNK_V1 {
+        if count_tokens(contents) <= MAX_TOKENS_PER_CHUNK_V2 {
             chunks.push(contents.trim().to_string());
         } else {
-            chunks.extend(split_section_by_tokens(contents, MAX_TOKENS_PER_CHUNK_V1));
+            chunks.extend(split_section_by_tokens(contents, MAX_TOKENS_PER_CHUNK_V2));
         }
     }
 
     chunks
 }
 
-#[derive(Clone, Copy)]
-struct FenceState {
-    fence_char: char,
-    fence_len: usize,
-}
-
 fn split_major_sections(contents: &str) -> Vec<String> {
+    let trimmed = contents.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_YAML_STYLE_METADATA_BLOCKS);
+
+    let parser = Parser::new_ext(contents, options).into_offset_iter();
     let mut sections = Vec::new();
-    let mut current = String::new();
-    let mut fence_state: Option<FenceState> = None;
+    let mut current_start = 0usize;
+    let mut in_code_block = false;
+    let mut code_block_start: Option<usize> = None;
+    let mut table_block_start: Option<usize> = None;
 
-    for line in contents.lines() {
-        if let Some(state) = fence_state {
-            if is_fence_closing_line(line, state) {
-                fence_state = None;
+    for (event, range) in parser {
+        match event {
+            Event::Start(Tag::CodeBlock(_)) => {
+                push_section(contents, current_start, range.start, &mut sections);
+                code_block_start = Some(range.start);
+                in_code_block = true;
             }
-        } else if let Some(state) = detect_fence_line(line) {
-            fence_state = Some(state);
-        }
-
-        let is_indented_code_block = is_indented_code_block_line(line);
-        let is_heading = is_major_heading_line(line);
-        let is_hr =
-            fence_state.is_none() && !is_indented_code_block && is_horizontal_rule_line(line);
-        if is_heading || is_hr {
-            if !current.trim().is_empty() {
-                sections.push(current.trim().to_string());
+            Event::End(TagEnd::CodeBlock) => {
+                if let Some(start) = code_block_start.take() {
+                    push_section(contents, start, range.end, &mut sections);
+                    current_start = range.end;
+                }
+                in_code_block = false;
             }
-            current.clear();
+            Event::Start(Tag::Table(_)) => {
+                push_section(contents, current_start, range.start, &mut sections);
+                table_block_start = Some(range.start);
+            }
+            Event::End(TagEnd::Table) => {
+                if let Some(start) = table_block_start.take() {
+                    push_section(contents, start, range.end, &mut sections);
+                    current_start = range.end;
+                }
+            }
+            Event::Start(Tag::Heading { level, .. }) if is_major_heading(level) => {
+                push_section(contents, current_start, range.start, &mut sections);
+                current_start = range.start;
+            }
+            Event::Rule if !in_code_block => {
+                push_section(contents, current_start, range.start, &mut sections);
+                current_start = range.end;
+            }
+            _ => {}
         }
-
-        if is_hr {
-            continue;
-        }
-
-        if !current.is_empty() {
-            current.push('\n');
-        }
-        current.push_str(line);
     }
 
-    if !current.trim().is_empty() {
-        sections.push(current.trim().to_string());
+    if current_start < contents.len() {
+        push_section(contents, current_start, contents.len(), &mut sections);
     }
 
-    if sections.is_empty() && !contents.trim().is_empty() {
-        sections.push(contents.trim().to_string());
+    if sections.is_empty() && !trimmed.is_empty() {
+        sections.push(trimmed.to_string());
     }
 
     sections
 }
 
-fn is_major_heading_line(line: &str) -> bool {
-    let trimmed = line.trim_start();
-    if !trimmed.starts_with('#') {
-        return false;
+fn push_section(contents: &str, start: usize, end: usize, sections: &mut Vec<String>) {
+    if start >= end || end > contents.len() {
+        return;
     }
 
-    let hashes = trimmed.chars().take_while(|c| *c == '#').count();
-    if hashes == 0 || hashes > 2 {
-        return false;
-    }
-
-    match trimmed.chars().nth(hashes) {
-        Some(ch) if ch.is_whitespace() => true,
-        None => true,
-        _ => false,
+    let slice = contents[start..end].trim();
+    if !slice.is_empty() {
+        sections.push(slice.to_string());
     }
 }
 
-fn is_horizontal_rule_line(line: &str) -> bool {
-    let mut chars = line.chars().filter(|c| !c.is_whitespace());
-    let first = match chars.next() {
-        Some(ch) if ch == '-' || ch == '*' || ch == '_' => ch,
-        _ => return false,
-    };
-
-    let mut count = 1;
-    for ch in chars {
-        if ch != first {
-            return false;
-        }
-        count += 1;
-    }
-
-    count >= 3
-}
-
-/// Detects whether the line is indented enough to be treated as a Markdown code block.
-fn is_indented_code_block_line(line: &str) -> bool {
-    let mut spaces = 0;
-    for ch in line.chars() {
-        match ch {
-            ' ' => {
-                spaces += 1;
-                if spaces >= 4 {
-                    return true;
-                }
-            }
-            '\t' => return true,
-            _ => return false,
-        }
-    }
-
-    false
-}
-
-fn detect_fence_line(line: &str) -> Option<FenceState> {
-    fence_delimiter_info(line).map(|(fence_char, fence_len, _)| FenceState {
-        fence_char,
-        fence_len,
-    })
-}
-
-fn is_fence_closing_line(line: &str, fence: FenceState) -> bool {
-    match fence_delimiter_info(line) {
-        Some((ch, len, rest)) => {
-            ch == fence.fence_char && len >= fence.fence_len && rest.trim().is_empty()
-        }
-        None => false,
-    }
-}
-
-fn fence_delimiter_info(line: &str) -> Option<(char, usize, &str)> {
-    let trimmed = line.trim_start();
-    let bytes = trimmed.as_bytes();
-    if bytes.len() < 3 {
-        return None;
-    }
-
-    let first = bytes[0];
-    if first != b'`' && first != b'~' {
-        return None;
-    }
-
-    let mut len = 1;
-    while len < bytes.len() && bytes[len] == first {
-        len += 1;
-    }
-
-    if len < 3 {
-        return None;
-    }
-
-    Some((first as char, len, &trimmed[len..]))
+fn is_major_heading(level: HeadingLevel) -> bool {
+    matches!(level, HeadingLevel::H1 | HeadingLevel::H2 | HeadingLevel::H3)
 }
 
 fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
@@ -199,8 +133,52 @@ fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
         return Vec::new();
     }
 
+    let paragraphs = split_paragraphs(section);
+    let mut chunks = Vec::new();
+    let mut current_chunk = String::new();
+
+    for paragraph in paragraphs {
+        if count_tokens(&paragraph) > max_tokens {
+            if !current_chunk.trim().is_empty() {
+                chunks.push(current_chunk.trim().to_string());
+                current_chunk.clear();
+            }
+            chunks.extend(split_text_strict_by_tokens(&paragraph, max_tokens));
+            continue;
+        }
+
+        if current_chunk.is_empty() {
+            current_chunk = paragraph;
+            continue;
+        }
+
+        let candidate = format!("{}\n\n{}", current_chunk, paragraph);
+        if count_tokens(&candidate) <= max_tokens {
+            current_chunk = candidate;
+        } else {
+            chunks.push(current_chunk.trim().to_string());
+            current_chunk = paragraph;
+        }
+    }
+
+    if !current_chunk.trim().is_empty() {
+        chunks.push(current_chunk.trim().to_string());
+    }
+
+    if chunks.is_empty() {
+        split_text_strict_by_tokens(section, max_tokens)
+    } else {
+        chunks
+    }
+}
+
+fn split_text_strict_by_tokens(text: &str, max_tokens: usize) -> Vec<String> {
+    if text.trim().is_empty() || max_tokens == 0 {
+        return Vec::new();
+    }
+
     let tokenizer = tokenizer();
-    let tokens = tokenizer.encode_ordinary(section);
+    let tokens = tokenizer.encode_ordinary(text);
     if tokens.is_empty() {
         return Vec::new();
     }
@@ -245,6 +223,96 @@ fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
     chunks
 }
 
+fn split_paragraphs(section: &str) -> Vec<String> {
+    if is_atomic_block(section) {
+        return vec![section.to_string()];
+    }
+
+    let mut paragraphs = Vec::new();
+    let mut current = String::new();
+
+    for line in section.lines() {
+        if line.trim().is_empty() {
+            if !current.is_empty() {
+                let paragraph = current.trim_end().to_string();
+                if !paragraph.is_empty() {
+                    paragraphs.push(paragraph);
+                }
+                current.clear();
+            }
+        } else {
+            if !current.is_empty() {
+                current.push('\n');
+            }
+            current.push_str(line);
+        }
+    }
+
+    if !current.is_empty() {
+        let paragraph = current.trim_end().to_string();
+        if !paragraph.is_empty() {
+            paragraphs.push(paragraph);
+        }
+    }
+
+    if paragraphs.is_empty() {
+        vec![section.to_string()]
+    } else {
+        paragraphs
+    }
+}
+
+fn is_atomic_block(section: &str) -> bool {
+    looks_like_code_block(section) || looks_like_table(section)
+}
+
+fn looks_like_code_block(section: &str) -> bool {
+    let trimmed = section.trim_start();
+    trimmed.starts_with("```") || trimmed.starts_with("~~~")
+}
+
+fn looks_like_table(section: &str) -> bool {
+    let trimmed = section.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let mut non_empty_lines = trimmed
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty());
+
+    let header = match non_empty_lines.next() {
+        Some(line) => line,
+        None => return false,
+    };
+
+    let separator = match non_empty_lines.next() {
+        Some(line) => line,
+        None => return false,
+    };
+
+    header.contains('|') && is_table_separator_line(separator)
+}
+
+fn is_table_separator_line(line: &str) -> bool {
+    if !line.contains('|') {
+        return false;
+    }
+
+    let mut has_dash = false;
+    for ch in line.chars() {
+        match ch {
+            '|' | ' ' => {}
+            '-' => has_dash = true,
+            ':' => {}
+            _ => return false,
+        }
+    }
+
+    has_dash
+}
+
 fn count_tokens(text: &str) -> usize {
     tokenizer().encode_ordinary(text).len()
 }
@@ -253,3 +321,6 @@ fn tokenizer() -> &'static CoreBPE {
     static TOKENIZER: OnceLock<CoreBPE> = OnceLock::new();
     TOKENIZER.get_or_init(|| cl100k_base().expect("failed to initialize cl100k tokenizer"))
 }
+
+#[cfg(test)]
+mod tests;

@@ -27,7 +27,7 @@ use files::collect_markdown_files;
 pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::sync_documents;
 
-const TARGET_CHUNKING_VERSION: i64 = 1;
+const TARGET_CHUNKING_VERSION: i64 = 2;
 
 /// Human readable summary of what happened during an indexing run.
 #[derive(Debug, Default, Serialize)]
