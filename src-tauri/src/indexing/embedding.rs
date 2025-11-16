@@ -80,7 +80,7 @@ impl EmbeddingClient {
         })?;
 
         let mut embeddings = response.embeddings.into_iter();
-        let vector = embeddings
+        let mut vector = embeddings
             .next()
             .ok_or_else(|| anyhow!("Ollama returned an empty embeddings list"))?;
 
@@ -90,6 +90,13 @@ impl EmbeddingClient {
                 self.model
             ));
         }
+
+        l2_normalize(&mut vector).with_context(|| {
+            format!(
+                "Embedding vector for model '{}' contained invalid values",
+                self.model
+            )
+        })?;
 
         let dim = i32::try_from(vector.len())
             .map_err(|_| anyhow!("Embedding dimension {} exceeds i32::MAX", vector.len()))?;
@@ -115,4 +122,19 @@ fn f32_slice_to_le_bytes(values: &[f32]) -> Vec<u8> {
         bytes.extend_from_slice(&value.to_le_bytes());
     }
     bytes
+}
+
+fn l2_normalize(values: &mut [f32]) -> Result<()> {
+    let norm = values.iter().map(|value| value * value).sum::<f32>().sqrt();
+    if norm == 0.0 || !norm.is_finite() {
+        return Err(anyhow!(
+            "Embedding vector norm must be finite and non-zero for normalization"
+        ));
+    }
+
+    for value in values {
+        *value /= norm;
+    }
+
+    Ok(())
 }

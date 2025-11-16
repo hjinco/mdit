@@ -1,4 +1,6 @@
-use super::{split_major_sections, split_section_by_tokens};
+use super::{
+    count_tokens, enforce_min_chunk_tokens, split_major_sections, split_section_by_tokens,
+};
 
 const GFM_MARKDOWN: &str = r#"---
 title: Sample Doc
@@ -46,7 +48,8 @@ fn splits_gfm_sections_with_headings_and_tables() {
         "# Overview\nWelcome to **Mdit**.",
         "## TODOs\n- [ ] Outline pulldown flow\n- [x] Wire chunk tests",
         "# Data",
-        "| Column | Type |\n| ------ | ---- |\n| id | number |\n| title | text |",
+        "Column: id | Type: number",
+        "Column: title | Type: text",
         "```rust\nfn main() {\n    println!(\"hello gfm\");\n}\n```",
     ]
     .into_iter()
@@ -108,7 +111,10 @@ fn falls_back_to_token_split_for_single_large_paragraph() {
     let section = "Rep".repeat(60);
     let chunks = split_section_by_tokens(&section, 10);
 
-    assert!(chunks.len() > 1, "single oversized paragraph should be token split");
+    assert!(
+        chunks.len() > 1,
+        "single oversized paragraph should be token split"
+    );
 }
 
 #[test]
@@ -119,4 +125,75 @@ fn keeps_tables_together_even_with_blank_lines() {
     assert_eq!(chunks.len(), 1, "tables should remain atomic");
     assert!(chunks[0].contains("| Column | Type |"));
     assert!(chunks[0].contains("| title | text |"));
+}
+
+#[test]
+fn merges_short_chunk_with_both_neighbors_when_needed() {
+    let left = "# Intro\nContext that leads the document.";
+    let short = "Short note";
+    let right = "## Details\nThis paragraph adds enough body to satisfy the minimum requirements.";
+
+    let min_tokens = count_tokens(&format!("{left}\n\n{short}")) + 1;
+    let merged = enforce_min_chunk_tokens(
+        vec![left.to_string(), short.to_string(), right.to_string()],
+        min_tokens,
+    );
+
+    assert_eq!(merged.len(), 1, "short chunk should be absorbed by neighbors");
+    let combined = &merged[0];
+    assert!(combined.contains("Intro"));
+    assert!(combined.contains("Short note"));
+    assert!(combined.contains("Details"));
+}
+
+#[test]
+fn merges_short_chunk_forward_when_only_next_neighbors_exist() {
+    let first = "Tiny";
+    let middle = "Still not enough";
+    let tail = "Adding this chunk should push us past the threshold so the first entry can stand.";
+    let trailing = "Final chunk that should remain unchanged";
+
+    let min_tokens = count_tokens(&format!("{first}\n\n{middle}")) + 1;
+    let merged = enforce_min_chunk_tokens(
+        vec![
+            first.to_string(),
+            middle.to_string(),
+            tail.to_string(),
+            trailing.to_string(),
+        ],
+        min_tokens,
+    );
+
+    assert_eq!(
+        merged.len(),
+        2,
+        "first three chunks should collapse into a single entry"
+    );
+    assert!(merged[0].contains(first));
+    assert!(merged[0].contains(middle));
+    assert!(merged[0].contains(tail));
+    assert_eq!(merged[1], trailing);
+}
+
+#[test]
+fn merges_short_chunk_backward_when_at_tail() {
+    let intro = "Opening context that can absorb more text.";
+    let middle = "Second chunk that is still too small after one merge.";
+    let short = "tiny";
+
+    let min_tokens = count_tokens(&format!("{middle}\n\n{short}")) + 1;
+    let merged = enforce_min_chunk_tokens(
+        vec![intro.to_string(), middle.to_string(), short.to_string()],
+        min_tokens,
+    );
+
+    assert_eq!(
+        merged.len(),
+        1,
+        "tail chunk should merge backward twice when needed"
+    );
+    let combined = &merged[0];
+    assert!(combined.contains(intro));
+    assert!(combined.contains(middle));
+    assert!(combined.contains(short));
 }
