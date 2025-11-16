@@ -16,6 +16,7 @@ use super::embedding::EmbeddingClient;
 use crate::migrations;
 
 const MIN_QUERY_SIMILARITY: f32 = 0.4;
+const MIN_NOTE_BYTES: u64 = 512;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -206,15 +207,17 @@ fn build_entry(path: PathBuf, similarity: f32) -> Result<Option<SemanticNoteEntr
         return Ok(None);
     }
 
-    let metadata = fs::metadata(&path).ok();
-    let created_at = metadata
-        .as_ref()
-        .and_then(|meta| meta.created().ok())
-        .and_then(system_time_to_millis);
-    let modified_at = metadata
-        .as_ref()
-        .and_then(|meta| meta.modified().ok())
-        .and_then(system_time_to_millis);
+    let metadata = match fs::metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(_) => return Ok(None),
+    };
+
+    if metadata.len() < MIN_NOTE_BYTES {
+        return Ok(None);
+    }
+
+    let created_at = metadata.created().ok().and_then(system_time_to_millis);
+    let modified_at = metadata.modified().ok().and_then(system_time_to_millis);
 
     let name = path
         .file_name()
