@@ -193,6 +193,8 @@ export function TagList() {
               onBlur={handleInputBlur}
               placeholder="Tag"
               className="h-auto py-0 px-0 text-sm rounded-none border-0 bg-transparent outline-none"
+              autoComplete="off"
+              spellCheck={false}
             />
           </div>
         </div>
