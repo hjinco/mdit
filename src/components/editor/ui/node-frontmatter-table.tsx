@@ -355,10 +355,7 @@ function ValueEditor({
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
-              className={cn(
-                'font-normal',
-                !dateValue && 'text-muted-foreground'
-              )}
+              className={cn(!dateValue && 'text-muted-foreground')}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
               {dateValue ? (

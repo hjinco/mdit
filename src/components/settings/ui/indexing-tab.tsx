@@ -416,7 +416,7 @@ export function IndexingTab() {
               </FieldContent>
               <FieldGroup className="gap-0 mt-2">
                 {ollamaModels.length === 0 ? (
-                  <div className="py-2 text-sm text-muted-foreground font-normal">
+                  <div className="py-2 text-sm text-muted-foreground">
                     No Ollama embedding models available. Make sure Ollama is
                     installed and running.
                   </div>

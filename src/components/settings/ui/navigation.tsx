@@ -30,7 +30,7 @@ export function SettingsNavigation({
           size="sm"
           onClick={() => onTabChange(tab.id)}
           className={cn(
-            'justify-start font-normal',
+            'justify-start',
             activeTab === tab.id
               ? 'bg-stone-200 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700'
               : 'text-accent-foreground/80 hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-accent-foreground'

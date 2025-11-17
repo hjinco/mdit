@@ -164,7 +164,7 @@ export function TagList() {
                   onClick={() => handleTagClick(tagName)}
                   onContextMenu={(e) => handleTagContextMenu(tagName, e)}
                   className={cn(
-                    'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+                    'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
                     isSelected
                       ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
                       : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60'
@@ -192,7 +192,7 @@ export function TagList() {
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
               placeholder="Tag"
-              className="h-auto py-0 px-0 text-sm font-normal rounded-none border-0 bg-transparent outline-none"
+              className="h-auto py-0 px-0 text-sm rounded-none border-0 bg-transparent outline-none"
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ export function TagList() {
           type="button"
           onClick={handleAddButtonClick}
           className={cn(
-            'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
+            'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
             'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
             hasTags && 'mt-0.5'
           )}
