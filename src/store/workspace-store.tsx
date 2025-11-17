@@ -505,10 +505,22 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         tabState.removePathFromHistory(path)
       }
 
-      // Update currentCollectionPath if it's being deleted
-      const { currentCollectionPath } = get()
-      if (currentCollectionPath && paths.includes(currentCollectionPath)) {
-        set({ currentCollectionPath: null })
+      // Update currentCollectionPath and lastCollectionPath if they're being deleted
+      const { currentCollectionPath, lastCollectionPath } = get()
+      const shouldClearCurrentCollectionPath =
+        currentCollectionPath && paths.includes(currentCollectionPath)
+      const shouldClearLastCollectionPath =
+        lastCollectionPath && paths.includes(lastCollectionPath)
+
+      if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
+        set({
+          currentCollectionPath: shouldClearCurrentCollectionPath
+            ? null
+            : currentCollectionPath,
+          lastCollectionPath: shouldClearLastCollectionPath
+            ? null
+            : lastCollectionPath,
+        })
       }
 
       // If deleting from a tag collection, also remove from tagEntries
