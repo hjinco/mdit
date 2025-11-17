@@ -7,12 +7,14 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
-  const { createAndOpenNote, openFolderPicker } = useWorkspaceStore(
-    useShallow((s) => ({
-      createAndOpenNote: s.createAndOpenNote,
-      openFolderPicker: s.openFolderPicker,
-    }))
-  )
+  const { createAndOpenNote, openFolderPicker, toggleCollectionView } =
+    useWorkspaceStore(
+      useShallow((s) => ({
+        createAndOpenNote: s.createAndOpenNote,
+        openFolderPicker: s.openFolderPicker,
+        toggleCollectionView: s.toggleCollectionView,
+      }))
+    )
 
   const { toggleFileExplorer, openCommandMenu } = useUIStore(
     useShallow((s) => ({
@@ -39,6 +41,7 @@ export function WindowMenu() {
       createNote: createAndOpenNote,
       openWorkspace: () => openFolderPicker(),
       toggleFileExplorer,
+      toggleCollectionView,
       zoomIn,
       zoomOut,
       resetZoom,
@@ -50,6 +53,7 @@ export function WindowMenu() {
     createAndOpenNote,
     openFolderPicker,
     toggleFileExplorer,
+    toggleCollectionView,
     zoomIn,
     zoomOut,
     resetZoom,
