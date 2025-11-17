@@ -39,9 +39,11 @@ Before you build Mdit, make sure you have:
 
 ## Build
 
-To create a production build of the app:
-
+```bash
 pnpm tauri build
+```
+
+This command builds the frontend, compiles the Rust backend, and produces a packaged desktop application for your platform.
 
 ## License
 
