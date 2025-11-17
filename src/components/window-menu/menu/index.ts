@@ -11,6 +11,7 @@ export async function installWindowMenu({
   createNote,
   openWorkspace,
   toggleFileExplorer,
+  toggleCollectionView,
   zoomIn,
   zoomOut,
   resetZoom,
@@ -21,6 +22,7 @@ export async function installWindowMenu({
   createNote: () => void | Promise<void>
   openWorkspace: () => void | Promise<void>
   toggleFileExplorer: () => void
+  toggleCollectionView: () => void
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
@@ -38,6 +40,7 @@ export async function installWindowMenu({
       await createEditMenu(),
       await createViewMenu({
         toggleFileExplorer,
+        toggleCollectionView,
         zoomIn,
         zoomOut,
         resetZoom,

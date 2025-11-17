@@ -2,12 +2,14 @@ import { MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu'
 
 export async function createViewMenu({
   toggleFileExplorer,
+  toggleCollectionView,
   zoomIn,
   zoomOut,
   resetZoom,
   openCommandMenu,
 }: {
   toggleFileExplorer: () => void
+  toggleCollectionView: () => void
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
@@ -31,6 +33,12 @@ export async function createViewMenu({
         text: 'Toggle File Explorer',
         accelerator: 'CmdOrCtrl+\\',
         action: () => toggleFileExplorer(),
+      }),
+      await MenuItem.new({
+        id: 'toggle-collection-view',
+        text: 'Toggle Collection View',
+        accelerator: 'CmdOrCtrl+Shift+\\',
+        action: () => toggleCollectionView(),
       }),
       await PredefinedMenuItem.new({
         text: 'Separator',

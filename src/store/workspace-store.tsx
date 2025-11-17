@@ -73,6 +73,7 @@ type WorkspaceStore = {
   entries: WorkspaceEntry[]
   expandedDirectories: Record<string, boolean>
   currentCollectionPath: string | null
+  lastCollectionPath: string | null
   isMigrationsComplete: boolean
   setExpandedDirectories: (
     action: (
@@ -82,6 +83,7 @@ type WorkspaceStore = {
   setCurrentCollectionPath: (
     path: string | null | ((prev: string | null) => string | null)
   ) => void
+  toggleCollectionView: () => void
   initializeWorkspace: () => Promise<void>
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
@@ -111,6 +113,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   entries: [],
   expandedDirectories: {},
   currentCollectionPath: null,
+  lastCollectionPath: null,
   isMigrationsComplete: false,
 
   setExpandedDirectories: (action) => {
@@ -118,10 +121,26 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   setCurrentCollectionPath: (path) => {
-    set((state) => ({
-      currentCollectionPath:
-        typeof path === 'function' ? path(state.currentCollectionPath) : path,
-    }))
+    set((state) => {
+      const nextPath =
+        typeof path === 'function' ? path(state.currentCollectionPath) : path
+      return {
+        currentCollectionPath: nextPath,
+        lastCollectionPath:
+          nextPath !== null ? nextPath : state.lastCollectionPath,
+      }
+    })
+  },
+
+  toggleCollectionView: () => {
+    const { currentCollectionPath, lastCollectionPath } = get()
+    if (currentCollectionPath !== null) {
+      // Close the view
+      set({ currentCollectionPath: null })
+    } else if (lastCollectionPath !== null) {
+      // Restore the last opened path
+      set({ currentCollectionPath: lastCollectionPath })
+    }
   },
 
   initializeWorkspace: async () => {
@@ -151,6 +170,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         isTreeLoading: Boolean(workspacePath),
         expandedDirectories: {},
         currentCollectionPath: null,
+        lastCollectionPath: null,
         isMigrationsComplete: false,
       })
 
@@ -184,6 +204,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         isTreeLoading: false,
         expandedDirectories: {},
         currentCollectionPath: null,
+        lastCollectionPath: null,
         isMigrationsComplete: false,
       })
     }
@@ -484,10 +505,22 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         tabState.removePathFromHistory(path)
       }
 
-      // Update currentCollectionPath if it's being deleted
-      const { currentCollectionPath } = get()
-      if (currentCollectionPath && paths.includes(currentCollectionPath)) {
-        set({ currentCollectionPath: null })
+      // Update currentCollectionPath and lastCollectionPath if they're being deleted
+      const { currentCollectionPath, lastCollectionPath } = get()
+      const shouldClearCurrentCollectionPath =
+        currentCollectionPath && paths.includes(currentCollectionPath)
+      const shouldClearLastCollectionPath =
+        lastCollectionPath && paths.includes(lastCollectionPath)
+
+      if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
+        set({
+          currentCollectionPath: shouldClearCurrentCollectionPath
+            ? null
+            : currentCollectionPath,
+          lastCollectionPath: shouldClearLastCollectionPath
+            ? null
+            : lastCollectionPath,
+        })
       }
 
       // If deleting from a tag collection, also remove from tagEntries
