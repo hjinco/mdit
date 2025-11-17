@@ -25,7 +25,7 @@ export function TreeNodeRenameInput({
       onKeyDown={handleRenameKeyDown}
       onBlur={handleRenameBlur}
       className={cn(
-        'absolute inset-0 h-full truncate text-sm outline-none bg-stone-100 dark:bg-stone-900',
+        'absolute inset-0 h-full truncate text-sm outline-none text-foreground bg-transparent',
         className
       )}
       spellCheck={false}

@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils'
 import { useTagStore } from '@/store/tag-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
-import { Input } from '@/ui/input'
 
 type IndexingMeta = {
   indexedDocCount: number
@@ -185,7 +184,7 @@ export function TagList() {
         <div className={cn(hasTags && 'mt-0.5')}>
           <div className="flex items-center pr-2 py-1">
             <HashIcon className="size-4 mx-1.5 shrink-0" />
-            <Input
+            <input
               ref={inputRef}
               type="text"
               value={inputValue}
@@ -193,7 +192,7 @@ export function TagList() {
               onKeyDown={handleInputKeyDown}
               onBlur={handleInputBlur}
               placeholder="Tag"
-              className="h-auto py-0 px-0 text-sm font-normal rounded-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none"
+              className="h-auto py-0 px-0 text-sm font-normal rounded-none border-0 bg-transparent outline-none"
             />
           </div>
         </div>
