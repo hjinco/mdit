@@ -125,7 +125,7 @@ export function AITab() {
                 <Field key={provider}>
                   <FieldGroup className="gap-0">
                     {models.length === 0 && provider === 'ollama' ? (
-                      <div className="py-2 text-sm text-muted-foreground font-normal">
+                      <div className="py-2 text-sm text-muted-foreground">
                         No Ollama models available. Make sure Ollama is
                         installed and running.
                       </div>
@@ -162,7 +162,7 @@ export function AITab() {
               )
             })}
             {!hasConnectedProviders && (
-              <div className="py-2 text-sm text-muted-foreground font-normal">
+              <div className="py-2 text-sm text-muted-foreground">
                 No chat models available. Connect a provider to get started.
               </div>
             )}
@@ -250,7 +250,7 @@ export function AITab() {
             </FieldContent>
             <FieldGroup className="gap-0 mt-2">
               {ollamaModels.length === 0 ? (
-                <div className="py-2 text-sm text-muted-foreground font-normal">
+                <div className="py-2 text-sm text-muted-foreground">
                   No Ollama models available. Make sure Ollama is installed and
                   running.
                 </div>

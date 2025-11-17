@@ -112,7 +112,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-6 text-center text-sm text-muted-foreground font-normal"
+      className="py-6 text-center text-sm text-muted-foreground"
       {...props}
     />
   )
@@ -127,6 +127,7 @@ function CommandGroup({
       data-slot="command-group"
       className={cn(
         'text-foreground [&_[cmdk-group-heading]]:text-muted-foreground overflow-hidden p-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium',
+        'p-2',
         className
       )}
       {...props}

@@ -30,7 +30,7 @@ function getTreeNodeButtonClassName({
   widthClass,
 }: GetTreeNodeButtonClassNameParams) {
   return cn(
-    `${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 font-normal min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
+    `${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
     isSelected
       ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
       : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
@@ -331,7 +331,9 @@ export function TreeNode({
                 )}
               </div>
               <div className="relative flex-1 min-w-0 truncate flex items-center">
-                <span className="text-sm">{entry.name}</span>
+                <span className={cn('text-sm', isRenaming && 'opacity-0')}>
+                  {entry.name}
+                </span>
                 {isRenaming && (
                   <TreeNodeRenameInput
                     draftName={draftName}
@@ -390,7 +392,9 @@ export function TreeNode({
             <FileTextIcon className="size-4 mx-1.5 shrink-0" />
           )}
           <div className="relative flex-1 min-w-0 truncate">
-            <span className="text-sm">{baseName}</span>
+            <span className={cn('text-sm', isRenaming && 'opacity-0')}>
+              {baseName}
+            </span>
             {isRenaming && (
               <TreeNodeRenameInput
                 draftName={draftName}
