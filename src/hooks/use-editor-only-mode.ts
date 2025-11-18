@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 
 export function useEditorOnlyMode() {
   const initializeWorkspace = useWorkspaceStore((s) => s.initializeWorkspace)
+  const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const hydrateFromOpenedFiles = useTabStore(
     (state) => state.hydrateFromOpenedFiles
   )
@@ -52,6 +53,14 @@ export function useEditorOnlyMode() {
       isMounted = false
     }
   }, [hydrateFromOpenedFiles, initializeWorkspace])
+
+  useEffect(() => {
+    if (!workspacePath || !hasCheckedOpenedFiles || !isEditorOnlyMode) {
+      return
+    }
+
+    setIsEditorOnlyMode(false)
+  }, [workspacePath, hasCheckedOpenedFiles, isEditorOnlyMode])
 
   return { isEditorOnlyMode, hasCheckedOpenedFiles }
 }
