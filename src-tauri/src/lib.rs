@@ -139,32 +139,11 @@ pub fn run() {
             get_indexing_meta,
             search_query_entries
         ])
-        .setup(|app| {
-            #[cfg(not(target_os = "macos"))]
-            {
-                use tauri_plugin_cli::CliExt;
-                let cli = app.cli().matches()?;
-                let paths: Vec<String> = cli
-                    .args
-                    .values()
-                    .flat_map(|arg| arg.value.clone())
-                    .collect();
-
-                let state = app.state::<AppState>();
-                *state.opened_files.lock().unwrap() = paths;
-            }
-
-            #[cfg(target_os = "macos")]
-            let _ = app;
-
-            Ok(())
-        })
         .manage(app_state)
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { urls } = event {
             let state = app_handle.state::<AppState>();
             let mut opened_files = state.opened_files.lock().unwrap();
