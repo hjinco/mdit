@@ -144,6 +144,7 @@ pub fn run() {
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { urls } = event {
             let state = app_handle.state::<AppState>();
             let mut opened_files = state.opened_files.lock().unwrap();
