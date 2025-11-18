@@ -30,6 +30,8 @@ export function Editor() {
   const isCollectionViewOpen = useWorkspaceStore(
     (s) => s.currentCollectionPath !== null
   )
+  const workspacePath = useWorkspaceStore((s) => s.workspacePath)
+
   const editor = useMemo(() => {
     return createSlateEditor({
       plugins: EditorKit,
@@ -61,7 +63,8 @@ export function Editor() {
             'absolute',
             !isFileExplorerOpen && !isCollectionViewOpen
               ? 'left-30 pl-2 border-l'
-              : 'left-2'
+              : 'left-2',
+            !workspacePath && 'left-20 border-none'
           )}
         >
           <HistoryNavigation />

@@ -22,6 +22,7 @@ type TabStore = {
   isSaved: boolean
   history: string[]
   historyIndex: number
+  hydrateFromOpenedFiles: (paths: string[]) => Promise<boolean>
   openTab: (
     path: string,
     skipHistory?: boolean,
@@ -49,6 +50,38 @@ export const useTabStore = create<TabStore>((set, get) => ({
   isSaved: true,
   history: [],
   historyIndex: -1,
+  hydrateFromOpenedFiles: async (paths: string[]) => {
+    const validPaths = paths.filter((path) => path.endsWith('.md'))
+
+    if (validPaths.length === 0) {
+      return false
+    }
+
+    const initialPath = validPaths[0]
+    const name = getFileNameWithoutExtension(initialPath)
+
+    if (!name) {
+      return false
+    }
+
+    try {
+      const content = await readTextFile(initialPath)
+      const limitedHistory = validPaths.slice(0, MAX_HISTORY_LENGTH)
+      const initialIndex = Math.max(0, limitedHistory.indexOf(initialPath))
+
+      set({
+        tab: { id: ++tabIdCounter, path: initialPath, name, content },
+        isSaved: true,
+        history: limitedHistory,
+        historyIndex: initialIndex,
+      })
+
+      return true
+    } catch (error) {
+      console.error('Failed to hydrate tabs from opened files:', error)
+      return false
+    }
+  },
   openTab: async (path: string, skipHistory = false, force = false) => {
     if (!path.endsWith('.md')) {
       return

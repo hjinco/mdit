@@ -46,6 +46,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "name": "Markdown Document",
+        "ext": ["md", "markdown"],
+        "role": "Editor",
+        "rank": "Owner",
+        "contentTypes": ["net.daringfireball.markdown"]
+      }
     ]
   },
   "plugins": {

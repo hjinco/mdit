@@ -3,8 +3,20 @@ mod migrations;
 
 use std::fs::File;
 use std::io::Read;
+use std::sync::{Arc, Mutex};
+use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 use trash;
+
+#[derive(Default)]
+struct AppState {
+    opened_files: Arc<Mutex<Vec<String>>>,
+}
+
+#[tauri::command]
+fn get_opened_files(state: tauri::State<AppState>) -> Vec<String> {
+    state.opened_files.lock().unwrap().clone()
+}
 
 #[tauri::command]
 fn move_to_trash(path: String) {
@@ -104,7 +116,9 @@ async fn search_query_entries(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let app_state = AppState::default();
+
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -116,6 +130,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
+            get_opened_files,
             move_to_trash,
             move_many_to_trash,
             get_note_preview,
@@ -124,6 +139,40 @@ pub fn run() {
             get_indexing_meta,
             search_query_entries
         ])
-        .run(tauri::generate_context!())
+        .setup(|app| {
+            #[cfg(not(target_os = "macos"))]
+            {
+                use tauri_plugin_cli::CliExt;
+                let cli = app.cli().matches()?;
+                let paths: Vec<String> = cli
+                    .args
+                    .values()
+                    .flat_map(|arg| arg.value.clone())
+                    .collect();
+
+                let state = app.state::<AppState>();
+                *state.opened_files.lock().unwrap() = paths;
+            }
+
+            #[cfg(target_os = "macos")]
+            let _ = app;
+
+            Ok(())
+        })
+        .manage(app_state)
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = event {
+            let state = app_handle.state::<AppState>();
+            let mut opened_files = state.opened_files.lock().unwrap();
+            *opened_files = urls
+                .iter()
+                .filter_map(|u| u.to_file_path().ok())
+                .map(|p| p.to_string_lossy().to_string())
+                .collect();
+        }
+    });
 }
