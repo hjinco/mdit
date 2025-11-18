@@ -107,15 +107,16 @@ export function FileExplorer() {
   const entryMap = useEntryMap(entries)
 
   // Setup workspace root as a drop target
-  const { isOver: isOverWorkspace } = useDroppable({
-    id: `droppable-${workspacePath}`,
-    data: {
-      path: workspacePath,
-      isDirectory: true,
-      depth: -1,
-    },
-    disabled: !workspacePath,
-  })
+  const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
+    useDroppable({
+      id: `droppable-${workspacePath}`,
+      data: {
+        path: workspacePath,
+        isDirectory: true,
+        depth: -1,
+      },
+      disabled: !workspacePath,
+    })
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -323,6 +324,7 @@ export function FileExplorer() {
           <GitSyncStatus workspacePath={workspacePath} />
         </div>
         <div
+          ref={setWorkspaceDropRef}
           className={cn(
             'flex-1 overflow-y-auto p-2',
             isOverWorkspace &&
