@@ -13,11 +13,10 @@ export function SettingsMenu() {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="text-foreground/50"
+          className="text-foreground/70 justify-start"
           onClick={() => setSettingsDialogOpen(true)}
         >
-          <SettingsIcon />
+          <SettingsIcon /> Settings
         </Button>
       </TooltipTrigger>
       <TooltipContent>Settings</TooltipContent>
