@@ -150,7 +150,7 @@ export function TagList() {
   const hasTags = tags.length > 0
 
   return (
-    <div className="mb-2 pb-2">
+    <div className="pb-2">
       {hasTags && (
         <ul className="space-y-0.5">
           {tags.map((tagName) => {

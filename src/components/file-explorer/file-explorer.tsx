@@ -14,7 +14,6 @@ import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
-import { useFileExplorerScroll } from './hooks/use-workspace-scroll'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
 import { SettingsMenu } from './ui/settings-menu'
@@ -118,18 +117,6 @@ export function FileExplorer() {
       },
       disabled: !workspacePath,
     })
-
-  const {
-    hasWorkspaceScroll,
-    isWorkspaceScrollAtBottom,
-    isWorkspaceScrollAtTop,
-    handleWorkspaceScroll,
-    handleWorkspaceContainerRef,
-  } = useFileExplorerScroll({
-    entries,
-    expandedDirectories,
-    setWorkspaceDropRef,
-  })
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -323,10 +310,7 @@ export function FileExplorer() {
       >
         <div
           className={cn(
-            'flex items-center justify-between px-2 gap-1 overflow-hidden mt-12',
-            hasWorkspaceScroll &&
-              !isWorkspaceScrollAtTop &&
-              'border-b border-border/20'
+            'flex items-center justify-between px-2 gap-1 overflow-hidden mt-12'
           )}
         >
           <div className="shrink-0 max-w-40">
@@ -340,7 +324,7 @@ export function FileExplorer() {
           <GitSyncStatus workspacePath={workspacePath} />
         </div>
         <div
-          ref={handleWorkspaceContainerRef}
+          ref={setWorkspaceDropRef}
           className={cn(
             'flex-1 overflow-y-auto p-2',
             isOverWorkspace &&
@@ -350,7 +334,6 @@ export function FileExplorer() {
           onClick={() => {
             setSelectedEntryPaths(new Set())
           }}
-          onScroll={handleWorkspaceScroll}
         >
           <TagList />
           <ul className="space-y-0.5 pb-4">
@@ -373,14 +356,7 @@ export function FileExplorer() {
             ))}
           </ul>
         </div>
-        <footer
-          className={cn(
-            'p-2 flex flex-col transition-[border]',
-            hasWorkspaceScroll &&
-              !isWorkspaceScrollAtBottom &&
-              'border-t border-border/20'
-          )}
-        >
+        <footer className={cn('p-2 flex flex-col')}>
           <TooltipProvider delayDuration={500} skipDelayDuration={0}>
             <SettingsMenu />
             <FeedbackButton />
