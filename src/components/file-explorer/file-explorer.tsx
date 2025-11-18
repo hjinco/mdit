@@ -375,7 +375,7 @@ export function FileExplorer() {
         </div>
         <footer
           className={cn(
-            'p-2 flex transition-[border]',
+            'p-2 flex flex-col transition-[border]',
             hasWorkspaceScroll &&
               !isWorkspaceScrollAtBottom &&
               'border-t border-border/20'
