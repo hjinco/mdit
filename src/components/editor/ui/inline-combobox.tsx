@@ -350,7 +350,11 @@ const InlineComboboxEmpty = ({
 
   return (
     <div
-      className={cn(comboboxItemVariants({ interactive: false }), className)}
+      className={cn(
+        comboboxItemVariants({ interactive: false }),
+        'h-9',
+        className
+      )}
     >
       {children}
     </div>
