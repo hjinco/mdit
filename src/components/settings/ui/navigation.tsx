@@ -7,17 +7,23 @@ export type SettingsTab = 'preferences' | 'ai' | 'sync' | 'indexing'
 interface SettingsNavigationProps {
   activeTab: SettingsTab
   onTabChange: (tab: SettingsTab) => void
+  hasWorkspace: boolean
 }
 
 export function SettingsNavigation({
   activeTab,
   onTabChange,
+  hasWorkspace,
 }: SettingsNavigationProps) {
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'preferences', label: 'Preferences' },
     { id: 'ai', label: 'AI' },
-    { id: 'sync', label: 'Sync' },
-    { id: 'indexing', label: 'Indexing' },
+    ...(hasWorkspace
+      ? [
+          { id: 'sync', label: 'Sync' } as const,
+          { id: 'indexing', label: 'Indexing' } as const,
+        ]
+      : []),
   ]
 
   return (
