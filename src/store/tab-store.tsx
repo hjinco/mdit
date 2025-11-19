@@ -1,4 +1,4 @@
-import { readTextFile } from '@tauri-apps/plugin-fs'
+import { readTextFile, rename as renameFile } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 import { getFileNameWithoutExtension } from '@/utils/path-utils'
 
@@ -15,6 +15,7 @@ export type Tab = {
 
 type RenameTabOptions = {
   refreshContent?: boolean
+  renameOnFs?: boolean
 }
 
 type TabStore = {
@@ -150,10 +151,28 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
   renameTab: async (oldPath, newPath, options) => {
     const refreshContent = options?.refreshContent ?? false
+    const shouldRenameOnFs = options?.renameOnFs ?? false
     const tab = get().tab
 
     if (!tab || tab.path !== oldPath) {
       return
+    }
+
+    if (shouldRenameOnFs && oldPath !== newPath) {
+      try {
+        await renameFile(oldPath, newPath)
+        set({
+          tab: {
+            ...tab,
+            path: newPath,
+            name: getFileNameWithoutExtension(newPath),
+          },
+        })
+        return
+      } catch (error) {
+        console.error('Failed to rename tab on filesystem:', error)
+        throw error
+      }
     }
 
     const name = getFileNameWithoutExtension(newPath)
