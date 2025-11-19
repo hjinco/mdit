@@ -43,6 +43,7 @@ export function App() {
             <Editor />
           </div>
         </div>
+        <SettingsDialog />
       </DndProvider>
     )
   }
