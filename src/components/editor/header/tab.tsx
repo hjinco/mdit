@@ -13,7 +13,10 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
-import { getFileNameFromPath } from '@/utils/path-utils'
+import {
+  getFileNameFromPath,
+  getFileNameWithoutExtension,
+} from '@/utils/path-utils'
 
 export function Tab() {
   const tab = useTabStore((s) => s.tab)
@@ -39,6 +42,16 @@ export function Tab() {
       setDraftName(tab?.name)
     }
   }, [isEditing, tab?.name])
+
+  useEffect(() => {
+    if (!tab?.path) {
+      return
+    }
+
+    // Cancel edits when the active tab changes to avoid renaming the wrong file.
+    setIsEditing(false)
+    setDraftName(getFileNameWithoutExtension(tab.path))
+  }, [tab?.path])
 
   useEffect(() => {
     if (!isEditing) return
