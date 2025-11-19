@@ -16,6 +16,7 @@ import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
 import { useEntryUpdateOnSave } from './hooks/use-entry-update-on-save'
 import { usePreviewCache } from './hooks/use-preview-cache'
+import { CollectionResizer } from './ui/collection-resizer'
 import { NewNoteButton } from './ui/new-note-button'
 import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
@@ -35,7 +36,7 @@ export function CollectionView() {
     }))
   )
   const isCollectionViewOpen = currentCollectionPath !== null
-  const { isOpen, width, handlePointerDown } = useResizablePanel({
+  const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
     defaultWidth: 256,
     minWidth: 200,
@@ -296,12 +297,11 @@ export function CollectionView() {
           </ul>
         )}
       </div>
-      {isOpen && (
-        <div
-          className="absolute top-0 -right-0.5 z-10 h-full w-1 cursor-col-resize bg-transparent"
-          onPointerDown={handlePointerDown}
-        />
-      )}
+      <CollectionResizer
+        isOpen={isOpen}
+        isResizing={isResizing}
+        onPointerDown={handlePointerDown}
+      />
     </aside>
   )
 }

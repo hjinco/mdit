@@ -26,7 +26,7 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
           Toggle
           <KbdGroup>
             <Kbd>Cmd</Kbd>
-            <Kbd>\</Kbd>
+            <Kbd>S</Kbd>
           </KbdGroup>
         </div>
       </TooltipContent>
