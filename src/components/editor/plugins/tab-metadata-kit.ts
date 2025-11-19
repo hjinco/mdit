@@ -1,6 +1,7 @@
 import { KEYS } from 'platejs'
 import { createPlatePlugin } from 'platejs/react'
 import { useTabStore } from '@/store/tab-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 
 /**
  * Extract text content from a Slate node by traversing its children
@@ -68,6 +69,11 @@ const TabMetadataPlugin = createPlatePlugin({
   key: 'tabMetadata',
   handlers: {
     onChange: ({ editor }) => {
+      // editor only mode
+      if (!useWorkspaceStore.getState().workspacePath) {
+        return
+      }
+
       const blocks = editor.children
       const selection = editor.selection
 
