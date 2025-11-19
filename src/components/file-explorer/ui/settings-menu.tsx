@@ -13,6 +13,7 @@ export function SettingsMenu() {
         <Button
           type="button"
           variant="ghost"
+          size="sm"
           className="text-foreground/70 justify-start"
           onClick={() => setSettingsDialogOpen(true)}
         >

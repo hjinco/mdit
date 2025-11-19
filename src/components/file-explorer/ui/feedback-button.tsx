@@ -97,6 +97,7 @@ export function FeedbackButton() {
               type="button"
               variant="ghost"
               className="text-foreground/70 justify-start"
+              size="sm"
             >
               <SendIcon /> Feedback
             </Button>
