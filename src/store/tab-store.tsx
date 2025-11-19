@@ -161,6 +161,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
     if (shouldRenameOnFs && oldPath !== newPath) {
       try {
         await renameFile(oldPath, newPath)
+        set({
+          tab: {
+            ...tab,
+            path: newPath,
+            name: getFileNameWithoutExtension(newPath),
+          },
+        })
         return
       } catch (error) {
         console.error('Failed to rename tab on filesystem:', error)
