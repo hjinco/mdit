@@ -55,11 +55,11 @@ export const TableElement = withHOC(
     ...props
   }: PlateElementProps<TTableElement>) {
     const readOnly = useReadOnly()
-    const isSelectionAreaVisible = usePluginOption(
-      BlockSelectionPlugin,
-      'isSelectionAreaVisible'
-    )
-    const hasControls = !readOnly && !isSelectionAreaVisible
+    // const isSelectionAreaVisible = usePluginOption(
+    //   BlockSelectionPlugin,
+    //   'isSelectionAreaVisible'
+    // )
+    // const hasControls = !readOnly && !isSelectionAreaVisible
     const { isSelectingCell, marginLeft, props: tableProps } = useTableElement()
 
     const isSelectingTable = useBlockSelected(props.element.id as string)
@@ -68,8 +68,8 @@ export const TableElement = withHOC(
       <PlateElement
         {...props}
         className={cn(
-          'overflow-x-auto py-5',
-          hasControls && '-ml-2 *:data-[slot=block-selection]:left-2'
+          'overflow-x-auto py-5'
+          // hasControls && '-ml-2 *:data-[slot=block-selection]:left-2'
         )}
         style={{ paddingLeft: marginLeft }}
       >
