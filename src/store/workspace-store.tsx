@@ -45,8 +45,10 @@ import {
   readPinnedDirectories,
   removePinsForPaths,
   renamePinnedDirectories,
+  normalizePinnedDirectoriesList,
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
+import { normalizePathSeparators } from '@/utils/path-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -393,17 +395,18 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     const isDirectory =
-      path === workspacePath || Boolean(findDirectoryEntry(get().entries, path))
+      normalizePathSeparators(path) === normalizePathSeparators(workspacePath) ||
+      Boolean(findDirectoryEntry(get().entries, path))
     if (!isDirectory) {
       return
     }
 
     const prevPinned = get().pinnedDirectories
-    if (prevPinned.includes(path)) {
+    const nextPinned = normalizePinnedDirectoriesList([...prevPinned, path])
+
+    if (nextPinned.length === prevPinned.length) {
       return
     }
-
-    const nextPinned = [...prevPinned, path]
     set({ pinnedDirectories: nextPinned })
     await persistPinnedDirectories(workspacePath, nextPinned)
   },
@@ -412,8 +415,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const workspacePath = get().workspacePath
     if (!workspacePath) return
 
+    const normalizedPath = normalizePathSeparators(path)
     const prevPinned = get().pinnedDirectories
-    const nextPinned = prevPinned.filter((entry) => entry !== path)
+    const nextPinned = normalizePinnedDirectoriesList(
+      prevPinned.filter(
+        (entry) => normalizePathSeparators(entry) !== normalizedPath
+      )
+    )
     if (nextPinned.length === prevPinned.length) {
       return
     }

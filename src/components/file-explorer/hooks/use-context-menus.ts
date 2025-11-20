@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { normalizePathSeparators } from '@/utils/path-utils'
 
 type UseFileExplorerMenusProps = {
   renameConfig: ChatConfig | null
@@ -130,11 +131,12 @@ export const useFileExplorerMenus = ({
   const showDirectoryMenu = useCallback(
     async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
       const directoryPath = directoryEntry.path
-      const isPinned = pinnedDirectories.includes(directoryPath)
+      const normalizedDirectoryPath = normalizePathSeparators(directoryPath)
+      const isPinned = pinnedDirectories.includes(normalizedDirectoryPath)
       try {
         const items = [
           await MenuItem.new({
-            id: `new-note-${directoryPath}`,
+            id: `new-note-${normalizedDirectoryPath}`,
             text: 'New Note',
             action: async () => {
               const filePath = await createNote(directoryPath)
@@ -144,7 +146,7 @@ export const useFileExplorerMenus = ({
             },
           }),
           await MenuItem.new({
-            id: `new-folder-${directoryPath}`,
+            id: `new-folder-${normalizedDirectoryPath}`,
             text: 'New Folder',
             action: async () => {
               const newFolderPath = await createFolder(directoryPath)
@@ -154,13 +156,13 @@ export const useFileExplorerMenus = ({
             },
           }),
           await MenuItem.new({
-            id: `pin-directory-${directoryPath}`,
+            id: `pin-directory-${normalizedDirectoryPath}`,
             text: isPinned ? 'Unpin' : 'Pin',
             action: async () => {
               if (isPinned) {
-                await unpinDirectory(directoryPath)
+                await unpinDirectory(normalizedDirectoryPath)
               } else {
-                await pinDirectory(directoryPath)
+                await pinDirectory(normalizedDirectoryPath)
               }
             },
           }),

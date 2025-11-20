@@ -7,6 +7,70 @@ import {
 import type { WorkspaceEntry } from '../../workspace-store'
 import { collectDirectoryPaths } from './expanded-directories-utils'
 
+const DRIVE_LETTER_REGEX = /^[a-zA-Z]:\//
+const isAbsolutePath = (path: string) =>
+  path.startsWith('/') || DRIVE_LETTER_REGEX.test(path)
+
+export function normalizePinnedDirectoriesList(paths: unknown[]): string[] {
+  const normalizedSet = new Set<string>()
+
+  for (const path of paths) {
+    if (typeof path !== 'string') continue
+    const trimmed = path.trim()
+    if (!trimmed) continue
+    const normalized = normalizePathSeparators(trimmed)
+    if (normalized) {
+      normalizedSet.add(normalized)
+    }
+  }
+
+  return Array.from(normalizedSet)
+}
+
+const toRelativePinPath = (
+  workspacePath: string,
+  pinnedPath: string
+): string => {
+  const normalizedWorkspace = normalizePathSeparators(workspacePath)
+  const normalizedPinned = normalizePathSeparators(pinnedPath)
+
+  if (!normalizedWorkspace || !normalizedPinned) return normalizedPinned
+  if (normalizedPinned === normalizedWorkspace) return '.'
+
+  const workspacePrefix = `${normalizedWorkspace}/`
+  if (normalizedPinned.startsWith(workspacePrefix)) {
+    const relative = normalizedPinned.slice(workspacePrefix.length)
+    return relative.length > 0 ? relative : '.'
+  }
+
+  return normalizedPinned
+}
+
+const toAbsolutePinPath = (
+  workspacePath: string,
+  pinnedPath: string
+): string | null => {
+  const normalizedWorkspace = normalizePathSeparators(workspacePath)
+  const normalizedPinned = normalizePathSeparators(pinnedPath)
+  if (!normalizedPinned) return null
+
+  const withoutDotPrefix = normalizedPinned.startsWith('./')
+    ? normalizedPinned.slice(2)
+    : normalizedPinned
+
+  if (withoutDotPrefix === '.' || withoutDotPrefix === '') {
+    return normalizedWorkspace
+  }
+
+  if (isAbsolutePath(withoutDotPrefix)) {
+    return withoutDotPrefix
+  }
+
+  if (!normalizedWorkspace) return null
+
+  return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
+}
+
 export async function readPinnedDirectories(
   workspacePath: string | null
 ): Promise<string[]> {
@@ -17,12 +81,17 @@ export async function readPinnedDirectories(
   try {
     const settings = await loadSettings(workspacePath)
     const rawPins = settings.pinnedDirectories ?? []
-    const normalized = rawPins
-      .filter((entry): entry is string => typeof entry === 'string')
-      .map((path) => path.trim())
-      .filter(Boolean)
-      .map((path) => normalizePathSeparators(path))
-    return Array.from(new Set(normalized))
+    const normalizedPins = normalizePinnedDirectoriesList(rawPins)
+    const absolutePins: string[] = []
+
+    for (const pin of normalizedPins) {
+      const absolutePath = toAbsolutePinPath(workspacePath, pin)
+      if (absolutePath) {
+        absolutePins.push(absolutePath)
+      }
+    }
+
+    return Array.from(new Set(absolutePins))
   } catch (error) {
     console.error('Failed to read pinned directories:', error)
     return []
@@ -38,7 +107,11 @@ export async function persistPinnedDirectories(
   }
 
   try {
-    await saveSettings(workspacePath, { pinnedDirectories })
+    const normalizedPins = normalizePinnedDirectoriesList(pinnedDirectories)
+    const relativePins = normalizePinnedDirectoriesList(
+      normalizedPins.map((path) => toRelativePinPath(workspacePath, path))
+    )
+    await saveSettings(workspacePath, { pinnedDirectories: relativePins })
   } catch (error) {
     console.error('Failed to save pinned directories:', error)
   }
@@ -49,8 +122,10 @@ export function filterPinsForWorkspace(
   workspacePath: string | null
 ): string[] {
   if (!workspacePath) return []
-  return pinnedDirectories.filter((path) =>
-    isPathEqualOrDescendant(path, workspacePath)
+  return normalizePinnedDirectoriesList(
+    pinnedDirectories.filter((path) =>
+      isPathEqualOrDescendant(path, workspacePath)
+    )
   )
 }
 
@@ -59,7 +134,9 @@ export function removePinsForPaths(
   removedPaths: string[]
 ): string[] {
   if (removedPaths.length === 0) return pinnedDirectories
-  return pinnedDirectories.filter((path) => !isPathInPaths(path, removedPaths))
+  return normalizePinnedDirectoriesList(
+    pinnedDirectories.filter((path) => !isPathInPaths(path, removedPaths))
+  )
 }
 
 export function renamePinnedDirectories(
@@ -87,7 +164,7 @@ export function renamePinnedDirectories(
     return path
   })
 
-  return Array.from(new Set(updated))
+  return normalizePinnedDirectoriesList(updated)
 }
 
 export function filterPinsWithEntries(
@@ -109,7 +186,9 @@ export function filterPinsWithEntries(
     normalizedDirectorySet.add(normalizePathSeparators(workspacePath))
   }
 
-  return pinnedDirectories.filter((path) =>
-    normalizedDirectorySet.has(normalizePathSeparators(path))
+  return normalizePinnedDirectoriesList(
+    pinnedDirectories.filter((path) =>
+      normalizedDirectorySet.has(normalizePathSeparators(path))
+    )
   )
 }
