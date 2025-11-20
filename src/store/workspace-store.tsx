@@ -1,6 +1,3 @@
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { createOpenAI } from '@ai-sdk/openai'
 import { invoke } from '@tauri-apps/api/core'
 import { dirname, join } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -14,14 +11,21 @@ import {
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { generateText } from 'ai'
-import { ollama } from 'ollama-ai-provider-v2'
 import { toast } from 'sonner'
 import { create } from 'zustand'
-
-import { type ChatConfig, useAISettingsStore } from './ai-settings-store'
+import { normalizePathSeparators } from '@/utils/path-utils'
+import { useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import { useTagStore } from './tag-store'
+import {
+  AI_RENAME_SYSTEM_PROMPT,
+  buildRenamePrompt,
+  collectSiblingNoteNames,
+  createModelFromConfig,
+  ensureUniqueNoteName,
+  extractAndSanitizeName,
+} from './workspace/utils/ai-rename-utils'
 import {
   addEntryToState,
   buildWorkspaceEntries,
@@ -41,14 +45,13 @@ import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-ut
 import {
   filterPinsForWorkspace,
   filterPinsWithEntries,
+  normalizePinnedDirectoriesList,
   persistPinnedDirectories,
   readPinnedDirectories,
   removePinsForPaths,
   renamePinnedDirectories,
-  normalizePinnedDirectoriesList,
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
-import { normalizePathSeparators } from '@/utils/path-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -395,7 +398,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     const isDirectory =
-      normalizePathSeparators(path) === normalizePathSeparators(workspacePath) ||
+      normalizePathSeparators(path) ===
+        normalizePathSeparators(workspacePath) ||
       Boolean(findDirectoryEntry(get().entries, path))
     if (!isDirectory) {
       return
@@ -690,25 +694,19 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     if (entry.isDirectory || !entry.path.endsWith('.md')) {
-      toast.error('AI rename is only available for Markdown notes', {
-        position: 'bottom-left',
-      })
       return
     }
 
     try {
-      const [directoryPath, rawContent] = await Promise.all([
+      const [dirPath, rawContent] = await Promise.all([
         dirname(entry.path),
         readTextFile(entry.path),
       ])
 
-      const otherNoteNames = await collectSiblingNoteNames(
-        directoryPath,
-        entry.name
-      )
+      const dirEntries = await readDir(dirPath)
+      const otherNoteNames = collectSiblingNoteNames(dirEntries, entry.name)
 
       const model = createModelFromConfig(renameConfig)
-
       const aiResponse = await generateText({
         model,
         system: AI_RENAME_SYSTEM_PROMPT,
@@ -717,23 +715,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           currentName: entry.name,
           otherNoteNames,
           content: rawContent,
-          directoryPath,
+          dirPath,
         }),
       })
 
-      const suggestedBaseName = sanitizeFileName(extractName(aiResponse.text))
-
+      const suggestedBaseName = extractAndSanitizeName(aiResponse.text)
       if (!suggestedBaseName) {
         throw new Error('The AI did not return a usable name.')
       }
 
-      const extension = getFileExtension(entry.name) ?? '.md'
-
-      const { fileName: finalFileName } = await ensureUniqueFileName(
-        directoryPath,
+      const { fileName: finalFileName } = await ensureUniqueNoteName(
+        dirPath,
         suggestedBaseName,
-        extension,
-        entry.path
+        entry.path,
+        exists
       )
 
       const renamedPath = await get().renameEntry(entry, finalFileName)
@@ -742,10 +737,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         throw new Error('Could not apply the AI-generated name.')
       }
 
-      const displayName = stripExtension(finalFileName, extension)
       const { tab, openNote } = useTabStore.getState()
 
-      toast.success(`Renamed note to “${displayName}”`, {
+      toast.success(`Renamed note to “${finalFileName}”`, {
         position: 'bottom-left',
         action:
           tab?.path === renamedPath
@@ -932,7 +926,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       } | null = null
       let shouldRefreshTab = false
 
-      if (MARKDOWN_EXT_REGEX.test(fileName)) {
+      if (fileName.endsWith('.md')) {
         try {
           const sourceDirectory = await dirname(sourcePath)
           if (sourceDirectory !== destinationPath) {
@@ -1144,156 +1138,3 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
   },
 }))
-
-const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
-Return only the new title without a file extension. 
-Keep it under 60 characters and avoid special characters like / \\ : * ? " < > |.`
-const MAX_NOTE_CONTEXT_LENGTH = 4000
-
-// Regex patterns for filename sanitization
-const MARKDOWN_EXT_REGEX = /\.md$/i
-const INVALID_FILENAME_CHARS_REGEX = /[<>:"/\\|?*]/g
-const MULTIPLE_WHITESPACE_REGEX = /\s+/g
-const TRAILING_DOTS_REGEX = /\.+$/
-
-function createModelFromConfig(config: ChatConfig) {
-  switch (config.provider) {
-    case 'anthropic':
-      return createAnthropic({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'google':
-      return createGoogleGenerativeAI({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'openai':
-      return createOpenAI({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'ollama':
-      return ollama(config.model)
-    default:
-      throw new Error(`Unsupported provider: ${config.provider}`)
-  }
-}
-
-async function collectSiblingNoteNames(
-  directoryPath: string,
-  currentFileName: string
-): Promise<string[]> {
-  try {
-    const entries = await readDir(directoryPath)
-
-    return entries
-      .filter(
-        (entry) =>
-          Boolean(entry.name) &&
-          entry.name !== currentFileName &&
-          !entry.name?.startsWith('.') &&
-          entry.name?.toLowerCase().endsWith('.md')
-      )
-      .map((entry) => stripExtension(entry.name as string, '.md').trim())
-      .filter((name) => name.length > 0)
-      .slice(0, 30)
-  } catch (error) {
-    console.error('Failed to read sibling notes:', directoryPath, error)
-    return []
-  }
-}
-
-function buildRenamePrompt({
-  currentName,
-  otherNoteNames,
-  content,
-  directoryPath,
-}: {
-  currentName: string
-  otherNoteNames: string[]
-  content: string
-  directoryPath: string
-}) {
-  const truncatedContent =
-    content.length > MAX_NOTE_CONTEXT_LENGTH
-      ? `${content.slice(0, MAX_NOTE_CONTEXT_LENGTH)}\n…`
-      : content
-
-  const others =
-    otherNoteNames.length > 0
-      ? otherNoteNames.map((name) => `- ${name}`).join('\n')
-      : 'None'
-
-  return `Generate a better file name for a markdown note. 
-- The note is currently called "${stripExtension(currentName, '.md')}".
-- The note resides in the folder: ${directoryPath}.
-- Other notes in this folder:\n${others}
-
-Note content:
----
-${truncatedContent}
----
-
-Respond with a single title (no quotes, no markdown, no extension).`
-}
-
-function extractName(raw: string) {
-  return raw
-    .split('\n')[0]
-    .replace(/[`"'<>]/g, ' ')
-    .trim()
-}
-
-function sanitizeFileName(name: string) {
-  const withoutMd = name.replace(MARKDOWN_EXT_REGEX, '')
-  const cleaned = withoutMd
-    .replace(INVALID_FILENAME_CHARS_REGEX, ' ')
-    .replace(MULTIPLE_WHITESPACE_REGEX, ' ')
-    .replace(TRAILING_DOTS_REGEX, '')
-    .trim()
-
-  const truncated = cleaned.slice(0, 60).trim()
-
-  return truncated
-}
-
-function getFileExtension(fileName: string) {
-  const index = fileName.lastIndexOf('.')
-  if (index <= 0) return ''
-  return fileName.slice(index)
-}
-
-function stripExtension(fileName: string, extension: string) {
-  return extension && fileName.toLowerCase().endsWith(extension.toLowerCase())
-    ? fileName.slice(0, -extension.length)
-    : fileName
-}
-
-async function ensureUniqueFileName(
-  directoryPath: string,
-  baseName: string,
-  extension: string,
-  currentPath: string
-) {
-  let attempt = 0
-
-  // Always have a fallback extension for markdown notes
-  const safeExtension = extension || '.md'
-
-  while (attempt < 100) {
-    const suffix = attempt === 0 ? '' : ` ${attempt}`
-    const candidateBase = `${baseName}${suffix}`.trim()
-    const candidateFileName = `${candidateBase}${safeExtension}`
-    const nextPath = await join(directoryPath, candidateFileName)
-
-    if (nextPath === currentPath) {
-      return { fileName: candidateFileName, fullPath: nextPath }
-    }
-
-    if (!(await exists(nextPath))) {
-      return { fileName: candidateFileName, fullPath: nextPath }
-    }
-
-    attempt += 1
-  }
-
-  throw new Error('Unable to find a unique filename.')
-}
