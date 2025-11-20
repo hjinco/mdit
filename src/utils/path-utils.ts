@@ -73,3 +73,56 @@ export const getFileNameWithoutExtension = (path: string): string => {
   const lastDotIndex = fileName.lastIndexOf('.')
   return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName
 }
+
+/**
+ * Checks if a path is equal to or a descendant of a parent path.
+ * Normalizes both paths before comparison to handle Windows/Unix path separator differences.
+ *
+ * @param path - The path to check
+ * @param parentPath - The parent path to compare against
+ * @returns True if path equals parentPath or is a descendant of it
+ *
+ * @example
+ * isPathEqualOrDescendant('C:/Users/Documents/file.txt', 'C:/Users') // true
+ * isPathEqualOrDescendant('C:\\Users\\Documents', 'C:/Users') // true
+ * isPathEqualOrDescendant('/home/user/file.txt', '/home/user') // true
+ */
+export const isPathEqualOrDescendant = (
+  path: string,
+  parentPath: string
+): boolean => {
+  const normalizedPath = normalizePathSeparators(path)
+  const normalizedParent = normalizePathSeparators(parentPath)
+
+  if (normalizedPath === normalizedParent) {
+    return true
+  }
+
+  return normalizedPath.startsWith(`${normalizedParent}/`)
+}
+
+/**
+ * Checks if a path is equal to or a descendant of any of the target paths.
+ * Normalizes all paths before comparison to handle Windows/Unix path separator differences.
+ *
+ * @param path - The path to check
+ * @param targetPaths - Array of target paths to compare against
+ * @returns True if path equals any targetPath or is a descendant of any targetPath
+ *
+ * @example
+ * isPathInPaths('C:/Users/Documents/file.txt', ['C:/Users', '/home']) // true
+ * isPathInPaths('C:\\Users\\Documents', ['C:/Users']) // true
+ */
+export const isPathInPaths = (path: string, targetPaths: string[]): boolean => {
+  if (targetPaths.length === 0) {
+    return false
+  }
+
+  for (const targetPath of targetPaths) {
+    if (isPathEqualOrDescendant(path, targetPath)) {
+      return true
+    }
+  }
+
+  return false
+}

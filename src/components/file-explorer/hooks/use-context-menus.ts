@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { normalizePathSeparators } from '@/utils/path-utils'
 
 type UseFileExplorerMenusProps = {
   renameConfig: ChatConfig | null
@@ -24,6 +25,9 @@ type UseFileExplorerMenusProps = {
   setSelectionAnchorPath: (path: string | null) => void
   resetSelection: () => void
   entries: WorkspaceEntry[]
+  pinnedDirectories: string[]
+  pinDirectory: (path: string) => Promise<void>
+  unpinDirectory: (path: string) => Promise<void>
 }
 
 export const useFileExplorerMenus = ({
@@ -42,6 +46,9 @@ export const useFileExplorerMenus = ({
   setSelectionAnchorPath,
   resetSelection,
   entries,
+  pinnedDirectories,
+  pinDirectory,
+  unpinDirectory,
 }: UseFileExplorerMenusProps) => {
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
@@ -124,10 +131,12 @@ export const useFileExplorerMenus = ({
   const showDirectoryMenu = useCallback(
     async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
       const directoryPath = directoryEntry.path
+      const normalizedDirectoryPath = normalizePathSeparators(directoryPath)
+      const isPinned = pinnedDirectories.includes(normalizedDirectoryPath)
       try {
         const items = [
           await MenuItem.new({
-            id: `new-note-${directoryPath}`,
+            id: `new-note-${normalizedDirectoryPath}`,
             text: 'New Note',
             action: async () => {
               const filePath = await createNote(directoryPath)
@@ -137,12 +146,23 @@ export const useFileExplorerMenus = ({
             },
           }),
           await MenuItem.new({
-            id: `new-folder-${directoryPath}`,
+            id: `new-folder-${normalizedDirectoryPath}`,
             text: 'New Folder',
             action: async () => {
               const newFolderPath = await createFolder(directoryPath)
               if (newFolderPath) {
                 setRenamingEntryPath(newFolderPath)
+              }
+            },
+          }),
+          await MenuItem.new({
+            id: `pin-directory-${normalizedDirectoryPath}`,
+            text: isPinned ? 'Unpin' : 'Pin',
+            action: async () => {
+              if (isPinned) {
+                await unpinDirectory(normalizedDirectoryPath)
+              } else {
+                await pinDirectory(normalizedDirectoryPath)
               }
             },
           }),
@@ -191,6 +211,9 @@ export const useFileExplorerMenus = ({
       openNote,
       setRenamingEntryPath,
       workspacePath,
+      pinnedDirectories,
+      pinDirectory,
+      unpinDirectory,
     ]
   )
 

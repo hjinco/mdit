@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { normalizePathSeparators } from '@/utils/path-utils'
 
 export function useEntryMap(entries: WorkspaceEntry[]) {
   return useMemo(() => {
@@ -8,7 +9,11 @@ export function useEntryMap(entries: WorkspaceEntry[]) {
 
     const traverse = (nodes: WorkspaceEntry[]) => {
       for (const node of nodes) {
+        const normalizedPath = normalizePathSeparators(node.path)
         map.set(node.path, node)
+        if (normalizedPath !== node.path) {
+          map.set(normalizedPath, node)
+        }
         if (node.children?.length) {
           traverse(node.children)
         }
@@ -19,4 +24,3 @@ export function useEntryMap(entries: WorkspaceEntry[]) {
     return map
   }, [entries])
 }
-

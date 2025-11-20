@@ -38,7 +38,17 @@ import {
   syncExpandedDirectoriesWithEntries,
 } from './workspace/utils/expanded-directories-utils'
 import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
+import {
+  filterPinsForWorkspace,
+  filterPinsWithEntries,
+  persistPinnedDirectories,
+  readPinnedDirectories,
+  removePinsForPaths,
+  renamePinnedDirectories,
+  normalizePinnedDirectoriesList,
+} from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
+import { normalizePathSeparators } from '@/utils/path-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -75,6 +85,7 @@ type WorkspaceStore = {
   currentCollectionPath: string | null
   lastCollectionPath: string | null
   isMigrationsComplete: boolean
+  pinnedDirectories: string[]
   setExpandedDirectories: (
     action: (
       expandedDirectories: Record<string, boolean>
@@ -88,6 +99,8 @@ type WorkspaceStore = {
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
   refreshWorkspaceEntries: () => Promise<void>
+  pinDirectory: (path: string) => Promise<void>
+  unpinDirectory: (path: string) => Promise<void>
   toggleDirectory: (path: string) => void
   createFolder: (directoryPath: string) => Promise<string | null>
   createNote: (directoryPath: string) => Promise<string | null>
@@ -105,6 +118,24 @@ type WorkspaceStore = {
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
 
+const findDirectoryEntry = (
+  entries: WorkspaceEntry[],
+  targetPath: string
+): WorkspaceEntry | null => {
+  for (const entry of entries) {
+    if (entry.isDirectory && entry.path === targetPath) {
+      return entry
+    }
+    if (entry.children) {
+      const found = findDirectoryEntry(entry.children, targetPath)
+      if (found) {
+        return found
+      }
+    }
+  }
+  return null
+}
+
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isLoading: true,
   workspacePath: null,
@@ -115,6 +146,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   currentCollectionPath: null,
   lastCollectionPath: null,
   isMigrationsComplete: false,
+  pinnedDirectories: [],
 
   setExpandedDirectories: (action) => {
     set((state) => ({ expandedDirectories: action(state.expandedDirectories) }))
@@ -172,9 +204,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         currentCollectionPath: null,
         lastCollectionPath: null,
         isMigrationsComplete: false,
+        pinnedDirectories: [],
       })
 
       if (workspacePath) {
+        const pinnedDirectories = await readPinnedDirectories(workspacePath)
+        // Avoid overwriting if workspace changed mid-load
+        if (get().workspacePath === workspacePath) {
+          set({
+            pinnedDirectories: filterPinsForWorkspace(
+              pinnedDirectories,
+              workspacePath
+            ),
+          })
+        }
         try {
           await ensureWorkspaceMigrations(workspacePath)
           // Verify workspace path still matches before marking migrations complete
@@ -206,6 +249,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         currentCollectionPath: null,
         lastCollectionPath: null,
         isMigrationsComplete: false,
+        pinnedDirectories: [],
       })
     }
   },
@@ -242,8 +286,15 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         expandedDirectories: {},
         currentCollectionPath: null,
         isMigrationsComplete: false,
+        pinnedDirectories: [],
       })
 
+      const pinnedDirectories = await readPinnedDirectories(path)
+      if (get().workspacePath === path) {
+        set({
+          pinnedDirectories: filterPinsForWorkspace(pinnedDirectories, path),
+        })
+      }
       try {
         await ensureWorkspaceMigrations(path)
         // Verify workspace path still matches before marking migrations complete
@@ -287,7 +338,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const workspacePath = get().workspacePath
 
     if (!workspacePath) {
-      set({ entries: [], isTreeLoading: false })
+      set({ entries: [], isTreeLoading: false, pinnedDirectories: [] })
       return
     }
 
@@ -300,6 +351,16 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         return
       }
 
+      const prevPinned = get().pinnedDirectories
+      const nextPinned = filterPinsWithEntries(
+        filterPinsForWorkspace(prevPinned, workspacePath),
+        entries,
+        workspacePath
+      )
+      const pinsChanged =
+        prevPinned.length !== nextPinned.length ||
+        prevPinned.some((path, index) => path !== nextPinned[index])
+
       set((state) => ({
         entries,
         isTreeLoading: false,
@@ -307,7 +368,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           state.expandedDirectories,
           entries
         ),
+        ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
       }))
+
+      if (pinsChanged && get().workspacePath === workspacePath) {
+        await persistPinnedDirectories(workspacePath, nextPinned)
+      }
     } catch (error) {
       console.error('Failed to refresh workspace entries:', error)
 
@@ -315,6 +381,52 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         set({ entries: [], isTreeLoading: false })
       }
     }
+  },
+
+  pinDirectory: async (path: string) => {
+    const workspacePath = get().workspacePath
+    if (!workspacePath) {
+      return
+    }
+
+    const withinWorkspace = filterPinsForWorkspace([path], workspacePath)
+    if (withinWorkspace.length === 0) {
+      return
+    }
+
+    const isDirectory =
+      normalizePathSeparators(path) === normalizePathSeparators(workspacePath) ||
+      Boolean(findDirectoryEntry(get().entries, path))
+    if (!isDirectory) {
+      return
+    }
+
+    const prevPinned = get().pinnedDirectories
+    const nextPinned = normalizePinnedDirectoriesList([...prevPinned, path])
+
+    if (nextPinned.length === prevPinned.length) {
+      return
+    }
+    set({ pinnedDirectories: nextPinned })
+    await persistPinnedDirectories(workspacePath, nextPinned)
+  },
+
+  unpinDirectory: async (path: string) => {
+    const workspacePath = get().workspacePath
+    if (!workspacePath) return
+
+    const normalizedPath = normalizePathSeparators(path)
+    const prevPinned = get().pinnedDirectories
+    const nextPinned = normalizePinnedDirectoriesList(
+      prevPinned.filter(
+        (entry) => normalizePathSeparators(entry) !== normalizedPath
+      )
+    )
+    if (nextPinned.length === prevPinned.length) {
+      return
+    }
+    set({ pinnedDirectories: nextPinned })
+    await persistPinnedDirectories(workspacePath, nextPinned)
   },
 
   toggleDirectory: (path: string) => {
@@ -529,13 +641,35 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       // Remove deleted entries from state without full refresh
-      set((state) => ({
-        entries: removeEntriesFromState(state.entries, paths),
-        expandedDirectories: removeExpandedDirectories(
-          state.expandedDirectories,
-          paths
-        ),
-      }))
+      const workspacePath = get().workspacePath
+      let nextPinned: string[] | null = null
+
+      set((state) => {
+        const filteredPins = removePinsForPaths(state.pinnedDirectories, paths)
+        const pinsChanged =
+          filteredPins.length !== state.pinnedDirectories.length
+
+        if (pinsChanged) {
+          nextPinned = filteredPins
+        }
+
+        return {
+          entries: removeEntriesFromState(state.entries, paths),
+          expandedDirectories: removeExpandedDirectories(
+            state.expandedDirectories,
+            paths
+          ),
+          ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
+        }
+      })
+
+      if (
+        workspacePath &&
+        nextPinned &&
+        get().workspacePath === workspacePath
+      ) {
+        await persistPinnedDirectories(workspacePath, nextPinned)
+      }
 
       return true
     } catch (error) {
@@ -664,20 +798,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await rename(entry.path, nextPath)
 
-      if (entry.isDirectory) {
-        set((state) => ({
-          expandedDirectories: renameExpandedDirectories(
-            state.expandedDirectories,
-            entry.path,
-            nextPath
-          ),
-          currentCollectionPath:
-            state.currentCollectionPath === entry.path
-              ? nextPath
-              : state.currentCollectionPath,
-        }))
-      }
-
       await tabState.renameTab(entry.path, nextPath)
       tabState.updateHistoryPath(entry.path, nextPath)
 
@@ -687,14 +807,58 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         useTagStore.getState().updateTagEntry(entry.path, nextPath, trimmedName)
       }
 
-      set((state) => ({
-        entries: updateEntryInState(
-          state.entries,
-          entry.path,
-          nextPath,
-          trimmedName
-        ),
-      }))
+      const workspacePath = get().workspacePath
+      let nextPinned: string[] | null = null
+
+      set((state) => {
+        const updatedPins = entry.isDirectory
+          ? renamePinnedDirectories(
+              state.pinnedDirectories,
+              entry.path,
+              nextPath
+            )
+          : state.pinnedDirectories
+        const pinsChanged =
+          updatedPins.length !== state.pinnedDirectories.length ||
+          updatedPins.some(
+            (path, index) => path !== state.pinnedDirectories[index]
+          )
+
+        if (pinsChanged) {
+          nextPinned = updatedPins
+        }
+
+        const updatedExpanded = entry.isDirectory
+          ? renameExpandedDirectories(
+              state.expandedDirectories,
+              entry.path,
+              nextPath
+            )
+          : state.expandedDirectories
+
+        return {
+          entries: updateEntryInState(
+            state.entries,
+            entry.path,
+            nextPath,
+            trimmedName
+          ),
+          expandedDirectories: updatedExpanded,
+          currentCollectionPath:
+            entry.isDirectory && state.currentCollectionPath === entry.path
+              ? nextPath
+              : state.currentCollectionPath,
+          ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
+        }
+      })
+
+      if (
+        workspacePath &&
+        nextPinned &&
+        get().workspacePath === workspacePath
+      ) {
+        await persistPinnedDirectories(workspacePath, nextPinned)
+      }
 
       return nextPath
     } catch (error) {
@@ -817,6 +981,31 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
+      // Find the entry to move before set() to determine if it's a directory
+      const findEntry = (
+        entryList: WorkspaceEntry[],
+        targetPath: string
+      ): WorkspaceEntry | null => {
+        for (const entry of entryList) {
+          if (entry.path === targetPath) {
+            return entry
+          }
+          if (entry.children) {
+            const found = findEntry(entry.children, targetPath)
+            if (found) {
+              return found
+            }
+          }
+        }
+        return null
+      }
+
+      const currentState = get()
+      const entryToMove = findEntry(currentState.entries, sourcePath)
+      const isDirectory = entryToMove?.isDirectory ?? false
+
+      let nextPinned: string[] | null = null
+
       set((state) => {
         let updatedEntries: WorkspaceEntry[]
 
@@ -841,26 +1030,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
           const filteredEntries = removeEntry(state.entries)
 
-          // Find the entry to move
-          const findEntry = (
-            entryList: WorkspaceEntry[],
-            targetPath: string
-          ): WorkspaceEntry | null => {
-            for (const entry of entryList) {
-              if (entry.path === targetPath) {
-                return entry
-              }
-              if (entry.children) {
-                const found = findEntry(entry.children, targetPath)
-                if (found) {
-                  return found
-                }
-              }
-            }
-            return null
-          }
-
-          const entryToMove = findEntry(state.entries, sourcePath)
           if (entryToMove) {
             // Update paths if it's a directory
             let updatedEntryToMove: WorkspaceEntry
@@ -904,13 +1073,48 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           )
         }
 
+        const updatedExpanded = isDirectory
+          ? renameExpandedDirectories(
+              state.expandedDirectories,
+              sourcePath,
+              newPath
+            )
+          : state.expandedDirectories
+
+        const updatedPinned = isDirectory
+          ? renamePinnedDirectories(
+              state.pinnedDirectories,
+              sourcePath,
+              newPath
+            )
+          : state.pinnedDirectories
+        const pinsChanged =
+          updatedPinned.length !== state.pinnedDirectories.length ||
+          updatedPinned.some(
+            (path, index) => path !== state.pinnedDirectories[index]
+          )
+
+        if (pinsChanged) {
+          nextPinned = updatedPinned
+        }
+
         return {
           entries: updatedEntries,
+          expandedDirectories: updatedExpanded,
           currentCollectionPath: shouldUpdateCollectionPath
             ? newPath
             : state.currentCollectionPath,
+          ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
         }
       })
+
+      if (
+        workspacePath &&
+        nextPinned &&
+        get().workspacePath === workspacePath
+      ) {
+        await persistPinnedDirectories(workspacePath, nextPinned)
+      }
 
       return true
     } catch (error) {

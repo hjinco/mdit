@@ -21,6 +21,7 @@ export type WorkspaceSettings = {
     embeddingModel: string
     autoIndex?: boolean
   }
+  pinnedDirectories?: string[]
 }
 
 const getWorkspaceConfigPath = async (

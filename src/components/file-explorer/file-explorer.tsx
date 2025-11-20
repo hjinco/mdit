@@ -16,6 +16,7 @@ import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
+import { PinnedList } from './ui/pinned-list'
 import { SettingsMenu } from './ui/settings-menu'
 import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
@@ -50,6 +51,9 @@ export function FileExplorer() {
     setWorkspace,
     openFolderPicker,
     setCurrentCollectionPath,
+    pinnedDirectories,
+    pinDirectory,
+    unpinDirectory,
   } = useWorkspaceStore()
   const { tab, openNote } = useTabStore(
     useShallow((s) => ({ tab: s.tab, openNote: s.openNote }))
@@ -181,6 +185,9 @@ export function FileExplorer() {
       setSelectionAnchorPath,
       resetSelection,
       entries,
+      pinnedDirectories,
+      pinDirectory,
+      unpinDirectory,
     })
 
   const handleEntryPrimaryAction = useCallback(
@@ -336,6 +343,7 @@ export function FileExplorer() {
           }}
         >
           <TagList />
+          <PinnedList />
           <ul className="space-y-0.5 pb-4">
             {entries.map((entry) => (
               <TreeNode
