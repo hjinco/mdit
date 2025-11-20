@@ -11,34 +11,8 @@ import { cn } from '@/lib/utils'
 import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
-
+import { getEntryButtonClassName } from '../utils/entry-classnames'
 import { TreeNodeRenameInput } from './tree-node-rename-input'
-
-type GetTreeNodeButtonClassNameParams = {
-  isSelected: boolean
-  isDragging: boolean
-  isRenaming: boolean
-  isAiRenaming: boolean
-  widthClass: 'flex-1' | 'w-full'
-}
-
-function getTreeNodeButtonClassName({
-  isSelected,
-  isDragging,
-  isRenaming,
-  isAiRenaming,
-  widthClass,
-}: GetTreeNodeButtonClassNameParams) {
-  return cn(
-    `${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
-    isSelected
-      ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
-      : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-    isDragging && 'opacity-50 cursor-grabbing',
-    isRenaming && 'ring-1 ring-ring/50',
-    isAiRenaming && 'animate-pulse'
-  )
-}
 
 type TreeNodeProps = {
   entry: WorkspaceEntry
@@ -298,7 +272,7 @@ export function TreeNode({
               type="button"
               onClick={handlePrimaryAction}
               onContextMenu={handleContextMenu}
-              className={getTreeNodeButtonClassName({
+              className={getEntryButtonClassName({
                 isSelected,
                 isDragging,
                 isRenaming,
@@ -374,7 +348,7 @@ export function TreeNode({
           type="button"
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
-          className={getTreeNodeButtonClassName({
+          className={getEntryButtonClassName({
             isSelected,
             isDragging,
             isRenaming,

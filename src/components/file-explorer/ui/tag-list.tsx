@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { useTagStore } from '@/store/tag-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { getEntryButtonClassName } from '../utils/entry-classnames'
 
 type IndexingMeta = {
   indexedDocCount: number
@@ -163,14 +164,11 @@ export function TagList() {
                   type="button"
                   onClick={() => handleTagClick(tagName)}
                   onContextMenu={(e) => handleTagContextMenu(tagName, e)}
-                  className={cn(
-                    'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
-                    isSelected
-                      ? 'bg-stone-100 dark:bg-stone-900 text-accent-foreground'
-                      : 'hover:bg-stone-100/60 dark:hover:bg-stone-900/60'
-                  )}
+                  className={getEntryButtonClassName({
+                    isSelected,
+                  })}
                 >
-                  <HashIcon className="size-4 mx-1.5 shrink-0" />
+                  <HashIcon className="size-3.5 mx-1.75 shrink-0" />
                   <div className="relative flex-1 min-w-0 truncate">
                     <span className="text-sm">{tagName}</span>
                   </div>
@@ -202,11 +200,7 @@ export function TagList() {
         <button
           type="button"
           onClick={handleAddButtonClick}
-          className={cn(
-            'w-full text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]',
-            'hover:bg-stone-100/60 dark:hover:bg-stone-900/60',
-            hasTags && 'mt-0.5'
-          )}
+          className={cn(getEntryButtonClassName(), hasTags && 'mt-0.5')}
         >
           <PlusIcon className="size-4 mx-1.5 shrink-0" />
           <div className="relative flex-1 min-w-0 truncate">
