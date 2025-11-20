@@ -24,6 +24,9 @@ type UseFileExplorerMenusProps = {
   setSelectionAnchorPath: (path: string | null) => void
   resetSelection: () => void
   entries: WorkspaceEntry[]
+  pinnedDirectories: string[]
+  pinDirectory: (path: string) => Promise<void>
+  unpinDirectory: (path: string) => Promise<void>
 }
 
 export const useFileExplorerMenus = ({
@@ -42,6 +45,9 @@ export const useFileExplorerMenus = ({
   setSelectionAnchorPath,
   resetSelection,
   entries,
+  pinnedDirectories,
+  pinDirectory,
+  unpinDirectory,
 }: UseFileExplorerMenusProps) => {
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
@@ -124,6 +130,7 @@ export const useFileExplorerMenus = ({
   const showDirectoryMenu = useCallback(
     async (directoryEntry: WorkspaceEntry, selectionPaths: string[]) => {
       const directoryPath = directoryEntry.path
+      const isPinned = pinnedDirectories.includes(directoryPath)
       try {
         const items = [
           await MenuItem.new({
@@ -143,6 +150,17 @@ export const useFileExplorerMenus = ({
               const newFolderPath = await createFolder(directoryPath)
               if (newFolderPath) {
                 setRenamingEntryPath(newFolderPath)
+              }
+            },
+          }),
+          await MenuItem.new({
+            id: `pin-directory-${directoryPath}`,
+            text: isPinned ? 'Unpin' : 'Pin',
+            action: async () => {
+              if (isPinned) {
+                await unpinDirectory(directoryPath)
+              } else {
+                await pinDirectory(directoryPath)
               }
             },
           }),
@@ -191,6 +209,9 @@ export const useFileExplorerMenus = ({
       openNote,
       setRenamingEntryPath,
       workspacePath,
+      pinnedDirectories,
+      pinDirectory,
+      unpinDirectory,
     ]
   )
 
