@@ -11,6 +11,19 @@ import {
   stripExtension,
 } from './ai-rename-utils'
 
+const WINDOWS_DRIVE_LETTER_REGEX = /^[A-Za-z]:/
+
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn(async (...parts: string[]) => {
+    // Detect if any part is a Windows path (starts with drive letter like C:, D:, etc.)
+    const isWindowsPath = parts.some((part) =>
+      WINDOWS_DRIVE_LETTER_REGEX.test(part)
+    )
+    const separator = isWindowsPath ? '\\' : '/'
+    return parts.join(separator)
+  }),
+}))
+
 const makeEntry = (name: string, overrides?: Partial<DirEntry>): DirEntry => ({
   name,
   isDirectory: false,
@@ -90,50 +103,105 @@ describe('stripExtension', () => {
 })
 
 describe('ensureUniqueNoteName', () => {
-  it('returns the current path when the candidate matches it', async () => {
-    const exists = vi.fn()
+  it.each([
+    {
+      name: 'Unix paths',
+      directoryPath: '/notes',
+      currentPath: '/notes/Note.md',
+      expectedFullPath: '/notes/Note.md',
+    },
+    {
+      name: 'Windows paths',
+      directoryPath: 'C:\\notes',
+      currentPath: 'C:\\notes\\Note.md',
+      expectedFullPath: 'C:\\notes\\Note.md',
+    },
+  ])(
+    'returns the current path when the candidate matches it ($name)',
+    async ({ directoryPath, currentPath, expectedFullPath }) => {
+      const exists = vi.fn()
 
-    const result = await ensureUniqueNoteName(
-      '/notes',
-      'Note',
-      '/notes/Note.md',
-      exists
-    )
+      const result = await ensureUniqueNoteName(
+        directoryPath,
+        'Note',
+        currentPath,
+        exists
+      )
 
-    expect(result).toEqual({
-      fileName: 'Note.md',
-      fullPath: '/notes/Note.md',
-    })
-    expect(exists).not.toHaveBeenCalled()
-  })
+      expect(result).toEqual({
+        fileName: 'Note.md',
+        fullPath: expectedFullPath,
+      })
+      expect(exists).not.toHaveBeenCalled()
+    }
+  )
 
-  it('iterates suffixes until it finds an available name', async () => {
-    const reserved = new Set(['/notes/Note.md', '/notes/Note 1.md'])
-    const exists = vi.fn(async (path: string) => reserved.has(path))
+  it.each([
+    {
+      name: 'Unix paths',
+      directoryPath: '/notes',
+      currentPath: '/notes/Other.md',
+      reserved: new Set(['/notes/Note.md', '/notes/Note 1.md']),
+      expectedFullPath: '/notes/Note 2.md',
+      expectedExistsCall: '/notes/Note 1.md',
+    },
+    {
+      name: 'Windows paths',
+      directoryPath: 'C:\\notes',
+      currentPath: 'C:\\notes\\Other.md',
+      reserved: new Set(['C:\\notes\\Note.md', 'C:\\notes\\Note 1.md']),
+      expectedFullPath: 'C:\\notes\\Note 2.md',
+      expectedExistsCall: 'C:\\notes\\Note 1.md',
+    },
+  ])(
+    'iterates suffixes until it finds an available name ($name)',
+    async ({
+      directoryPath,
+      currentPath,
+      reserved,
+      expectedFullPath,
+      expectedExistsCall,
+    }) => {
+      const exists = vi.fn(async (path: string) => reserved.has(path))
 
-    const result = await ensureUniqueNoteName(
-      '/notes',
-      'Note',
-      '/notes/Other.md',
-      exists
-    )
+      const result = await ensureUniqueNoteName(
+        directoryPath,
+        'Note',
+        currentPath,
+        exists
+      )
 
-    expect(result).toEqual({
-      fileName: 'Note 2.md',
-      fullPath: '/notes/Note 2.md',
-    })
-    expect(exists).toHaveBeenCalledTimes(3)
-    expect(exists).toHaveBeenCalledWith('/notes/Note 1.md')
-  })
+      expect(result).toEqual({
+        fileName: 'Note 2.md',
+        fullPath: expectedFullPath,
+      })
+      expect(exists).toHaveBeenCalledTimes(3)
+      expect(exists).toHaveBeenCalledWith(expectedExistsCall)
+    }
+  )
 
-  it('throws after exhausting attempts', async () => {
-    const exists = vi.fn(async () => true)
+  it.each([
+    {
+      name: 'Unix paths',
+      directoryPath: '/notes',
+      currentPath: '/notes/current.md',
+    },
+    {
+      name: 'Windows paths',
+      directoryPath: 'C:\\notes',
+      currentPath: 'C:\\notes\\current.md',
+    },
+  ])(
+    'throws after exhausting attempts ($name)',
+    async ({ directoryPath, currentPath }) => {
+      const exists = vi.fn(async () => true)
 
-    await expect(
-      ensureUniqueNoteName('/notes', 'Note', '/notes/current.md', exists)
-    ).rejects.toThrowError('Unable to find a unique filename.')
+      await expect(
+        ensureUniqueNoteName(directoryPath, 'Note', currentPath, exists)
+      ).rejects.toThrowError('Unable to find a unique filename.')
 
-    expect(exists).toHaveBeenCalledTimes(100)
-    expect(vi.mocked(join)).toHaveBeenCalled()
-  })
+      expect(exists).toHaveBeenCalledTimes(100)
+      expect(vi.mocked(join)).toHaveBeenCalled()
+    }
+  )
 })
