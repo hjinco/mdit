@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import {
   exists,
   mkdir,
+  readDir,
   readTextFile,
   rename,
   stat,
@@ -22,12 +23,8 @@ import {
   buildRenamePrompt,
   collectSiblingNoteNames,
   createModelFromConfig,
-  ensureUniqueFileName,
-  extractName,
-  getFileExtension,
-  MARKDOWN_EXT_REGEX,
-  sanitizeFileName,
-  stripExtension,
+  ensureUniqueNoteName,
+  extractAndSanitizeName,
 } from './workspace/utils/ai-rename-utils'
 import {
   addEntryToState,
@@ -697,25 +694,19 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     if (entry.isDirectory || !entry.path.endsWith('.md')) {
-      toast.error('AI rename is only available for Markdown notes', {
-        position: 'bottom-left',
-      })
       return
     }
 
     try {
-      const [directoryPath, rawContent] = await Promise.all([
+      const [dirPath, rawContent] = await Promise.all([
         dirname(entry.path),
         readTextFile(entry.path),
       ])
 
-      const otherNoteNames = await collectSiblingNoteNames(
-        directoryPath,
-        entry.name
-      )
+      const dirEntries = await readDir(dirPath)
+      const otherNoteNames = collectSiblingNoteNames(dirEntries, entry.name)
 
       const model = createModelFromConfig(renameConfig)
-
       const aiResponse = await generateText({
         model,
         system: AI_RENAME_SYSTEM_PROMPT,
@@ -724,23 +715,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           currentName: entry.name,
           otherNoteNames,
           content: rawContent,
-          directoryPath,
+          dirPath,
         }),
       })
 
-      const suggestedBaseName = sanitizeFileName(extractName(aiResponse.text))
-
+      const suggestedBaseName = extractAndSanitizeName(aiResponse.text)
       if (!suggestedBaseName) {
         throw new Error('The AI did not return a usable name.')
       }
 
-      const extension = getFileExtension(entry.name) ?? '.md'
-
-      const { fileName: finalFileName } = await ensureUniqueFileName(
-        directoryPath,
+      const { fileName: finalFileName } = await ensureUniqueNoteName(
+        dirPath,
         suggestedBaseName,
-        extension,
-        entry.path
+        entry.path,
+        exists
       )
 
       const renamedPath = await get().renameEntry(entry, finalFileName)
@@ -749,10 +737,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         throw new Error('Could not apply the AI-generated name.')
       }
 
-      const displayName = stripExtension(finalFileName, extension)
       const { tab, openNote } = useTabStore.getState()
 
-      toast.success(`Renamed note to “${displayName}”`, {
+      toast.success(`Renamed note to “${finalFileName}”`, {
         position: 'bottom-left',
         action:
           tab?.path === renamedPath
@@ -939,7 +926,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       } | null = null
       let shouldRefreshTab = false
 
-      if (MARKDOWN_EXT_REGEX.test(fileName)) {
+      if (fileName.endsWith('.md')) {
         try {
           const sourceDirectory = await dirname(sourcePath)
           if (sourceDirectory !== destinationPath) {

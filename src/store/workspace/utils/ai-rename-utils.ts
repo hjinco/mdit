@@ -2,7 +2,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { join } from '@tauri-apps/api/path'
-import { exists, readDir } from '@tauri-apps/plugin-fs'
+import type { DirEntry } from '@tauri-apps/plugin-fs'
 import { ollama } from 'ollama-ai-provider-v2'
 
 export const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
@@ -41,40 +41,33 @@ export function createModelFromConfig(config: {
   }
 }
 
-export async function collectSiblingNoteNames(
-  directoryPath: string,
+export function collectSiblingNoteNames(
+  entries: DirEntry[],
   currentFileName: string
-): Promise<string[]> {
-  try {
-    const entries = await readDir(directoryPath)
-
-    return entries
-      .filter(
-        (entry) =>
-          Boolean(entry.name) &&
-          entry.name !== currentFileName &&
-          !entry.name?.startsWith('.') &&
-          entry.name?.toLowerCase().endsWith('.md')
-      )
-      .map((entry) => stripExtension(entry.name as string, '.md').trim())
-      .filter((name) => name.length > 0)
-      .slice(0, 30)
-  } catch (error) {
-    console.error('Failed to read sibling notes:', directoryPath, error)
-    return []
-  }
+): string[] {
+  return entries
+    .filter(
+      (entry) =>
+        !!entry.name &&
+        entry.name !== currentFileName &&
+        !entry.name?.startsWith('.') &&
+        entry.name?.toLowerCase().endsWith('.md')
+    )
+    .map((entry) => stripExtension(entry.name, '.md').trim())
+    .filter((name) => name.length > 0)
+    .slice(0, 10)
 }
 
 export function buildRenamePrompt({
   currentName,
   otherNoteNames,
   content,
-  directoryPath,
+  dirPath,
 }: {
   currentName: string
   otherNoteNames: string[]
   content: string
-  directoryPath: string
+  dirPath: string
 }) {
   const truncatedContent =
     content.length > MAX_NOTE_CONTEXT_LENGTH
@@ -88,7 +81,7 @@ export function buildRenamePrompt({
 
   return `Generate a better file name for a markdown note. 
 - The note is currently called "${stripExtension(currentName, '.md')}".
-- The note resides in the folder: ${directoryPath}.
+- The note resides in the folder: ${dirPath}.
 - Other notes in this folder:\n${others}
 
 Note content:
@@ -119,10 +112,8 @@ export function sanitizeFileName(name: string) {
   return truncated
 }
 
-export function getFileExtension(fileName: string) {
-  const index = fileName.lastIndexOf('.')
-  if (index <= 0) return ''
-  return fileName.slice(index)
+export function extractAndSanitizeName(raw: string) {
+  return sanitizeFileName(extractName(raw))
 }
 
 export function stripExtension(fileName: string, extension: string) {
@@ -131,21 +122,18 @@ export function stripExtension(fileName: string, extension: string) {
     : fileName
 }
 
-export async function ensureUniqueFileName(
+export async function ensureUniqueNoteName(
   directoryPath: string,
   baseName: string,
-  extension: string,
-  currentPath: string
+  currentPath: string,
+  exists: (path: string) => Promise<boolean>
 ) {
   let attempt = 0
-
-  // Always have a fallback extension for markdown notes
-  const safeExtension = extension || '.md'
 
   while (attempt < 100) {
     const suffix = attempt === 0 ? '' : ` ${attempt}`
     const candidateBase = `${baseName}${suffix}`.trim()
-    const candidateFileName = `${candidateBase}${safeExtension}`
+    const candidateFileName = `${candidateBase}.md`
     const nextPath = await join(directoryPath, candidateFileName)
 
     if (nextPath === currentPath) {
