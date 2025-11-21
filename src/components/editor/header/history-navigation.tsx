@@ -21,7 +21,7 @@ export function HistoryNavigation() {
   useTabNavigationShortcuts(canGoBack, canGoForward, goBack, goForward)
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="items-center gap-0.5 hidden sm:flex">
       <TooltipProvider delayDuration={500} skipDelayDuration={100}>
         <HistoryButton
           icon={ChevronLeft}

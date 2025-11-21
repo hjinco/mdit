@@ -38,7 +38,7 @@ export function CollectionView() {
   const isCollectionViewOpen = currentCollectionPath !== null
   const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
-    defaultWidth: 256,
+    defaultWidth: 240,
     minWidth: 200,
     isOpen: isCollectionViewOpen,
     setIsOpen: (open: boolean) => {

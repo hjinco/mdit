@@ -1,4 +1,4 @@
-import { PencilIcon } from 'lucide-react'
+import { SquarePenIcon } from 'lucide-react'
 import {
   type ChangeEvent,
   type KeyboardEvent,
@@ -108,7 +108,7 @@ export function Tab() {
       }
     } catch (error) {
       console.error('Failed to rename tab entry:', error)
-      toast.error('이름을 변경하지 못했어요.')
+      toast.error('Failed to rename tab.')
       handleCancelEditing()
       return
     } finally {
@@ -143,7 +143,7 @@ export function Tab() {
   if (!tab) return null
 
   return (
-    <div className="group relative flex cursor-default items-center py-2 pr-2 text-sm text-muted-foreground">
+    <div className="group relative flex cursor-default items-center py-2 px-2 text-sm text-muted-foreground">
       <div className="relative w-full">
         <div
           aria-hidden={isEditing}
@@ -161,7 +161,7 @@ export function Tab() {
           autoComplete="off"
           spellCheck={false}
           className={cn(
-            'bg-transparent text-center text-inherit outline-none transition-opacity caret-foreground',
+            'bg-transparent text-foreground text-center outline-none transition-opacity caret-foreground',
             'focus-visible:outline-none focus-visible:ring-0',
             isEditing ? 'flex' : 'hidden'
           )}
@@ -175,8 +175,8 @@ export function Tab() {
             'absolute -right-4 top-1/2 opacity-0 will-change-transform -translate-y-1/2 items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:opacity-100 group-hover:opacity-100 transition-opacity cursor-pointer'
           )}
         >
-          <PencilIcon className="h-3.5 w-3.5" aria-hidden />
-          <span className="sr-only">Rename tab</span>
+          <SquarePenIcon className="h-3.5 w-3.5" aria-hidden />
+          <span className="sr-only">edit</span>
         </button>
       )}
     </div>

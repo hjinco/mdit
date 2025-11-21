@@ -34,6 +34,7 @@ export function FileExplorer() {
   const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
     storageKey: 'file-explorer-width',
     defaultWidth: 256,
+    minWidth: 160,
     isOpen: isFileExplorerOpen,
     setIsOpen: setFileExplorerOpen,
   })
