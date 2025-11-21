@@ -141,7 +141,7 @@ export function NoteEntry({
       <div className="flex relative">
         <span
           className={cn(
-            'text-base font-medium truncate',
+            'text-base font-medium truncate h-6',
             isRenaming && 'invisible'
           )}
         >
