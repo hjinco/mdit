@@ -48,6 +48,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
           <div
             className={cn(
               'min-h-16 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
+              'w-full max-w-full min-w-0 overflow-x-auto',
               props.element.texExpression.length === 0
                 ? 'bg-muted p-3 pr-9'
                 : 'px-2 py-1'
