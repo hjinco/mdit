@@ -1,5 +1,4 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import { CheckIcon, Loader2Icon, SendIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -10,7 +9,6 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/ui/form'
 import { Input } from '@/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Textarea } from '@/ui/textarea'
-import { TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
 const formSchema = z.object({
   message: z.string().min(1, 'Message is required'),
@@ -90,21 +88,16 @@ export function FeedbackButton() {
         }
       }}
     >
-      <TooltipPrimitive.Root data-slot="tooltip">
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-foreground/70 justify-start"
-              size="sm"
-            >
-              <SendIcon /> Feedback
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent>Feedback</TooltipContent>
-      </TooltipPrimitive.Root>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-foreground/70 justify-start"
+          size="sm"
+        >
+          <SendIcon /> Feedback
+        </Button>
+      </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

@@ -9,7 +9,6 @@ import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-s
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
-import { TooltipProvider } from '@/ui/tooltip'
 import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
@@ -366,10 +365,8 @@ export function FileExplorer() {
           </ul>
         </div>
         <footer className={cn('p-2 flex flex-col')}>
-          <TooltipProvider delayDuration={500} skipDelayDuration={0}>
-            <SettingsMenu />
-            <FeedbackButton />
-          </TooltipProvider>
+          <SettingsMenu />
+          <FeedbackButton />
         </footer>
         {isOpen && (
           <div

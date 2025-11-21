@@ -18,6 +18,7 @@ export async function installWindowMenu({
   openCommandMenu,
   goBack,
   goForward,
+  openSettings,
 }: {
   createNote: () => void | Promise<void>
   openWorkspace: () => void | Promise<void>
@@ -29,10 +30,11 @@ export async function installWindowMenu({
   openCommandMenu: () => void
   goBack: () => Promise<boolean>
   goForward: () => Promise<boolean>
+  openSettings: () => void
 }) {
   const menu = await Menu.new({
     items: [
-      await createMditMenu(),
+      await createMditMenu({ openSettings }),
       await createFileMenu({
         createNote,
         openWorkspace,
