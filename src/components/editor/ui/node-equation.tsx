@@ -47,7 +47,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
         <PopoverTrigger asChild>
           <div
             className={cn(
-              'group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
+              'min-h-16 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
               props.element.texExpression.length === 0
                 ? 'bg-muted p-3 pr-9'
                 : 'px-2 py-1'
@@ -206,16 +206,24 @@ const EquationPopoverContent = ({
 
   return (
     <PopoverContent
-      className="flex gap-2"
+      className={cn(
+        'flex gap-2 p-1',
+        !isInline && 'w-[var(--radix-popover-trigger-width)]'
+      )}
       onEscapeKeyDown={(e) => {
         e.preventDefault()
       }}
       contentEditable={false}
     >
       <EquationInput
-        className={cn('max-h-[50vh] grow resize-none p-2 text-sm', className)}
+        className={cn(
+          'max-h-[50vh] grow resize-none p-2 text-sm outline-none',
+          className
+        )}
         state={{ isInline, open, onClose }}
         autoFocus
+        spellCheck={false}
+        autoCapitalize="off"
         {...props}
       />
 
