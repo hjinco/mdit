@@ -1,6 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import { type ChangeEvent, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useLicenseStore } from '@/store/license-store'
 import { Button } from '@/ui/button'
@@ -39,7 +39,7 @@ export function LicenseTab() {
     await registerLicenseKey(licenseKey)
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     // Clear errors when user starts typing
     if (error) {
       clearLicenseError()
@@ -101,7 +101,7 @@ export function LicenseTab() {
             </div>
           </Field>
 
-          {status === 'valid' && (
+          {(status === 'valid' || status === 'deactivating') && (
             <Field orientation="vertical">
               <FieldContent>
                 <FieldDescription>
@@ -131,7 +131,7 @@ export function LicenseTab() {
             </Field>
           )}
 
-          {status !== 'valid' && (
+          {status !== 'valid' && status !== 'deactivating' && (
             <Field orientation="vertical">
               <FieldContent>
                 <FieldLabel htmlFor="license-key">License Key</FieldLabel>
