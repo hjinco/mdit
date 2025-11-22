@@ -144,8 +144,10 @@ export function CollectionView() {
   } = useCollectionRename({
     renameEntry,
     invalidatePreview,
-    onRenameSuccess: () => {
-      clearLinkedTab()
+    onRenameSuccess: (oldPath) => {
+      if (oldPath === tab?.path) {
+        clearLinkedTab()
+      }
     },
   })
 

@@ -9,7 +9,7 @@ type RenameEntry = (
 type UseCollectionRenameProps = {
   renameEntry: RenameEntry
   invalidatePreview: (path: string) => void
-  onRenameSuccess: (newPath: string) => void
+  onRenameSuccess: (oldPath: string) => void
 }
 
 export function useCollectionRename({
@@ -36,7 +36,7 @@ export function useCollectionRename({
         // Clear cache for old path if rename succeeded
         if (newPath !== null) {
           invalidatePreview(entry.path)
-          onRenameSuccess(newPath)
+          onRenameSuccess(entry.path)
         }
       } catch (error) {
         console.error('Failed to rename entry:', error)

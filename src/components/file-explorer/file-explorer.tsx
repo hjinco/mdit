@@ -139,7 +139,7 @@ export function FileExplorer() {
     async (entry: WorkspaceEntry, nextName: string) => {
       try {
         const newPath = await renameEntry(entry, nextName)
-        if (newPath !== null) {
+        if (newPath !== null && tab?.path === newPath) {
           clearLinkedTab()
         }
       } catch (error) {
@@ -148,7 +148,7 @@ export function FileExplorer() {
         setRenamingEntryPath(null)
       }
     },
-    [clearLinkedTab, renameEntry]
+    [clearLinkedTab, renameEntry, tab?.path]
   )
 
   useAutoCloseSidebars()
