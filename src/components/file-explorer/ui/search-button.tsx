@@ -22,7 +22,7 @@ export function SearchButton() {
         <div className="flex items-center gap-1">
           Search
           <KbdGroup>
-            <Kbd>Cmd</Kbd>
+            <Kbd>⌘</Kbd>
             <Kbd>K</Kbd>
           </KbdGroup>
         </div>

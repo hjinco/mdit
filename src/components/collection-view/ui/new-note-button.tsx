@@ -23,7 +23,7 @@ export function NewNoteButton() {
         <div className="flex items-center gap-1">
           New Note
           <KbdGroup>
-            <Kbd>Cmd</Kbd>
+            <Kbd>⌘</Kbd>
             <Kbd>N</Kbd>
           </KbdGroup>
         </div>

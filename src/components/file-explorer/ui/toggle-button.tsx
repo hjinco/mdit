@@ -25,7 +25,7 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
         <div className="flex items-center gap-1">
           Toggle
           <KbdGroup>
-            <Kbd>Cmd</Kbd>
+            <Kbd>⌘</Kbd>
             <Kbd>S</Kbd>
           </KbdGroup>
         </div>

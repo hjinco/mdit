@@ -66,7 +66,7 @@ export function WorkspaceDropdown({
             Open Folder...
           </span>
           <KbdGroup>
-            <Kbd>Cmd</Kbd>
+            <Kbd>⌘</Kbd>
             <Kbd>O</Kbd>
           </KbdGroup>
         </DropdownMenuItem>

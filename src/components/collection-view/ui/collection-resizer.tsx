@@ -1,4 +1,5 @@
 import { memo, useCallback, useState } from 'react'
+import { cn } from '@/lib/utils'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { tooltipContentVariants } from '@/ui/tooltip'
@@ -96,16 +97,16 @@ export const CollectionResizer = memo(function CollectionResizer({
           side="right"
           sideOffset={4}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className={tooltipContentVariants}
+          className={cn(tooltipContentVariants, 'pr-1')}
         >
           <div className="flex items-center gap-1">
             Toggle
             <KbdGroup>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
-                Cmd
+                ⌘
               </Kbd>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
-                Shift
+                ⇧
               </Kbd>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
                 S

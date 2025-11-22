@@ -22,8 +22,8 @@ export function SettingsMenu() {
       </TooltipTrigger>
       <TooltipContent className="px-1">
         <KbdGroup>
-          <Kbd>Cmd</Kbd>
-          <Kbd>,</Kbd>
+          <Kbd>⌘</Kbd>
+          <Kbd>;</Kbd>
         </KbdGroup>
       </TooltipContent>
     </Tooltip>
