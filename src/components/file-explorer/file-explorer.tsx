@@ -139,7 +139,7 @@ export function FileExplorer() {
     async (entry: WorkspaceEntry, nextName: string) => {
       try {
         const newPath = await renameEntry(entry, nextName)
-        if (newPath !== null && tab?.path === newPath) {
+        if (newPath !== null && tab?.path === entry.path) {
           clearLinkedTab()
         }
       } catch (error) {
