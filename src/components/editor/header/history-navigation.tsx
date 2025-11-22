@@ -1,11 +1,10 @@
-import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useShallow } from 'zustand/shallow'
 import { useTabStore } from '@/store/tab-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
-import { TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { useTabNavigationShortcuts } from './use-tab-navigation-shortcuts'
 
 export function HistoryNavigation() {
@@ -22,24 +21,22 @@ export function HistoryNavigation() {
 
   return (
     <div className="items-center gap-0.5 hidden sm:flex">
-      <TooltipProvider delayDuration={500} skipDelayDuration={100}>
-        <HistoryButton
-          icon={ChevronLeft}
-          ariaLabel="Go back"
-          tooltipLabel="Back"
-          shortcutKeys={['Cmd', '[']}
-          disabled={!canGoBack}
-          onClick={goBack}
-        />
-        <HistoryButton
-          icon={ChevronRight}
-          ariaLabel="Go forward"
-          tooltipLabel="Forward"
-          shortcutKeys={['Cmd', ']']}
-          disabled={!canGoForward}
-          onClick={goForward}
-        />
-      </TooltipProvider>
+      <HistoryButton
+        icon={ChevronLeft}
+        ariaLabel="Go back"
+        tooltipLabel="Back"
+        shortcutKeys={['⌘', '[']}
+        disabled={!canGoBack}
+        onClick={goBack}
+      />
+      <HistoryButton
+        icon={ChevronRight}
+        ariaLabel="Go forward"
+        tooltipLabel="Forward"
+        shortcutKeys={['⌘', ']']}
+        disabled={!canGoForward}
+        onClick={goForward}
+      />
     </div>
   )
 }
@@ -62,7 +59,7 @@ function HistoryButton({
   onClick,
 }: HistoryButtonProps) {
   return (
-    <TooltipPrimitive.Root data-slot="tooltip">
+    <Tooltip>
       <TooltipTrigger asChild>
         <Button
           aria-label={ariaLabel}
@@ -85,6 +82,6 @@ function HistoryButton({
           </KbdGroup>
         </div>
       </TooltipContent>
-    </TooltipPrimitive.Root>
+    </Tooltip>
   )
 }
