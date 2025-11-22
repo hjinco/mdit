@@ -111,6 +111,10 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       set({ status: 'valid' })
       return validationResult
     } catch (error) {
+      // TODO: Improve error handling to distinguish between network errors and invalid licenses.
+      // Currently, a temporary network or server error during validation will wipe saved
+      // credentials, forcing users to re-enter and reactivate their license once connectivity
+      // returns. Consider implementing retry logic or preserving credentials for network errors.
       await deletePassword(LICENSE_SERVICE, LICENSE_USER)
       localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
       set({
