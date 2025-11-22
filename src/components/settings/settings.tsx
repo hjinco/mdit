@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Dialog, DialogContent } from '@/ui/dialog'
@@ -7,16 +8,17 @@ import { IndexingTab } from './ui/indexing-tab'
 import { SettingsNavigation, type SettingsTab } from './ui/navigation'
 import { PreferencesTab } from './ui/preferences-tab'
 import { SyncTab } from './ui/sync-tab'
-import { useShallow } from 'zustand/shallow'
 
 export function SettingsDialog() {
   const { isSettingsDialogOpen, setSettingsDialogOpen, settingsInitialTab } =
-    useUIStore(useShallow(s => ({
-      isSettingsDialogOpen: s.isSettingsDialogOpen,
-      setSettingsDialogOpen: s.setSettingsDialogOpen,
-      settingsInitialTab: s.settingsInitialTab,
-    })))
-  const workspacePath = useWorkspaceStore(s => s.workspacePath)
+    useUIStore(
+      useShallow((s) => ({
+        isSettingsDialogOpen: s.isSettingsDialogOpen,
+        setSettingsDialogOpen: s.setSettingsDialogOpen,
+        settingsInitialTab: s.settingsInitialTab,
+      }))
+    )
+  const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const [activeTab, setActiveTab] = useState<SettingsTab>('preferences')
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={isSettingsDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="md:max-w-4xl max-h-[660px] w-full h-full p-0 overflow-hidden flex">
+      <DialogContent className="md:max-w-4xl max-h-[min(660px,calc(100vh-6rem))] w-full h-full p-0 overflow-hidden flex">
         <SettingsNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
