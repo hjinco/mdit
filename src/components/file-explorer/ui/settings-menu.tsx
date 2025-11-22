@@ -23,7 +23,7 @@ export function SettingsMenu() {
       <TooltipContent className="px-1">
         <KbdGroup>
           <Kbd>⌘</Kbd>
-          <Kbd>,</Kbd>
+          <Kbd>;</Kbd>
         </KbdGroup>
       </TooltipContent>
     </Tooltip>

@@ -19,7 +19,7 @@ export async function createMditMenu({
       await MenuItem.new({
         id: 'settings',
         text: 'Settings…',
-        accelerator: 'CmdOrCtrl+,',
+        accelerator: 'CmdOrCtrl+;',
         action: () => openSettings(),
       }),
       await PredefinedMenuItem.new({
