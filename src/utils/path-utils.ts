@@ -75,6 +75,23 @@ export const getFileNameWithoutExtension = (path: string): string => {
 }
 
 /**
+ * Sanitizes a string to be used as a filename by removing invalid characters.
+ * Removes characters that are not allowed in filenames: `/ \ : * ? " < > |`
+ * and trims whitespace from both ends.
+ *
+ * @param text - The text to sanitize
+ * @returns The sanitized filename-safe string
+ *
+ * @example
+ * sanitizeFilename('My Document: Title?') // 'My Document Title'
+ * sanitizeFilename('  File/Name\\Test  ') // 'FileNameTest'
+ */
+export const sanitizeFilename = (text: string): string => {
+  // Remove invalid filename characters: / \ : * ? " < > |
+  return text.replace(/[/\\:*?"<>|]/g, '').trim()
+}
+
+/**
  * Checks if a path is equal to or a descendant of a parent path.
  * Normalizes both paths before comparison to handle Windows/Unix path separator differences.
  *

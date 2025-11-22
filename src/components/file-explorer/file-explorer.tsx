@@ -56,8 +56,12 @@ export function FileExplorer() {
     pinDirectory,
     unpinDirectory,
   } = useWorkspaceStore()
-  const { tab, openNote } = useTabStore(
-    useShallow((s) => ({ tab: s.tab, openNote: s.openNote }))
+  const { tab, openNote, clearLinkedTab } = useTabStore(
+    useShallow((s) => ({
+      tab: s.tab,
+      openNote: s.openNote,
+      clearLinkedTab: s.clearLinkedTab,
+    }))
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
   const openImagePreview = useUIStore((state) => state.openImagePreview)
@@ -134,14 +138,17 @@ export function FileExplorer() {
   const handleRenameSubmit = useCallback(
     async (entry: WorkspaceEntry, nextName: string) => {
       try {
-        await renameEntry(entry, nextName)
+        const newPath = await renameEntry(entry, nextName)
+        if (newPath !== null && tab?.path === newPath) {
+          clearLinkedTab()
+        }
       } catch (error) {
         console.error('Failed to rename entry:', error)
       } finally {
         setRenamingEntryPath(null)
       }
     },
-    [renameEntry]
+    [clearLinkedTab, renameEntry, tab?.path]
   )
 
   useAutoCloseSidebars()

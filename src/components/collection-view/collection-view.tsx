@@ -45,11 +45,13 @@ export function CollectionView() {
       setCurrentCollectionPath((prev) => (open ? prev : null))
     },
   })
-  const { tab, openNote, isSaved } = useTabStore(
+  const { tab, linkedTab, openNote, isSaved, clearLinkedTab } = useTabStore(
     useShallow((state) => ({
       tab: state.tab,
+      linkedTab: state.linkedTab,
       openNote: state.openNote,
       isSaved: state.isSaved,
+      clearLinkedTab: state.clearLinkedTab,
     }))
   )
 
@@ -139,7 +141,13 @@ export function CollectionView() {
     beginRenaming,
     cancelRenaming,
     handleRenameSubmit,
-  } = useCollectionRename({ renameEntry, invalidatePreview })
+  } = useCollectionRename({
+    renameEntry,
+    invalidatePreview,
+    onRenameSuccess: () => {
+      clearLinkedTab()
+    },
+  })
 
   const handleDeleteEntries = useCallback(
     async (paths: string[]) => {
@@ -255,7 +263,7 @@ export function CollectionView() {
                 <NoteEntry
                   key={entry.path}
                   entry={entry}
-                  name={isActive ? tab.name : entry.name}
+                  name={isActive ? (linkedTab?.name ?? tab.name) : entry.name}
                   isActive={isActive}
                   isSelected={isSelected}
                   onClick={handleClick}
