@@ -83,7 +83,11 @@ function LicenseKeyButton() {
   const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
 
   useEffect(() => {
-    checkLicense()
+    // Skip license check when offline for now
+    // TODO: Consider implementing offline license validation or caching mechanism
+    if (navigator.onLine) {
+      checkLicense()
+    }
   }, [checkLicense])
 
   if (status === 'valid') {
