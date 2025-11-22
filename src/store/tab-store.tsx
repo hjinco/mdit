@@ -239,8 +239,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
       tab: nextTab,
       linkedTab: shouldCarryLinked
         ? {
-            ...state.linkedTab!,
-            tabId: nextTab.id,
+            ...linkedTab,
             path: newPath,
           }
         : state.linkedTab,
