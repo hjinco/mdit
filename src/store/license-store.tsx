@@ -1,191 +1,158 @@
-import { getPassword, setPassword } from 'tauri-plugin-keyring-api'
+import {
+  deletePassword,
+  getPassword,
+  setPassword,
+} from 'tauri-plugin-keyring-api'
 import { create } from 'zustand'
-import { activateLicenseKey } from '@/components/license/lib/license-api'
+import {
+  activateLicenseKey,
+  deactivateLicenseKey,
+  type LicenseActivationResponse,
+  type LicenseValidationResponse,
+  validateLicenseKey,
+} from './license/lib/license-api'
 
-const LICENSE_SERVICE_NAME = 'mdit'
-const LICENSE_KEY_ACCOUNT = 'license-key'
-const ACTIVATION_ID_ACCOUNT = 'license-activation-id'
-const FIRST_INSTALL_KEY = 'first-install-timestamp'
-const TRIAL_DAYS = 7
-
-type LicenseStatus = {
-  isInTrial: boolean
-  daysRemaining: number
-  hasLicense: boolean
-}
+const LICENSE_SERVICE = 'app.mdit.license.lifetime'
+const LICENSE_USER = 'mdit'
+const ACTIVATION_ID_STORAGE_KEY = 'license-activation-id'
 
 type LicenseStore = {
-  isLicenseDialogOpen: boolean
-  isValidating: boolean
+  status: 'valid' | 'invalid' | 'validating' | 'activating' | 'deactivating'
   error: string | null
-  licenseStatus: LicenseStatus
-  openLicenseDialog: () => void
-  closeLicenseDialog: () => void
-  updateLicenseStatus: () => void
   clearLicenseError: () => void
-  checkLicenseAndTrial: () => Promise<void>
-  activateLicense: (key: string) => Promise<void>
-}
-
-export function getTrialInfo(): LicenseStatus {
-  const firstInstallTimestamp = localStorage.getItem(FIRST_INSTALL_KEY)
-
-  if (!firstInstallTimestamp) {
-    return { isInTrial: true, daysRemaining: TRIAL_DAYS, hasLicense: false }
-  }
-
-  const installTime = Number.parseInt(firstInstallTimestamp, 10)
-  const now = Date.now()
-  const daysPassed = (now - installTime) / (1000 * 60 * 60 * 24)
-  const daysRemaining = Math.max(0, Math.ceil(TRIAL_DAYS - daysPassed))
-
-  return {
-    isInTrial: daysRemaining > 0,
-    daysRemaining,
-    hasLicense: false,
-  }
+  checkLicense: () => Promise<void>
+  registerLicenseKey: (key: string) => Promise<void>
+  activateLicense: (key: string) => Promise<LicenseActivationResponse | null>
+  validateLicense: (
+    key: string,
+    activationId: string
+  ) => Promise<LicenseValidationResponse | null>
+  deactivateLicense: () => Promise<void>
 }
 
 export const useLicenseStore = create<LicenseStore>((set, get) => ({
-  isLicenseDialogOpen: false,
-  isValidating: false,
+  status: 'valid',
   error: null,
-  licenseStatus: getTrialInfo(),
-
-  openLicenseDialog: () => set({ isLicenseDialogOpen: true }),
-
-  closeLicenseDialog: () => set({ isLicenseDialogOpen: false }),
-
-  updateLicenseStatus: () => set({ licenseStatus: getTrialInfo() }),
 
   clearLicenseError: () => set({ error: null }),
 
-  checkLicenseAndTrial: async () => {
-    set({ isValidating: true, error: null })
+  checkLicense: async () => {
+    set({ status: 'validating', error: null })
 
     try {
-      let storedKey: string | null = null
-      let storedActivationId: string | null = null
+      // Step 1: Retrieve stored license key and activation ID
+      const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+      let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
-      try {
-        const [keyFromKeychain, activationIdFromKeychain] = await Promise.all([
-          getPassword(LICENSE_KEY_ACCOUNT, LICENSE_SERVICE_NAME),
-          getPassword(ACTIVATION_ID_ACCOUNT, LICENSE_SERVICE_NAME),
-        ])
-        storedKey = keyFromKeychain
-        storedActivationId = activationIdFromKeychain
-      } catch (storageError) {
-        console.error(
-          'Failed to load license credentials from keychain',
-          storageError
-        )
-        storedKey = null
-        storedActivationId = null
-      }
-
-      if (storedKey && storedActivationId) {
-        set({
-          isValidating: false,
-          error: null,
-          licenseStatus: {
-            isInTrial: false,
-            daysRemaining: 0,
-            hasLicense: true,
-          },
-        })
+      if (!licenseKey) {
+        // Step 2: If license key is missing, set as unauthenticated
+        set({ status: 'invalid' })
         return
       }
 
-      // No valid license, check trial period
-      const firstInstallTimestamp = localStorage.getItem(FIRST_INSTALL_KEY)
-
-      if (!firstInstallTimestamp) {
-        // First time user, set install timestamp
-        const now = Date.now().toString()
-        localStorage.setItem(FIRST_INSTALL_KEY, now)
-        set({
-          isValidating: false,
-          licenseStatus: {
-            isInTrial: true,
-            daysRemaining: TRIAL_DAYS,
-            hasLicense: false,
-          },
-        })
-        return
+      if (!activationId) {
+        // Step 3: If license key exists but activation ID is missing, try to activate
+        const activationResult = await get().activateLicense(licenseKey)
+        if (!activationResult) {
+          return
+        }
+        activationId = activationResult.id
       }
 
-      // Check if trial has expired
-      const installTime = Number.parseInt(firstInstallTimestamp, 10)
-      const now = Date.now()
-      const daysPassed = (now - installTime) / (1000 * 60 * 60 * 24)
-
-      if (daysPassed < TRIAL_DAYS) {
-        // Still in trial period
-        const daysRemaining = Math.max(0, Math.ceil(TRIAL_DAYS - daysPassed))
-        set({
-          isValidating: false,
-          licenseStatus: { isInTrial: true, daysRemaining, hasLicense: false },
-        })
-      } else {
-        // Trial expired, open dialog
-        set({
-          isValidating: false,
-          licenseStatus: {
-            isInTrial: false,
-            daysRemaining: 0,
-            hasLicense: false,
-          },
-        })
-        get().openLicenseDialog()
-      }
-    } catch (error) {
+      // Step 4: If both exist, try to validate with retry
+      await get().validateLicense(licenseKey, activationId)
+    } catch (_e) {
       set({
-        isValidating: false,
-        error:
-          error instanceof Error ? error.message : 'Failed to check license',
+        status: 'invalid',
+        error: 'Failed to check license',
       })
     }
   },
 
-  activateLicense: async (key: string) => {
-    const trimmedKey = key.trim()
-
-    if (!trimmedKey) {
-      set({ error: 'Please enter a license key' })
-      throw new Error('Please enter a license key')
+  registerLicenseKey: async (key: string) => {
+    const activationResult = await get().activateLicense(key)
+    if (!activationResult) {
+      return
     }
+    await setPassword(LICENSE_SERVICE, LICENSE_USER, key)
+    const validationResult = await get().validateLicense(
+      key,
+      activationResult.id
+    )
+    if (!validationResult) {
+      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      return
+    }
+  },
 
-    set({ isValidating: true, error: null })
+  activateLicense: async (key: string) => {
+    set({ status: 'activating' })
+    try {
+      const activationResult = await activateLicenseKey(key)
+      localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, activationResult.id)
+      return activationResult
+    } catch (error) {
+      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      set({
+        status: 'invalid',
+        error:
+          error instanceof Error ? error.message : 'Failed to activate license',
+      })
+      return null
+    }
+  },
+
+  validateLicense: async (key: string, activationId: string) => {
+    set({ status: 'validating' })
 
     try {
-      // Step 1: Activate the license key
-      const activationResult = await activateLicenseKey(trimmedKey)
+      const validationResult = await validateLicenseKey(key, activationId)
+      set({ status: 'valid' })
+      return validationResult
+    } catch (error) {
+      // TODO: Improve error handling to distinguish between network errors and invalid licenses.
+      // Currently, a temporary network or server error during validation will wipe saved
+      // credentials, forcing users to re-enter and reactivate their license once connectivity
+      // returns. Consider implementing retry logic or preserving credentials for network errors.
+      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      set({
+        status: 'invalid',
+        error:
+          error instanceof Error ? error.message : 'Failed to validate license',
+      })
+      return null
+    }
+  },
 
-      try {
-        await setPassword(LICENSE_KEY_ACCOUNT, LICENSE_SERVICE_NAME, trimmedKey)
-        await setPassword(
-          ACTIVATION_ID_ACCOUNT,
-          LICENSE_SERVICE_NAME,
-          activationResult.id
-        )
-      } catch (e) {
-        console.error('Failed to store license credentials securely', e)
+  deactivateLicense: async () => {
+    set({ status: 'deactivating', error: null })
+
+    try {
+      // Retrieve stored license key and activation ID
+      const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+      const activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
+
+      if (!licenseKey || !activationId) {
+        throw new Error('No license key or activation ID found')
       }
 
-      // Update status
+      // Call deactivate API
+      await deactivateLicenseKey(licenseKey, activationId)
+
+      // On success: clear stored credentials
+      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      set({ status: 'invalid' })
+    } catch (error) {
       set({
-        isValidating: false,
-        error: null,
-        licenseStatus: { isInTrial: false, daysRemaining: 0, hasLicense: true },
-        isLicenseDialogOpen: false,
+        status: 'valid',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to deactivate license',
       })
-    } catch (activationError) {
-      const errorMessage =
-        activationError instanceof Error
-          ? activationError.message
-          : 'License activation failed'
-      set({ error: errorMessage, isValidating: false })
-      throw new Error(errorMessage)
     }
   },
 }))

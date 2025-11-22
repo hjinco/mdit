@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { DialogTitle } from '@/ui/dialog'
 
-export type SettingsTab = 'preferences' | 'ai' | 'sync' | 'indexing'
+export type SettingsTab = 'preferences' | 'ai' | 'sync' | 'indexing' | 'license'
 
 interface SettingsNavigationProps {
   activeTab: SettingsTab
@@ -24,6 +24,7 @@ export function SettingsNavigation({
           { id: 'indexing', label: 'Indexing' } as const,
         ]
       : []),
+    { id: 'license', label: "License"}
   ]
 
   return (
