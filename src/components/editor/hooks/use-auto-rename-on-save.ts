@@ -22,7 +22,7 @@ export function useAutoRenameOnSave(path: string) {
       const currentFileName = getFileNameWithoutExtension(path)
 
       // Only rename if tab.name differs from current filename and is not empty
-      if (linkedTab.name !== currentFileName) {
+      if (linkedTab.name !== '' && linkedTab.name !== currentFileName) {
         renameEntry(
           { path, name: linkedTab.name, isDirectory: false },
           `${linkedTab.name}.md`
