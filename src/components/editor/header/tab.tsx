@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/shallow'
 
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
@@ -19,10 +20,17 @@ import {
 } from '@/utils/path-utils'
 
 export function Tab() {
-  const tab = useTabStore((s) => s.tab)
+  const { tab, linkedTab, clearLinkedTab } = useTabStore(
+    useShallow((s) => ({
+      tab: s.tab,
+      linkedTab: s.linkedTab,
+      clearLinkedTab: s.clearLinkedTab,
+    }))
+  )
   const renameEntry = useWorkspaceStore((state) => state.renameEntry)
   const [isEditing, setIsEditing] = useState(false)
-  const [draftName, setDraftName] = useState(tab?.name ?? '')
+  const displayName = linkedTab?.name ?? tab?.name ?? ''
+  const [draftName, setDraftName] = useState(displayName)
   const [isRenaming, setIsRenaming] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -38,10 +46,10 @@ export function Tab() {
   }, [tab])
 
   useEffect(() => {
-    if (!isEditing && tab?.name) {
-      setDraftName(tab?.name)
+    if (!isEditing && displayName) {
+      setDraftName(displayName)
     }
-  }, [isEditing, tab?.name])
+  }, [displayName, isEditing])
 
   useEffect(() => {
     if (!tab?.path) {
@@ -50,8 +58,8 @@ export function Tab() {
 
     // Cancel edits when the active tab changes to avoid renaming the wrong file.
     setIsEditing(false)
-    setDraftName(getFileNameWithoutExtension(tab.path))
-  }, [tab?.path])
+    setDraftName(linkedTab?.name ?? getFileNameWithoutExtension(tab.path))
+  }, [linkedTab?.name, tab?.path])
 
   useEffect(() => {
     if (!isEditing) return
@@ -63,16 +71,16 @@ export function Tab() {
 
   const handleStartEditing = useCallback(() => {
     if (!tab) return
-    setDraftName(tab.name)
+    setDraftName(displayName)
     setIsEditing(true)
-  }, [tab])
+  }, [displayName, tab])
 
   const handleCancelEditing = useCallback(() => {
     if (tab) {
-      setDraftName(tab.name)
+      setDraftName(displayName)
     }
     setIsEditing(false)
-  }, [tab])
+  }, [displayName, tab])
 
   const handleRename = useCallback(async () => {
     if (isRenaming) {
@@ -80,7 +88,6 @@ export function Tab() {
     }
 
     if (!tab || !entry) {
-      toast.error('현재 탭 파일을 찾을 수 없습니다.')
       setIsEditing(false)
       return
     }
@@ -106,6 +113,7 @@ export function Tab() {
       if (!renamedPath) {
         throw new Error('Rename rejected')
       }
+      clearLinkedTab()
     } catch (error) {
       console.error('Failed to rename tab entry:', error)
       toast.error('Failed to rename tab.')
@@ -116,7 +124,15 @@ export function Tab() {
     }
 
     setIsEditing(false)
-  }, [draftName, entry, handleCancelEditing, isRenaming, renameEntry, tab])
+  }, [
+    clearLinkedTab,
+    draftName,
+    entry,
+    handleCancelEditing,
+    isRenaming,
+    renameEntry,
+    tab,
+  ])
 
   const handleBlur = useCallback(() => {
     if (!isEditing || isRenaming) return
@@ -149,7 +165,7 @@ export function Tab() {
           aria-hidden={isEditing}
           className={cn('max-w-sm truncate', isEditing && 'hidden')}
         >
-          {tab.name}
+          {displayName}
         </div>
         <input
           ref={inputRef}

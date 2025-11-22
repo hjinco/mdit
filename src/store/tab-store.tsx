@@ -18,8 +18,14 @@ type RenameTabOptions = {
   renameOnFs?: boolean
 }
 
+type LinkedTab = {
+  path: string
+  name: string
+} | null
+
 type TabStore = {
   tab: Tab | null
+  linkedTab: LinkedTab
   isSaved: boolean
   history: string[]
   historyIndex: number
@@ -37,6 +43,9 @@ type TabStore = {
     options?: RenameTabOptions
   ) => Promise<void>
   setTabSaved: (isSaved: boolean) => void
+  setLinkedTab: (linkedTab: LinkedTab) => void
+  updateLinkedName: (name: string) => void
+  clearLinkedTab: () => void
   goBack: () => Promise<boolean>
   goForward: () => Promise<boolean>
   canGoBack: () => boolean
@@ -48,6 +57,7 @@ type TabStore = {
 
 export const useTabStore = create<TabStore>((set, get) => ({
   tab: null,
+  linkedTab: null,
   isSaved: true,
   history: [],
   historyIndex: -1,
@@ -72,6 +82,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
       set({
         tab: { id: ++tabIdCounter, path: initialPath, name, content },
+        linkedTab: null,
         isSaved: true,
         history: limitedHistory,
         historyIndex: initialIndex,
@@ -101,6 +112,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     if (name) {
       set({
         tab: { id: ++tabIdCounter, path, name, content },
+        linkedTab: null,
         isSaved: true,
       })
 
@@ -161,12 +173,27 @@ export const useTabStore = create<TabStore>((set, get) => ({
     if (shouldRenameOnFs && oldPath !== newPath) {
       try {
         await renameFile(oldPath, newPath)
+        const nextName = getFileNameWithoutExtension(newPath)
+        const { linkedTab } = get()
+        const tab = get().tab
+        if (!tab) {
+          return
+        }
+        const nextTab = {
+          ...tab,
+          path: newPath,
+          name: nextName,
+        }
+        const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
+
         set({
-          tab: {
-            ...tab,
-            path: newPath,
-            name: getFileNameWithoutExtension(newPath),
-          },
+          tab: nextTab,
+          linkedTab: shouldCarryLinked
+            ? {
+                ...linkedTab,
+                path: newPath,
+              }
+            : linkedTab,
         })
         return
       } catch (error) {
@@ -178,7 +205,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const name = getFileNameWithoutExtension(newPath)
 
     if (!name) {
-      set({ tab: null })
+      set({ tab: null, linkedTab: null })
       return
     }
 
@@ -197,20 +224,52 @@ export const useTabStore = create<TabStore>((set, get) => ({
       }
     }
 
-    set({
-      tab: {
-        ...tab,
-        id: nextId,
-        path: newPath,
-        name,
-        content,
-      },
-    })
+    const { linkedTab } = get()
+    const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
+    const nextTab = {
+      ...tab,
+      id: nextId,
+      path: newPath,
+      name,
+      content,
+    }
+
+    set((state) => ({
+      ...state,
+      tab: nextTab,
+      linkedTab: shouldCarryLinked
+        ? {
+            ...linkedTab,
+            path: newPath,
+          }
+        : state.linkedTab,
+    }))
   },
   setTabSaved: (isSaved) => {
     set({
       isSaved,
     })
+  },
+  setLinkedTab: (linkedTab) => {
+    set({ linkedTab })
+  },
+  updateLinkedName: (name) => {
+    const { tab, linkedTab } = get()
+
+    if (!tab || !linkedTab) {
+      return
+    }
+
+    const isSameTab = linkedTab.path === tab.path
+
+    if (!isSameTab || linkedTab.name === name) {
+      return
+    }
+
+    set({ linkedTab: { ...linkedTab, name } })
+  },
+  clearLinkedTab: () => {
+    set({ linkedTab: null })
   },
   goBack: async () => {
     const state = get()

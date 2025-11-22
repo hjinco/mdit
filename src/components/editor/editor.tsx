@@ -17,6 +17,7 @@ import { HistoryNavigation } from './header/history-navigation'
 import { MoreButton } from './header/more-button'
 import { Tab } from './header/tab'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
+import { useLinkedTabName } from './hooks/use-linked-tab-name'
 import { EditorKit } from './plugins/editor-kit'
 import {
   copySelection,
@@ -126,6 +127,8 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
   useEffect(() => {
     editor.tf.focus()
   }, [editor])
+
+  useLinkedTabName(path, value)
 
   return (
     <Plate
