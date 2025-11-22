@@ -59,7 +59,7 @@ export async function activateLicenseKey(
 ): Promise<LicenseActivationResponse> {
   try {
     const response = await fetch(
-      `${POLAR_API_BASE_URL}/customer-portal/license-keys/activate`,
+      `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/activate`,
       {
         method: 'POST',
         headers: {
@@ -101,7 +101,7 @@ export async function validateLicenseKey(
 ): Promise<LicenseValidationResponse> {
   try {
     const response = await fetch(
-      `${POLAR_API_BASE_URL}/customer-portal/license-keys/validate`,
+      `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/validate`,
       {
         method: 'POST',
         headers: {
@@ -130,5 +130,41 @@ export async function validateLicenseKey(
       throw error
     }
     throw new Error('Failed to validate license key')
+  }
+}
+
+export async function deactivateLicenseKey(
+  key: string,
+  activationId: string
+): Promise<void> {
+  try {
+    const response = await fetch(
+      `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/deactivate`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          key: key.trim(),
+          organization_id: ORGANIZATION_ID,
+          activation_id: activationId,
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(
+        errorData.detail ||
+          errorData.message ||
+          `Deactivation failed: ${response.status}`
+      )
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Failed to deactivate license key')
   }
 }

@@ -8,6 +8,7 @@ import { IndexingTab } from './ui/indexing-tab'
 import { SettingsNavigation, type SettingsTab } from './ui/navigation'
 import { PreferencesTab } from './ui/preferences-tab'
 import { SyncTab } from './ui/sync-tab'
+import { LicenseTab } from './ui/license-tab'
 
 export function SettingsDialog() {
   const { isSettingsDialogOpen, setSettingsDialogOpen, settingsInitialTab } =
@@ -56,6 +57,7 @@ export function SettingsDialog() {
           {activeTab === 'ai' && <AITab />}
           {activeTab === 'sync' && <SyncTab />}
           {activeTab === 'indexing' && <IndexingTab />}
+          {activeTab === 'license' && <LicenseTab />}
         </div>
       </DialogContent>
     </Dialog>
