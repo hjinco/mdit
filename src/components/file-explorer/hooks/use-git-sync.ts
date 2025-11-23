@@ -416,12 +416,21 @@ async function getCurrentBranch(workspacePath: string) {
   return branch
 }
 
+function formatDateForCommit(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
+
 function buildSyncCommitMessage(customMessage?: string) {
   if (customMessage?.trim()) {
     // Replace {date} placeholder if present
-    return customMessage.replace('{date}', new Date().toISOString())
+    return customMessage.replace('{date}', formatDateForCommit(new Date()))
   }
-  return `chore: sync workspace (${new Date().toISOString()})`
+  return `mdit: ${formatDateForCommit(new Date())}`
 }
 
 async function executeGit(workspacePath: string, args: string[]) {
