@@ -224,6 +224,10 @@ export const useFileExplorerMenus = ({
 
       if (isSelected) {
         selectionTargets = Array.from(selectedEntryPaths)
+      } else if (selectedEntryPaths.size === 1) {
+        // Special case: if exactly one item is selected and user opens context menu
+        // on a different entry, don't modify selection and only delete the context menu entry
+        selectionTargets = [entry.path]
       } else {
         const nextSelection = new Set(selectedEntryPaths)
         const hadSelection = nextSelection.size > 0
