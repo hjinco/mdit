@@ -1,5 +1,5 @@
-import { Command } from '@tauri-apps/plugin-shell'
 import { platform } from '@tauri-apps/plugin-os'
+import { Command } from '@tauri-apps/plugin-shell'
 
 export type MarkdownContentMatch = {
   path: string
@@ -38,10 +38,10 @@ export async function searchMarkdownContent(
       '/S', // Search subdirectories
       '/I', // Case-insensitive
       '/N', // Include line numbers
-      '/C:' + trimmedQuery, // Search string
-      workspacePath + '\\*.md', // Markdown files only
+      `/C:${trimmedQuery}`, // Search string
+      `${workspacePath}\\*.md`, // Markdown files only
     ])
-    parseOutput = (stdout) => parseFindstrOutput(stdout, workspacePath)
+    parseOutput = (stdout) => parseFindstrOutput(stdout)
   } else {
     // macOS/Linux: Use grep
     command = Command.create('grep', [
@@ -125,10 +125,7 @@ function parseGrepOutput(stdout: string): MarkdownContentMatch[] {
   return matches
 }
 
-function parseFindstrOutput(
-  stdout: string,
-  workspacePath: string
-): MarkdownContentMatch[] {
+function parseFindstrOutput(stdout: string): MarkdownContentMatch[] {
   const matches: MarkdownContentMatch[] = []
 
   // Common directories to ignore (similar to .gitignore)
@@ -166,7 +163,7 @@ function parseFindstrOutput(
     }
 
     const path = rawLine.slice(0, firstColonIndex + 1 + secondColonIndex)
-    
+
     // Filter out common ignored directories
     const shouldIgnore = ignoredDirs.some((ignoredDir) =>
       path.includes(ignoredDir)
@@ -187,7 +184,9 @@ function parseFindstrOutput(
       continue
     }
 
-    const lineText = rest.slice(thirdColonIndex + 1).replace(TRAILING_CR_REGEX, '')
+    const lineText = rest
+      .slice(thirdColonIndex + 1)
+      .replace(TRAILING_CR_REGEX, '')
 
     matches.push({
       path,
