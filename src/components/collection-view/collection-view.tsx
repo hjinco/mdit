@@ -9,6 +9,7 @@ import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { getFolderNameFromPath } from '@/utils/path-utils'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
 import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
@@ -76,7 +77,9 @@ export function CollectionView() {
     isTagPath && currentCollectionPath ? currentCollectionPath.slice(1) : null
   const displayName = isTagPath
     ? tagName
-    : currentCollectionPath?.split('/').pop()
+    : currentCollectionPath
+      ? getFolderNameFromPath(currentCollectionPath)
+      : undefined
 
   const { entries: collectionEntries, isLoadingTagEntries } =
     useCollectionEntries(currentCollectionPath, entries, workspacePath)
