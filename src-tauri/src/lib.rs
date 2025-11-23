@@ -8,17 +8,17 @@ use tauri_plugin_window_state::Builder as WindowStateBuilder;
 use trash;
 
 #[tauri::command]
-fn move_to_trash(path: String) {
-    trash::delete(path).unwrap();
+fn move_to_trash(path: String) -> Result<(), String> {
+    trash::delete(path).map_err(|e| format!("Failed to delete file: {}", e))
 }
 
 #[tauri::command]
-fn move_many_to_trash(paths: Vec<String>) {
+fn move_many_to_trash(paths: Vec<String>) -> Result<(), String> {
     if paths.is_empty() {
-        return;
+        return Ok(());
     }
 
-    trash::delete_all(paths).unwrap();
+    trash::delete_all(paths).map_err(|e| format!("Failed to delete files: {}", e))
 }
 
 #[tauri::command]

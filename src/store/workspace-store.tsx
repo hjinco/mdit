@@ -682,6 +682,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return true
     } catch (error) {
       console.error('Failed to delete entries:', paths, error)
+      toast.error('Failed to delete', {
+        position: 'bottom-left',
+      })
       return false
     }
   },
