@@ -165,8 +165,6 @@ export function CollectionView() {
 
       if (success) {
         resetSelection()
-      } else {
-        toast.error('Failed to delete')
       }
     },
     [deleteEntries, resetSelection]
