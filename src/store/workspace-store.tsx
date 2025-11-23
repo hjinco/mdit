@@ -13,7 +13,11 @@ import {
 import { generateText } from 'ai'
 import { toast } from 'sonner'
 import { create } from 'zustand'
-import { normalizePathSeparators } from '@/utils/path-utils'
+import {
+  getFileNameFromPath,
+  isPathEqualOrDescendant,
+  normalizePathSeparators,
+} from '@/utils/path-utils'
 import { useAISettingsStore } from './ai-settings-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
@@ -877,21 +881,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     // Validation 3: Check if destination is a child of source (prevent parent moves into children)
-    const destinationIsChildOfSource =
-      destinationPath.startsWith(`${sourcePath}/`) ||
-      destinationPath.startsWith(`${sourcePath}\\`)
-
-    if (destinationIsChildOfSource) {
+    if (isPathEqualOrDescendant(destinationPath, sourcePath)) {
       console.error('Cannot move entry to its own parent')
       return false
     }
 
     // Validation 4: Ensure both paths are within workspace
-    const sourceInWorkspace =
-      sourcePath === workspacePath || sourcePath.startsWith(`${workspacePath}/`)
-    const destinationInWorkspace =
-      destinationPath === workspacePath ||
-      destinationPath.startsWith(`${workspacePath}/`)
+    const sourceInWorkspace = isPathEqualOrDescendant(sourcePath, workspacePath)
+    const destinationInWorkspace = isPathEqualOrDescendant(
+      destinationPath,
+      workspacePath
+    )
 
     if (!sourceInWorkspace || !destinationInWorkspace) {
       console.error('Source or destination is outside workspace')
@@ -904,8 +904,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       )
 
       // Get the file/folder name from source path
-      const fileName =
-        sourcePath.split('/').pop() || sourcePath.split('\\').pop()
+      const fileName = getFileNameFromPath(sourcePath)
       if (!fileName) {
         console.error('Could not extract file name from source path')
         return false
