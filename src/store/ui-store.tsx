@@ -7,6 +7,7 @@ type UIStore = {
   toggleFileExplorerOpen: () => void
   isSettingsDialogOpen: boolean
   setSettingsDialogOpen: (isOpen: boolean) => void
+  toggleSettingsDialogOpen: () => void
   settingsInitialTab: SettingsTab | null
   openSettingsWithTab: (tab: SettingsTab) => void
   isCommandMenuOpen: boolean
@@ -26,6 +27,8 @@ export const useUIStore = create<UIStore>((set) => ({
     set((state) => ({ isFileExplorerOpen: !state.isFileExplorerOpen })),
   isSettingsDialogOpen: false,
   setSettingsDialogOpen: (isOpen) => set({ isSettingsDialogOpen: isOpen }),
+  toggleSettingsDialogOpen: () =>
+    set((state) => ({ isSettingsDialogOpen: !state.isSettingsDialogOpen })),
   settingsInitialTab: null,
   openSettingsWithTab: (tab) =>
     set({

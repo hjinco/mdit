@@ -1,32 +1,24 @@
 import { SettingsIcon } from 'lucide-react'
 import { useUIStore } from '@/store/ui-store'
 import { Button } from '@/ui/button'
-import { Kbd, KbdGroup } from '@/ui/kbd'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function SettingsMenu() {
   const setSettingsDialogOpen = useUIStore((s) => s.setSettingsDialogOpen)
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-foreground/70 justify-start"
-          onClick={() => setSettingsDialogOpen(true)}
-        >
-          <SettingsIcon /> Settings
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent className="px-1">
-        <KbdGroup>
-          <Kbd>{getModifierKey()}</Kbd>
-          <Kbd>;</Kbd>
-        </KbdGroup>
-      </TooltipContent>
-    </Tooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="text-foreground/70 justify-start group"
+      onClick={() => setSettingsDialogOpen(true)}
+    >
+      <SettingsIcon /> Settings
+      <span className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0">
+        {getModifierKey()}
+        <span className="ml-1">{';'}</span>
+      </span>
+    </Button>
   )
 }
