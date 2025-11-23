@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "app.mdit",
+  "app": {
+    "windows": [
+      {
+        "titleBarStyle": "Visible",
+        "transparent": false,
+        "windowEffects": {
+          "effects": []
+        }
+      }
+    ]
+  }
+}

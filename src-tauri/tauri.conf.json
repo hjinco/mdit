@@ -20,7 +20,7 @@
         "transparent": true,
         "visible": false,
         "windowEffects": {
-          "effects": ["hudWindow", "blur"]
+          "effects": ["hudWindow"]
         },
         "trafficLightPosition": {
           "x": 18,
