@@ -1,3 +1,5 @@
+import { join } from '@tauri-apps/api/path'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { Command } from '@tauri-apps/plugin-shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
@@ -53,6 +55,9 @@ export function useGitSync(workspacePath: string | null) {
         resetState()
         return false
       }
+
+      // Ensure .mdit/db.sqlite is in .gitignore
+      await ensureGitignoreEntry(workspacePath)
 
       const { status: syncStatus } = await detectSyncStatus(workspacePath)
 
@@ -414,4 +419,50 @@ function buildSyncCommitMessage(customMessage?: string) {
 async function executeGit(workspacePath: string, args: string[]) {
   const command = Command.create('git', ['-C', workspacePath, ...args])
   return command.execute()
+}
+
+async function ensureGitignoreEntry(workspacePath: string) {
+  const gitignorePath = await join(workspacePath, '.gitignore')
+  const entries = ['.mdit/db.sqlite', '.DS_Store']
+
+  try {
+    // Try to read existing .gitignore file
+    let content = ''
+    try {
+      content = await readTextFile(gitignorePath)
+    } catch {
+      // File doesn't exist, we'll create it
+      content = ''
+    }
+
+    // Check which entries are missing
+    const lines = content.split('\n')
+    const missingEntries: string[] = []
+
+    for (const entry of entries) {
+      const normalizedEntry = entry.trim()
+      const hasEntry = lines.some(
+        (line) =>
+          line.trim() === normalizedEntry ||
+          line.trim() === `/${normalizedEntry}`
+      )
+
+      if (!hasEntry) {
+        missingEntries.push(entry)
+      }
+    }
+
+    // Append missing entries to .gitignore
+    if (missingEntries.length > 0) {
+      const entriesToAdd = missingEntries.join('\n')
+      const newContent = content.trim()
+        ? `${content.trim()}\n${entriesToAdd}`
+        : entriesToAdd
+
+      await writeTextFile(gitignorePath, newContent)
+    }
+  } catch (error) {
+    // Silently fail - don't break git sync if .gitignore update fails
+    console.warn('Failed to update .gitignore:', error)
+  }
 }
