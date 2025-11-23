@@ -9,6 +9,7 @@ import {
 } from '@/ui/dropdown-menu'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 import { getFolderNameFromPath } from '@/utils/path-utils'
 
 type WorkspaceDropdownProps = {
@@ -66,7 +67,7 @@ export function WorkspaceDropdown({
             Open Folder...
           </span>
           <KbdGroup>
-            <Kbd>⌘</Kbd>
+            <Kbd>{getModifierKey()}</Kbd>
             <Kbd>O</Kbd>
           </KbdGroup>
         </DropdownMenuItem>

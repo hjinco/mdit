@@ -3,6 +3,7 @@ import { useUIStore } from '@/store/ui-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function SearchButton() {
   const openCommandMenu = useUIStore((s) => s.openCommandMenu)
@@ -22,7 +23,7 @@ export function SearchButton() {
         <div className="flex items-center gap-1">
           Search
           <KbdGroup>
-            <Kbd>⌘</Kbd>
+            <Kbd>{getModifierKey()}</Kbd>
             <Kbd>K</Kbd>
           </KbdGroup>
         </div>

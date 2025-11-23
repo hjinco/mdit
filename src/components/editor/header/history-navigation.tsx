@@ -5,6 +5,7 @@ import { useTabStore } from '@/store/tab-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 import { useTabNavigationShortcuts } from './use-tab-navigation-shortcuts'
 
 export function HistoryNavigation() {
@@ -25,7 +26,7 @@ export function HistoryNavigation() {
         icon={ChevronLeft}
         ariaLabel="Go back"
         tooltipLabel="Back"
-        shortcutKeys={['⌘', '[']}
+        shortcutKeys={[getModifierKey(), '[']}
         disabled={!canGoBack}
         onClick={goBack}
       />
@@ -33,7 +34,7 @@ export function HistoryNavigation() {
         icon={ChevronRight}
         ariaLabel="Go forward"
         tooltipLabel="Forward"
-        shortcutKeys={['⌘', ']']}
+        shortcutKeys={[getModifierKey(), ']']}
         disabled={!canGoForward}
         onClick={goForward}
       />

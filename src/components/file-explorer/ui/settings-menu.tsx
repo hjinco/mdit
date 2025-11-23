@@ -3,6 +3,7 @@ import { useUIStore } from '@/store/ui-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function SettingsMenu() {
   const setSettingsDialogOpen = useUIStore((s) => s.setSettingsDialogOpen)
@@ -22,7 +23,7 @@ export function SettingsMenu() {
       </TooltipTrigger>
       <TooltipContent className="px-1">
         <KbdGroup>
-          <Kbd>⌘</Kbd>
+          <Kbd>{getModifierKey()}</Kbd>
           <Kbd>;</Kbd>
         </KbdGroup>
       </TooltipContent>

@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function NewNoteButton() {
   const createAndOpenNote = useWorkspaceStore((s) => s.createAndOpenNote)
@@ -23,7 +24,7 @@ export function NewNoteButton() {
         <div className="flex items-center gap-1">
           New Note
           <KbdGroup>
-            <Kbd>⌘</Kbd>
+            <Kbd>{getModifierKey()}</Kbd>
             <Kbd>N</Kbd>
           </KbdGroup>
         </div>

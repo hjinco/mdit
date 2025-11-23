@@ -2,6 +2,7 @@ import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 type Props = {
   isOpen: boolean
@@ -25,7 +26,7 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
         <div className="flex items-center gap-1">
           Toggle
           <KbdGroup>
-            <Kbd>⌘</Kbd>
+            <Kbd>{getModifierKey()}</Kbd>
             <Kbd>S</Kbd>
           </KbdGroup>
         </div>

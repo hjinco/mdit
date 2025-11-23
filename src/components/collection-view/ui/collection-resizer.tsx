@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { tooltipContentVariants } from '@/ui/tooltip'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 type CollectionResizerProps = {
   isOpen: boolean
@@ -103,7 +104,7 @@ export const CollectionResizer = memo(function CollectionResizer({
             Toggle
             <KbdGroup>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
-                ⌘
+                {getModifierKey()}
               </Kbd>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
                 ⇧
