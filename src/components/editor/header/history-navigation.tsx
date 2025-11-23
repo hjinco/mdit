@@ -68,7 +68,6 @@ function HistoryButton({
           size="icon"
           className="text-foreground/70 disabled:opacity-50"
           disabled={disabled}
-          data-tauri-drag-region="no-drag"
           onClick={onClick}
         >
           <Icon />

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { isMac } from '@/utils/platform'
 import { HistoryNavigation } from './header/history-navigation'
 import { MoreButton } from './header/more-button'
 import { Tab } from './header/tab'
@@ -48,7 +49,10 @@ export function Editor() {
     return (
       <div className={cn('flex-1 h-full')}>
         <div className="h-full bg-background">
-          <div className="h-12 w-full" data-tauri-drag-region />
+          <div
+            className="h-12 w-full"
+            {...(isMac() && { 'data-tauri-drag-region': '' })}
+          />
         </div>
       </div>
     )
@@ -57,7 +61,7 @@ export function Editor() {
     <div className={cn('relative flex-1 flex flex-col bg-background')}>
       <div
         className="w-full h-12 flex items-center justify-center relative"
-        data-tauri-drag-region
+        {...(isMac() && { 'data-tauri-drag-region': '' })}
       >
         <div
           className={cn(

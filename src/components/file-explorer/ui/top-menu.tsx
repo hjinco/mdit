@@ -26,7 +26,7 @@ export function TopMenu({
         !isResizing && 'transition-[width] ease-out duration-100'
       )}
       style={{ width: isOpen ? width : closedWidth }}
-      data-tauri-drag-region
+      {...(isMacOS && { 'data-tauri-drag-region': '' })}
     >
       {isFileExplorerOpen && <SearchButton />}
       <ToggleButton

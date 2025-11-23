@@ -10,6 +10,7 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { getFolderNameFromPath } from '@/utils/path-utils'
+import { isMac } from '@/utils/platform'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
 import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
@@ -192,7 +193,7 @@ export function CollectionView() {
           'h-12 flex items-center justify-between px-2',
           !isFileExplorerOpen && 'justify-end'
         )}
-        data-tauri-drag-region
+        {...(isMac() && { 'data-tauri-drag-region': '' })}
       >
         <div
           className={cn(

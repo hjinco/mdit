@@ -1,13 +1,17 @@
 import { FolderOpenIcon } from 'lucide-react'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
+import { isMac } from '@/utils/platform'
 
 export function Welcome() {
   const { openFolderPicker } = useWorkspaceStore()
 
   return (
     <div className="w-full h-screen flex flex-col bg-muted/70">
-      <div className="w-full h-10" data-tauri-drag-region />
+      <div
+        className="w-full h-10"
+        {...(isMac() && { 'data-tauri-drag-region': '' })}
+      />
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="max-w-sm w-full">
           <div className="text-center space-y-2">
