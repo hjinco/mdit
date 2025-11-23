@@ -27,8 +27,9 @@
     {
       "identifier": "shell:allow-execute",
       "allow": [
-        { "cmd": "/usr/bin/grep", "name": "grep", "args": true },
-        { "cmd": "/usr/bin/git", "name": "git", "args": true }
+        { "cmd": "grep", "name": "grep", "args": true },
+        { "cmd": "git", "name": "git", "args": true },
+        { "cmd": "findstr", "name": "findstr", "args": true }
       ]
     }
   ]
