@@ -62,7 +62,9 @@ export function useGitSync(workspacePath: string | null) {
       const { status: syncStatus } = await detectSyncStatus(workspacePath)
 
       setState((prev) =>
-        prev.status === 'error'
+        // Don't overwrite 'error' or 'syncing' status
+        // 'syncing' should only be changed by the sync() function itself
+        prev.status === 'error' || prev.status === 'syncing'
           ? prev
           : {
               ...prev,
@@ -167,10 +169,16 @@ export function useGitSync(workspacePath: string | null) {
 
       await ensureGitSuccess(workspacePath, ['push', 'origin', branch])
 
-      // Refresh status after sync
-      await refreshStatus()
+      // Sync succeeded - set status directly to 'synced' to avoid flicker
+      // The polling interval will verify the actual status later
+      setState((prev) => ({
+        ...prev,
+        status: 'synced',
+        lastUpdated: Date.now(),
+        error: null,
+      }))
 
-      // Sync succeeded - refresh workspace entries and reopen current tab
+      // Refresh workspace entries and reopen current tab
       await useWorkspaceStore.getState().refreshWorkspaceEntries()
       const currentTabPath = useTabStore.getState().tab?.path
 
@@ -191,7 +199,7 @@ export function useGitSync(workspacePath: string | null) {
     } finally {
       isSyncingRef.current = false
     }
-  }, [workspacePath, getSyncConfig, refreshStatus])
+  }, [workspacePath, getSyncConfig])
 
   // Auto sync interval: runs every minute when autoSync is enabled and status is unsynced
   useEffect(() => {
