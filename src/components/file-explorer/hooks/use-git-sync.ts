@@ -1,3 +1,5 @@
+import { join } from '@tauri-apps/api/path'
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
 import { Command } from '@tauri-apps/plugin-shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
@@ -54,10 +56,15 @@ export function useGitSync(workspacePath: string | null) {
         return false
       }
 
+      // Ensure .mdit/db.sqlite is in .gitignore
+      await ensureGitignoreEntry(workspacePath)
+
       const { status: syncStatus } = await detectSyncStatus(workspacePath)
 
       setState((prev) =>
-        prev.status === 'error'
+        // Don't overwrite 'error' or 'syncing' status
+        // 'syncing' should only be changed by the sync() function itself
+        prev.status === 'error' || prev.status === 'syncing'
           ? prev
           : {
               ...prev,
@@ -162,10 +169,16 @@ export function useGitSync(workspacePath: string | null) {
 
       await ensureGitSuccess(workspacePath, ['push', 'origin', branch])
 
-      // Refresh status after sync
-      await refreshStatus()
+      // Sync succeeded - set status directly to 'synced' to avoid flicker
+      // The polling interval will verify the actual status later
+      setState((prev) => ({
+        ...prev,
+        status: 'synced',
+        lastUpdated: Date.now(),
+        error: null,
+      }))
 
-      // Sync succeeded - refresh workspace entries and reopen current tab
+      // Refresh workspace entries and reopen current tab
       await useWorkspaceStore.getState().refreshWorkspaceEntries()
       const currentTabPath = useTabStore.getState().tab?.path
 
@@ -186,7 +199,7 @@ export function useGitSync(workspacePath: string | null) {
     } finally {
       isSyncingRef.current = false
     }
-  }, [workspacePath, getSyncConfig, refreshStatus])
+  }, [workspacePath, getSyncConfig])
 
   // Auto sync interval: runs every minute when autoSync is enabled and status is unsynced
   useEffect(() => {
@@ -414,4 +427,50 @@ function buildSyncCommitMessage(customMessage?: string) {
 async function executeGit(workspacePath: string, args: string[]) {
   const command = Command.create('git', ['-C', workspacePath, ...args])
   return command.execute()
+}
+
+async function ensureGitignoreEntry(workspacePath: string) {
+  const gitignorePath = await join(workspacePath, '.gitignore')
+  const entries = ['.mdit/db.sqlite', '.DS_Store']
+
+  try {
+    // Try to read existing .gitignore file
+    let content = ''
+    try {
+      content = await readTextFile(gitignorePath)
+    } catch {
+      // File doesn't exist, we'll create it
+      content = ''
+    }
+
+    // Check which entries are missing
+    const lines = content.split('\n')
+    const missingEntries: string[] = []
+
+    for (const entry of entries) {
+      const normalizedEntry = entry.trim()
+      const hasEntry = lines.some(
+        (line) =>
+          line.trim() === normalizedEntry ||
+          line.trim() === `/${normalizedEntry}`
+      )
+
+      if (!hasEntry) {
+        missingEntries.push(entry)
+      }
+    }
+
+    // Append missing entries to .gitignore
+    if (missingEntries.length > 0) {
+      const entriesToAdd = missingEntries.join('\n')
+      const newContent = content.trim()
+        ? `${content.trim()}\n${entriesToAdd}`
+        : entriesToAdd
+
+      await writeTextFile(gitignorePath, newContent)
+    }
+  } catch (error) {
+    // Silently fail - don't break git sync if .gitignore update fails
+    console.warn('Failed to update .gitignore:', error)
+  }
 }
