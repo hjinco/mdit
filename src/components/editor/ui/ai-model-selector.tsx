@@ -30,7 +30,7 @@ export function AIModelSelector({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-0.5 px-2 py-1 text-xs rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none"
+            className="inline-flex items-center gap-0.5 px-2 py-1 text-xs rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors outline-none cursor-pointer"
           >
             {chatConfig ? chatConfig.model : 'Select model'}
             <ChevronDownIcon className="size-3.5 text-muted-foreground/70" />
