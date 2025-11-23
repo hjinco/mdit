@@ -1,22 +1,11 @@
+mod file_opener;
 mod indexing;
 mod migrations;
 
 use std::fs::File;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
-use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 use trash;
-
-#[derive(Default)]
-struct AppState {
-    opened_files: Arc<Mutex<Vec<String>>>,
-}
-
-#[tauri::command]
-fn get_opened_files(state: tauri::State<AppState>) -> Vec<String> {
-    state.opened_files.lock().unwrap().clone()
-}
 
 #[tauri::command]
 fn move_to_trash(path: String) {
@@ -116,7 +105,8 @@ async fn search_query_entries(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app_state = AppState::default();
+    let app_state = file_opener::AppState::default();
+    file_opener::initialize_opened_files(&app_state);
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
@@ -130,7 +120,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
-            get_opened_files,
+            file_opener::get_opened_files,
             move_to_trash,
             move_many_to_trash,
             get_note_preview,
@@ -146,13 +136,7 @@ pub fn run() {
     app.run(|app_handle, event| {
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { urls } = event {
-            let state = app_handle.state::<AppState>();
-            let mut opened_files = state.opened_files.lock().unwrap();
-            *opened_files = urls
-                .iter()
-                .filter_map(|u| u.to_file_path().ok())
-                .map(|p| p.to_string_lossy().to_string())
-                .collect();
+            file_opener::handle_opened_event(app_handle, urls);
         }
     });
 }
