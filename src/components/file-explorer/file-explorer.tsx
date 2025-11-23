@@ -1,6 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'

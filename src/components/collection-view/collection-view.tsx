@@ -1,7 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { FolderIcon, HashIcon, Loader2Icon } from 'lucide-react'
 import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
-import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
