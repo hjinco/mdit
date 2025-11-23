@@ -67,9 +67,11 @@ export function Editor() {
           className={cn(
             'absolute',
             !isFileExplorerOpen && !isCollectionViewOpen
-              ? 'left-30 pl-2 border-l'
+              ? isMac()
+                ? 'left-30'
+                : 'left-12'
               : 'left-2',
-            !workspacePath && 'left-20 border-none'
+            !workspacePath && (isMac() ? 'left-20' : 'left-2')
           )}
         >
           <HistoryNavigation />
