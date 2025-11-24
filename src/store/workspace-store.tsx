@@ -460,7 +460,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return null
     }
 
-    const trimmedName = folderName.trim()
+    // Remove path separators to prevent directory traversal
+    const trimmedName = folderName.trim().replace(/[/\\]/g, '')
     if (!trimmedName) {
       return null
     }
@@ -777,15 +778,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   renameEntry: async (entry, newName) => {
-    const trimmedName = newName.trim()
+    // Remove path separators to prevent directory traversal
+    const trimmedName = newName.trim().replace(/[/\\]/g, '')
 
     if (!trimmedName || trimmedName === entry.name) {
       return entry.path
-    }
-
-    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
-      console.warn('Invalid rename target, contains path separators:', newName)
-      return null
     }
 
     try {
