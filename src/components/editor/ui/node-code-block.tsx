@@ -52,7 +52,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
             </Button>
           )}
 
-          <CodeBlockCombobox />
+          <CodeBlockCombobox onSelect={() => editor.tf.focus()} />
 
           <CopyButton
             size="icon"
@@ -66,7 +66,11 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
   )
 }
 
-function CodeBlockCombobox() {
+function CodeBlockCombobox({
+  onSelect,
+}: {
+  onSelect: (value: string) => void
+}) {
   const [open, setOpen] = useState(false)
   const readOnly = useReadOnly()
   const editor = useEditorRef()
@@ -127,6 +131,7 @@ function CodeBlockCombobox() {
                     )
                     setSearchValue(value)
                     setOpen(false)
+                    onSelect(value)
                   }}
                 >
                   <Check
