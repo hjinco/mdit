@@ -157,15 +157,15 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
         )}
         onKeyDown={(e) => {
           // I wish I could just use shortcuts but it's not working as expected
-          if (e.key === 'x' && e.metaKey) {
+          if (e.key === 'x' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault()
             e.stopPropagation()
             cutSelection(editor)
-          } else if (e.key === 'c' && e.metaKey) {
+          } else if (e.key === 'c' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault()
             e.stopPropagation()
             copySelection(editor)
-          } else if (e.key === 'v' && e.metaKey) {
+          } else if (e.key === 'v' && (e.metaKey || e.ctrlKey)) {
             const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
             if (blockSelectionApi.blockSelection.getNodes().length === 0) {
               return
