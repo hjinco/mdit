@@ -199,6 +199,17 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
           onBlur={() => {
             handleSave()
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' && e.altKey) {
+              e.preventDefault()
+              e.stopPropagation()
+              moveBlockUp(editor)
+            } else if (e.key === 'ArrowDown' && e.altKey) {
+              e.preventDefault()
+              e.stopPropagation()
+              moveBlockDown(editor)
+            }
+          }}
         />
       </PlateContainer>
     </Plate>
