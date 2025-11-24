@@ -6,6 +6,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
@@ -63,30 +65,40 @@ export function GitSyncStatus({ workspacePath }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              className="relative shrink-0 h-6 rounded-full text-xs"
-              disabled={status === 'synced' || status === 'syncing'}
+              className="relative shrink-0 h-6 w-6 rounded-full p-0"
+              disabled={status === 'syncing'}
             >
               <span
                 className={cn(
-                  'size-1 rounded-full',
+                  'size-1.5 rounded-full',
                   getDotColor(),
                   shouldPulse && 'animate-pulse'
                 )}
               />
-              {getStatusLabel()}
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
         {error && (
           <TooltipContent side="right" align="start" className="max-w-48">
-            <p>{error}</p>
+            <p className="select-text">{error}</p>
           </TooltipContent>
         )}
       </Tooltip>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={sync}>
+        <DropdownMenuLabel className="flex items-center gap-3 pl-3 cursor-default">
+          <span
+            className={cn(
+              'size-1.5 rounded-full',
+              getDotColor(),
+              shouldPulse && 'animate-pulse'
+            )}
+          />
+          {getStatusLabel()}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={sync} disabled={status === 'syncing'}>
           <RefreshCw className="size-3.5" />
-          {status === 'error' ? 'Retry' : 'Sync'}
+          {status === 'error' ? 'Retry' : 'Git Sync'}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => openSettings('sync')}>
           <Settings className="size-3.5" />
