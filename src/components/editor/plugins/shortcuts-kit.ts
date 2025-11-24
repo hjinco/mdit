@@ -168,6 +168,183 @@ export async function pasteSelection(
   editor.tf.focus()
 }
 
+export function moveBlockUp(editor: PlateEditor) {
+  const sel = editor.selection
+  if (!sel) return
+
+  // Check if selection spans multiple blocks
+  if (!PointApi.equals(sel.anchor, sel.focus)) {
+    const edges = editor.api.edges(sel)
+    if (!edges) return
+
+    const [edgeStart, edgeEnd] = edges
+
+    const startEntry = editor.api.above({
+      at: edgeStart,
+      match: editor.api.isBlock,
+      mode: 'highest',
+    })
+    const endEntry = editor.api.above({
+      at: edgeEnd,
+      match: editor.api.isBlock,
+      mode: 'highest',
+    })
+
+    if (!startEntry || !endEntry) return
+
+    const [, startPath] = startEntry
+    const [, endPath] = endEntry
+
+    // Check if we can move up
+    if (startPath.at(-1) === 0) return // Already at the top
+
+    // If selection spans multiple blocks, move them all
+    if (
+      !PointApi.equals(edgeStart, edgeEnd) ||
+      startPath.length !== endPath.length
+    ) {
+      const startIndex = startPath.at(-1) as number
+      const endIndex = endPath.at(-1) as number
+
+      // Move all blocks in the range
+      for (let i = startIndex; i <= endIndex; i++) {
+        const path = [...startPath]
+        path[path.length - 1] = i
+
+        const targetPath = [...path]
+        targetPath[targetPath.length - 1] -= 1
+
+        editor.tf.moveNodes({
+          at: path,
+          to: targetPath,
+        })
+      }
+      return
+    }
+  }
+
+  // Handle single block/cursor position
+  const entry = editor.api.above({
+    at: sel.anchor,
+    match: editor.api.isBlock,
+    mode: 'highest',
+  })
+
+  if (!entry) return
+
+  const [, path] = entry
+
+  // Check if we can move up
+  if (path.at(-1) === 0) return // Already at the top
+
+  // Calculate the target path
+  const targetPath = [...path]
+  targetPath[targetPath.length - 1] -= 1
+
+  editor.tf.moveNodes({
+    at: path,
+    to: targetPath,
+  })
+}
+
+export function moveBlockDown(editor: PlateEditor) {
+  const sel = editor.selection
+  if (!sel) return
+
+  // Check if selection spans multiple blocks
+  if (!PointApi.equals(sel.anchor, sel.focus)) {
+    const edges = editor.api.edges(sel)
+    if (!edges) return
+
+    const [edgeStart, edgeEnd] = edges
+
+    const startEntry = editor.api.above({
+      at: edgeStart,
+      match: editor.api.isBlock,
+      mode: 'highest',
+    })
+    const endEntry = editor.api.above({
+      at: edgeEnd,
+      match: editor.api.isBlock,
+      mode: 'highest',
+    })
+
+    if (!startEntry || !endEntry) return
+
+    const [, startPath] = startEntry
+    const [, endPath] = endEntry
+
+    // Get the parent to check bounds
+    const parent = editor.api.parent(endPath)
+    if (!parent) return
+
+    const [parentNode] = parent
+    if (!('children' in parentNode)) return
+
+    const endIndex = endPath.at(-1) as number
+    const childrenLength = (parentNode.children as any[]).length
+
+    // Check if we can move down
+    if (endIndex >= childrenLength - 1) return // Already at the bottom
+
+    // If selection spans multiple blocks, move them all
+    if (
+      !PointApi.equals(edgeStart, edgeEnd) ||
+      startPath.length !== endPath.length
+    ) {
+      const startIndex = startPath.at(-1) as number
+
+      // Move all blocks in the range (in reverse order)
+      for (let i = endIndex; i >= startIndex; i--) {
+        const path = [...startPath]
+        path[path.length - 1] = i
+
+        const targetPath = [...path]
+        targetPath[targetPath.length - 1] += 1
+
+        editor.tf.moveNodes({
+          at: path,
+          to: targetPath,
+        })
+      }
+      return
+    }
+  }
+
+  // Handle single block/cursor position
+  const entry = editor.api.above({
+    at: sel.anchor,
+    match: editor.api.isBlock,
+    mode: 'highest',
+  })
+
+  if (!entry) return
+
+  const [, path] = entry
+
+  // Get the parent to check bounds
+  const parent = editor.api.parent(path)
+  if (!parent) return
+
+  const [parentNode] = parent
+  if (!('children' in parentNode)) return
+
+  const currentIndex = path.at(-1) as number
+  const childrenLength = (parentNode.children as any[]).length
+
+  // Check if we can move down
+  if (currentIndex >= childrenLength - 1) return // Already at the bottom
+
+  // Calculate the target path (swap with the next sibling)
+  const targetPath = [...path]
+  targetPath[targetPath.length - 1] = currentIndex + 1
+
+  editor.tf.moveNodes({
+    at: path,
+    to: targetPath,
+  })
+}
+
 export const ShortcutsPlugin = createPlatePlugin({
   key: 'shortcuts',
   shortcuts: {
@@ -175,6 +352,18 @@ export const ShortcutsPlugin = createPlatePlugin({
       keys: 'mod+a',
       handler: ({ editor }) => {
         selectAllLikeCmdA(editor)
+      },
+    },
+    moveBlockUp: {
+      keys: 'alt+arrowup',
+      handler: ({ editor }) => {
+        moveBlockUp(editor)
+      },
+    },
+    moveBlockDown: {
+      keys: 'alt+arrowdown',
+      handler: ({ editor }) => {
+        moveBlockDown(editor)
       },
     },
   },
