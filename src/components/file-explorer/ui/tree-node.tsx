@@ -30,6 +30,12 @@ type TreeNodeProps = {
   aiRenamingEntryPaths: Set<string>
   onRenameSubmit: (entry: WorkspaceEntry, name: string) => void | Promise<void>
   onRenameCancel: () => void
+  pendingNewFolderPath: string | null
+  onNewFolderSubmit: (
+    directoryPath: string,
+    folderName: string
+  ) => void | Promise<void>
+  onNewFolderCancel: () => void
 }
 
 export function TreeNode({
@@ -45,6 +51,9 @@ export function TreeNode({
   aiRenamingEntryPaths,
   onRenameSubmit,
   onRenameCancel,
+  pendingNewFolderPath,
+  onNewFolderSubmit,
+  onNewFolderCancel,
 }: TreeNodeProps) {
   const isDirectory = entry.isDirectory
   const hasChildren = (entry.children?.length ?? 0) > 0
@@ -153,8 +162,11 @@ export function TreeNode({
   )
 
   const [draftName, setDraftName] = useState(baseName)
+  const [newFolderName, setNewFolderName] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const newFolderInputRef = useRef<HTMLInputElement | null>(null)
   const hasSubmittedRef = useRef(false)
+  const hasSubmittedNewFolderRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
 
   // Common button ref callback that combines setNodeRef and buttonRef
@@ -222,6 +234,56 @@ export function TreeNode({
   const handleRenameBlur = useCallback(async () => {
     await submitRename()
   }, [submitRename])
+
+  // New folder input handlers
+  const hasPendingNewFolder = pendingNewFolderPath === entry.path
+
+  useEffect(() => {
+    if (hasPendingNewFolder) {
+      setNewFolderName('')
+      requestAnimationFrame(() => {
+        newFolderInputRef.current?.focus()
+        newFolderInputRef.current?.select()
+      })
+    } else {
+      hasSubmittedNewFolderRef.current = false
+    }
+  }, [hasPendingNewFolder])
+
+  const submitNewFolder = useCallback(async () => {
+    if (hasSubmittedNewFolderRef.current) {
+      return
+    }
+
+    const trimmedName = newFolderName.trim()
+
+    if (!trimmedName) {
+      hasSubmittedNewFolderRef.current = true
+      onNewFolderCancel()
+      return
+    }
+
+    hasSubmittedNewFolderRef.current = true
+    await onNewFolderSubmit(entry.path, trimmedName)
+  }, [newFolderName, entry.path, onNewFolderCancel, onNewFolderSubmit])
+
+  const handleNewFolderKeyDown = useCallback(
+    async (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        await submitNewFolder()
+      } else if (event.key === 'Escape') {
+        event.preventDefault()
+        hasSubmittedNewFolderRef.current = true
+        onNewFolderCancel()
+      }
+    },
+    [onNewFolderCancel, submitNewFolder]
+  )
+
+  const handleNewFolderBlur = useCallback(async () => {
+    await submitNewFolder()
+  }, [submitNewFolder])
 
   // Auto-expand folder when dragging over it
   const autoExpandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -320,6 +382,28 @@ export function TreeNode({
               </div>
             </button>
           </div>
+          {hasPendingNewFolder && (
+            <div
+              className="flex-1 flex items-center px-2 py-0.5 mt-0.5 ring-1 ring-ring/50 rounded-sm"
+              style={{
+                paddingLeft: `${4 + (depth + 1) * 8}px`,
+              }}
+            >
+              <div className="shrink-0 px-1.5 py-1" aria-hidden="true">
+                <ChevronRight className="size-4" />
+              </div>
+              <div className="relative flex-1 min-w-0 flex items-center">
+                <span className="text-sm opacity-0">Placeholder</span>
+                <TreeNodeRenameInput
+                  draftName={newFolderName}
+                  setDraftName={setNewFolderName}
+                  inputRef={newFolderInputRef}
+                  handleRenameKeyDown={handleNewFolderKeyDown}
+                  handleRenameBlur={handleNewFolderBlur}
+                />
+              </div>
+            </div>
+          )}
           {hasChildren && isExpanded && (
             <ul className="space-y-0.5 mt-0.5">
               {entry.children?.map((child) => (
@@ -337,6 +421,9 @@ export function TreeNode({
                   aiRenamingEntryPaths={aiRenamingEntryPaths}
                   onRenameSubmit={onRenameSubmit}
                   onRenameCancel={onRenameCancel}
+                  pendingNewFolderPath={pendingNewFolderPath}
+                  onNewFolderSubmit={onNewFolderSubmit}
+                  onNewFolderCancel={onNewFolderCancel}
                 />
               ))}
             </ul>

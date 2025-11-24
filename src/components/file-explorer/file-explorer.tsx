@@ -16,6 +16,7 @@ import { useEntryMap } from './hooks/use-entry-map'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
 import { PinnedList } from './ui/pinned-list'
+import { RootNewFolderInput } from './ui/root-new-folder-input'
 import { SettingsMenu } from './ui/settings-menu'
 import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
@@ -41,6 +42,7 @@ export function FileExplorer() {
     workspacePath,
     entries,
     expandedDirectories,
+    setExpandedDirectories,
     recentWorkspacePaths,
     createNote,
     createFolder,
@@ -67,6 +69,9 @@ export function FileExplorer() {
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )
+  const [pendingNewFolderPath, setPendingNewFolderPath] = useState<
+    string | null
+  >(null)
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
   )
@@ -150,6 +155,35 @@ export function FileExplorer() {
     [clearLinkedTab, renameEntry, tab?.path]
   )
 
+  const beginNewFolder = useCallback(
+    (directoryPath: string) => {
+      setPendingNewFolderPath(directoryPath)
+      // Expand the parent directory to show the pending new folder input
+      setExpandedDirectories((prev) => ({
+        ...prev,
+        [directoryPath]: true,
+      }))
+    },
+    [setExpandedDirectories]
+  )
+
+  const cancelNewFolder = useCallback(() => {
+    setPendingNewFolderPath(null)
+  }, [])
+
+  const handleNewFolderSubmit = useCallback(
+    async (directoryPath: string, folderName: string) => {
+      try {
+        await createFolder(directoryPath, folderName)
+      } catch (error) {
+        console.error('Failed to create folder:', error)
+      } finally {
+        setPendingNewFolderPath(null)
+      }
+    },
+    [createFolder]
+  )
+
   useAutoCloseSidebars()
 
   useEnterToRename({
@@ -181,11 +215,10 @@ export function FileExplorer() {
       renameNoteWithAI,
       setAiRenamingEntryPaths,
       beginRenaming,
+      beginNewFolder,
       handleDeleteEntries,
       createNote,
-      createFolder,
       openNote,
-      setRenamingEntryPath,
       workspacePath,
       selectedEntryPaths,
       setSelectedEntryPaths,
@@ -352,6 +385,13 @@ export function FileExplorer() {
           <TagList />
           <PinnedList />
           <ul className="space-y-0.5 pb-4">
+            {pendingNewFolderPath === workspacePath && workspacePath && (
+              <RootNewFolderInput
+                onSubmit={handleNewFolderSubmit}
+                onCancel={cancelNewFolder}
+                workspacePath={workspacePath}
+              />
+            )}
             {entries.map((entry) => (
               <TreeNode
                 key={entry.path}
@@ -367,6 +407,9 @@ export function FileExplorer() {
                 aiRenamingEntryPaths={aiRenamingEntryPaths}
                 onRenameSubmit={handleRenameSubmit}
                 onRenameCancel={cancelRenaming}
+                pendingNewFolderPath={pendingNewFolderPath}
+                onNewFolderSubmit={handleNewFolderSubmit}
+                onNewFolderCancel={cancelNewFolder}
               />
             ))}
           </ul>

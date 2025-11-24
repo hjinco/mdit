@@ -14,11 +14,10 @@ type UseFileExplorerMenusProps = {
   renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
   setAiRenamingEntryPaths: Dispatch<SetStateAction<Set<string>>>
   beginRenaming: (entry: WorkspaceEntry) => void
+  beginNewFolder: (directoryPath: string) => void
   handleDeleteEntries: (paths: string[]) => Promise<void>
   createNote: (directoryPath: string) => Promise<string | null>
-  createFolder: (directoryPath: string) => Promise<string | null>
   openNote: (path: string) => void
-  setRenamingEntryPath: Dispatch<SetStateAction<string | null>>
   workspacePath: string | null
   selectedEntryPaths: Set<string>
   setSelectedEntryPaths: (paths: Set<string>) => void
@@ -35,11 +34,10 @@ export const useFileExplorerMenus = ({
   renameNoteWithAI,
   setAiRenamingEntryPaths,
   beginRenaming,
+  beginNewFolder,
   handleDeleteEntries,
   createNote,
-  createFolder,
   openNote,
-  setRenamingEntryPath,
   workspacePath,
   selectedEntryPaths,
   setSelectedEntryPaths,
@@ -149,10 +147,7 @@ export const useFileExplorerMenus = ({
             id: `new-folder-${normalizedDirectoryPath}`,
             text: 'New Folder',
             action: async () => {
-              const newFolderPath = await createFolder(directoryPath)
-              if (newFolderPath) {
-                setRenamingEntryPath(newFolderPath)
-              }
+              beginNewFolder(directoryPath)
             },
           }),
           await MenuItem.new({
@@ -205,11 +200,10 @@ export const useFileExplorerMenus = ({
     },
     [
       beginRenaming,
-      createFolder,
+      beginNewFolder,
       createNote,
       handleDeleteEntries,
       openNote,
-      setRenamingEntryPath,
       workspacePath,
       pinnedDirectories,
       pinDirectory,

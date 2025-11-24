@@ -109,7 +109,10 @@ type WorkspaceStore = {
   pinDirectory: (path: string) => Promise<void>
   unpinDirectory: (path: string) => Promise<void>
   toggleDirectory: (path: string) => void
-  createFolder: (directoryPath: string) => Promise<string | null>
+  createFolder: (
+    directoryPath: string,
+    folderName: string
+  ) => Promise<string | null>
   createNote: (directoryPath: string) => Promise<string | null>
   createAndOpenNote: () => Promise<void>
   deleteEntries: (paths: string[]) => Promise<boolean>
@@ -450,30 +453,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     })
   },
 
-  createFolder: async (directoryPath: string) => {
+  createFolder: async (directoryPath: string, folderName: string) => {
     const workspacePath = get().workspacePath
 
     if (!workspacePath) {
       return null
     }
 
-    try {
-      const baseName = 'Untitled Folder'
-      let attempt = 0
-      let folderName = baseName
-      let folderPath = await join(directoryPath, folderName)
+    // Remove path separators to prevent directory traversal
+    const trimmedName = folderName.trim().replace(/[/\\]/g, '')
+    if (!trimmedName) {
+      return null
+    }
 
+    try {
+      let attempt = 0
+      let finalFolderName = trimmedName
+      let folderPath = await join(directoryPath, finalFolderName)
+
+      // If folder with this name exists, append number suffix
       while (await exists(folderPath)) {
         attempt += 1
-        folderName = `${baseName} ${attempt}`
-        folderPath = await join(directoryPath, folderName)
+        finalFolderName = `${trimmedName} ${attempt}`
+        folderPath = await join(directoryPath, finalFolderName)
       }
 
       await mkdir(folderPath, { recursive: true })
 
       const newFolderEntry: WorkspaceEntry = {
         path: folderPath,
-        name: folderName,
+        name: finalFolderName,
         isDirectory: true,
         children: [],
       }
@@ -502,7 +511,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       return folderPath
     } catch (error) {
-      console.error('Failed to create folder:', error)
+      console.error('Failed to create folder with name:', error)
       return null
     }
   },
@@ -769,15 +778,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   renameEntry: async (entry, newName) => {
-    const trimmedName = newName.trim()
+    // Remove path separators to prevent directory traversal
+    const trimmedName = newName.trim().replace(/[/\\]/g, '')
 
     if (!trimmedName || trimmedName === entry.name) {
       return entry.path
-    }
-
-    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
-      console.warn('Invalid rename target, contains path separators:', newName)
-      return null
     }
 
     try {
