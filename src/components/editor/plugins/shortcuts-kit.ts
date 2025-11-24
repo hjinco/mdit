@@ -169,6 +169,30 @@ export async function pasteSelection(
 }
 
 export function moveBlockUp(editor: PlateEditor) {
+  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
+
+  // If there are block-selected blocks, move them up
+  if (selectedBlocks.length > 0) {
+    const firstPath = selectedBlocks[0][1]
+
+    // Check if we can move up
+    if (firstPath.at(-1) === 0) return // Already at the top
+
+    // Move all selected blocks up
+    for (const [, path] of selectedBlocks) {
+      const targetPath = [...path]
+      targetPath[targetPath.length - 1] -= 1
+
+      editor.tf.moveNodes({
+        at: path,
+        to: targetPath,
+      })
+    }
+    return
+  }
+
+  // Otherwise, use the logic for current selection
   const sel = editor.selection
   if (!sel) return
 
@@ -248,6 +272,42 @@ export function moveBlockUp(editor: PlateEditor) {
 }
 
 export function moveBlockDown(editor: PlateEditor) {
+  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
+
+  // If there are block-selected blocks, move them down
+  if (selectedBlocks.length > 0) {
+    const lastPath = selectedBlocks.at(-1)?.[1]
+    if (!lastPath) return
+
+    // Get the parent to check bounds
+    const parent = editor.api.parent(lastPath)
+    if (!parent) return
+
+    const [parentNode] = parent
+    if (!('children' in parentNode)) return
+
+    const lastIndex = lastPath.at(-1) as number
+    const childrenLength = (parentNode.children as any[]).length
+
+    // Check if we can move down
+    if (lastIndex >= childrenLength - 1) return // Already at the bottom
+
+    // Move all selected blocks down (in reverse order to maintain positions)
+    for (let i = selectedBlocks.length - 1; i >= 0; i--) {
+      const [, path] = selectedBlocks[i]
+      const targetPath = [...path]
+      targetPath[targetPath.length - 1] += 1
+
+      editor.tf.moveNodes({
+        at: path,
+        to: targetPath,
+      })
+    }
+    return
+  }
+
+  // Otherwise, use the logic for current selection
   const sel = editor.selection
   if (!sel) return
 
@@ -352,18 +412,6 @@ export const ShortcutsPlugin = createPlatePlugin({
       keys: 'mod+a',
       handler: ({ editor }) => {
         selectAllLikeCmdA(editor)
-      },
-    },
-    moveBlockUp: {
-      keys: 'alt+arrowup',
-      handler: ({ editor }) => {
-        moveBlockUp(editor)
-      },
-    },
-    moveBlockDown: {
-      keys: 'alt+arrowdown',
-      handler: ({ editor }) => {
-        moveBlockDown(editor)
       },
     },
   },

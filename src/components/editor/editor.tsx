@@ -23,6 +23,8 @@ import { EditorKit } from './plugins/editor-kit'
 import {
   copySelection,
   cutSelection,
+  moveBlockDown,
+  moveBlockUp,
   pasteSelection,
 } from './plugins/shortcuts-kit'
 
@@ -171,6 +173,14 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             e.preventDefault()
             e.stopPropagation()
             pasteSelection(editor)
+          } else if (e.key === 'ArrowUp' && e.altKey) {
+            e.preventDefault()
+            e.stopPropagation()
+            moveBlockUp(editor)
+          } else if (e.key === 'ArrowDown' && e.altKey) {
+            e.preventDefault()
+            e.stopPropagation()
+            moveBlockDown(editor)
           }
         }}
       >
