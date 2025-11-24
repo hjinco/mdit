@@ -181,6 +181,9 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
             e.preventDefault()
             e.stopPropagation()
             moveBlockDown(editor)
+          } else if (e.key === 'Tab') {
+            e.preventDefault()
+            e.stopPropagation()
           }
         }}
       >
