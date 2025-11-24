@@ -41,6 +41,7 @@ export function FileExplorer() {
     workspacePath,
     entries,
     expandedDirectories,
+    setExpandedDirectories,
     recentWorkspacePaths,
     createNote,
     createFolder,
@@ -67,6 +68,9 @@ export function FileExplorer() {
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )
+  const [pendingNewFolderPath, setPendingNewFolderPath] = useState<
+    string | null
+  >(null)
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
   )
@@ -150,6 +154,35 @@ export function FileExplorer() {
     [clearLinkedTab, renameEntry, tab?.path]
   )
 
+  const beginNewFolder = useCallback(
+    (directoryPath: string) => {
+      setPendingNewFolderPath(directoryPath)
+      // Expand the parent directory to show the pending new folder input
+      setExpandedDirectories((prev) => ({
+        ...prev,
+        [directoryPath]: true,
+      }))
+    },
+    [setExpandedDirectories]
+  )
+
+  const cancelNewFolder = useCallback(() => {
+    setPendingNewFolderPath(null)
+  }, [])
+
+  const handleNewFolderSubmit = useCallback(
+    async (directoryPath: string, folderName: string) => {
+      try {
+        await createFolder(directoryPath, folderName)
+      } catch (error) {
+        console.error('Failed to create folder:', error)
+      } finally {
+        setPendingNewFolderPath(null)
+      }
+    },
+    [createFolder]
+  )
+
   useAutoCloseSidebars()
 
   useEnterToRename({
@@ -181,11 +214,10 @@ export function FileExplorer() {
       renameNoteWithAI,
       setAiRenamingEntryPaths,
       beginRenaming,
+      beginNewFolder,
       handleDeleteEntries,
       createNote,
-      createFolder,
       openNote,
-      setRenamingEntryPath,
       workspacePath,
       selectedEntryPaths,
       setSelectedEntryPaths,
@@ -367,6 +399,9 @@ export function FileExplorer() {
                 aiRenamingEntryPaths={aiRenamingEntryPaths}
                 onRenameSubmit={handleRenameSubmit}
                 onRenameCancel={cancelRenaming}
+                pendingNewFolderPath={pendingNewFolderPath}
+                onNewFolderSubmit={handleNewFolderSubmit}
+                onNewFolderCancel={cancelNewFolder}
               />
             ))}
           </ul>
