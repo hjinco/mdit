@@ -16,6 +16,7 @@ import { useEntryMap } from './hooks/use-entry-map'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
 import { PinnedList } from './ui/pinned-list'
+import { RootNewFolderInput } from './ui/root-new-folder-input'
 import { SettingsMenu } from './ui/settings-menu'
 import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
@@ -384,6 +385,13 @@ export function FileExplorer() {
           <TagList />
           <PinnedList />
           <ul className="space-y-0.5 pb-4">
+            {pendingNewFolderPath === workspacePath && workspacePath && (
+              <RootNewFolderInput
+                onSubmit={handleNewFolderSubmit}
+                onCancel={cancelNewFolder}
+                workspacePath={workspacePath}
+              />
+            )}
             {entries.map((entry) => (
               <TreeNode
                 key={entry.path}
