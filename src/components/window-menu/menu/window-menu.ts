@@ -13,6 +13,10 @@ export async function createWindowMenu() {
         item: 'Maximize',
       }),
       await PredefinedMenuItem.new({
+        text: 'Fullscreen',
+        item: 'Fullscreen',
+      }),
+      await PredefinedMenuItem.new({
         text: 'Separator',
         item: 'Separator',
       }),
