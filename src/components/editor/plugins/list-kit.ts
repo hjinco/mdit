@@ -7,7 +7,7 @@ export const ListKit = [
   ...IndentKit,
   ListPlugin.configure({
     inject: {
-      targetPlugins: [...KEYS.heading, KEYS.p, KEYS.blockquote, KEYS.codeBlock],
+      targetPlugins: [KEYS.p],
     },
     render: {
       belowNodes: BlockList,

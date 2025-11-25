@@ -30,6 +30,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+1' } },
   }),
@@ -39,6 +40,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+2' } },
   }),
@@ -48,6 +50,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+3' } },
   }),
@@ -57,6 +60,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+4' } },
   }),
@@ -66,6 +70,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+5' } },
   }),
@@ -75,6 +80,7 @@ export const BasicBlocksKit = [
     },
     rules: {
       break: { empty: 'reset' },
+      delete: { empty: 'reset', start: 'reset' },
     },
     shortcuts: { toggle: { keys: 'mod+alt+6' } },
   }),
