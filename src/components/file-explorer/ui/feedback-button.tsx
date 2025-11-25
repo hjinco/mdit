@@ -134,8 +134,7 @@ export function FeedbackButton() {
                         <Textarea
                           {...field}
                           placeholder="Share your feedback..."
-                          rows={4}
-                          className="resize-none"
+                          className="h-32"
                           spellCheck="false"
                         />
                       </FormControl>
