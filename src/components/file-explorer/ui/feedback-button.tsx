@@ -79,7 +79,7 @@ export function FeedbackButton() {
   const onSubmit = async (values: FormValues) => {
     setSubmitStatus('loading')
     try {
-      const response = await fetch('https://mdit.app/api/feedback', {
+      const response = await fetch(import.meta.env.VITE_FEEDBACK_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
