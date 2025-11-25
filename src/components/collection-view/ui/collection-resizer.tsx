@@ -101,16 +101,13 @@ export const CollectionResizer = memo(function CollectionResizer({
           className={cn(tooltipContentVariants, 'pr-1')}
         >
           <div className="flex items-center gap-1">
-            Toggle
+            Close
             <KbdGroup>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
                 {getModifierKey()}
               </Kbd>
               <Kbd className="bg-background/20 text-background dark:bg-background/10">
-                ⇧
-              </Kbd>
-              <Kbd className="bg-background/20 text-background dark:bg-background/10">
-                S
+                D
               </Kbd>
             </KbdGroup>
           </div>

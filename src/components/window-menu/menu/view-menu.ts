@@ -37,7 +37,7 @@ export async function createViewMenu({
       await MenuItem.new({
         id: 'toggle-collection-view',
         text: 'Toggle Collection View',
-        accelerator: 'CmdOrCtrl+Shift+S',
+        accelerator: 'CmdOrCtrl+D',
         action: () => toggleCollectionView(),
       }),
       await PredefinedMenuItem.new({
