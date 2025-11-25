@@ -4,8 +4,10 @@
   "app": {
     "windows": [
       {
+        "title": "Mdit",
         "titleBarStyle": "Visible",
         "transparent": false,
+        "visible": false,
         "windowEffects": {
           "effects": []
         }
