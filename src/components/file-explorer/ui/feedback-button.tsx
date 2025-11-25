@@ -1,8 +1,15 @@
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
-import { CheckIcon, Loader2Icon, SendIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  CameraIcon,
+  CheckIcon,
+  Loader2Icon,
+  SendIcon,
+  XIcon,
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useScreenCapture } from '@/contexts/screen-capture-context'
 import { Button } from '@/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/ui/field'
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/ui/form'
@@ -27,6 +34,9 @@ type SubmitStatus = 'idle' | 'loading' | 'success' | 'error'
 export function FeedbackButton() {
   const [open, setOpen] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>('idle')
+  const { onStartCapture, screenshot, setScreenshot, isCapturing } =
+    useScreenCapture()
+  const wasOpenBeforeCapture = useRef(false)
   const form = useForm<FormValues>({
     resolver: standardSchemaResolver(formSchema),
     defaultValues: {
@@ -41,6 +51,7 @@ export function FeedbackButton() {
         setOpen(false)
         setSubmitStatus('idle')
         form.reset()
+        setScreenshot('')
       }, 1500)
       return () => clearTimeout(timer)
     }
@@ -50,12 +61,25 @@ export function FeedbackButton() {
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [submitStatus, form])
+  }, [submitStatus, form, setScreenshot])
+
+  // Reopen popover when screenshot capture is complete
+  useEffect(() => {
+    if (!isCapturing && wasOpenBeforeCapture.current) {
+      // Reopen popover if it was open before capture started
+      setOpen(true)
+      wasOpenBeforeCapture.current = false
+    }
+  }, [isCapturing])
+
+  const handleRemoveScreenshot = () => {
+    setScreenshot('')
+  }
 
   const onSubmit = async (values: FormValues) => {
     setSubmitStatus('loading')
     try {
-      const response = await fetch('https://mdit.app/api/feedback', {
+      const response = await fetch(import.meta.env.VITE_FEEDBACK_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,6 +87,7 @@ export function FeedbackButton() {
         body: JSON.stringify({
           message: values.message,
           email: values.email || undefined,
+          screenshot: screenshot || undefined,
         }),
       })
 
@@ -83,8 +108,11 @@ export function FeedbackButton() {
       onOpenChange={(newOpen) => {
         setOpen(newOpen)
         if (!newOpen) {
-          form.reset()
-          setSubmitStatus('idle')
+          setTimeout(() => {
+            form.reset()
+            setSubmitStatus('idle')
+            setScreenshot('')
+          }, 300)
         }
       }}
     >
@@ -145,6 +173,43 @@ export function FeedbackButton() {
                   )}
                 />
               </Field>
+              <Field>
+                <FieldLabel>Screenshot (optional)</FieldLabel>
+                <div className="space-y-2">
+                  {screenshot ? (
+                    <div className="relative">
+                      <div
+                        className="w-full rounded-md border max-h-48 min-h-32 bg-center bg-no-repeat bg-contain"
+                        style={{ backgroundImage: `url(${screenshot})` }}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 size-6"
+                        onClick={handleRemoveScreenshot}
+                      >
+                        <XIcon />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        wasOpenBeforeCapture.current = open
+                        setOpen(false)
+                        onStartCapture()
+                      }}
+                      className="w-full"
+                    >
+                      <CameraIcon />
+                      Capture Screenshot
+                    </Button>
+                  )}
+                </div>
+              </Field>
             </FieldGroup>
             <div className="flex justify-end gap-2">
               <Button
@@ -152,9 +217,12 @@ export function FeedbackButton() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  form.reset()
                   setOpen(false)
-                  setSubmitStatus('idle')
+                  setTimeout(() => {
+                    form.reset()
+                    setSubmitStatus('idle')
+                    setScreenshot('')
+                  }, 300)
                 }}
                 disabled={
                   submitStatus === 'loading' || submitStatus === 'success'

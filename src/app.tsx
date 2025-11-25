@@ -8,6 +8,7 @@ import { ImagePreviewDialog } from './components/image-preview/image-preview-dia
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
 import { DndProvider } from './contexts/dnd-provider'
+import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
@@ -53,30 +54,32 @@ export function App() {
   }
 
   return (
-    <DndProvider>
-      <div
-        className={cn(
-          'h-screen flex flex-col',
-          isMac() ? 'bg-muted/80' : 'bg-muted'
-        )}
-      >
-        <div className="flex-1 overflow-hidden flex">
-          <div className="group/side flex">
-            <FileExplorer />
-            <CollectionView />
-          </div>
-          <div className="flex-1 flex">
-            <Editor />
-          </div>
-          <div className="fixed bottom-1 right-1">
-            <LicenseKeyButton />
+    <ScreenCaptureProvider>
+      <DndProvider>
+        <div
+          className={cn(
+            'h-screen flex flex-col',
+            isMac() ? 'bg-muted/80' : 'bg-muted'
+          )}
+        >
+          <div className="flex-1 overflow-hidden flex">
+            <div className="group/side flex">
+              <FileExplorer />
+              <CollectionView />
+            </div>
+            <div className="flex-1 flex">
+              <Editor />
+            </div>
+            <div className="fixed bottom-1 right-1">
+              <LicenseKeyButton />
+            </div>
           </div>
         </div>
-      </div>
-      <SettingsDialog />
-      <CommandMenu />
-      <ImagePreviewDialog />
-    </DndProvider>
+        <SettingsDialog />
+        <CommandMenu />
+        <ImagePreviewDialog />
+      </DndProvider>
+    </ScreenCaptureProvider>
   )
 }
 
