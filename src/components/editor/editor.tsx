@@ -9,6 +9,7 @@ import {
   usePlateEditor,
 } from 'platejs/react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
@@ -35,6 +36,7 @@ export function Editor() {
     (s) => s.currentCollectionPath !== null
   )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
+  const isFullscreen = useIsFullscreen()
 
   const editor = useMemo(() => {
     return createSlateEditor({
@@ -69,11 +71,11 @@ export function Editor() {
           className={cn(
             'absolute',
             !isFileExplorerOpen && !isCollectionViewOpen
-              ? isMac()
+              ? isMac() && !isFullscreen
                 ? 'left-30'
                 : 'left-12'
               : 'left-2',
-            !workspacePath && (isMac() ? 'left-20' : 'left-2')
+            !workspacePath && (isMac() && !isFullscreen ? 'left-20' : 'left-2')
           )}
         >
           <HistoryNavigation />

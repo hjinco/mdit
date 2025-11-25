@@ -1,3 +1,4 @@
+import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
 import { isMac } from '@/utils/platform'
 import { SearchButton } from './search-button'
@@ -17,7 +18,8 @@ export function TopMenu({
   setFileExplorerOpen: (isOpen: boolean) => void
 }) {
   const isMacOS = isMac()
-  const closedWidth = isMacOS ? 120 : 48
+  const isFullscreen = useIsFullscreen()
+  const closedWidth = isMacOS ? (isFullscreen ? 48 : 120) : 48
 
   return (
     <div
