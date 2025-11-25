@@ -49,9 +49,11 @@ export function FeedbackButton() {
     if (submitStatus === 'success') {
       const timer = setTimeout(() => {
         setOpen(false)
-        setSubmitStatus('idle')
-        form.reset()
-        setScreenshot('')
+        setTimeout(() => {
+          setSubmitStatus('idle')
+          form.reset()
+          setScreenshot('')
+        }, 300)
       }, 1500)
       return () => clearTimeout(timer)
     }
