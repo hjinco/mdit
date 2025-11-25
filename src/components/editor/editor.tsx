@@ -19,6 +19,7 @@ import { HistoryNavigation } from './header/history-navigation'
 import { MoreButton } from './header/more-button'
 import { Tab } from './header/tab'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
+import { useCommandMenuSelectionRestore } from './hooks/use-command-menu-selection-restore'
 import { useLinkedTabName } from './hooks/use-linked-tab-name'
 import { EditorKit } from './plugins/editor-kit'
 import {
@@ -138,6 +139,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
     editor.tf.focus()
   }, [editor])
 
+  useCommandMenuSelectionRestore(editor)
   useLinkedTabName(path, value)
 
   return (
