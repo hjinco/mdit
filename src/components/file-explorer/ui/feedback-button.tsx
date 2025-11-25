@@ -104,6 +104,11 @@ export function FeedbackButton() {
     }
   }
 
+  if (!import.meta.env.VITE_FEEDBACK_API_URL) {
+    // Hide feedback button if API URL is not configured
+    return null
+  }
+
   return (
     <Popover
       open={open}
