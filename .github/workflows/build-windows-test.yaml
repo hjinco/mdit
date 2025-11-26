@@ -62,6 +62,7 @@ jobs:
           VITE_FEEDBACK_API_URL: ${{ vars.VITE_FEEDBACK_API_URL }}
         with:
           projectPath: ./
+          tagName: ${{ steps.test_tag.outputs.test_tag }}
           releaseName: "Windows Test Build - ${{ steps.test_tag.outputs.test_tag }}"
           releaseBody: "Test build for Windows. Download and test on Windows devices."
           releaseDraft: true
