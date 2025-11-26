@@ -311,9 +311,7 @@ export function FileExplorer() {
 
       if (!isRange && !isMulti) {
         if (entry.isDirectory) {
-          setCurrentCollectionPath((prev) =>
-            prev === entry.path ? null : entry.path
-          )
+          toggleDirectory(entry.path)
         } else if (entry.name.endsWith('.md')) {
           openNote(entry.path)
         } else if (
@@ -332,8 +330,17 @@ export function FileExplorer() {
       setSelectionAnchorPath,
       visibleEntryPaths,
       openImagePreview,
-      setCurrentCollectionPath,
+      toggleDirectory,
     ]
+  )
+
+  const handleCollectionViewOpen = useCallback(
+    (entry: WorkspaceEntry) => {
+      setCurrentCollectionPath((prev) =>
+        prev === entry.path ? null : entry.path
+      )
+    },
+    [setCurrentCollectionPath]
   )
 
   return (
@@ -410,6 +417,7 @@ export function FileExplorer() {
                 pendingNewFolderPath={pendingNewFolderPath}
                 onNewFolderSubmit={handleNewFolderSubmit}
                 onNewFolderCancel={cancelNewFolder}
+                onCollectionViewOpen={handleCollectionViewOpen}
               />
             ))}
           </ul>

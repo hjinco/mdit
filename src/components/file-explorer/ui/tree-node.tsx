@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FileTextIcon,
   ImageIcon,
+  PanelLeftIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -36,6 +37,7 @@ type TreeNodeProps = {
     folderName: string
   ) => void | Promise<void>
   onNewFolderCancel: () => void
+  onCollectionViewOpen: (entry: WorkspaceEntry) => void
 }
 
 export function TreeNode({
@@ -54,6 +56,7 @@ export function TreeNode({
   pendingNewFolderPath,
   onNewFolderSubmit,
   onNewFolderCancel,
+  onCollectionViewOpen,
 }: TreeNodeProps) {
   const isDirectory = entry.isDirectory
   const hasChildren = (entry.children?.length ?? 0) > 0
@@ -124,27 +127,15 @@ export function TreeNode({
     [entry, isBusy, onEntryPrimaryAction]
   )
 
-  const handleChevronClick = useCallback(
-    (
-      event: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>
-    ) => {
+  const handleCollectionViewClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
       if (isBusy) {
         return
       }
-      onDirectoryClick(entry.path)
+      onCollectionViewOpen(entry)
     },
-    [entry.path, isBusy, onDirectoryClick]
-  )
-
-  const handleChevronKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLElement>) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault()
-        handleChevronClick(event)
-      }
-    },
-    [handleChevronClick]
+    [entry, isBusy, onCollectionViewOpen]
   )
 
   const handleContextMenu = useCallback(
@@ -334,31 +325,28 @@ export function TreeNode({
               type="button"
               onClick={handlePrimaryAction}
               onContextMenu={handleContextMenu}
-              className={getEntryButtonClassName({
-                isSelected,
-                isDragging,
-                isRenaming,
-                isAiRenaming,
-                widthClass: 'flex-1',
-              })}
+              className={cn(
+                getEntryButtonClassName({
+                  isSelected,
+                  isDragging,
+                  isRenaming,
+                  isAiRenaming,
+                  widthClass: 'flex-1',
+                }),
+                'group relative'
+              )}
               style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
               disabled={isBusy}
               {...attributes}
               {...listeners}
             >
               <div
-                role="button"
-                tabIndex={isBusy ? -1 : 0}
-                onClick={handleChevronClick}
-                onKeyDown={handleChevronKeyDown}
                 className={cn(
-                  'shrink-0 px-1.5 py-1 outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
-                  'text-foreground/70 hover:text-foreground',
-                  'cursor-pointer',
-                  isBusy && 'cursor-not-allowed opacity-50'
+                  'shrink-0 px-1.5 py-1',
+                  'text-foreground/70',
+                  'pointer-events-none'
                 )}
-                aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-                aria-disabled={isBusy}
+                aria-hidden="true"
               >
                 {isExpanded ? (
                   <ChevronDown className="size-4" />
@@ -366,8 +354,10 @@ export function TreeNode({
                   <ChevronRight className="size-4" />
                 )}
               </div>
-              <div className="relative flex-1 min-w-0 truncate flex items-center">
-                <span className={cn('text-sm', isRenaming && 'opacity-0')}>
+              <div className="relative flex-1 min-w-0 flex items-center">
+                <span
+                  className={cn('text-sm truncate', isRenaming && 'opacity-0')}
+                >
                   {entry.name}
                 </span>
                 {isRenaming && (
@@ -380,6 +370,21 @@ export function TreeNode({
                   />
                 )}
               </div>
+              <button
+                type="button"
+                onClick={handleCollectionViewClick}
+                className={cn(
+                  'absolute right-1 shrink-0 px-0.5 py-0.5 outline-none',
+                  'bg-muted text-foreground/70 hover:text-foreground rounded-sm',
+                  'opacity-0 group-hover:opacity-100 transition-opacity duration-250',
+                  'cursor-pointer',
+                  isBusy && 'cursor-not-allowed opacity-50'
+                )}
+                aria-label="Open collection view"
+                disabled={isBusy}
+              >
+                <PanelLeftIcon className="size-4" />
+              </button>
             </button>
           </div>
           {hasPendingNewFolder && (
@@ -424,6 +429,7 @@ export function TreeNode({
                   pendingNewFolderPath={pendingNewFolderPath}
                   onNewFolderSubmit={onNewFolderSubmit}
                   onNewFolderCancel={onNewFolderCancel}
+                  onCollectionViewOpen={onCollectionViewOpen}
                 />
               ))}
             </ul>

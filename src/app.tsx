@@ -26,17 +26,17 @@ export function App() {
   useAutoIndexing(workspacePath)
 
   if (!hasCheckedOpenedFiles) {
-    return <div className="h-screen bg-muted/80" />
+    return <div className="h-screen bg-muted/70" />
   }
 
   if (!isEditorOnlyMode && isLoading) {
-    return <div className="h-screen bg-muted/80" />
+    return <div className="h-screen bg-muted/70" />
   }
 
   if (isEditorOnlyMode) {
     return (
       <DndProvider>
-        <div className="h-screen flex flex-col bg-muted/80">
+        <div className="h-screen flex flex-col bg-muted/70">
           <div className="flex-1 flex">
             <Editor />
           </div>
@@ -59,7 +59,7 @@ export function App() {
         <div
           className={cn(
             'h-screen flex flex-col',
-            isMac() ? 'bg-muted/80' : 'bg-muted'
+            isMac() ? 'bg-muted/70' : 'bg-muted'
           )}
         >
           <div className="flex-1 overflow-hidden flex">
