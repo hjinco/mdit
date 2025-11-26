@@ -161,7 +161,7 @@ export function NoteEntry({
           />
         )}
       </div>
-      <div className="text-xs text-foreground/80 line-clamp-2 min-h-8">
+      <div className="text-xs text-foreground/80 line-clamp-2 min-h-8 break-words">
         {previewText}
       </div>
       {entry.modifiedAt && (
