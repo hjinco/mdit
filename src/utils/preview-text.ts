@@ -14,7 +14,7 @@ const WIKI_STYLE_EMBED_PATTERN = /^!\[\[.*\]\]/
 const HTML_BLOCK_PATTERN =
   /^<\/?\s*(table|thead|tbody|tr|td|th|blockquote|pre|code|img)(\s|>|\/)/i
 const HEADING_PATTERN = /^#+\s*/
-const BULLET_MARKER_PATTERN = /^[#>*+\-*\s]+/
+const BULLET_MARKER_PATTERN = /^([#>*+-]\s+)+/
 const INLINE_IMAGE_PATTERN = /!\[[^\]]*]\([^)]*\)/g
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)]\([^)]*\)/g
 const REFERENCE_LINK_PATTERN = /\[([^\]]+)]\[[^\]]*]/g

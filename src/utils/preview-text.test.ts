@@ -19,6 +19,11 @@ describe('formatPreviewText', () => {
     expect(formatPreviewText(raw)).toBe('bold italic strike code')
   })
 
+  it('keeps inline emphasis at the start instead of treating it like a bullet', () => {
+    const raw = '*italic* text'
+    expect(formatPreviewText(raw)).toBe('italic text')
+  })
+
   it('keeps link text and drops wrappers', () => {
     const raw = '[Click here](https://example.com) plus [Ref][id]'
     expect(formatPreviewText(raw)).toBe('Click here plus Ref')
