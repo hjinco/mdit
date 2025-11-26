@@ -1,6 +1,7 @@
 import { useEquationElement, useEquationInput } from '@platejs/math/react'
 import { CornerDownLeftIcon, RadicalIcon } from 'lucide-react'
 import type { TEquationElement } from 'platejs'
+import { PathApi } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import {
   createPrimitiveComponent,
@@ -11,7 +12,7 @@ import {
   useReadOnly,
   useSelected,
 } from 'platejs/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TextareaAutosize, {
   type TextareaAutosizeProps,
 } from 'react-textarea-autosize'
@@ -23,6 +24,73 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
   const selected = useSelected()
   const [open, setOpen] = useState(selected)
   const katexRef = useRef<HTMLDivElement | null>(null)
+  const editor = useEditorRef()
+  const elementPathRef = useRef<ReturnType<typeof props.api.findPath>>(null)
+
+  // Update element path ref when element changes
+  const currentPath = props.api.findPath(props.element)
+  if (
+    currentPath &&
+    (!elementPathRef.current ||
+      !PathApi.equals(currentPath, elementPathRef.current))
+  ) {
+    elementPathRef.current = currentPath
+  }
+  const elementPath = elementPathRef.current
+
+  // Check if the current selection is within this equation element
+  const isFocused = useEditorSelector((editor) => {
+    const selection = editor.selection
+    if (!selection || !elementPath) return false
+
+    // Check if selection is within this element's path
+    const blockEntry = editor.api.above({
+      at: selection,
+      match: editor.api.isBlock,
+      mode: 'lowest',
+    })
+
+    if (!blockEntry) return false
+
+    const [, blockPath] = blockEntry
+    return PathApi.equals(blockPath, elementPath)
+  }, [])
+
+  // Handle Enter key to open popover when element is focused
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        // Check if still focused before opening
+        const selection = editor.selection
+        if (!selection || !elementPathRef.current) return
+
+        const blockEntry = editor.api.above({
+          at: selection,
+          match: editor.api.isBlock,
+          mode: 'lowest',
+        })
+
+        if (!blockEntry) return
+
+        const [, blockPath] = blockEntry
+        if (PathApi.equals(blockPath, elementPathRef.current)) {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+        }
+      }
+    },
+    [editor]
+  )
+
+  useEffect(() => {
+    if (!isFocused || open || !elementPath) return
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFocused, open, elementPath, handleKeyDown])
 
   useEquationElement({
     element: props.element,
