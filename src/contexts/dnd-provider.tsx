@@ -12,6 +12,7 @@ import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
 type DndProviderProps = {
   children: React.ReactNode
@@ -80,8 +81,21 @@ export function DndProvider({ children }: DndProviderProps) {
       const hasMultipleSelections = selectedEntryPaths.size > 1
 
       if (isSelected && hasMultipleSelections) {
-        // Move all selected entries
-        const pathsToMove = Array.from(selectedEntryPaths)
+        const selectedPaths = Array.from(selectedEntryPaths)
+        // Only move top-level selections; drop descendants to preserve hierarchy
+        const pathsToMove = selectedPaths.filter(
+          (path) =>
+            !selectedPaths.some(
+              (otherPath) =>
+                otherPath !== path &&
+                isPathEqualOrDescendant(path, otherPath)
+            )
+        )
+
+        if (pathsToMove.length === 0) {
+          return
+        }
+
         const results = await Promise.allSettled(
           pathsToMove.map((path) => moveEntry(path, destinationPath))
         )
