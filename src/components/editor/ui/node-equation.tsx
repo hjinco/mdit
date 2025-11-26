@@ -1,7 +1,7 @@
 import { useEquationElement, useEquationInput } from '@platejs/math/react'
-import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { CornerDownLeftIcon, RadicalIcon } from 'lucide-react'
 import type { TEquationElement } from 'platejs'
+import { PathApi } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import {
   createPrimitiveComponent,
@@ -12,7 +12,7 @@ import {
   useReadOnly,
   useSelected,
 } from 'platejs/react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TextareaAutosize, {
   type TextareaAutosizeProps,
 } from 'react-textarea-autosize'
@@ -24,6 +24,73 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
   const selected = useSelected()
   const [open, setOpen] = useState(selected)
   const katexRef = useRef<HTMLDivElement | null>(null)
+  const editor = useEditorRef()
+  const elementPathRef = useRef<ReturnType<typeof props.api.findPath>>(null)
+
+  // Update element path ref when element changes
+  const currentPath = props.api.findPath(props.element)
+  if (
+    currentPath &&
+    (!elementPathRef.current ||
+      !PathApi.equals(currentPath, elementPathRef.current))
+  ) {
+    elementPathRef.current = currentPath
+  }
+  const elementPath = elementPathRef.current
+
+  // Check if the current selection is within this equation element
+  const isFocused = useEditorSelector((editor) => {
+    const selection = editor.selection
+    if (!selection || !elementPath) return false
+
+    // Check if selection is within this element's path
+    const blockEntry = editor.api.above({
+      at: selection,
+      match: editor.api.isBlock,
+      mode: 'lowest',
+    })
+
+    if (!blockEntry) return false
+
+    const [, blockPath] = blockEntry
+    return PathApi.equals(blockPath, elementPath)
+  }, [])
+
+  // Handle Enter key to open popover when element is focused
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        // Check if still focused before opening
+        const selection = editor.selection
+        if (!selection || !elementPathRef.current) return
+
+        const blockEntry = editor.api.above({
+          at: selection,
+          match: editor.api.isBlock,
+          mode: 'lowest',
+        })
+
+        if (!blockEntry) return
+
+        const [, blockPath] = blockEntry
+        if (PathApi.equals(blockPath, elementPathRef.current)) {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen(true)
+        }
+      }
+    },
+    [editor]
+  )
+
+  useEffect(() => {
+    if (!isFocused || open || !elementPath) return
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFocused, open, elementPath, handleKeyDown])
 
   useEquationElement({
     element: props.element,
@@ -194,14 +261,36 @@ const EquationPopoverContent = ({
   if (readOnly) return null
 
   const onClose = () => {
-    setOpen(false)
-
     if (isInline) {
+      setOpen(false)
       editor.tf.select(element, { focus: true, next: true })
     } else {
-      editor
-        .getApi(BlockSelectionPlugin)
-        .blockSelection.set(element.id as string)
+      // Find the next block after the equation
+      const nextNodeEntry = editor.api.next({ at: element, from: 'after' })
+
+      if (nextNodeEntry) {
+        const [, nextPath] = nextNodeEntry
+        setOpen(false)
+        // Use setTimeout to ensure popover closes before setting selection
+        setTimeout(() => {
+          const startPoint = editor.api.start(nextPath)
+          if (startPoint) {
+            // Select only the start position (collapsed selection)
+            editor.tf.select({
+              anchor: startPoint,
+              focus: startPoint,
+            })
+            editor.tf.focus()
+          }
+        }, 0)
+        return
+      }
+
+      setOpen(false)
+      // No next block exists, just focus the editor
+      setTimeout(() => {
+        editor.tf.focus()
+      }, 0)
     }
   }
 
@@ -211,9 +300,6 @@ const EquationPopoverContent = ({
         'flex gap-2 p-1',
         !isInline && 'w-[var(--radix-popover-trigger-width)]'
       )}
-      onEscapeKeyDown={(e) => {
-        e.preventDefault()
-      }}
       contentEditable={false}
     >
       <EquationInput
@@ -225,6 +311,106 @@ const EquationPopoverContent = ({
         autoFocus
         spellCheck={false}
         autoCapitalize="off"
+        onKeyDown={(e) => {
+          // Handle Shift+Enter to complete input
+          if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Escape') {
+            e.preventDefault()
+            e.stopPropagation()
+            onClose()
+            return
+          }
+
+          // Handle ArrowLeft at first position for inline equations
+          if (e.key === 'ArrowLeft' && isInline) {
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (textarea.selectionStart === 0 && textarea.selectionEnd === 0) {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen(false)
+              const path = editor.api.findPath(element)
+              if (path) {
+                const beforePoint = editor.api.before(path)
+                if (beforePoint) {
+                  setTimeout(() => {
+                    editor.tf.select({
+                      anchor: beforePoint,
+                      focus: beforePoint,
+                    })
+                    editor.tf.focus()
+                  }, 0)
+                }
+              }
+              return
+            }
+          }
+
+          // Handle ArrowRight at last position for inline equations
+          if (e.key === 'ArrowRight' && isInline) {
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (textarea.selectionStart === textarea.value.length) {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen(false)
+              setTimeout(() => {
+                editor.tf.select(element, { focus: true, next: true })
+                editor.tf.focus()
+              }, 0)
+              return
+            }
+          }
+
+          // Handle Cut (Ctrl+X / Cmd+X)
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+            e.preventDefault()
+            e.stopPropagation()
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (
+              textarea &&
+              textarea.selectionStart !== null &&
+              textarea.selectionEnd !== null
+            ) {
+              const selectedText = textarea.value.substring(
+                textarea.selectionStart,
+                textarea.selectionEnd
+              )
+              if (selectedText) {
+                navigator.clipboard.writeText(selectedText).then(() => {
+                  const newValue =
+                    textarea.value.substring(0, textarea.selectionStart!) +
+                    textarea.value.substring(textarea.selectionEnd!)
+                  textarea.value = newValue
+                  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+                  textarea.setSelectionRange(
+                    textarea.selectionStart!,
+                    textarea.selectionStart!
+                  )
+                })
+              }
+            }
+            return
+          }
+
+          // Handle Copy (Ctrl+C / Cmd+C)
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+            e.preventDefault()
+            e.stopPropagation()
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (
+              textarea &&
+              textarea.selectionStart !== null &&
+              textarea.selectionEnd !== null
+            ) {
+              const selectedText = textarea.value.substring(
+                textarea.selectionStart,
+                textarea.selectionEnd
+              )
+              if (selectedText) {
+                navigator.clipboard.writeText(selectedText)
+              }
+            }
+            return
+          }
+        }}
         {...props}
       />
 

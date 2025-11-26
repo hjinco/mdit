@@ -11,6 +11,7 @@ import {
 } from '@platejs/autoformat'
 import { insertEmptyCodeBlock } from '@platejs/code-block'
 import { toggleList } from '@platejs/list'
+import { insertInlineEquation } from '@platejs/math'
 import { KEYS } from 'platejs'
 import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
 
@@ -210,6 +211,24 @@ const autoformatLists: AutoformatRule[] = [
   },
 ]
 
+const autoformatMathCustom: AutoformatRule[] = [
+  {
+    match: '$$',
+    mode: 'text',
+    format: (editor) => {
+      insertInlineEquation(editor, '', { select: true })
+    },
+  },
+  {
+    match: '\\begin',
+    mode: 'block',
+    type: KEYS.equation,
+    format: (editor) => {
+      editor.tf.setNodes({ type: KEYS.equation, texExpression: '' })
+    },
+  },
+]
+
 export const AutoformatKit = [
   AutoformatPlugin.configure({
     options: {
@@ -223,6 +242,7 @@ export const AutoformatKit = [
         ...autoformatLegalHtml,
         ...autoformatArrow,
         ...autoformatMath,
+        ...autoformatMathCustom,
         ...autoformatLists,
       ].map(
         (rule): AutoformatRule => ({
