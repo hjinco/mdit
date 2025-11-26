@@ -12,6 +12,7 @@ type UseCollectionContextMenuProps = {
   setSelectedEntryPaths: (paths: Set<string>) => void
   setSelectionAnchorPath: (path: string | null) => void
   resetSelection: () => void
+  invalidatePreview: (path: string) => void
 }
 
 export function useCollectionContextMenu({
@@ -22,6 +23,7 @@ export function useCollectionContextMenu({
   selectedEntryPaths,
   setSelectedEntryPaths,
   setSelectionAnchorPath,
+  invalidatePreview,
 }: UseCollectionContextMenuProps) {
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
@@ -46,6 +48,7 @@ export function useCollectionContextMenu({
                 })
                 try {
                   await renameNoteWithAI(entry)
+                  invalidatePreview(entry.path)
                 } catch (error) {
                   console.error('Failed to rename entry with AI:', error)
                 } finally {
@@ -96,7 +99,13 @@ export function useCollectionContextMenu({
         console.error('Failed to open context menu:', error)
       }
     },
-    [beginRenaming, handleDeleteEntries, renameConfig, renameNoteWithAI]
+    [
+      beginRenaming,
+      handleDeleteEntries,
+      invalidatePreview,
+      renameConfig,
+      renameNoteWithAI,
+    ]
   )
 
   const handleEntryContextMenu = useCallback(
