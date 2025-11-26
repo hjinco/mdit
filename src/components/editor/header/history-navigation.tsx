@@ -6,7 +6,6 @@ import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
-import { useTabNavigationShortcuts } from './use-tab-navigation-shortcuts'
 
 export function HistoryNavigation() {
   const { canGoBack, canGoForward, goBack, goForward } = useTabStore(
@@ -17,8 +16,6 @@ export function HistoryNavigation() {
       goForward: s.goForward,
     }))
   )
-
-  useTabNavigationShortcuts(canGoBack, canGoForward, goBack, goForward)
 
   return (
     <div className="items-center gap-0.5 hidden sm:flex">
