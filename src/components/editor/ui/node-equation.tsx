@@ -313,7 +313,7 @@ const EquationPopoverContent = ({
         autoCapitalize="off"
         onKeyDown={(e) => {
           // Handle Shift+Enter to complete input
-          if (e.key === 'Enter' || e.key === 'Escape') {
+          if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Escape') {
             e.preventDefault()
             e.stopPropagation()
             onClose()
