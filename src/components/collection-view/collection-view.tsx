@@ -178,6 +178,7 @@ export function CollectionView() {
     setSelectedEntryPaths,
     setSelectionAnchorPath,
     resetSelection,
+    invalidatePreview,
   })
 
   return (
