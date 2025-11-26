@@ -320,6 +320,45 @@ const EquationPopoverContent = ({
             return
           }
 
+          // Handle ArrowLeft at first position for inline equations
+          if (e.key === 'ArrowLeft' && isInline) {
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (textarea.selectionStart === 0 && textarea.selectionEnd === 0) {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen(false)
+              const path = editor.api.findPath(element)
+              if (path) {
+                const beforePoint = editor.api.before(path)
+                if (beforePoint) {
+                  setTimeout(() => {
+                    editor.tf.select({
+                      anchor: beforePoint,
+                      focus: beforePoint,
+                    })
+                    editor.tf.focus()
+                  }, 0)
+                }
+              }
+              return
+            }
+          }
+
+          // Handle ArrowRight at last position for inline equations
+          if (e.key === 'ArrowRight' && isInline) {
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (textarea.selectionStart === textarea.value.length) {
+              e.preventDefault()
+              e.stopPropagation()
+              setOpen(false)
+              setTimeout(() => {
+                editor.tf.select(element, { focus: true, next: true })
+                editor.tf.focus()
+              }, 0)
+              return
+            }
+          }
+
           // Handle Cut (Ctrl+X / Cmd+X)
           if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
             e.preventDefault()
