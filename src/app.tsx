@@ -12,12 +12,10 @@ import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
-import { cn } from './lib/utils'
 import { useLicenseStore } from './store/license-store'
 import { useUIStore } from './store/ui-store'
 import { useWorkspaceStore } from './store/workspace-store'
 import { Button } from './ui/button'
-import { isMac } from './utils/platform'
 
 export function App() {
   const { workspacePath, isLoading } = useWorkspaceStore()
@@ -56,12 +54,7 @@ export function App() {
   return (
     <ScreenCaptureProvider>
       <DndProvider>
-        <div
-          className={cn(
-            'h-screen flex flex-col',
-            isMac() ? 'bg-muted/70' : 'bg-muted'
-          )}
-        >
+        <div className="h-screen flex flex-col bg-muted/70">
           <div className="flex-1 overflow-hidden flex">
             <div className="group/side flex">
               <FileExplorer />
