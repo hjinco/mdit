@@ -28,7 +28,7 @@ export function App() {
   if (!hasCheckedOpenedFiles) {
     return (
       <div
-        className={cn('h-screen', isMac() ? 'bg-muted/70' : 'bg-muted/20')}
+        className={cn('h-screen', isMac() ? 'bg-muted/70' : 'bg-muted/50')}
       />
     )
   }
@@ -36,7 +36,7 @@ export function App() {
   if (!isEditorOnlyMode && isLoading) {
     return (
       <div
-        className={cn('h-screen', isMac() ? 'bg-muted/70' : 'bg-muted/20')}
+        className={cn('h-screen', isMac() ? 'bg-muted/70' : 'bg-muted/50')}
       />
     )
   }
@@ -47,7 +47,7 @@ export function App() {
         <div
           className={cn(
             'h-screen flex flex-col',
-            isMac() ? 'bg-muted/70' : 'bg-muted/20'
+            isMac() ? 'bg-muted/70' : 'bg-muted/50'
           )}
         >
           <div className="flex-1 flex">
@@ -72,7 +72,7 @@ export function App() {
         <div
           className={cn(
             'h-screen flex flex-col',
-            isMac() ? 'bg-muted/70' : 'bg-muted/20'
+            isMac() ? 'bg-muted/70' : 'bg-muted/50'
           )}
         >
           <div className="flex-1 overflow-hidden flex">
