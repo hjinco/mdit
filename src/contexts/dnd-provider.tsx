@@ -9,6 +9,8 @@ import {
 } from '@dnd-kit/core'
 import type React from 'react'
 import { useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 
 type DndProviderProps = {
@@ -38,6 +40,12 @@ const depthAwareCollision: CollisionDetection = (args) => {
 
 export function DndProvider({ children }: DndProviderProps) {
   const { moveEntry } = useWorkspaceStore()
+  const { selectedEntryPaths, resetSelection } = useFileExplorerSelectionStore(
+    useShallow((state) => ({
+      selectedEntryPaths: state.selectedEntryPaths,
+      resetSelection: state.resetSelection,
+    }))
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -67,14 +75,41 @@ export function DndProvider({ children }: DndProviderProps) {
         return
       }
 
-      // Try to move the entry
-      const success = await moveEntry(sourcePath, destinationPath)
+      // Check if the dragged item is part of a multi-selection
+      const isSelected = selectedEntryPaths.has(sourcePath)
+      const hasMultipleSelections = selectedEntryPaths.size > 1
 
-      if (!success) {
-        console.error('Failed to move entry')
+      if (isSelected && hasMultipleSelections) {
+        // Move all selected entries
+        const pathsToMove = Array.from(selectedEntryPaths)
+        const results = await Promise.allSettled(
+          pathsToMove.map((path) => moveEntry(path, destinationPath))
+        )
+
+        // Log any failures
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(
+              `Failed to move entry: ${pathsToMove[index]}`,
+              result.reason
+            )
+          } else if (result.value === false) {
+            console.error(`Failed to move entry: ${pathsToMove[index]}`)
+          }
+        })
+      } else {
+        // Move only the dragged entry (single selection or not selected)
+        const success = await moveEntry(sourcePath, destinationPath)
+
+        if (!success) {
+          console.error('Failed to move entry')
+        }
       }
+
+      // Reset selection after move
+      resetSelection()
     },
-    [moveEntry]
+    [moveEntry, selectedEntryPaths, resetSelection]
   )
 
   return (
