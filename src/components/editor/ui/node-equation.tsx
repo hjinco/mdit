@@ -1,5 +1,4 @@
 import { useEquationElement, useEquationInput } from '@platejs/math/react'
-import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { CornerDownLeftIcon, RadicalIcon } from 'lucide-react'
 import type { TEquationElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
@@ -194,14 +193,36 @@ const EquationPopoverContent = ({
   if (readOnly) return null
 
   const onClose = () => {
-    setOpen(false)
-
     if (isInline) {
+      setOpen(false)
       editor.tf.select(element, { focus: true, next: true })
     } else {
-      editor
-        .getApi(BlockSelectionPlugin)
-        .blockSelection.set(element.id as string)
+      // Find the next block after the equation
+      const nextNodeEntry = editor.api.next({ at: element, from: 'after' })
+
+      if (nextNodeEntry) {
+        const [, nextPath] = nextNodeEntry
+        setOpen(false)
+        // Use setTimeout to ensure popover closes before setting selection
+        setTimeout(() => {
+          const startPoint = editor.api.start(nextPath)
+          if (startPoint) {
+            // Select only the start position (collapsed selection)
+            editor.tf.select({
+              anchor: startPoint,
+              focus: startPoint,
+            })
+            editor.tf.focus()
+          }
+        }, 0)
+        return
+      }
+
+      setOpen(false)
+      // No next block exists, just focus the editor
+      setTimeout(() => {
+        editor.tf.focus()
+      }, 0)
     }
   }
 
@@ -224,7 +245,7 @@ const EquationPopoverContent = ({
         autoCapitalize="off"
         onKeyDown={(e) => {
           // Handle Shift+Enter to complete input
-          if (e.key === 'Enter') {
+          if (e.key === 'Enter' || e.key === 'Escape') {
             e.preventDefault()
             e.stopPropagation()
             onClose()
