@@ -211,9 +211,6 @@ const EquationPopoverContent = ({
         'flex gap-2 p-1',
         !isInline && 'w-[var(--radix-popover-trigger-width)]'
       )}
-      onEscapeKeyDown={(e) => {
-        e.preventDefault()
-      }}
       contentEditable={false}
     >
       <EquationInput
@@ -225,6 +222,67 @@ const EquationPopoverContent = ({
         autoFocus
         spellCheck={false}
         autoCapitalize="off"
+        onKeyDown={(e) => {
+          // Handle Shift+Enter to complete input
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            e.stopPropagation()
+            onClose()
+            return
+          }
+
+          // Handle Cut (Ctrl+X / Cmd+X)
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
+            e.preventDefault()
+            e.stopPropagation()
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (
+              textarea &&
+              textarea.selectionStart !== null &&
+              textarea.selectionEnd !== null
+            ) {
+              const selectedText = textarea.value.substring(
+                textarea.selectionStart,
+                textarea.selectionEnd
+              )
+              if (selectedText) {
+                navigator.clipboard.writeText(selectedText).then(() => {
+                  const newValue =
+                    textarea.value.substring(0, textarea.selectionStart!) +
+                    textarea.value.substring(textarea.selectionEnd!)
+                  textarea.value = newValue
+                  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+                  textarea.setSelectionRange(
+                    textarea.selectionStart!,
+                    textarea.selectionStart!
+                  )
+                })
+              }
+            }
+            return
+          }
+
+          // Handle Copy (Ctrl+C / Cmd+C)
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+            e.preventDefault()
+            e.stopPropagation()
+            const textarea = e.currentTarget as HTMLTextAreaElement
+            if (
+              textarea &&
+              textarea.selectionStart !== null &&
+              textarea.selectionEnd !== null
+            ) {
+              const selectedText = textarea.value.substring(
+                textarea.selectionStart,
+                textarea.selectionEnd
+              )
+              if (selectedText) {
+                navigator.clipboard.writeText(selectedText)
+              }
+            }
+            return
+          }
+        }}
         {...props}
       />
 
