@@ -61,17 +61,21 @@ export function usePreviewCache(currentCollectionPath: string | null) {
   }, [])
 
   const invalidatePreview = useCallback(async (path: string) => {
-    const preview = await invoke<string>('get_note_preview', {
-      path,
-    })
-    setPreviewTexts((prev) => {
-      if (!prev.has(path)) {
-        return prev
-      }
-      const next = new Map(prev)
-      next.set(path, preview)
-      return next
-    })
+    try {
+      const preview = await invoke<string>('get_note_preview', {
+        path,
+      })
+      setPreviewTexts((prev) => {
+        if (!prev.has(path)) {
+          return prev
+        }
+        const next = new Map(prev)
+        next.set(path, preview)
+        return next
+      })
+    } catch (_e) {
+      console.error('Failed to invalidate preview:', _e)
+    }
   }, [])
 
   return { getPreview, setPreview, invalidatePreview }
