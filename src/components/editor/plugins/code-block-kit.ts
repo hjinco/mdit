@@ -27,6 +27,46 @@ function getCodeBlockEntry(editor: PlateEditor) {
   }) as [TCodeBlockElement, number[]] | undefined
 }
 
+// Helper function to get current code line entry
+function getCodeLineEntry(editor: PlateEditor) {
+  const selection = editor.selection
+  if (!selection) return null
+
+  return editor.api.above({
+    at: selection,
+    match: { type: editor.getType(KEYS.codeLine) },
+    mode: 'lowest',
+  }) as [any, number[]] | undefined
+}
+
+// Helper function to calculate indentation depth from line text
+function getIndentDepth(lineText: string): number {
+  let depth = 0
+  for (const char of lineText) {
+    if (char === '\t') {
+      depth++
+    } else if (char === ' ') {
+      // Count spaces as indentation too
+      depth++
+    } else {
+      // Stop counting when we hit a non-whitespace character
+      break
+    }
+  }
+  return depth
+}
+
+// Insert a code line starting with indentation
+function insertCodeLine(editor: PlateEditor, indentDepth = 0) {
+  if (editor.selection) {
+    const indent = '\t'.repeat(indentDepth)
+    editor.tf.insertNodes({
+      children: [{ text: indent }],
+      type: editor.getType(KEYS.codeLine),
+    })
+  }
+}
+
 export const CodeBlockKit = [
   CodeBlockPlugin.configure({
     node: { component: CodeBlockElement },
@@ -155,6 +195,24 @@ export const CodeBlockKit = [
 
           // Insert tab character in code block
           editor.tf.insertText('\t')
+          return true
+        },
+      },
+      enter: {
+        keys: 'enter',
+        priority: 100,
+        handler: ({ editor }) => {
+          const codeBlockEntry = getCodeBlockEntry(editor)
+          if (!codeBlockEntry) return false
+
+          const codeLineEntry = getCodeLineEntry(editor)
+          if (!codeLineEntry) return false
+
+          const [codeLineNode] = codeLineEntry
+          const lineText = NodeApi.string(codeLineNode)
+          const indentDepth = getIndentDepth(lineText)
+
+          insertCodeLine(editor, indentDepth)
           return true
         },
       },
