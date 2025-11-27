@@ -132,7 +132,7 @@ async function collectFrontmatterDefaults(): Promise<KVRow[]> {
       })
     )
 
-    return keyOrder
+    const rows = keyOrder
       .map((key) => {
         const type = fieldMap.get(key)
         if (!type) return null
@@ -145,8 +145,27 @@ async function collectFrontmatterDefaults(): Promise<KVRow[]> {
         type,
         value: defaultValueForType(type),
       }))
+    if (rows.length === 0) {
+      return [
+        {
+          id: createRowId(),
+          key: 'title',
+          type: 'string',
+          value: '',
+        },
+      ]
+    }
+
+    return rows
   } catch {
-    return []
+    return [
+      {
+        id: createRowId(),
+        key: 'title',
+        type: 'string',
+        value: '',
+      },
+    ]
   }
 }
 
