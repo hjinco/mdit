@@ -35,9 +35,9 @@ export function WorkspaceDropdown({
         <Button
           variant="ghost"
           size="sm"
-          className="text-foreground/90 font-semibold tracking-tight max-w-full"
+          className="text-foreground/90 font-semibold tracking-tight max-w-full px-1.5!"
         >
-          <InboxIcon />
+          <InboxIcon className="size-4" />
           <span className="truncate">{currentWorkspaceName}</span>
           <ChevronDown className="ml-auto shrink-0" />
         </Button>
