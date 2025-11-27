@@ -141,6 +141,23 @@ export const CodeBlockKit = [
           return true
         },
       },
+      tab: {
+        keys: 'tab',
+        priority: 100,
+        handler: ({ editor, event }) => {
+          const codeBlockEntry = getCodeBlockEntry(editor)
+          if (!codeBlockEntry) return false
+
+          // Allow default behavior for Shift+Tab (outdent)
+          if (event.shiftKey) {
+            return false
+          }
+
+          // Insert tab character in code block
+          editor.tf.insertText('\t')
+          return true
+        },
+      },
     },
   }),
   CodeLinePlugin.withComponent(CodeLineElement),

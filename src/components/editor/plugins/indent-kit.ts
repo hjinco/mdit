@@ -4,7 +4,7 @@ import { KEYS } from 'platejs'
 export const IndentKit = [
   IndentPlugin.configure({
     inject: {
-      targetPlugins: [KEYS.p, KEYS.codeBlock],
+      targetPlugins: [KEYS.p],
     },
     options: {
       offset: 24,
