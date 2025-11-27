@@ -1,13 +1,19 @@
-import { Menu, MenuItem } from '@tauri-apps/api/menu'
+import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu'
 import {
   type Dispatch,
   type MouseEvent,
   type SetStateAction,
   useCallback,
 } from 'react'
+import {
+  getRevealInFileManagerLabel,
+  revealInFileManager,
+} from '@/components/file-explorer/utils/file-manager'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { normalizePathSeparators } from '@/utils/path-utils'
+
+const REVEAL_LABEL = getRevealInFileManagerLabel()
 
 type UseFileExplorerMenusProps = {
   renameConfig: ChatConfig | null
@@ -51,7 +57,24 @@ export const useFileExplorerMenus = ({
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
       try {
-        const itemPromises: Promise<MenuItem>[] = []
+        const itemPromises: Promise<MenuItem | PredefinedMenuItem>[] = []
+
+        itemPromises.push(
+          MenuItem.new({
+            id: `reveal-${entry.path}`,
+            text: REVEAL_LABEL,
+            action: async () => {
+              await revealInFileManager(entry.path, entry.isDirectory)
+            },
+          })
+        )
+
+        itemPromises.push(
+          PredefinedMenuItem.new({
+            text: 'Separator',
+            item: 'Separator',
+          })
+        )
 
         if (entry.name.toLowerCase().endsWith('.md')) {
           itemPromises.push(
@@ -149,6 +172,17 @@ export const useFileExplorerMenus = ({
             action: async () => {
               beginNewFolder(directoryPath)
             },
+          }),
+          await MenuItem.new({
+            id: `reveal-directory-${normalizedDirectoryPath}`,
+            text: REVEAL_LABEL,
+            action: async () => {
+              await revealInFileManager(directoryPath, true)
+            },
+          }),
+          await PredefinedMenuItem.new({
+            text: 'Separator',
+            item: 'Separator',
           }),
           await MenuItem.new({
             id: `pin-directory-${normalizedDirectoryPath}`,

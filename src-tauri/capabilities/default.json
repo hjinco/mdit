@@ -29,7 +29,10 @@
       "allow": [
         { "cmd": "grep", "name": "grep", "args": true },
         { "cmd": "git", "name": "git", "args": true },
-        { "cmd": "findstr", "name": "findstr", "args": true }
+        { "cmd": "findstr", "name": "findstr", "args": true },
+        { "cmd": "open", "name": "open", "args": true },
+        { "cmd": "xdg-open", "name": "xdg-open", "args": true },
+        { "cmd": "explorer.exe", "name": "explorer.exe", "args": true }
       ]
     }
   ]
