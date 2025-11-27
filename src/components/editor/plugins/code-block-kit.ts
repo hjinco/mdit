@@ -184,17 +184,48 @@ export const CodeBlockKit = [
       tab: {
         keys: 'tab',
         priority: 100,
-        handler: ({ editor, event }) => {
+        handler: ({ editor }) => {
           const codeBlockEntry = getCodeBlockEntry(editor)
           if (!codeBlockEntry) return false
 
-          // Allow default behavior for Shift+Tab (outdent)
-          if (event.shiftKey) {
-            return false
-          }
-
           // Insert tab character in code block
           editor.tf.insertText('\t')
+          return true
+        },
+      },
+      shiftTab: {
+        keys: 'shift+tab',
+        priority: 100,
+        handler: ({ editor }) => {
+          const codeLineEntry = getCodeLineEntry(editor)
+          if (!codeLineEntry) return false
+
+          const [codeLineNode, codeLinePath] = codeLineEntry
+          const lineText = NodeApi.string(codeLineNode)
+
+          if (lineText.startsWith('\t')) {
+            // Check if line starts with tab character
+            const start = editor.api.start(codeLinePath)
+            if (start) {
+              // Delete the first tab character
+              const after = editor.api.after(start)
+              if (after) {
+                editor.tf.delete({
+                  at: {
+                    anchor: start,
+                    focus: after,
+                  },
+                })
+              } else {
+                // Fallback: delete one character from start
+                editor.tf.delete({
+                  at: start,
+                  unit: 'character',
+                  distance: 1,
+                })
+              }
+            }
+          }
           return true
         },
       },
