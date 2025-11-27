@@ -4,7 +4,13 @@ import {
   CodeSyntaxPlugin,
 } from '@platejs/code-block/react'
 import { all, createLowlight } from 'lowlight'
-import { KEYS, NodeApi, PointApi, type TCodeBlockElement } from 'platejs'
+import {
+  KEYS,
+  NodeApi,
+  PathApi,
+  PointApi,
+  type TCodeBlockElement,
+} from 'platejs'
 import type { PlateEditor } from 'platejs/react'
 
 import {
@@ -60,10 +66,26 @@ function getIndentDepth(lineText: string): number {
 function insertCodeLine(editor: PlateEditor, indentDepth = 0) {
   if (editor.selection) {
     const indent = '\t'.repeat(indentDepth)
-    editor.tf.insertNodes({
-      children: [{ text: indent }],
-      type: editor.getType(KEYS.codeLine),
-    })
+    const codeLinePath = editor.selection.focus.path.slice(0, -1)
+    const nextPath = PathApi.next(codeLinePath)
+
+    editor.tf.insertNodes(
+      {
+        children: [{ text: indent }],
+        type: editor.getType(KEYS.codeLine),
+      },
+      { at: nextPath }
+    )
+
+    // Move cursor to after the indentation (start of text)
+    const newLineStart = editor.api.start(nextPath)
+    if (newLineStart) {
+      editor.tf.select({
+        anchor: { ...newLineStart, offset: indentDepth },
+        focus: { ...newLineStart, offset: indentDepth },
+      })
+      editor.tf.focus()
+    }
   }
 }
 
@@ -239,11 +261,79 @@ export const CodeBlockKit = [
           const codeLineEntry = getCodeLineEntry(editor)
           if (!codeLineEntry) return false
 
-          const [codeLineNode] = codeLineEntry
+          const [codeLineNode, codeLinePath] = codeLineEntry
+          const selection = editor.selection
+          if (!selection) return false
+
+          // Check if cursor is at the end of the code line
+          const isAtEnd = editor.api.isAt({ end: true, at: codeLinePath })
+
+          if (isAtEnd) {
+            // At end of line: insert new line with indentation
+            const lineText = NodeApi.string(codeLineNode)
+            const indentDepth = getIndentDepth(lineText)
+            insertCodeLine(editor, indentDepth)
+            return true
+          }
+
+          // In middle of line: manually handle the split with proper indentation
           const lineText = NodeApi.string(codeLineNode)
           const indentDepth = getIndentDepth(lineText)
+          const indent = '\t'.repeat(indentDepth)
 
-          insertCodeLine(editor, indentDepth)
+          // Get the end of the code line
+          const lineEnd = editor.api.end(codeLinePath)
+          if (!lineEnd) return false
+
+          // Temporarily select from cursor to end of line to get the text
+          const originalSelection = editor.selection
+          editor.tf.select({
+            anchor: selection.focus,
+            focus: lineEnd,
+          })
+          const fragment = editor.api.fragment()
+          const textAfter = fragment
+            ? fragment.map((node) => NodeApi.string(node)).join('')
+            : ''
+
+          // Restore original selection
+          if (originalSelection) {
+            editor.tf.select(originalSelection)
+          }
+
+          // Update current line: delete everything from cursor to end of line, then insert new line
+          editor.tf.withoutNormalizing(() => {
+            editor.tf.delete({
+              at: {
+                anchor: selection.focus,
+                focus: lineEnd,
+              },
+            })
+
+            // Calculate the path for the new line
+            const codeLinePath = selection.focus.path.slice(0, -1)
+            const nextPath = PathApi.next(codeLinePath)
+
+            // Insert new line with indentation and text after cursor
+            editor.tf.insertNodes(
+              {
+                children: [{ text: indent + textAfter }],
+                type: editor.getType(KEYS.codeLine),
+              },
+              { at: nextPath }
+            )
+
+            // Move cursor to after the indentation (start of text content)
+            const newLineStart = editor.api.start(nextPath)
+            if (newLineStart) {
+              editor.tf.select({
+                anchor: { ...newLineStart, offset: indentDepth },
+                focus: { ...newLineStart, offset: indentDepth },
+              })
+              editor.tf.focus()
+            }
+          })
+
           return true
         },
       },
