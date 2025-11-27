@@ -45,25 +45,63 @@ function getCodeLineEntry(editor: PlateEditor) {
   }) as [any, number[]] | undefined
 }
 
-// Helper function to calculate indentation depth from line text
-function getIndentDepth(lineText: string): number {
-  let depth = 0
+// Helper function to calculate indentation info from line text
+function getIndentInfo(lineText: string): {
+  type: 'tab' | 'space'
+  count: number
+} {
+  let tabCount = 0
+  let spaceCount = 0
+  let hasStartedCounting = false
+
   for (const char of lineText) {
     if (char === '\t') {
-      depth++
-    } else if (char !== ' ') {
+      if (!hasStartedCounting) {
+        hasStartedCounting = true
+      }
+      // If we've already counted spaces, stop (mixed indentation - prioritize first type)
+      if (spaceCount > 0) {
+        break
+      }
+      tabCount++
+    } else if (char === ' ') {
+      if (!hasStartedCounting) {
+        hasStartedCounting = true
+      }
+      // If we've already counted tabs, stop (mixed indentation - prioritize first type)
+      if (tabCount > 0) {
+        break
+      }
+      spaceCount++
+    } else {
       // Stop counting when we hit a non-whitespace character
-      // (spaces are ignored and don't break the loop)
       break
     }
   }
-  return depth
+
+  // Return the indentation type that was found first (or default to tab)
+  if (tabCount > 0) {
+    return { type: 'tab', count: tabCount }
+  }
+  if (spaceCount > 0) {
+    return { type: 'space', count: spaceCount }
+  }
+  return { type: 'tab', count: 0 }
 }
 
 // Insert a code line starting with indentation
-function insertCodeLine(editor: PlateEditor, indentDepth = 0) {
+function insertCodeLine(
+  editor: PlateEditor,
+  indentInfo: { type: 'tab' | 'space'; count: number } = {
+    type: 'tab',
+    count: 0,
+  }
+) {
   if (editor.selection) {
-    const indent = '\t'.repeat(indentDepth)
+    const indent =
+      indentInfo.type === 'tab'
+        ? '\t'.repeat(indentInfo.count)
+        : ' '.repeat(indentInfo.count)
     const codeLinePath = editor.selection.focus.path.slice(0, -1)
     const nextPath = PathApi.next(codeLinePath)
 
@@ -79,8 +117,8 @@ function insertCodeLine(editor: PlateEditor, indentDepth = 0) {
     const newLineStart = editor.api.start(nextPath)
     if (newLineStart) {
       editor.tf.select({
-        anchor: { ...newLineStart, offset: indentDepth },
-        focus: { ...newLineStart, offset: indentDepth },
+        anchor: { ...newLineStart, offset: indentInfo.count },
+        focus: { ...newLineStart, offset: indentInfo.count },
       })
       editor.tf.focus()
     }
@@ -269,15 +307,18 @@ export const CodeBlockKit = [
           if (isAtEnd) {
             // At end of line: insert new line with indentation
             const lineText = NodeApi.string(codeLineNode)
-            const indentDepth = getIndentDepth(lineText)
-            insertCodeLine(editor, indentDepth)
+            const indentInfo = getIndentInfo(lineText)
+            insertCodeLine(editor, indentInfo)
             return true
           }
 
           // In middle of line: manually handle the split with proper indentation
           const lineText = NodeApi.string(codeLineNode)
-          const indentDepth = getIndentDepth(lineText)
-          const indent = '\t'.repeat(indentDepth)
+          const indentInfo = getIndentInfo(lineText)
+          const indent =
+            indentInfo.type === 'tab'
+              ? '\t'.repeat(indentInfo.count)
+              : ' '.repeat(indentInfo.count)
 
           // Get the end of the code line
           const lineEnd = editor.api.end(codeLinePath)
@@ -325,8 +366,8 @@ export const CodeBlockKit = [
             const newLineStart = editor.api.start(nextPath)
             if (newLineStart) {
               editor.tf.select({
-                anchor: { ...newLineStart, offset: indentDepth },
-                focus: { ...newLineStart, offset: indentDepth },
+                anchor: { ...newLineStart, offset: indentInfo.count },
+                focus: { ...newLineStart, offset: indentInfo.count },
               })
               editor.tf.focus()
             }
