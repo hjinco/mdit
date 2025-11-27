@@ -26,10 +26,16 @@ export function Updater() {
       toast.success('New version available', {
         position: 'bottom-left',
         action: {
-          label: 'Restart',
+          label: 'Update now',
           onClick: () => relaunch(),
         },
+        cancel: {
+          label: 'Cancel',
+          onClick: () => {},
+        },
         duration: 10_000,
+        actionButtonStyle: { marginLeft: '0px' },
+        cancelButtonStyle: { backgroundColor: 'transparent' },
       })
     } catch (err) {
       console.error('Failed to download and install update:', err)
