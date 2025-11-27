@@ -183,7 +183,7 @@ export function CollectionView() {
 
   return (
     <aside
-      className="relative shrink-0 flex flex-col"
+      className="relative shrink-0 flex flex-col shadow-md"
       style={{ width, display: isOpen ? 'flex' : 'none' }}
     >
       <div
