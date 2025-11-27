@@ -51,11 +51,9 @@ function getIndentDepth(lineText: string): number {
   for (const char of lineText) {
     if (char === '\t') {
       depth++
-    } else if (char === ' ') {
-      // Count spaces as indentation too
-      depth++
-    } else {
+    } else if (char !== ' ') {
       // Stop counting when we hit a non-whitespace character
+      // (spaces are ignored and don't break the loop)
       break
     }
   }
