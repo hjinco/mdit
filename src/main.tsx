@@ -6,6 +6,7 @@ import { App } from './app'
 import { ErrorBoundary } from './components/error-boundary/error-boundary'
 import { Updater } from './components/updater/updater'
 import { WindowMenu } from './components/window-menu/window-menu'
+import { ConfettiProvider } from './contexts/confetti-context'
 import { DropProvider } from './contexts/drop-context'
 import { ThemeProvider } from './contexts/theme-context'
 
@@ -13,11 +14,13 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>
-        <DropProvider>
-          <PlateController>
-            <App />
-          </PlateController>
-        </DropProvider>
+        <ConfettiProvider>
+          <DropProvider>
+            <PlateController>
+              <App />
+            </PlateController>
+          </DropProvider>
+        </ConfettiProvider>
       </ThemeProvider>
       <WindowMenu />
       <Updater />
