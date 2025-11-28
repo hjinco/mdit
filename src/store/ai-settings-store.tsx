@@ -196,12 +196,19 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
       set((prev) => {
         const prevProvider = prev.chatConfig?.provider
         if (prevProvider === provider) {
+          const updatedChatConfig: ChatConfig = {
+            provider,
+            model,
+            apiKey: prev.chatConfig?.apiKey || apiKey,
+          }
+
+          localStorage.setItem(
+            CHAT_CONFIG_KEY,
+            JSON.stringify(updatedChatConfig)
+          )
+
           return {
-            chatConfig: {
-              provider,
-              model,
-              apiKey: prev.chatConfig?.apiKey || '',
-            },
+            chatConfig: updatedChatConfig,
           }
         }
 
