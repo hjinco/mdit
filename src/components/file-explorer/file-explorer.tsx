@@ -209,6 +209,24 @@ export function FileExplorer() {
     [deleteEntries, resetSelection]
   )
 
+  const ensureDirectoryExpanded = useCallback(
+    (directoryPath: string | null) => {
+      if (!directoryPath) {
+        return
+      }
+
+      if (expandedDirectories[directoryPath]) {
+        return
+      }
+
+      setExpandedDirectories((prev) => ({
+        ...prev,
+        [directoryPath]: true,
+      }))
+    },
+    [expandedDirectories, setExpandedDirectories]
+  )
+
   const scrollEntryIntoView = useCallback(
     (entryPath: string | null) => {
       if (!entryPath || typeof document === 'undefined' || !isOpen) {
@@ -241,13 +259,14 @@ export function FileExplorer() {
 
   const createNoteAndScroll = useCallback(
     async (directoryPath: string) => {
+      ensureDirectoryExpanded(directoryPath)
       const newEntryPath = await createNote(directoryPath)
       if (newEntryPath) {
         scrollEntryIntoView(newEntryPath)
       }
       return newEntryPath
     },
-    [createNote, scrollEntryIntoView]
+    [createNote, ensureDirectoryExpanded, scrollEntryIntoView]
   )
 
   const { handleEntryContextMenu, handleRootContextMenu } =
