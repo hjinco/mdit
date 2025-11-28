@@ -11,8 +11,6 @@ export type NoteResult = {
 }
 
 const MARKDOWN_EXTENSION_REGEX = /\.md$/i
-const RELATIVE_PATH_SEGMENT_REGEX = /[/\\]/
-
 const isMarkdownFile = (entry: WorkspaceEntry) =>
   !entry.isDirectory && MARKDOWN_EXTENSION_REGEX.test(entry.name)
 
@@ -42,24 +40,6 @@ export const toRelativePath = (
   return fullPath
 }
 
-// Keywords include the note title plus every path segment, making simple substring matches useful.
-const buildKeywords = (label: string, relativePath: string) => {
-  const relativePathWithoutExtension = stripMarkdownExtension(relativePath)
-  const relativeSegments = relativePath
-    .split(RELATIVE_PATH_SEGMENT_REGEX)
-    .map((segment) => stripMarkdownExtension(segment).trim())
-    .filter((segment) => segment.length > 0)
-
-  return Array.from(
-    new Set([
-      label,
-      relativePath,
-      relativePathWithoutExtension,
-      ...relativeSegments,
-    ])
-  )
-}
-
 // Shape a workspace entry into the structure the command palette expects.
 const createNoteResult = (
   entry: WorkspaceEntry,
@@ -72,7 +52,7 @@ const createNoteResult = (
     path: entry.path,
     label,
     relativePath,
-    keywords: buildKeywords(label, relativePath),
+    keywords: [label],
     modifiedAt: entry.modifiedAt,
   }
 }
@@ -136,10 +116,7 @@ export const useNoteNameSearch = (
     }
 
     return noteResults.filter((note) => {
-      const valuesToSearch = [note.label, note.relativePath, ...note.keywords]
-      return valuesToSearch.some((value) =>
-        value.toLowerCase().includes(normalizedQuery)
-      )
+      return note.label.toLowerCase().includes(normalizedQuery)
     })
   }, [noteResults, normalizedQuery])
 
