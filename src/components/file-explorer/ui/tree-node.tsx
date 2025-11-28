@@ -323,6 +323,7 @@ export function TreeNode({
             <button
               ref={handleButtonRef}
               type="button"
+              id={entry.path}
               onClick={handlePrimaryAction}
               onContextMenu={handleContextMenu}
               className={cn(
@@ -439,6 +440,7 @@ export function TreeNode({
         <button
           ref={handleButtonRef}
           type="button"
+          id={entry.path}
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
           className={getEntryButtonClassName({
