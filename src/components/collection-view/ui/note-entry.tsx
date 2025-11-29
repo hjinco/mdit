@@ -1,4 +1,5 @@
 import { formatDistanceToNow } from 'date-fns'
+import { motion } from 'motion/react'
 import {
   type CSSProperties,
   type MouseEvent,
@@ -23,6 +24,8 @@ type NoteEntryProps = {
   onRenameSubmit: (entry: WorkspaceEntry, newName: string) => Promise<void>
   onRenameCancel: () => void
   style?: CSSProperties
+  offsetY: number
+  isScrolling: boolean
   'data-index'?: number
 }
 
@@ -39,6 +42,8 @@ export function NoteEntry({
   onRenameSubmit,
   onRenameCancel,
   style,
+  offsetY,
+  isScrolling,
   'data-index': dataIndex,
 }: NoteEntryProps) {
   useEffect(() => {
@@ -121,54 +126,71 @@ export function NoteEntry({
   }, [submitRename])
 
   const isPreviewLoaded = previewText !== undefined
+  const baseStyle: CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    ...style,
+  }
+
+  const transition = isScrolling
+    ? { y: { duration: 0 } }
+    : { y: { type: 'spring' as const, bounce: 0, duration: 0.2 } }
 
   return (
-    <li
+    <motion.li
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className={cn(
-        'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer transition-opacity duration-300',
-        isPreviewLoaded &&
-          'opacity-20 group-hover/side:opacity-50 hover:opacity-100',
-        isPreviewLoaded &&
-          (isActive || isSelected) &&
-          'opacity-100 group-hover/side:opacity-100',
-        !isPreviewLoaded && 'opacity-0'
-      )}
-      style={style}
+      style={baseStyle}
+      animate={{ y: offsetY }}
+      initial={false}
+      transition={transition}
       data-index={dataIndex}
     >
-      <div className="flex relative">
-        <span
-          className={cn(
-            'text-base font-medium truncate h-6',
-            isRenaming && 'invisible'
+      <div
+        className={cn(
+          'py-2 text-foreground flex flex-col gap-1 mb-1 cursor-pointer transition-opacity duration-300',
+          isPreviewLoaded &&
+            'opacity-20 group-hover/side:opacity-50 hover:opacity-100',
+          isPreviewLoaded &&
+            (isActive || isSelected) &&
+            'opacity-100 group-hover/side:opacity-100',
+          !isPreviewLoaded && 'opacity-0'
+        )}
+      >
+        <div className="flex relative">
+          <span
+            className={cn(
+              'text-base font-medium truncate h-6',
+              isRenaming && 'invisible'
+            )}
+          >
+            {baseName}
+          </span>
+          {isRenaming && (
+            <input
+              ref={inputRef}
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+              onKeyDown={handleRenameKeyDown}
+              onBlur={handleRenameBlur}
+              className="absolute inset-0 h-full truncate text-base font-medium outline-none"
+              spellCheck={false}
+              autoComplete="off"
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
-        >
-          {baseName}
-        </span>
-        {isRenaming && (
-          <input
-            ref={inputRef}
-            value={draftName}
-            onChange={(event) => setDraftName(event.target.value)}
-            onKeyDown={handleRenameKeyDown}
-            onBlur={handleRenameBlur}
-            className="absolute inset-0 h-full truncate text-base font-medium outline-none"
-            spellCheck={false}
-            autoComplete="off"
-            onClick={(e) => e.stopPropagation()}
-          />
+        </div>
+        <div className="text-xs text-foreground/80 line-clamp-2 min-h-8 break-words">
+          {previewText}
+        </div>
+        {entry.modifiedAt && (
+          <div className="text-xs text-foreground/70">
+            {formatDistanceToNow(entry.modifiedAt, { addSuffix: true })}
+          </div>
         )}
       </div>
-      <div className="text-xs text-foreground/80 line-clamp-2 min-h-8 break-words">
-        {previewText}
-      </div>
-      {entry.modifiedAt && (
-        <div className="text-xs text-foreground/70">
-          {formatDistanceToNow(entry.modifiedAt, { addSuffix: true })}
-        </div>
-      )}
-    </li>
+    </motion.li>
   )
 }
