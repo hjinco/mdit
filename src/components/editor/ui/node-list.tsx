@@ -74,14 +74,15 @@ function TodoMarker(props: PlateElementProps) {
         query: (node) => node.listStyleType === state.element.listStyleType,
       })
 
-      if (
+      const allChecked =
         siblings.length > 0 &&
         siblings.every(([node]) =>
           node === state.element || node.id === state.element.id
             ? value === true
             : Boolean(node.checked)
         )
-      ) {
+
+      if (allChecked && siblings.length >= 5) {
         confetti.fireConfetti()
       }
     },
