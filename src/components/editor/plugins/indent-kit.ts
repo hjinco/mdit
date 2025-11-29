@@ -48,8 +48,14 @@ export const IndentKit = [
             .listStyleType
 
           if (listStyleType) {
-            // Convert list block to paragraph (keep indent)
-            editor.tf.setNodes({ type: editor.getType(KEYS.p) }, { at: path })
+            // Convert list block to paragraph
+            editor.tf.setNodes(
+              {
+                type: editor.getType(KEYS.p),
+                indent: indent > 1 ? indent - 1 : undefined,
+              },
+              { at: path }
+            )
             editor.tf.unsetNodes('listStyleType', { at: path })
             return true // Prevent default behavior
           }
