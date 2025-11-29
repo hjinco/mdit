@@ -15,6 +15,7 @@ import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
+import { useScrollToNewEntry } from './hooks/use-scroll-to-new-entry'
 import { useEntryUpdateOnSave } from './hooks/use-entry-update-on-save'
 import { usePreviewCache } from './hooks/use-preview-cache'
 import { CollectionResizer } from './ui/collection-resizer'
@@ -179,6 +180,13 @@ export function CollectionView() {
     setSelectionAnchorPath,
     resetSelection,
     invalidatePreview,
+  })
+
+  useScrollToNewEntry({
+    currentCollectionPath,
+    sortedEntries,
+    tabPath: tab?.path,
+    virtualizer,
   })
 
   return (
