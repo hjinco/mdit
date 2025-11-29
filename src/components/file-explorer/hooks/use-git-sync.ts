@@ -1,5 +1,10 @@
 import { join } from '@tauri-apps/api/path'
-import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs'
+import {
+  exists,
+  mkdir,
+  readTextFile,
+  writeTextFile,
+} from '@tauri-apps/plugin-fs'
 import { Command } from '@tauri-apps/plugin-shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
@@ -439,11 +444,17 @@ async function executeGit(workspacePath: string, args: string[]) {
 }
 
 async function ensureGitignoreEntry(workspacePath: string) {
-  const gitignorePath = await join(workspacePath, '.gitignore')
-  const entries = ['.mdit/db.sqlite', '.DS_Store']
+  const mditDir = await join(workspacePath, '.mdit')
+  const gitignorePath = await join(mditDir, '.gitignore')
+  const entries = ['db.sqlite', '.DS_Store']
 
   try {
-    // Try to read existing .gitignore file
+    // Ensure .mdit directory exists
+    if (!(await exists(mditDir))) {
+      await mkdir(mditDir, { recursive: true })
+    }
+
+    // Try to read existing .gitignore file in .mdit folder
     let content = ''
     try {
       content = await readTextFile(gitignorePath)
@@ -451,6 +462,8 @@ async function ensureGitignoreEntry(workspacePath: string) {
       // File doesn't exist, we'll create it
       content = ''
     }
+
+    console.log('content', content)
 
     // Check which entries are missing
     const lines = content.split('\n')
@@ -469,7 +482,7 @@ async function ensureGitignoreEntry(workspacePath: string) {
       }
     }
 
-    // Append missing entries to .gitignore
+    // Append missing entries to .mdit/.gitignore
     if (missingEntries.length > 0) {
       const entriesToAdd = missingEntries.join('\n')
       const newContent = content.trim()

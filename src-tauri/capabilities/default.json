@@ -20,7 +20,8 @@
         { "path": "**" },
         { "path": "**/*" },
         { "path": "**/.*" },
-        { "path": "**/.mdit/**" }
+        { "path": "**/.mdit/**" },
+        { "path": "**/.mdit/.gitignore" }
       ]
     },
     "keyring:default",
