@@ -1,4 +1,5 @@
 import { useDroppable } from '@dnd-kit/core'
+import { motion } from 'motion/react'
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
@@ -412,15 +413,16 @@ export function FileExplorer() {
         isFileExplorerOpen={isFileExplorerOpen}
         setFileExplorerOpen={setFileExplorerOpen}
       />
-      <aside
+      <motion.aside
         ref={fileExplorerRef}
-        className={cn(
-          'relative shrink-0 flex flex-col overflow-hidden',
+        className="relative shrink-0 flex flex-col overflow-hidden"
+        animate={{ width: isOpen ? width : 0 }}
+        initial={false}
+        transition={
           isResizing
-            ? 'transition-none'
-            : 'transition-[width] ease-out duration-100'
-        )}
-        style={{ width: isOpen ? width : 0 }}
+            ? { width: { duration: 0 } }
+            : { width: { type: 'spring', bounce: 0, duration: 0.12 } }
+        }
       >
         <div
           className={cn(
@@ -492,7 +494,7 @@ export function FileExplorer() {
             onPointerDown={handlePointerDown}
           />
         )}
-      </aside>
+      </motion.aside>
     </>
   )
 }

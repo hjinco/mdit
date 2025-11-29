@@ -15,9 +15,9 @@ import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
-import { useScrollToNewEntry } from './hooks/use-scroll-to-new-entry'
 import { useEntryUpdateOnSave } from './hooks/use-entry-update-on-save'
 import { usePreviewCache } from './hooks/use-preview-cache'
+import { useScrollToNewEntry } from './hooks/use-scroll-to-new-entry'
 import { CollectionResizer } from './ui/collection-resizer'
 import { NewNoteButton } from './ui/new-note-button'
 import { NoteEntry } from './ui/note-entry'
@@ -285,13 +285,14 @@ export function CollectionView() {
                   isRenaming={renamingEntryPath === entry.path}
                   onRenameSubmit={handleRenameSubmit}
                   onRenameCancel={cancelRenaming}
+                  isScrolling={virtualizer.isScrolling}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
-                    transform: `translateY(${virtualItem.start}px)`,
                   }}
+                  offsetY={virtualItem.start}
                   data-index={virtualItem.index}
                 />
               ) : null
