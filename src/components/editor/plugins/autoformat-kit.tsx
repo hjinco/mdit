@@ -186,12 +186,17 @@ const autoformatLists: AutoformatRule[] = [
     mode: 'block',
     type: 'list',
     format: (editor) => {
-      toggleList(editor, {
-        listStyleType: KEYS.listTodo,
-      })
-      editor.tf.setNodes({
-        checked: false,
-        listStyleType: KEYS.listTodo,
+      editor.tf.withoutNormalizing(() => {
+        // temporary fix
+        editor.tf.setNodes({
+          checked: undefined,
+        })
+        toggleList(editor, {
+          listStyleType: KEYS.listTodo,
+        })
+        editor.tf.setNodes({
+          checked: false,
+        })
       })
     },
   },
@@ -200,12 +205,17 @@ const autoformatLists: AutoformatRule[] = [
     mode: 'block',
     type: 'list',
     format: (editor) => {
-      toggleList(editor, {
-        listStyleType: KEYS.listTodo,
-      })
-      editor.tf.setNodes({
-        checked: true,
-        listStyleType: KEYS.listTodo,
+      editor.tf.withoutNormalizing(() => {
+        // temporary fix
+        editor.tf.setNodes({
+          checked: undefined,
+        })
+        toggleList(editor, {
+          listStyleType: KEYS.listTodo,
+        })
+        editor.tf.setNodes({
+          checked: true,
+        })
       })
     },
   },

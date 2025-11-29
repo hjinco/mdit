@@ -53,6 +53,7 @@ export const IndentKit = [
               {
                 type: editor.getType(KEYS.p),
                 indent: indent > 1 ? indent - 1 : undefined,
+                checked: indent === 1 ? undefined : node.checked,
               },
               { at: path }
             )
