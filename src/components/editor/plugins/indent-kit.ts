@@ -140,17 +140,57 @@ export const IndentKit = [
             return
           }
 
-          if (!('indent' in node) || node.indent === 1) {
+          const currentIndent = (node as { indent?: number }).indent ?? 0
+
+          if (currentIndent <= 1) {
             return
           }
 
-          const newIndent = (node as { indent?: number }).indent! - 1
+          // Collect all child blocks that need to be outdented
+          const childBlocks: Array<{ path: typeof path; newIndent: number }> =
+            []
+          let currentPath = path
 
-          if (newIndent > 0) {
-            editor.tf.setNodes({ indent: newIndent }, { at: path })
-          } else {
-            editor.tf.unsetNodes('indent', { at: path })
+          while (true) {
+            const nextEntry = editor.api.next({
+              at: currentPath,
+              match: editor.api.isBlock,
+              mode: 'highest',
+            })
+
+            if (!nextEntry) {
+              break
+            }
+
+            const [nextNode, nextPath] = nextEntry
+            const nextIndent = (nextNode as { indent?: number }).indent ?? 0
+
+            // If next block's indent is less than or equal to current block's indent,
+            // it's not a child, so stop
+            if (nextIndent <= currentIndent) {
+              break
+            }
+
+            // This is a child block, collect it for outdenting
+            const childNewIndent = nextIndent - 1
+            childBlocks.push({ path: nextPath, newIndent: childNewIndent })
+
+            currentPath = nextPath
           }
+
+          // Perform all updates in a single normalization
+          editor.tf.withoutNormalizing(() => {
+            // Outdent current block
+            editor.tf.setNodes({ indent: currentIndent - 1 }, { at: path })
+
+            // Outdent all child blocks
+            for (const {
+              path: childPath,
+              newIndent: childNewIndent,
+            } of childBlocks) {
+              editor.tf.setNodes({ indent: childNewIndent }, { at: childPath })
+            }
+          })
 
           event.preventDefault()
         },
