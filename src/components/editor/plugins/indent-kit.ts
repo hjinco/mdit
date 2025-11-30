@@ -80,11 +80,6 @@ export const IndentKit = [
       tab: {
         keys: 'tab',
         handler: ({ editor, event }) => {
-          // Allow default behavior for Shift+Tab (outdent)
-          if (event.shiftKey) {
-            return false
-          }
-
           // Get current block node
           const entry = editor.api.above({
             match: editor.api.isBlock,
@@ -92,15 +87,18 @@ export const IndentKit = [
           })
 
           if (!entry) {
-            return false // Allow default behavior
+            return
           }
 
           const [node, path] = entry
 
           // Allow default behavior in codeblock
           if (node.type === editor.getType(KEYS.codeBlock)) {
-            return false
+            return
           }
+
+          // Check current block's indent value (0 if missing)
+          const currentIndent = (node as { indent?: number }).indent ?? 0
 
           // Find previous block node
           const previousEntry = editor.api.previous({
@@ -115,16 +113,89 @@ export const IndentKit = [
               ? (previousEntry[0] as { indent?: number }).indent!
               : 0
 
-          // Set current block's indent to (previous block indent + 1)
-          const newIndent = previousIndent + 1
+          // If current indent is smaller than previous, increment current indent by 1
+          // Otherwise, set to previous indent + 1
+          const newIndent =
+            currentIndent < previousIndent
+              ? currentIndent + 1
+              : previousIndent + 1
 
-          if (newIndent > 0) {
-            editor.tf.setNodes({ indent: newIndent }, { at: path })
-          } else {
-            editor.tf.unsetNodes('indent', { at: path })
+          editor.tf.setNodes({ indent: newIndent }, { at: path })
+
+          event.preventDefault()
+        },
+      },
+      shiftTab: {
+        keys: 'shift+tab',
+        handler: ({ editor, event }) => {
+          const entry = editor.api.above({
+            match: editor.api.isBlock,
+            mode: 'highest',
+          })
+
+          if (!entry) {
+            return
           }
 
-          return true // Prevent default behavior
+          const [node, path] = entry
+
+          if (node.type === editor.getType(KEYS.codeBlock)) {
+            return
+          }
+
+          const currentIndent = (node as { indent?: number }).indent ?? 0
+
+          if (currentIndent <= 1) {
+            return
+          }
+
+          // Collect all child blocks that need to be outdented
+          const childBlocks: Array<{ path: typeof path; newIndent: number }> =
+            []
+          let currentPath = path
+
+          while (true) {
+            const nextEntry = editor.api.next({
+              at: currentPath,
+              match: editor.api.isBlock,
+              mode: 'highest',
+            })
+
+            if (!nextEntry) {
+              break
+            }
+
+            const [nextNode, nextPath] = nextEntry
+            const nextIndent = (nextNode as { indent?: number }).indent ?? 0
+
+            // If next block's indent is less than or equal to current block's indent,
+            // it's not a child, so stop
+            if (nextIndent <= currentIndent) {
+              break
+            }
+
+            // This is a child block, collect it for outdenting
+            const childNewIndent = nextIndent - 1
+            childBlocks.push({ path: nextPath, newIndent: childNewIndent })
+
+            currentPath = nextPath
+          }
+
+          // Perform all updates in a single normalization
+          editor.tf.withoutNormalizing(() => {
+            // Outdent current block
+            editor.tf.setNodes({ indent: currentIndent - 1 }, { at: path })
+
+            // Outdent all child blocks
+            for (const {
+              path: childPath,
+              newIndent: childNewIndent,
+            } of childBlocks) {
+              editor.tf.setNodes({ indent: childNewIndent }, { at: childPath })
+            }
+          })
+
+          event.preventDefault()
         },
       },
     },
