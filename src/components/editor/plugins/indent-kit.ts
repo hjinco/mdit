@@ -80,11 +80,6 @@ export const IndentKit = [
       tab: {
         keys: 'tab',
         handler: ({ editor, event }) => {
-          // Allow default behavior for Shift+Tab (outdent)
-          if (event.shiftKey) {
-            return false
-          }
-
           // Get current block node
           const entry = editor.api.above({
             match: editor.api.isBlock,
@@ -92,14 +87,14 @@ export const IndentKit = [
           })
 
           if (!entry) {
-            return false // Allow default behavior
+            return
           }
 
           const [node, path] = entry
 
           // Allow default behavior in codeblock
           if (node.type === editor.getType(KEYS.codeBlock)) {
-            return false
+            return
           }
 
           // Find previous block node
@@ -124,7 +119,40 @@ export const IndentKit = [
             editor.tf.unsetNodes('indent', { at: path })
           }
 
-          return true // Prevent default behavior
+          event.preventDefault()
+        },
+      },
+      shiftTab: {
+        keys: 'shift+tab',
+        handler: ({ editor, event }) => {
+          const entry = editor.api.above({
+            match: editor.api.isBlock,
+            mode: 'highest',
+          })
+
+          if (!entry) {
+            return
+          }
+
+          const [node, path] = entry
+
+          if (node.type === editor.getType(KEYS.codeBlock)) {
+            return
+          }
+
+          if (!('indent' in node) || node.indent === 1) {
+            return
+          }
+
+          const newIndent = (node as { indent?: number }).indent! - 1
+
+          if (newIndent > 0) {
+            editor.tf.setNodes({ indent: newIndent }, { at: path })
+          } else {
+            editor.tf.unsetNodes('indent', { at: path })
+          }
+
+          event.preventDefault()
         },
       },
     },
