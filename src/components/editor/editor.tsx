@@ -8,7 +8,14 @@ import {
   PlateContent,
   usePlateEditor,
 } from 'platejs/react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import {
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
+import { useFocusMode } from '@/contexts/focus-mode-context'
 import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
@@ -38,6 +45,7 @@ export function Editor() {
   )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const isFullscreen = useIsFullscreen()
+  const { isFocusMode, handleTypingProgress } = useFocusMode()
 
   const editor = useMemo(() => {
     return createSlateEditor({
@@ -65,7 +73,10 @@ export function Editor() {
   return (
     <div className={cn('relative flex-1 flex flex-col bg-background')}>
       <div
-        className="w-full h-12 flex items-center justify-center relative"
+        className={cn(
+          'w-full h-12 flex items-center justify-center relative transition-[opacity] duration-500',
+          isFocusMode && 'pointer-events-none opacity-0'
+        )}
         {...(isMac() && { 'data-tauri-drag-region': '' })}
       >
         <div
@@ -87,13 +98,26 @@ export function Editor() {
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <EditorContent key={tab.id} path={tab.path} value={value} />
+        <EditorContent
+          key={tab.id}
+          path={tab.path}
+          value={value}
+          onTypingProgress={handleTypingProgress}
+        />
       </div>
     </div>
   )
 }
 
-function EditorContent({ path, value }: { path: string; value: Value }) {
+function EditorContent({
+  path,
+  value,
+  onTypingProgress,
+}: {
+  path: string
+  value: Value
+  onTypingProgress: () => void
+}) {
   const isSaved = useRef(true)
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
@@ -142,6 +166,20 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
   useCommandMenuSelectionRestore(editor)
   useLinkedTabName(path, value)
 
+  const handleTypingDetection = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (
+        event.key.length === 1 ||
+        event.key === 'Backspace' ||
+        event.key === 'Enter'
+      ) {
+        onTypingProgress()
+      }
+    },
+    [onTypingProgress]
+  )
+
   return (
     <Plate
       editor={editor}
@@ -160,6 +198,7 @@ function EditorContent({ path, value }: { path: string; value: Value }) {
           'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
         )}
         onKeyDown={(e) => {
+          handleTypingDetection(e)
           // I wish I could just use shortcuts but it's not working as expected
           if (e.key === 'x' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault()
