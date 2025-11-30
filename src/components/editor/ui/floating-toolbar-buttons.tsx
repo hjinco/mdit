@@ -34,6 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
+import { getModifierKey } from '@/utils/keyboard-shortcut'
 import { ToolbarButton, ToolbarGroup } from './toolbar'
 
 export function FloatingToolbarButtons() {
@@ -51,7 +52,7 @@ export function FloatingToolbarButtons() {
           <ToolbarGroup>
             <ToolbarButton
               size="sm"
-              tooltip="AI commands"
+              tooltip={`${getModifierKey()}+J`}
               onClick={() => {
                 api.aiChat.show()
               }}
