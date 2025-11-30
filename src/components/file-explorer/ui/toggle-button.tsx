@@ -1,4 +1,6 @@
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
+import { useFocusMode } from '@/contexts/focus-mode-context'
+import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
@@ -10,13 +12,17 @@ type Props = {
 }
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
+  const { isFocusMode } = useFocusMode()
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="text-foreground/70"
+          className={cn(
+            'text-foreground/70 transition-[opacity] duration-500',
+            isFocusMode && !isOpen && 'pointer-events-none opacity-0'
+          )}
           onClick={onToggle}
         >
           {isOpen ? <ArrowLeftToLineIcon /> : <ArrowRightToLineIcon />}

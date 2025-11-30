@@ -7,6 +7,7 @@ import { FileExplorer } from './components/file-explorer/file-explorer'
 import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
+import { FocusModeProvider } from './contexts/focus-mode-context'
 import { DndProvider } from './contexts/dnd-provider'
 import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
@@ -33,17 +34,19 @@ export function App() {
 
   if (isEditorOnlyMode) {
     return (
-      <DndProvider>
-        <div className="h-screen flex flex-col bg-muted/70">
-          <div className="flex-1 flex">
-            <Editor />
+      <FocusModeProvider>
+        <DndProvider>
+          <div className="h-screen flex flex-col bg-muted/70">
+            <div className="flex-1 flex">
+              <Editor />
+            </div>
+            <div className="fixed bottom-1 right-1">
+              <LicenseKeyButton />
+            </div>
           </div>
-          <div className="fixed bottom-1 right-1">
-            <LicenseKeyButton />
-          </div>
-        </div>
-        <SettingsDialog />
-      </DndProvider>
+          <SettingsDialog />
+        </DndProvider>
+      </FocusModeProvider>
     )
   }
 
@@ -52,27 +55,29 @@ export function App() {
   }
 
   return (
-    <ScreenCaptureProvider>
-      <DndProvider>
-        <div className="h-screen flex flex-col bg-muted/70">
-          <div className="flex-1 overflow-hidden flex">
-            <div className="group/side flex">
-              <FileExplorer />
-              <CollectionView />
-            </div>
-            <div className="flex-1 flex">
-              <Editor />
-            </div>
-            <div className="fixed bottom-1 right-1">
-              <LicenseKeyButton />
+    <FocusModeProvider>
+      <ScreenCaptureProvider>
+        <DndProvider>
+          <div className="h-screen flex flex-col bg-muted/70">
+            <div className="flex-1 overflow-hidden flex">
+              <div className="group/side flex">
+                <FileExplorer />
+                <CollectionView />
+              </div>
+              <div className="flex-1 flex">
+                <Editor />
+              </div>
+              <div className="fixed bottom-1 right-1">
+                <LicenseKeyButton />
+              </div>
             </div>
           </div>
-        </div>
-        <SettingsDialog />
-        <CommandMenu />
-        <ImagePreviewDialog />
-      </DndProvider>
-    </ScreenCaptureProvider>
+          <SettingsDialog />
+          <CommandMenu />
+          <ImagePreviewDialog />
+        </DndProvider>
+      </ScreenCaptureProvider>
+    </FocusModeProvider>
   )
 }
 
