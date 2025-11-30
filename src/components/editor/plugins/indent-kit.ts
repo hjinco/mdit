@@ -97,6 +97,9 @@ export const IndentKit = [
             return
           }
 
+          // Check current block's indent value (0 if missing)
+          const currentIndent = (node as { indent?: number }).indent ?? 0
+
           // Find previous block node
           const previousEntry = editor.api.previous({
             at: path,
@@ -110,14 +113,14 @@ export const IndentKit = [
               ? (previousEntry[0] as { indent?: number }).indent!
               : 0
 
-          // Set current block's indent to (previous block indent + 1)
-          const newIndent = previousIndent + 1
+          // If current indent is smaller than previous, increment current indent by 1
+          // Otherwise, set to previous indent + 1
+          const newIndent =
+            currentIndent < previousIndent
+              ? currentIndent + 1
+              : previousIndent + 1
 
-          if (newIndent > 0) {
-            editor.tf.setNodes({ indent: newIndent }, { at: path })
-          } else {
-            editor.tf.unsetNodes('indent', { at: path })
-          }
+          editor.tf.setNodes({ indent: newIndent }, { at: path })
 
           event.preventDefault()
         },
