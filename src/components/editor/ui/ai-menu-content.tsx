@@ -266,6 +266,15 @@ export function AIMenuContent({
         </div>
       ) : null}
 
+      {menuState === 'cursorSuggestion' && !isLoading && (
+        <CommandPrimitive.Input
+          autoFocus
+          className="sr-only"
+          value={input}
+          onValueChange={onInputChange}
+        />
+      )}
+
       {!isLoading && (
         <CommandList
           className={cn(
