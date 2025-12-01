@@ -301,6 +301,7 @@ const EquationPopoverContent = ({
         !isInline && 'w-[var(--radix-popover-trigger-width)]'
       )}
       contentEditable={false}
+      align="start"
     >
       <EquationInput
         className={cn(
