@@ -122,7 +122,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
 
   return (
     <PlateElement className="my-1" {...props}>
-      <div className="relative">
+      <div className="relative group">
         <Popover open={open} onOpenChange={setOpen} modal={false}>
           <PopoverTrigger asChild>
             <div
@@ -158,7 +158,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
         </Popover>
 
         <div
-          className="absolute top-1 right-1 z-10 flex select-none"
+          className="absolute top-1 right-1 z-10 flex select-none opacity-0 transition-opacity group-hover:opacity-100"
           contentEditable={false}
         >
           <EquationEnvironmentCombobox
