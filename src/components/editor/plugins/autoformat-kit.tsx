@@ -14,6 +14,7 @@ import { toggleList } from '@platejs/list'
 import { insertInlineEquation } from '@platejs/math'
 import { KEYS } from 'platejs'
 import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
+import { KATEX_ENVIRONMENTS } from '../utils/katex'
 
 const autoformatMarks: AutoformatRule[] = [
   {
@@ -229,14 +230,20 @@ const autoformatMathCustom: AutoformatRule[] = [
       insertInlineEquation(editor, '', { select: true })
     },
   },
-  {
-    match: '\\begin',
-    mode: 'block',
-    type: KEYS.equation,
-    format: (editor) => {
-      editor.tf.setNodes({ type: KEYS.equation, texExpression: '' })
-    },
-  },
+  ...KATEX_ENVIRONMENTS.map(
+    (environment): AutoformatRule => ({
+      match: `\\begin{${environment}}`,
+      mode: 'block',
+      type: KEYS.equation,
+      format: (editor) => {
+        editor.tf.setNodes({
+          type: KEYS.equation,
+          texExpression: '',
+          environment,
+        })
+      },
+    })
+  ),
 ]
 
 export const AutoformatKit = [
