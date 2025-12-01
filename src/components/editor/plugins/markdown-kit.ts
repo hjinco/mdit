@@ -5,7 +5,7 @@ import {
   remarkMention,
 } from '@platejs/markdown'
 import { dirname, relative, resolve } from 'pathe'
-import { getPluginType, KEYS, type TText } from 'platejs'
+import { getPluginType, KEYS, type TEquationElement, type TText } from 'platejs'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -18,6 +18,9 @@ import {
   type ValueType,
 } from '../ui/node-frontmatter-table'
 import { FRONTMATTER_KEY } from './frontmatter-kit'
+
+const EQUATION_ENVIRONMENT_REGEX =
+  /^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
 
 function createRowId() {
   return Math.random().toString(36).slice(2, 9)
@@ -92,6 +95,37 @@ export const MarkdownKit = [
             const yaml = YAML.stringify(record)
             const value = `---\n${yaml === '{}\n' ? '' : yaml}---`
             return { type: 'html', value }
+          },
+        },
+        [KEYS.equation]: {
+          serialize: (node: TEquationElement) => {
+            const environment = node.environment || 'equation'
+            const texExpression = node.texExpression ?? ''
+            const value = `\\begin{${environment}}\n${texExpression}\n\\end{${environment}}`
+
+            return {
+              type: 'math',
+              value,
+            }
+          },
+          deserialize: (mdastNode: { value: string }) => {
+            const match = EQUATION_ENVIRONMENT_REGEX.exec(mdastNode.value)
+            if (!match)
+              return {
+                type: KEYS.equation,
+                texExpression: '',
+                environment: 'equation',
+                children: [{ text: '' }],
+              }
+
+            const [, environment, body] = match
+
+            return {
+              type: KEYS.equation,
+              texExpression: body.trim(),
+              environment,
+              children: [{ text: '' }],
+            }
           },
         },
         yaml: {

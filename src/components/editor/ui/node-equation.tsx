@@ -1,4 +1,5 @@
-import { useEquationElement, useEquationInput } from '@platejs/math/react'
+import { useEquationInput } from '@platejs/math/react'
+import katex, { type KatexOptions } from 'katex'
 import { CornerDownLeftIcon, RadicalIcon } from 'lucide-react'
 import type { TEquationElement } from 'platejs'
 import { PathApi } from 'platejs'
@@ -18,7 +19,16 @@ import TextareaAutosize, {
 } from 'react-textarea-autosize'
 import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
+import { KATEX_ENVIRONMENTS } from '../utils/katex'
 
 export function EquationElement(props: PlateElementProps<TEquationElement>) {
   const selected = useSelected()
@@ -93,7 +103,9 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
   }, [isFocused, open, elementPath, handleKeyDown])
 
   useEquationElement({
-    element: props.element,
+    element: {
+      ...props.element,
+    },
     katexRef,
     options: {
       displayMode: true,
@@ -110,39 +122,56 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
 
   return (
     <PlateElement className="my-1" {...props}>
-      <Popover open={open} onOpenChange={setOpen} modal={false}>
-        <PopoverTrigger asChild>
-          <div
-            className={cn(
-              'min-h-16 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
-              'w-full max-w-full min-w-0 overflow-x-auto',
-              props.element.texExpression.length === 0
-                ? 'bg-muted p-3 pr-9'
-                : 'px-2 py-1'
-            )}
-            data-selected={selected}
-            contentEditable={false}
-          >
-            {props.element.texExpression.length > 0 ? (
-              <span ref={katexRef} />
-            ) : (
-              <div className="flex h-7 w-full items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
-                <RadicalIcon className="size-6 text-muted-foreground/80" />
-                <div>Add a Tex equation</div>
-              </div>
-            )}
-          </div>
-        </PopoverTrigger>
+      <div className="relative">
+        <Popover open={open} onOpenChange={setOpen} modal={false}>
+          <PopoverTrigger asChild>
+            <div
+              className={cn(
+                'min-h-16 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
+                'w-full max-w-full min-w-0 overflow-x-auto',
+                props.element.texExpression.length === 0
+                  ? 'bg-muted p-3 pr-9'
+                  : 'px-2 py-1'
+              )}
+              data-selected={selected}
+              contentEditable={false}
+            >
+              {props.element.texExpression.length > 0 ? (
+                <span ref={katexRef} />
+              ) : (
+                <div className="flex h-7 w-full items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
+                  <RadicalIcon className="size-6 text-muted-foreground/80" />
+                  <div>Add a Tex equation</div>
+                </div>
+              )}
+            </div>
+          </PopoverTrigger>
 
-        <EquationPopoverContent
-          open={open}
-          placeholder={
-            'f(x) = \\begin{cases}\n  x^2, &\\quad x > 0 \\\\\n  0, &\\quad x = 0 \\\\\n  -x^2, &\\quad x < 0\n\\end{cases}'
-          }
-          isInline={false}
-          setOpen={setOpen}
-        />
-      </Popover>
+          <EquationPopoverContent
+            open={open}
+            placeholder={
+              'f(x) = \\begin{cases}\n  x^2, &\\quad x > 0 \\\\\n  0, &\\quad x = 0 \\\\\n  -x^2, &\\quad x < 0\n\\end{cases}'
+            }
+            isInline={false}
+            setOpen={setOpen}
+          />
+        </Popover>
+
+        <div
+          className="absolute top-1 right-1 z-10 flex select-none"
+          contentEditable={false}
+        >
+          <EquationEnvironmentCombobox
+            onSelect={(environment) => {
+              editor.tf.setNodes<TEquationElement>(
+                { environment },
+                { at: props.element }
+              )
+              editor.tf.focus()
+            }}
+          />
+        </div>
+      </div>
 
       {props.children}
     </PlateElement>
@@ -301,6 +330,7 @@ const EquationPopoverContent = ({
         !isInline && 'w-[var(--radix-popover-trigger-width)]'
       )}
       contentEditable={false}
+      align="start"
     >
       <EquationInput
         className={cn(
@@ -418,5 +448,104 @@ const EquationPopoverContent = ({
         Done <CornerDownLeftIcon className="size-3.5" />
       </Button>
     </PopoverContent>
+  )
+}
+
+export const useEquationElement = ({
+  element,
+  katexRef,
+  options,
+}: {
+  element: TEquationElement
+  katexRef: React.MutableRefObject<HTMLDivElement | null>
+  options?: KatexOptions
+}) => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: true
+  useEffect(() => {
+    if (!katexRef.current) return
+    const equation =
+      typeof element.environment === 'string'
+        ? `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`
+        : element.texExpression
+    katex.render(equation, katexRef.current, options)
+  }, [element.environment, element.texExpression])
+}
+
+const equationEnvironments: { label: string; value: string }[] =
+  KATEX_ENVIRONMENTS.map((env) => ({
+    value: env,
+    label: env,
+  }))
+
+function EquationEnvironmentCombobox({
+  onSelect,
+}: {
+  onSelect: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
+  const readOnly = useReadOnly()
+  const element = useElement<TEquationElement>()
+
+  const value = element.environment || 'equation'
+
+  const currentLabel =
+    equationEnvironments.find((env) => env.value === value)?.label ?? value
+
+  const items = equationEnvironments.filter(
+    (env) =>
+      !searchValue ||
+      env.label.toLowerCase().includes(searchValue.toLowerCase())
+  )
+
+  if (readOnly) return null
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 justify-between gap-1 px-2 text-xs text-muted-foreground"
+          aria-expanded={open}
+          role="combobox"
+        >
+          {currentLabel as any}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[200px] p-0"
+        onCloseAutoFocus={() => setSearchValue('')}
+        align="end"
+      >
+        <Command shouldFilter={false}>
+          <CommandInput
+            className="h-9"
+            value={searchValue}
+            onValueChange={(v) => setSearchValue(v)}
+            placeholder="Search environment..."
+          />
+          <CommandEmpty>No environment found.</CommandEmpty>
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            <CommandGroup>
+              {items.map((env) => (
+                <CommandItem
+                  key={env.value}
+                  className="cursor-pointer"
+                  value={env.value}
+                  onSelect={(newValue) => {
+                    setSearchValue(newValue)
+                    setOpen(false)
+                    onSelect(newValue)
+                  }}
+                >
+                  {env.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
