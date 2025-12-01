@@ -197,10 +197,7 @@ export function InlineEquationElement(
   }, [selected, isCollapsed])
 
   useEquationElement({
-    element: {
-      ...element,
-      texExpression: `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`,
-    },
+    element,
     katexRef,
     options: {
       displayMode: true,
@@ -466,11 +463,11 @@ export const useEquationElement = ({
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
     if (!katexRef.current) return
-    katex.render(
-      `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`,
-      katexRef.current,
-      options
-    )
+    const equation =
+      typeof element.environment === 'string'
+        ? `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`
+        : element.texExpression
+    katex.render(equation, katexRef.current, options)
   }, [element.environment, element.texExpression])
 }
 
