@@ -8,7 +8,6 @@ import {
 import { Command } from '@tauri-apps/plugin-shell'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
-import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 
 // Finite representation of the sync lifecycle states the hook can emit.
@@ -183,13 +182,7 @@ export function useGitSync(workspacePath: string | null) {
         error: null,
       }))
 
-      // Refresh workspace entries and reopen current tab
       await useWorkspaceStore.getState().refreshWorkspaceEntries()
-      const currentTabPath = useTabStore.getState().tab?.path
-
-      if (currentTabPath) {
-        await useTabStore.getState().openTab(currentTabPath, false, true)
-      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error ?? 'Unknown')
@@ -462,8 +455,6 @@ async function ensureGitignoreEntry(workspacePath: string) {
       // File doesn't exist, we'll create it
       content = ''
     }
-
-    console.log('content', content)
 
     // Check which entries are missing
     const lines = content.split('\n')
