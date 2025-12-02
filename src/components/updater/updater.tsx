@@ -30,7 +30,7 @@ export function Updater() {
           onClick: () => relaunch(),
         },
         cancel: {
-          label: 'Cancel',
+          label: 'Later',
           onClick: () => {},
         },
         duration: 10_000,
