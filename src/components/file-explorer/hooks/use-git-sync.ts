@@ -149,8 +149,14 @@ export function useGitSync(workspacePath: string | null) {
       const branchName = config.branchName.trim()
       const branch = branchName || (await getCurrentBranch(workspacePath))
 
+      // Get commit hash before pull to check if changes were merged (skip compare for initial repo)
+      const commitHashBeforePull = await getCurrentCommitHash(workspacePath)
+
       // Pull from remote first
       await ensureGitSuccess(workspacePath, ['pull', 'origin', branch])
+
+      // Get commit hash after pull to check if changes were merged (skip compare for initial repo)
+      const commitHashAfterPull = await getCurrentCommitHash(workspacePath)
 
       await ensureGitSuccess(workspacePath, ['add', '--all'])
 
@@ -182,7 +188,14 @@ export function useGitSync(workspacePath: string | null) {
         error: null,
       }))
 
-      await useWorkspaceStore.getState().refreshWorkspaceEntries()
+      // Only refresh workspace entries if pull merged changes.
+      // If repo had no commits (initial state), skip hash comparison and refresh once.
+      const isInitialRepo =
+        commitHashBeforePull === null || commitHashAfterPull === null
+
+      if (isInitialRepo || commitHashBeforePull !== commitHashAfterPull) {
+        await useWorkspaceStore.getState().refreshWorkspaceEntries()
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error ?? 'Unknown')
@@ -412,6 +425,30 @@ async function getCurrentBranch(workspacePath: string) {
   }
 
   return branch
+}
+
+async function getCurrentCommitHash(
+  workspacePath: string
+): Promise<string | null> {
+  const result = await executeGit(workspacePath, ['rev-parse', 'HEAD'])
+
+  if (result.code !== 0) {
+    const stderr = result.stderr?.toLowerCase() ?? ''
+    const isInitialRepo =
+      stderr.includes('needed a single revision') ||
+      stderr.includes('ambiguous argument') ||
+      stderr.includes('unknown revision') ||
+      stderr.includes('does not have any commits yet')
+
+    if (isInitialRepo) {
+      return null
+    }
+
+    throw new Error(result.stderr || result.stdout || 'git rev-parse failed')
+  }
+
+  const hash = result.stdout.trim()
+  return hash ? hash : null
 }
 
 function formatDateForCommit(date: Date): string {
