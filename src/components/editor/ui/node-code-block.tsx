@@ -58,7 +58,14 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
             size="icon"
             variant="ghost"
             className="size-6 gap-1 text-xs text-muted-foreground"
-            value={() => NodeApi.string(element)}
+            value={() => {
+              if (!element.children || !Array.isArray(element.children)) {
+                return NodeApi.string(element)
+              }
+              return element.children
+                .map((child) => NodeApi.string(child))
+                .join('\n')
+            }}
           />
         </div>
       </div>
