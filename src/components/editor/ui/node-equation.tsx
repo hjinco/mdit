@@ -127,17 +127,17 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
           <PopoverTrigger asChild>
             <div
               className={cn(
-                'min-h-16 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
+                'min-h-18 group flex cursor-pointer items-center justify-center rounded-sm select-none hover:bg-primary/10 data-[selected=true]:bg-primary/10',
                 'w-full max-w-full min-w-0 overflow-x-auto',
                 props.element.texExpression.length === 0
                   ? 'bg-muted p-3 pr-9'
-                  : 'px-2 py-1'
+                  : 'px-2'
               )}
               data-selected={selected}
               contentEditable={false}
             >
               {props.element.texExpression.length > 0 ? (
-                <span ref={katexRef} />
+                <span className="w-full px-6 overflow-x-auto" ref={katexRef} />
               ) : (
                 <div className="flex h-7 w-full items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
                   <RadicalIcon className="size-6 text-muted-foreground/80" />
@@ -158,7 +158,7 @@ export function EquationElement(props: PlateElementProps<TEquationElement>) {
         </Popover>
 
         <div
-          className="absolute top-1 right-1 z-10 flex select-none opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute top-0.5 right-0.5 z-10 flex select-none opacity-0 transition-opacity group-hover:opacity-100"
           contentEditable={false}
         >
           <EquationEnvironmentCombobox
