@@ -297,12 +297,32 @@ export const CodeBlockKit = [
           const codeLineEntry = getCodeLineEntry(editor)
           if (!codeLineEntry) return false
 
-          const [codeLineNode, codeLinePath] = codeLineEntry
-          const selection = editor.selection
+          let [codeLineNode, codeLinePath] = codeLineEntry
+          let selection = editor.selection
           if (!selection) return false
 
+          // Check if text is selected (dragged)
+          const isTextSelected = !PointApi.equals(
+            selection.anchor,
+            selection.focus
+          )
+          if (isTextSelected) {
+            // Delete selected text first, then reuse the normal split logic below
+            editor.tf.deleteFragment()
+            selection = editor.selection
+            if (!selection) return false
+
+            const updatedEntry = getCodeLineEntry(editor)
+            if (!updatedEntry) return false
+
+            ;[codeLineNode, codeLinePath] = updatedEntry
+          }
+
           // Check if cursor is at the end of the code line
-          const isAtEnd = editor.api.isAt({ end: true, at: codeLinePath })
+          const lineEnd = editor.api.end(codeLinePath)
+          const isAtEnd = lineEnd
+            ? PointApi.equals(selection.focus, lineEnd)
+            : false
 
           if (isAtEnd) {
             // At end of line: insert new line with indentation
@@ -320,8 +340,7 @@ export const CodeBlockKit = [
               ? '\t'.repeat(indentInfo.count)
               : ' '.repeat(indentInfo.count)
 
-          // Get the end of the code line
-          const lineEnd = editor.api.end(codeLinePath)
+          // lineEnd is already declared above
           if (!lineEnd) return false
 
           // Temporarily select from cursor to end of line to get the text
@@ -348,11 +367,9 @@ export const CodeBlockKit = [
                 focus: lineEnd,
               },
             })
-
             // Calculate the path for the new line
             const codeLinePath = selection.focus.path.slice(0, -1)
             const nextPath = PathApi.next(codeLinePath)
-
             // Insert new line with indentation and text after cursor
             editor.tf.insertNodes(
               {
@@ -361,7 +378,6 @@ export const CodeBlockKit = [
               },
               { at: nextPath }
             )
-
             // Move cursor to after the indentation (start of text content)
             const newLineStart = editor.api.start(nextPath)
             if (newLineStart) {
