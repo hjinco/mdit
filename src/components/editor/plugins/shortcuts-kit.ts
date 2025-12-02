@@ -3,6 +3,12 @@ import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { PointApi } from 'platejs'
 import { createPlatePlugin, type PlateEditor } from 'platejs/react'
 
+function decodeHtmlEntities(html: string): string {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = html
+  return textarea.value
+}
+
 export function selectAllLikeCmdA(editor: PlateEditor) {
   const sel = editor.selection
   if (!sel) return
@@ -69,7 +75,9 @@ function copyOrCutSelection(editor: PlateEditor, action: 'copy' | 'cut') {
       .getApi(MarkdownPlugin)
       .markdown.serialize({ value: nodes as any })
 
-    navigator.clipboard.writeText(markdown)
+    const decoded = decodeHtmlEntities(markdown)
+    navigator.clipboard.writeText(decoded)
+
     if (action === 'cut') {
       editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()
     }
@@ -89,7 +97,9 @@ function copyOrCutSelection(editor: PlateEditor, action: 'copy' | 'cut') {
       .getApi(MarkdownPlugin)
       .markdown.serialize({ value: fragment as any })
 
-    navigator.clipboard.writeText(markdown)
+    const decoded = decodeHtmlEntities(markdown)
+    navigator.clipboard.writeText(decoded)
+
     if (action === 'cut') {
       editor.tf.deleteFragment()
     }
@@ -110,7 +120,10 @@ function copyOrCutSelection(editor: PlateEditor, action: 'copy' | 'cut') {
   const markdown = editor
     .getApi(MarkdownPlugin)
     .markdown.serialize({ value: [node as any] })
-  navigator.clipboard.writeText(markdown)
+
+  const decoded = decodeHtmlEntities(markdown)
+  navigator.clipboard.writeText(decoded)
+
   if (action === 'cut') {
     editor.tf.removeNodes({ at: path })
   }
