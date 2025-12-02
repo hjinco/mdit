@@ -12,7 +12,12 @@ export const IndentKit = [
     shortcuts: {
       backspace: {
         keys: 'backspace',
-        handler: ({ editor }) => {
+        handler: ({ editor, event }) => {
+          // Allow default behavior during IME composition
+          if (event.isComposing) {
+            return false
+          }
+
           // Check if cursor is at the start of the block
           if (!editor.api.isAt({ start: true })) {
             return false // Allow default behavior
