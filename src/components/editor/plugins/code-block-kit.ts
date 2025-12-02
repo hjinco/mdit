@@ -297,8 +297,8 @@ export const CodeBlockKit = [
           const codeLineEntry = getCodeLineEntry(editor)
           if (!codeLineEntry) return false
 
-          const [codeLineNode, codeLinePath] = codeLineEntry
-          const selection = editor.selection
+          let [codeLineNode, codeLinePath] = codeLineEntry
+          let selection = editor.selection
           if (!selection) return false
 
           // Check if text is selected (dragged)
@@ -307,12 +307,15 @@ export const CodeBlockKit = [
             selection.focus
           )
           if (isTextSelected) {
-            // Delete selected text and insert new line with indentation
-            const lineText = NodeApi.string(codeLineNode)
-            const indentInfo = getIndentInfo(lineText)
+            // Delete selected text first, then reuse the normal split logic below
             editor.tf.deleteFragment()
-            insertCodeLine(editor, indentInfo)
-            return true
+            selection = editor.selection
+            if (!selection) return false
+
+            const updatedEntry = getCodeLineEntry(editor)
+            if (!updatedEntry) return false
+
+            ;[codeLineNode, codeLinePath] = updatedEntry
           }
 
           // Check if cursor is at the end of the code line
