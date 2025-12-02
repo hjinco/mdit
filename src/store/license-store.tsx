@@ -39,6 +39,14 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
   checkLicense: async () => {
     set({ status: 'validating', error: null })
 
+    // If Polar environment variables are not set, assume license is valid
+    const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
+    const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
+    if (!polarApiBaseUrl || !organizationId) {
+      set({ status: 'valid' })
+      return
+    }
+
     try {
       // Step 1: Retrieve stored license key and activation ID
       const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
