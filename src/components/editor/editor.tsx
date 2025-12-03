@@ -1,4 +1,3 @@
-import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { createSlateEditor, type Value } from 'platejs'
@@ -29,13 +28,6 @@ import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
 import { useCommandMenuSelectionRestore } from './hooks/use-command-menu-selection-restore'
 import { useLinkedTabName } from './hooks/use-linked-tab-name'
 import { EditorKit } from './plugins/editor-kit'
-import {
-  copySelection,
-  cutSelection,
-  moveBlockDown,
-  moveBlockUp,
-  pasteSelection,
-} from './plugins/shortcuts-kit'
 
 export function Editor() {
   const tab = useTabStore((s) => s.tab)
@@ -198,31 +190,7 @@ function EditorContent({
         onKeyDown={(e) => {
           handleTypingDetection(e)
           // I wish I could just use shortcuts but it's not working as expected
-          if (e.key === 'x' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            e.stopPropagation()
-            cutSelection(editor)
-          } else if (e.key === 'c' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            e.stopPropagation()
-            copySelection(editor)
-          } else if (e.key === 'v' && (e.metaKey || e.ctrlKey)) {
-            const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-            if (blockSelectionApi.blockSelection.getNodes().length === 0) {
-              return
-            }
-            e.preventDefault()
-            e.stopPropagation()
-            pasteSelection(editor)
-          } else if (e.key === 'ArrowUp' && e.altKey) {
-            e.preventDefault()
-            e.stopPropagation()
-            moveBlockUp(editor)
-          } else if (e.key === 'ArrowDown' && e.altKey) {
-            e.preventDefault()
-            e.stopPropagation()
-            moveBlockDown(editor)
-          } else if (e.key === 'Tab') {
+          if (e.key === 'Tab') {
             e.preventDefault()
             e.stopPropagation()
           }
@@ -242,17 +210,6 @@ function EditorContent({
           disableDefaultStyles
           onBlur={() => {
             handleSave()
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowUp' && e.altKey) {
-              e.preventDefault()
-              e.stopPropagation()
-              moveBlockUp(editor)
-            } else if (e.key === 'ArrowDown' && e.altKey) {
-              e.preventDefault()
-              e.stopPropagation()
-              moveBlockDown(editor)
-            }
           }}
         />
       </PlateContainer>
