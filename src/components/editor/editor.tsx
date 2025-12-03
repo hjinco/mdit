@@ -195,7 +195,9 @@ function EditorContent({
       <PlateContainer
         className={cn(
           'ignore-click-outside/toolbar',
-          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
+          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14',
+          // Note: Ideally should account for sidebar width, but keeping it simple for now
+          'max-w-screen'
         )}
         onKeyDown={(e) => {
           handleTypingDetection(e)
@@ -233,7 +235,7 @@ function EditorContent({
         <PlateContent
           className={cn(
             'group/editor',
-            'relative w-full cursor-text overflow-x-hidden break-words whitespace-pre-wrap select-text',
+            'relative cursor-text overflow-x-hidden break-words whitespace-pre-wrap select-text',
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
