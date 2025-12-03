@@ -64,9 +64,7 @@ export function App() {
                 <FileExplorer />
                 <CollectionView />
               </div>
-              <div className="flex-1 flex">
-                <Editor />
-              </div>
+              <Editor />
               <div className="fixed bottom-1 right-1">
                 <LicenseKeyButton />
               </div>
