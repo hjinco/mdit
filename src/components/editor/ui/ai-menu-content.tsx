@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { Command, CommandList } from '@/ui/command'
 import type { Command as TCommand } from '../hooks/use-ai-commands'
-import { interceptPopoverHotkeys } from '../utils/intercept-popover-hotkeys'
 import { AIMenuItems } from './ai-menu-items'
 import { AIModelSelector } from './ai-model-selector'
 
@@ -213,7 +212,6 @@ export function AIMenuContent({
             data-plate-focus
             onClick={onInputClick}
             onKeyDown={(event) => {
-              interceptPopoverHotkeys(event)
               const handledShiftEnter = handleShiftEnter(event)
               const handledTextareaArrowNavigation =
                 handleTextareaArrowNavigation(event)
