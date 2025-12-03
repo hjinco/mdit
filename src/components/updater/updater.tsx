@@ -57,7 +57,18 @@ export function Updater() {
   }, [downloadAndInstall])
 
   useEffect(() => {
+    // Check immediately on mount
     checkForUpdates()
+
+    // Then check every 1 minute
+    const intervalId = setInterval(() => {
+      checkForUpdates()
+    }, 60_000)
+
+    // Cleanup interval on unmount
+    return () => {
+      clearInterval(intervalId)
+    }
   }, [checkForUpdates])
 
   return null
