@@ -65,26 +65,7 @@ export function selectAllLikeCmdA(editor: PlateEditor) {
 }
 
 function copyOrCutSelection(editor: PlateEditor, action: 'copy' | 'cut') {
-  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
-
-  // If there are selected blocks, use block selection logic
-  if (selectedBlocks.length > 0) {
-    const nodes = selectedBlocks.map(([node]) => node)
-    const markdown = editor
-      .getApi(MarkdownPlugin)
-      .markdown.serialize({ value: nodes as any })
-
-    const decoded = decodeHtmlEntities(markdown)
-    navigator.clipboard.writeText(decoded)
-
-    if (action === 'cut') {
-      editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()
-    }
-    return
-  }
-
-  // Otherwise, use the logic for current selection or block
+  // Use the logic for current selection or block
   const sel = editor.selection
   if (!sel) return
 
@@ -137,75 +118,8 @@ export function copySelection(editor: PlateEditor) {
   copyOrCutSelection(editor, 'copy')
 }
 
-export async function pasteSelection(
-  editor: PlateEditor,
-  data?: DataTransfer | null
-): Promise<void> {
-  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-  if (blockSelectionApi.blockSelection.getNodes().length === 0) return
-
-  let markdown = ''
-
-  if (data) {
-    try {
-      markdown = data.getData('text/plain')
-    } catch {
-      markdown = ''
-    }
-  }
-
-  if (!markdown && navigator.clipboard?.readText) {
-    try {
-      markdown = await navigator.clipboard.readText()
-    } catch {
-      markdown = ''
-    }
-  }
-
-  if (!markdown) return
-
-  const normalizedMarkdown = markdown.replace(/\r\n?/g, '\n')
-  const markdownApi = editor.getApi(MarkdownPlugin).markdown
-
-  let fragment: any[]
-  try {
-    fragment = markdownApi.deserialize(normalizedMarkdown) as any[]
-  } catch {
-    return
-  }
-
-  if (!Array.isArray(fragment) || fragment.length === 0) return
-
-  editor.getTransforms(BlockSelectionPlugin).blockSelection.select()
-  editor.tf.insertFragment(fragment as any)
-  editor.tf.focus()
-}
-
 export function moveBlockUp(editor: PlateEditor) {
-  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
-
-  // If there are block-selected blocks, move them up
-  if (selectedBlocks.length > 0) {
-    const firstPath = selectedBlocks[0][1]
-
-    // Check if we can move up
-    if (firstPath.at(-1) === 0) return // Already at the top
-
-    // Move all selected blocks up
-    for (const [, path] of selectedBlocks) {
-      const targetPath = [...path]
-      targetPath[targetPath.length - 1] -= 1
-
-      editor.tf.moveNodes({
-        at: path,
-        to: targetPath,
-      })
-    }
-    return
-  }
-
-  // Otherwise, use the logic for current selection
+  // Use the logic for current selection
   const sel = editor.selection
   if (!sel) return
 
@@ -285,42 +199,7 @@ export function moveBlockUp(editor: PlateEditor) {
 }
 
 export function moveBlockDown(editor: PlateEditor) {
-  const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
-  const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
-
-  // If there are block-selected blocks, move them down
-  if (selectedBlocks.length > 0) {
-    const lastPath = selectedBlocks.at(-1)?.[1]
-    if (!lastPath) return
-
-    // Get the parent to check bounds
-    const parent = editor.api.parent(lastPath)
-    if (!parent) return
-
-    const [parentNode] = parent
-    if (!('children' in parentNode)) return
-
-    const lastIndex = lastPath.at(-1) as number
-    const childrenLength = (parentNode.children as any[]).length
-
-    // Check if we can move down
-    if (lastIndex >= childrenLength - 1) return // Already at the bottom
-
-    // Move all selected blocks down (in reverse order to maintain positions)
-    for (let i = selectedBlocks.length - 1; i >= 0; i--) {
-      const [, path] = selectedBlocks[i]
-      const targetPath = [...path]
-      targetPath[targetPath.length - 1] += 1
-
-      editor.tf.moveNodes({
-        at: path,
-        to: targetPath,
-      })
-    }
-    return
-  }
-
-  // Otherwise, use the logic for current selection
+  // Use the logic for current selection
   const sel = editor.selection
   if (!sel) return
 
@@ -425,6 +304,35 @@ export const ShortcutsPlugin = createPlatePlugin({
       keys: 'mod+a',
       handler: ({ editor }) => {
         selectAllLikeCmdA(editor)
+        return true
+      },
+    },
+    copy: {
+      keys: 'mod+c',
+      handler: ({ editor }) => {
+        copySelection(editor)
+        return true
+      },
+    },
+    cut: {
+      keys: 'mod+x',
+      handler: ({ editor }) => {
+        cutSelection(editor)
+        return true
+      },
+    },
+    moveUp: {
+      keys: 'alt+arrowup',
+      handler: ({ editor }) => {
+        moveBlockUp(editor)
+        return true
+      },
+    },
+    moveDown: {
+      keys: 'alt+arrowdown',
+      handler: ({ editor }) => {
+        moveBlockDown(editor)
+        return true
       },
     },
   },
