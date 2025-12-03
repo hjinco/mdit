@@ -71,7 +71,7 @@ export function Editor() {
     )
 
   return (
-    <div className={cn('relative flex-1 flex flex-col bg-background')}>
+    <div className="relative max-w-full w-full overflow-x-auto flex flex-col bg-background">
       <div
         className={cn(
           'w-full h-12 flex items-center justify-center relative transition-[opacity] duration-500',
@@ -97,14 +97,12 @@ export function Editor() {
           <MoreButton />
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <EditorContent
-          key={tab.id}
-          path={tab.path}
-          value={value}
-          onTypingProgress={handleTypingProgress}
-        />
-      </div>
+      <EditorContent
+        key={tab.id}
+        path={tab.path}
+        value={value}
+        onTypingProgress={handleTypingProgress}
+      />
     </div>
   )
 }
@@ -195,9 +193,7 @@ function EditorContent({
       <PlateContainer
         className={cn(
           'ignore-click-outside/toolbar',
-          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14',
-          // Note: Ideally should account for sidebar width, but keeping it simple for now
-          'max-w-screen'
+          'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
         )}
         onKeyDown={(e) => {
           handleTypingDetection(e)
