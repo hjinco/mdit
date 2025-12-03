@@ -15,6 +15,12 @@ import {
 import React from 'react'
 import ReactDOM from 'react-dom'
 
+function decodeHtmlEntities(html: string): string {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = html
+  return textarea.value
+}
+
 export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
   const editor = useEditorRef()
   const { api, getOption, getOptions, setOption } =
@@ -315,7 +321,8 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
             .getApi(MarkdownPlugin)
             .markdown.serialize({ value: nodes as any })
 
-          navigator.clipboard.writeText(markdown)
+          const decoded = decodeHtmlEntities(markdown)
+          navigator.clipboard.writeText(decoded)
         }
       }
     },
@@ -336,7 +343,8 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
             .getApi(MarkdownPlugin)
             .markdown.serialize({ value: nodes as any })
 
-          navigator.clipboard.writeText(markdown)
+          const decoded = decodeHtmlEntities(markdown)
+          navigator.clipboard.writeText(decoded)
 
           if (!editor.api.isReadOnly()) {
             editor
