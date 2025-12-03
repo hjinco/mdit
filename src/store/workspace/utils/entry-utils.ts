@@ -78,6 +78,14 @@ export async function buildWorkspaceEntries(
   }
 }
 
+function isUntitledNote(name: string): boolean {
+  if (!name.endsWith('.md')) {
+    return false
+  }
+  const nameWithoutExtension = name.slice(0, -3) // Remove '.md'
+  return nameWithoutExtension.startsWith('Untitled')
+}
+
 export function sortWorkspaceEntries(
   entries: WorkspaceEntry[]
 ): WorkspaceEntry[] {
@@ -91,6 +99,16 @@ export function sortWorkspaceEntries(
     .sort((a, b) => {
       if (a.isDirectory !== b.isDirectory) {
         return a.isDirectory ? -1 : 1
+      }
+
+      // For files, prioritize "Untitled" notes
+      if (!a.isDirectory && !b.isDirectory) {
+        const aIsUntitled = isUntitledNote(a.name)
+        const bIsUntitled = isUntitledNote(b.name)
+
+        if (aIsUntitled !== bIsUntitled) {
+          return aIsUntitled ? -1 : 1
+        }
       }
 
       return a.name.localeCompare(b.name)

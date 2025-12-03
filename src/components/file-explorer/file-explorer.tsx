@@ -228,46 +228,13 @@ export function FileExplorer() {
     [expandedDirectories, setExpandedDirectories]
   )
 
-  const scrollEntryIntoView = useCallback(
-    (entryPath: string | null) => {
-      if (!entryPath || typeof document === 'undefined' || !isOpen) {
-        return
-      }
-
-      let attempts = 0
-      const scrollIfReady = () => {
-        if (!isOpen) {
-          return
-        }
-
-        const targetNode = document.getElementById(entryPath)
-
-        if (targetNode) {
-          targetNode.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-          return
-        }
-
-        if (attempts < 4) {
-          attempts += 1
-          requestAnimationFrame(scrollIfReady)
-        }
-      }
-
-      requestAnimationFrame(scrollIfReady)
-    },
-    [isOpen]
-  )
-
   const createNoteAndScroll = useCallback(
     async (directoryPath: string) => {
-      ensureDirectoryExpanded(directoryPath)
       const newEntryPath = await createNote(directoryPath)
-      if (newEntryPath) {
-        scrollEntryIntoView(newEntryPath)
-      }
+      ensureDirectoryExpanded(directoryPath)
       return newEntryPath
     },
-    [createNote, ensureDirectoryExpanded, scrollEntryIntoView]
+    [createNote, ensureDirectoryExpanded]
   )
 
   const { handleEntryContextMenu, handleRootContextMenu } =
