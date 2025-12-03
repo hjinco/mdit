@@ -304,7 +304,7 @@ export const ShortcutsPlugin = createPlatePlugin({
       keys: 'mod+a',
       handler: ({ editor }) => {
         selectAllLikeCmdA(editor)
-        true
+        return true
       },
     },
     copy: {
