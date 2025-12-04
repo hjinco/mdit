@@ -3,7 +3,7 @@ import { LogicalPosition } from '@tauri-apps/api/dpi'
 import { Menu } from '@tauri-apps/api/menu'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { register } from '@tauri-apps/plugin-global-shortcut'
+import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
 import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
@@ -14,7 +14,6 @@ const createQuickNoteWindow = () => {
     height: 600,
     titleBarStyle: 'overlay',
     hiddenTitle: true,
-    visible: false,
     trafficLightPosition: new LogicalPosition(18, 22),
   })
 }
@@ -39,12 +38,17 @@ async function createSystemTray() {
 
 export function SystemTray() {
   useEffect(() => {
-    const tray = createSystemTray()
-    register('CmdOrCtrl+Shift+N', () => {
+    const shortcut = 'CmdOrCtrl+Shift+N'
+
+    register(shortcut, () => {
       createQuickNoteWindow()
     })
 
+    const tray = createSystemTray()
+
     return () => {
+      // Cleanup: unregister shortcut and close tray
+      unregister(shortcut)
       tray.then((tray) => tray.close())
     }
   }, [])

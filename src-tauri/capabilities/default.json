@@ -19,6 +19,7 @@
     "clipboard:read-all",
     "window-state:default",
     "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
     {
       "identifier": "fs:scope",
       "allow": [
