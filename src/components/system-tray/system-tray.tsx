@@ -25,13 +25,6 @@ async function createSystemTray() {
             })
           },
         },
-        {
-          id: 'Quit',
-          text: 'Quit',
-          action: () => {
-            console.log('Quit')
-          },
-        },
       ],
     }),
   })
