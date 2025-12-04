@@ -139,7 +139,6 @@ function EditorContent({
     const interval = setInterval(handleSave, 10_000)
     const closeListener = appWindow.listen('tauri://close-requested', () => {
       handleSave()
-      appWindow.destroy()
     })
 
     return () => {

@@ -1,3 +1,4 @@
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { CollectionView } from './components/collection-view/collection-view'
@@ -7,7 +8,6 @@ import { FileExplorer } from './components/file-explorer/file-explorer'
 import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
-import { DndProvider } from './contexts/dnd-provider'
 import { FocusModeProvider } from './contexts/focus-mode-context'
 import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
@@ -24,6 +24,18 @@ export function App() {
   useFontScale()
   useAutoIndexing(workspacePath)
 
+  useEffect(() => {
+    const appWindow = getCurrentWindow()
+    appWindow.show()
+    const closeListener = appWindow.listen('tauri://close-requested', () => {
+      appWindow.hide()
+    })
+
+    return () => {
+      closeListener.then((unlisten) => unlisten())
+    }
+  }, [])
+
   if (!hasCheckedOpenedFiles) {
     return <div className="h-screen bg-muted/70" />
   }
@@ -35,17 +47,15 @@ export function App() {
   if (isEditorOnlyMode) {
     return (
       <FocusModeProvider>
-        <DndProvider>
-          <div className="h-screen flex flex-col bg-muted/70">
-            <div className="flex-1 flex">
-              <Editor />
-            </div>
-            <div className="fixed bottom-1 right-1">
-              <LicenseKeyButton />
-            </div>
+        <div className="h-screen flex flex-col bg-muted/70">
+          <div className="flex-1 flex">
+            <Editor />
           </div>
-          <SettingsDialog />
-        </DndProvider>
+          <div className="fixed bottom-1 right-1">
+            <LicenseKeyButton />
+          </div>
+        </div>
+        <SettingsDialog />
       </FocusModeProvider>
     )
   }
@@ -57,23 +67,21 @@ export function App() {
   return (
     <FocusModeProvider>
       <ScreenCaptureProvider>
-        <DndProvider>
-          <div className="h-screen flex flex-col bg-muted/70">
-            <div className="flex-1 overflow-hidden flex">
-              <div className="group/side flex">
-                <FileExplorer />
-                <CollectionView />
-              </div>
-              <Editor />
-              <div className="fixed bottom-1 right-1">
-                <LicenseKeyButton />
-              </div>
+        <div className="h-screen flex flex-col bg-muted/70">
+          <div className="flex-1 overflow-hidden flex">
+            <div className="group/side flex">
+              <FileExplorer />
+              <CollectionView />
+            </div>
+            <Editor />
+            <div className="fixed bottom-1 right-1">
+              <LicenseKeyButton />
             </div>
           </div>
-          <SettingsDialog />
-          <CommandMenu />
-          <ImagePreviewDialog />
-        </DndProvider>
+        </div>
+        <SettingsDialog />
+        <CommandMenu />
+        <ImagePreviewDialog />
       </ScreenCaptureProvider>
     </FocusModeProvider>
   )
