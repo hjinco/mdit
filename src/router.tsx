@@ -1,0 +1,25 @@
+import { App } from '@/app'
+import { QuickNote } from './components/quick-note/quick-note'
+import { SystemTray } from './components/system-tray/system-tray'
+import { Updater } from './components/updater/updater'
+import { useCurrentWindowLabel } from './hooks/use-current-window-label'
+
+export function Router() {
+  const label = useCurrentWindowLabel()
+
+  if (label === null) {
+    return null
+  }
+
+  if (label === 'quick-note') {
+    return <QuickNote />
+  }
+
+  return (
+    <>
+      <App />
+      <SystemTray />
+      <Updater />
+    </>
+  )
+}

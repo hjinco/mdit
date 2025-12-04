@@ -1,4 +1,5 @@
 import { Check, ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
+import { useCurrentWindowLabel } from '@/hooks/use-current-window-label'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useUIStore } from '@/store/ui-store'
@@ -20,6 +21,7 @@ export function AIModelSelector({
 }: AIModelSelectorProps) {
   const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
   const { enabledChatModels, chatConfig, selectModel } = useAISettingsStore()
+  const windowLabel = useCurrentWindowLabel()
 
   return (
     <div className="flex justify-end items-center gap-1.5 py-1">
@@ -60,12 +62,14 @@ export function AIModelSelector({
               No enabled models
             </div>
           )}
-          <DropdownMenuItem
-            onClick={() => openSettingsWithTab('ai')}
-            className="text-xs"
-          >
-            Add models <ChevronRightIcon className="size-3.5 ml-auto" />
-          </DropdownMenuItem>
+          {windowLabel !== 'quick-note' && (
+            <DropdownMenuItem
+              onClick={() => openSettingsWithTab('ai')}
+              className="text-xs"
+            >
+              Add models <ChevronRightIcon className="size-3.5 ml-auto" />
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
