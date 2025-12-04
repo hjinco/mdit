@@ -53,6 +53,27 @@ export const IndentKit = [
             .listStyleType
 
           if (listStyleType) {
+            const selection = editor.selection
+            // When text is selected in a list block and backspace is pressed,
+            // delete the selected text first instead of removing listStyleType.
+            // This prevents the list formatting from being removed when the user
+            // intends to delete selected content.
+            if (selection?.anchor && selection?.focus) {
+              const anchor = selection.anchor
+              const focus = selection.focus
+              // Check if there's an actual selection (anchor and focus are different)
+              const hasSelection =
+                anchor.path.join(',') !== focus.path.join(',') ||
+                anchor.offset !== focus.offset
+
+              if (hasSelection) {
+                // Delete the selected text and prevent default behavior
+                editor.tf.delete({
+                  at: { anchor, focus },
+                })
+                return true
+              }
+            }
             // Convert list block to paragraph
             editor.tf.setNodes(
               {
