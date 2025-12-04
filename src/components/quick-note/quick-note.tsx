@@ -17,7 +17,7 @@ export function QuickNote() {
   }, [editor])
 
   return (
-    <div className="size-full">
+    <div className="min-h-screen bg-background">
       <div
         className="h-12 w-full"
         {...(isMac() && { 'data-tauri-drag-region': '' })}
