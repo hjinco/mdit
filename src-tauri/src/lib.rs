@@ -137,6 +137,7 @@ pub fn run() {
 
     app.run(|app_handle, event| {
         match event {
+            #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => {
                 // Show main window if it exists, otherwise create it
                 if let Some(main_window) = app_handle.get_webview_window("main") {
