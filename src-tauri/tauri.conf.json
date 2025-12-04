@@ -55,7 +55,8 @@
         "rank": "Owner",
         "contentTypes": ["net.daringfireball.markdown"]
       }
-    ]
+    ],
+    "resources": ["icons/trayTemplate.png"]
   },
   "plugins": {
     "updater": {
