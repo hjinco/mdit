@@ -38,7 +38,9 @@ ollama-rs = "0.3.2"
 tiktoken-rs = "0.5"
 tauri-plugin-clipboard = "2.1.11"
 tauri-plugin-window-state = "2"
+tauri-plugin-global-shortcut = "2"
 pulldown-cmark = { version = "0.13.0", default-features = false, features = ["simd"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2"
 tauri-plugin-updater = "2"

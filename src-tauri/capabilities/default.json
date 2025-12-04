@@ -18,6 +18,7 @@
     "fs:write-all",
     "clipboard:read-all",
     "window-state:default",
+    "global-shortcut:allow-register",
     {
       "identifier": "fs:scope",
       "allow": [
