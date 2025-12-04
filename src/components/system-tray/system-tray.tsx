@@ -34,7 +34,7 @@ async function createSystemTray() {
           action: () => {
             createQuickNoteWindow()
           },
-          accelerator: 'CmdOrCtrl+Shift+N',
+          accelerator: 'CmdOrCtrl+Alt+N',
         },
       ],
     }),
@@ -43,7 +43,7 @@ async function createSystemTray() {
 
 export function SystemTray() {
   useEffect(() => {
-    const shortcut = 'CmdOrCtrl+Shift+N'
+    const shortcut = 'CmdOrCtrl+Alt+N'
 
     register(shortcut, () => {
       createQuickNoteWindow()
