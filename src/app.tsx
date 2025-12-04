@@ -1,3 +1,4 @@
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { CollectionView } from './components/collection-view/collection-view'
@@ -22,6 +23,18 @@ export function App() {
   const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
   useFontScale()
   useAutoIndexing(workspacePath)
+
+  useEffect(() => {
+    const appWindow = getCurrentWindow()
+    appWindow.show()
+    const closeListener = appWindow.listen('tauri://close-requested', () => {
+      appWindow.hide()
+    })
+
+    return () => {
+      closeListener.then((unlisten) => unlisten())
+    }
+  }, [])
 
   if (!hasCheckedOpenedFiles) {
     return <div className="h-screen bg-muted/70" />

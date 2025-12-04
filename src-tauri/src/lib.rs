@@ -4,6 +4,7 @@ mod migrations;
 
 use std::fs::File;
 use std::io::Read;
+use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 use trash;
 
@@ -134,9 +135,19 @@ pub fn run() {
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        #[cfg(target_os = "macos")]
-        if let tauri::RunEvent::Opened { urls } = event {
-            file_opener::handle_opened_event(app_handle, urls);
+        match event {
+            tauri::RunEvent::Reopen { .. } => {
+                // Show main window if it exists, otherwise create it
+                if let Some(main_window) = app_handle.get_webview_window("main") {
+                    let _ = main_window.show();
+                    let _ = main_window.set_focus();
+                }
+            }
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Opened { urls } => {
+                file_opener::handle_opened_event(app_handle, urls);
+            }
+            _ => {}
         }
     });
 }
