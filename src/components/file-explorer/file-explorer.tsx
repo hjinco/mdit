@@ -19,7 +19,7 @@ import { GitSyncStatus } from './ui/git-sync-status'
 import { PinnedList } from './ui/pinned-list'
 import { RootNewFolderInput } from './ui/root-new-folder-input'
 import { SettingsMenu } from './ui/settings-menu'
-import { TagList } from './ui/tag-list'
+// import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
@@ -418,7 +418,7 @@ export function FileExplorer() {
             setSelectedEntryPaths(new Set())
           }}
         >
-          <TagList />
+          {/* <TagList /> */}
           <PinnedList />
           <ul className="space-y-0.5 pb-4">
             {pendingNewFolderPath === workspacePath && workspacePath && (
