@@ -20,6 +20,7 @@ export type DropEvent = {
 
 export type DropZoneConfig = {
   ref: React.RefObject<HTMLDivElement | null>
+  depth?: number
   onEnter?: (e: DropEvent) => void
   onLeave?: () => void
   onDrop?: (paths: string[], e: DropEvent) => void
@@ -28,6 +29,7 @@ export type DropZoneConfig = {
 type ZoneInternal = DropZoneConfig & {
   id: string
   setIsOver: (v: boolean) => void
+  depth: number
 }
 
 type DropAPI = {
@@ -40,11 +42,24 @@ type DropAPI = {
 const DropContext = createContext<DropAPI | null>(null)
 
 function findZoneAtPoint(zones: Map<string, ZoneInternal>, pt: Point) {
-  const el = document.elementFromPoint(pt.x, pt.y)
-  const host = el?.closest<HTMLElement>('[data-drop-zone-id]')
-  const id = host?.getAttribute('data-drop-zone-id')
-  const zone = id ? zones.get(id) : undefined
-  return zone
+  // Get all elements at the point (not just the top one)
+  const elements = document.elementsFromPoint(pt.x, pt.y)
+
+  // Find all zones that contain these elements
+  const foundZones = elements
+    .map((el) => {
+      const host = el.closest<HTMLElement>('[data-drop-zone-id]')
+      const id = host?.getAttribute('data-drop-zone-id')
+      return id ? zones.get(id) : undefined
+    })
+    .filter((zone): zone is ZoneInternal => zone !== undefined)
+
+  if (foundZones.length === 0) {
+    return
+  }
+
+  // Return the zone with the deepest depth (highest depth value)
+  return foundZones.sort((a, b) => (b.depth ?? -1) - (a.depth ?? -1))[0]
 }
 
 export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -57,7 +72,12 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
   const registerZone = useCallback<DropAPI['registerZone']>(
     (cfg, setIsOver) => {
       const id = crypto.randomUUID()
-      const zone: ZoneInternal = { ...cfg, id, setIsOver }
+      const zone: ZoneInternal = {
+        ...cfg,
+        id,
+        setIsOver,
+        depth: cfg.depth ?? -1,
+      }
       zonesRef.current.set(id, zone)
 
       if (!cfg.ref) {

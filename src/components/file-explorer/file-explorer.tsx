@@ -14,6 +14,7 @@ import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
+import { useFolderDropZone } from './hooks/use-folder-drop-zone'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
 import { PinnedList } from './ui/pinned-list'
@@ -120,8 +121,8 @@ export function FileExplorer() {
   }, [visibleEntryPaths])
   const entryMap = useEntryMap(entries)
 
-  // Setup workspace root as a drop target
-  const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspace } =
+  // Setup workspace root as a drop target (for internal dnd)
+  const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspaceInternal } =
     useDroppable({
       id: `droppable-${workspacePath}`,
       data: {
@@ -131,6 +132,18 @@ export function FileExplorer() {
       },
       disabled: !workspacePath,
     })
+
+  // Setup external file drop zone for workspace root
+  const { isOver: isOverWorkspaceExternal, ref: workspaceExternalDropRef } =
+    useFolderDropZone({
+      folderPath: workspacePath ?? '',
+      depth: -1,
+      isDirectory: true,
+      disabled: !workspacePath,
+    })
+
+  // Combine both drop states for visual feedback
+  const isOverWorkspace = isOverWorkspaceInternal || isOverWorkspaceExternal
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -407,7 +420,10 @@ export function FileExplorer() {
           <GitSyncStatus workspacePath={workspacePath} />
         </div>
         <div
-          ref={setWorkspaceDropRef}
+          ref={(node) => {
+            setWorkspaceDropRef(node)
+            workspaceExternalDropRef?.(node)
+          }}
           className={cn(
             'flex-1 overflow-y-auto p-2',
             isOverWorkspace &&
