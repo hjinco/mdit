@@ -136,10 +136,8 @@ export function FileExplorer() {
   // Setup external file drop zone for workspace root
   const { isOver: isOverWorkspaceExternal, ref: workspaceExternalDropRef } =
     useFolderDropZone({
-      folderPath: workspacePath ?? '',
+      folderPath: workspacePath ?? null,
       depth: -1,
-      isDirectory: true,
-      disabled: !workspacePath,
     })
 
   // Combine both drop states for visual feedback

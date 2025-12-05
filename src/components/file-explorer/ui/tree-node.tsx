@@ -120,10 +120,8 @@ export function TreeNode({
 
   // Setup external file drop zone for directories
   const { isOver: isOverExternal, ref: externalDropRef } = useFolderDropZone({
-    folderPath: entry.path,
+    folderPath: entry.isDirectory ? entry.path : null,
     depth,
-    isDirectory: entry.isDirectory,
-    disabled: !entry.isDirectory || isBusy,
   })
 
   // Combine both drop states for visual feedback
