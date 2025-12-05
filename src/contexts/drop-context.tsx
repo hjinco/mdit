@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useWorkspaceStore } from '@/store/workspace-store'
 
 type DropKind = 'over' | 'drop' | 'leave' | 'enter'
 type Point = { x: number; y: number }
@@ -68,6 +69,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
   const zonesRef = useRef(new Map<string, ZoneInternal>())
   const currentZoneIdRef = useRef<string | null>(null)
   const unlistenRef = useRef<null | (() => void)>(null)
+  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
 
   const registerZone = useCallback<DropAPI['registerZone']>(
     (cfg, setIsOver) => {
@@ -186,6 +188,12 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
   }, [])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workspacePath is intentionally tracked to reset zones on workspace change
+  useEffect(() => {
+    zonesRef.current.clear()
+    currentZoneIdRef.current = null
+  }, [workspacePath])
 
   return (
     <DropContext.Provider value={{ registerZone }}>
