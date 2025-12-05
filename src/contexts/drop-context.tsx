@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useWorkspaceStore } from '@/store/workspace-store'
 
 type DropKind = 'over' | 'drop' | 'leave' | 'enter'
 type Point = { x: number; y: number }
@@ -20,14 +21,16 @@ export type DropEvent = {
 
 export type DropZoneConfig = {
   ref: React.RefObject<HTMLDivElement | null>
+  path: string | null
+  depth?: number
   onEnter?: (e: DropEvent) => void
   onLeave?: () => void
   onDrop?: (paths: string[], e: DropEvent) => void
 }
 
 type ZoneInternal = DropZoneConfig & {
-  id: string
   setIsOver: (v: boolean) => void
+  depth: number
 }
 
 type DropAPI = {
@@ -40,11 +43,24 @@ type DropAPI = {
 const DropContext = createContext<DropAPI | null>(null)
 
 function findZoneAtPoint(zones: Map<string, ZoneInternal>, pt: Point) {
-  const el = document.elementFromPoint(pt.x, pt.y)
-  const host = el?.closest<HTMLElement>('[data-drop-zone-id]')
-  const id = host?.getAttribute('data-drop-zone-id')
-  const zone = id ? zones.get(id) : undefined
-  return zone
+  // Get all elements at the point (not just the top one)
+  const elements = document.elementsFromPoint(pt.x, pt.y)
+
+  // Find all zones that contain these elements
+  const foundZones = elements
+    .map((el) => {
+      const host = el.closest<HTMLElement>('[data-drop-zone-id]')
+      const id = host?.getAttribute('data-drop-zone-id')
+      return id ? zones.get(id) : undefined
+    })
+    .filter((zone): zone is ZoneInternal => zone !== undefined)
+
+  if (foundZones.length === 0) {
+    return
+  }
+
+  // Return the zone with the deepest depth (highest depth value)
+  return foundZones.sort((a, b) => (b.depth ?? -1) - (a.depth ?? -1))[0]
 }
 
 export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -53,26 +69,33 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
   const zonesRef = useRef(new Map<string, ZoneInternal>())
   const currentZoneIdRef = useRef<string | null>(null)
   const unlistenRef = useRef<null | (() => void)>(null)
+  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
 
   const registerZone = useCallback<DropAPI['registerZone']>(
     (cfg, setIsOver) => {
-      const id = crypto.randomUUID()
-      const zone: ZoneInternal = { ...cfg, id, setIsOver }
-      zonesRef.current.set(id, zone)
+      const path = cfg.path
+      if (!path) return () => {}
+
+      const zone: ZoneInternal = {
+        ...cfg,
+        setIsOver,
+        depth: cfg.depth ?? -1,
+      }
+      zonesRef.current.set(path, zone)
 
       if (!cfg.ref) {
         throw new Error('drop zone ref is not attached yet')
       }
 
       const el = cfg.ref.current
-      if (el) el.setAttribute('data-drop-zone-id', id)
+      if (el) el.setAttribute('data-drop-zone-id', path)
 
       return () => {
         const el = cfg.ref?.current
-        if (el?.getAttribute('data-drop-zone-id') === id) {
+        if (el?.getAttribute('data-drop-zone-id') === path) {
           el?.removeAttribute('data-drop-zone-id')
         }
-        zonesRef.current.delete(id)
+        zonesRef.current.delete(path)
       }
     },
     []
@@ -115,7 +138,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (kind === 'over') {
             const prevId = currentZoneIdRef.current
-            const nextId = zoneAtPoint?.id ?? null
+            const nextId = zoneAtPoint?.path ?? null
             if (prevId !== nextId) {
               if (prevId) {
                 const prev = zones.get(prevId)
@@ -132,7 +155,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
           }
 
           if (kind === 'drop') {
-            const activeId = zoneAtPoint?.id ?? currentZoneIdRef.current
+            const activeId = zoneAtPoint?.path ?? currentZoneIdRef.current
             if (activeId) {
               const z = zones.get(activeId)
               z?.onDrop?.(paths ?? [], e)
@@ -166,6 +189,15 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
   }, [])
+
+  useEffect(() => {
+    for (const [path, zone] of zonesRef.current.entries()) {
+      if (zone.path !== workspacePath) {
+        zonesRef.current.delete(path)
+      }
+    }
+    currentZoneIdRef.current = null
+  }, [workspacePath])
 
   return (
     <DropContext.Provider value={{ registerZone }}>

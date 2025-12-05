@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
+import { useFolderDropZone } from '../hooks/use-folder-drop-zone'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
 import { TreeNodeRenameInput } from './tree-node-rename-input'
 
@@ -106,8 +107,8 @@ export function TreeNode({
     disabled: isBusy,
   })
 
-  // Setup droppable only for directories
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+  // Setup droppable only for directories (for internal dnd)
+  const { setNodeRef: setDroppableRef, isOver: isOverInternal } = useDroppable({
     id: `droppable-${entry.path}`,
     data: {
       path: entry.path,
@@ -116,6 +117,15 @@ export function TreeNode({
     },
     disabled: !entry.isDirectory || isBusy,
   })
+
+  // Setup external file drop zone for directories
+  const { isOver: isOverExternal, ref: externalDropRef } = useFolderDropZone({
+    folderPath: entry.isDirectory ? entry.path : null,
+    depth,
+  })
+
+  // Combine both drop states for visual feedback
+  const isOver = isOverInternal || isOverExternal
 
   const handlePrimaryAction = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -312,7 +322,10 @@ export function TreeNode({
     <li>
       {isDirectory ? (
         <div
-          ref={setDroppableRef}
+          ref={(node) => {
+            setDroppableRef(node)
+            externalDropRef(node)
+          }}
           className={cn(
             'rounded-sm transition-colors',
             isOver &&
