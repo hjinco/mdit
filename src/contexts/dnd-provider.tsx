@@ -50,7 +50,7 @@ export function DndProvider({ children }: DndProviderProps) {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 4 },
     })
   )
 
@@ -87,8 +87,7 @@ export function DndProvider({ children }: DndProviderProps) {
           (path) =>
             !selectedPaths.some(
               (otherPath) =>
-                otherPath !== path &&
-                isPathEqualOrDescendant(path, otherPath)
+                otherPath !== path && isPathEqualOrDescendant(path, otherPath)
             )
         )
 
