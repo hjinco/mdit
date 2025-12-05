@@ -326,7 +326,7 @@ export function TreeNode({
         <div
           ref={(node) => {
             setDroppableRef(node)
-            externalDropRef?.(node)
+            externalDropRef(node)
           }}
           className={cn(
             'rounded-sm transition-colors',

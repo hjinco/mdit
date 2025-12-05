@@ -422,7 +422,7 @@ export function FileExplorer() {
         <div
           ref={(node) => {
             setWorkspaceDropRef(node)
-            workspaceExternalDropRef?.(node)
+            workspaceExternalDropRef(node)
           }}
           className={cn(
             'flex-1 overflow-y-auto p-2',
