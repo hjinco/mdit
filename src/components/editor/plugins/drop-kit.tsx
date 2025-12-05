@@ -1,9 +1,9 @@
 import { useDndMonitor, useDroppable } from '@dnd-kit/core'
 import { insertImage } from '@platejs/media'
-import mime from 'mime/lite'
+// import mime from 'mime/lite'
 import { createPlatePlugin, useEditorRef } from 'platejs/react'
 import { useCallback, useRef, useState } from 'react'
-import { useDropZone } from '@/contexts/drop-context'
+// import { useDropZone } from '@/contexts/drop-context'
 import { cn } from '@/lib/utils'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { isImageFile } from '@/utils/file-icon'
@@ -46,20 +46,21 @@ function DropZone({ children }: { children: React.ReactNode }) {
     data: { kind: 'editor' },
   })
 
-  useDropZone({
-    ref,
-    onDrop: (paths) => {
-      for (const path of paths) {
-        const type = mime.getType(path)
-        if (!type) continue
-        if (type.startsWith('image/')) {
-          insertImage(editor, path)
-        } else if (type.startsWith('video/')) {
-        } else if (type.startsWith('audio/')) {
-        }
-      }
-    },
-  })
+  // useDropZone({
+  //   ref,
+  //   path: null,
+  //   onDrop: (paths) => {
+  //     for (const path of paths) {
+  //       const type = mime.getType(path)
+  //       if (!type) continue
+  //       if (type.startsWith('image/')) {
+  //         insertImage(editor, path)
+  //       } else if (type.startsWith('video/')) {
+  //       } else if (type.startsWith('audio/')) {
+  //       }
+  //     }
+  //   },
+  // })
 
   useDndMonitor({
     onDragStart: (event) => {
