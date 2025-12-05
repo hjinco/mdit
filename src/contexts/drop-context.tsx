@@ -21,6 +21,7 @@ export type DropEvent = {
 
 export type DropZoneConfig = {
   ref: React.RefObject<HTMLDivElement | null>
+  path: string | null
   depth?: number
   onEnter?: (e: DropEvent) => void
   onLeave?: () => void
@@ -28,7 +29,6 @@ export type DropZoneConfig = {
 }
 
 type ZoneInternal = DropZoneConfig & {
-  id: string
   setIsOver: (v: boolean) => void
   depth: number
 }
@@ -73,28 +73,29 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const registerZone = useCallback<DropAPI['registerZone']>(
     (cfg, setIsOver) => {
-      const id = crypto.randomUUID()
+      const path = cfg.path
+      if (!path) return () => {}
+
       const zone: ZoneInternal = {
         ...cfg,
-        id,
         setIsOver,
         depth: cfg.depth ?? -1,
       }
-      zonesRef.current.set(id, zone)
+      zonesRef.current.set(path, zone)
 
       if (!cfg.ref) {
         throw new Error('drop zone ref is not attached yet')
       }
 
       const el = cfg.ref.current
-      if (el) el.setAttribute('data-drop-zone-id', id)
+      if (el) el.setAttribute('data-drop-zone-id', path)
 
       return () => {
         const el = cfg.ref?.current
-        if (el?.getAttribute('data-drop-zone-id') === id) {
+        if (el?.getAttribute('data-drop-zone-id') === path) {
           el?.removeAttribute('data-drop-zone-id')
         }
-        zonesRef.current.delete(id)
+        zonesRef.current.delete(path)
       }
     },
     []
@@ -137,7 +138,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (kind === 'over') {
             const prevId = currentZoneIdRef.current
-            const nextId = zoneAtPoint?.id ?? null
+            const nextId = zoneAtPoint?.path ?? null
             if (prevId !== nextId) {
               if (prevId) {
                 const prev = zones.get(prevId)
@@ -154,7 +155,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
           }
 
           if (kind === 'drop') {
-            const activeId = zoneAtPoint?.id ?? currentZoneIdRef.current
+            const activeId = zoneAtPoint?.path ?? currentZoneIdRef.current
             if (activeId) {
               const z = zones.get(activeId)
               z?.onDrop?.(paths ?? [], e)
@@ -189,9 +190,12 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: workspacePath is intentionally tracked to reset zones on workspace change
   useEffect(() => {
-    zonesRef.current.clear()
+    for (const [path, zone] of zonesRef.current.entries()) {
+      if (zone.path !== workspacePath) {
+        zonesRef.current.delete(path)
+      }
+    }
     currentZoneIdRef.current = null
   }, [workspacePath])
 

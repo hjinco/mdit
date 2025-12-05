@@ -71,6 +71,7 @@ export function useFolderDropZone({
 
   const { isOver } = useDropZone({
     ref,
+    path: folderPath,
     depth,
     onDrop: handleDrop,
   })
