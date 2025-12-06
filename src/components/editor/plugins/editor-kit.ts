@@ -8,7 +8,7 @@ import { CodeBlockKit } from './code-block-kit'
 import { CommentKit } from './comment-kit'
 import { CursorOverlayKit } from './cursor-overlay-kit'
 import { DateKit } from './date-kit'
-import { DropKit } from './drop-kit'
+import { DndKit } from './dnd-kit'
 import { EmojiKit } from './emoji-kit'
 import { FilePasteKit } from './file-paste-kit'
 import { FloatingToolbarKit } from './floating-toolbar-kit'
@@ -42,7 +42,7 @@ export const EditorKit = [
   ...EmojiKit,
   ...FrontmatterKit,
   ...DateKit,
-  ...DropKit,
+  ...DndKit,
   ...FloatingToolbarKit,
   ...LinkKit,
   ...ListKit,
