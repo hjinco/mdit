@@ -1,11 +1,13 @@
 import { useDndMonitor, useDroppable } from '@dnd-kit/core'
 import { insertImage } from '@platejs/media'
+import { dirname, isAbsolute, relative } from 'pathe'
 // import mime from 'mime/lite'
 import { createPlatePlugin, useEditorRef } from 'platejs/react'
 import { useCallback, useRef, useState } from 'react'
 // import { useDropZone } from '@/contexts/drop-context'
 import { cn } from '@/lib/utils'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
+import { useTabStore } from '@/store/tab-store'
 import { isImageFile } from '@/utils/file-icon'
 
 type ActiveDragData = { path?: string; isDirectory?: boolean } | undefined
@@ -34,6 +36,20 @@ const collectImagePaths = (activeData: ActiveDragData) => {
     const extension = fileName.slice(lastDot)
     return isImageFile(extension)
   })
+}
+
+const toRelativeImagePath = (path: string) => {
+  if (!path || path.startsWith('http') || !isAbsolute(path)) {
+    return path
+  }
+
+  const tabPath = useTabStore.getState().tab?.path
+  if (!tabPath) {
+    return path
+  }
+
+  const tabDir = dirname(tabPath)
+  return relative(tabDir, path)
 }
 
 function DropZone({ children }: { children: React.ReactNode }) {
@@ -87,7 +103,7 @@ function DropZone({ children }: { children: React.ReactNode }) {
 
       editor.tf.focus()
       for (const imagePath of imagePaths) {
-        insertImage(editor, imagePath)
+        insertImage(editor, toRelativeImagePath(imagePath))
       }
       setIsDraggingImage(false)
     },
