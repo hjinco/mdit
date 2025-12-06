@@ -304,7 +304,7 @@ const groups: Group[] = [
       },
       {
         icon: <Square />,
-        keywords: ['checklist', 'task', 'checkbox', '[]'],
+        keywords: ['checklist', 'task', 'checkbox', '[]', 'ㅌ', '툳', '투두'],
         label: 'To-do list',
         value: KEYS.listTodo,
       },
@@ -316,6 +316,7 @@ const groups: Group[] = [
       },
       {
         icon: <Table />,
+        keywords: ['ㅌ', '텡', '테입', '테이브', '테이블'],
         label: 'Table',
         value: KEYS.table,
       },
@@ -349,6 +350,18 @@ const groups: Group[] = [
     items: [
       {
         icon: <ImageIcon />,
+        keywords: [
+          'picture',
+          'photo',
+          'ㅇ',
+          '임',
+          '이밎',
+          '이미지',
+          'ㅅ',
+          '샂',
+          '사지',
+          '사진',
+        ],
         label: 'Image',
         value: KEYS.img,
         onSelect: async (editor) => {
