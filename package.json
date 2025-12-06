@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "db:generate": "drizzle-kit generate",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "biome check --write",
+    "lint:check": "biome check"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.39",

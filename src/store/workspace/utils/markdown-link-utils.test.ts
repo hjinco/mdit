@@ -39,8 +39,7 @@ describe('rewriteMarkdownRelativeLinks', () => {
   })
 
   it('rewrites inline images while preserving escaped characters and titles', () => {
-    const content =
-      '![diagram](./figures/image\\(final\\).png "Flow diagram")'
+    const content = '![diagram](./figures/image\\(final\\).png "Flow diagram")'
 
     const result = rewriteMarkdownRelativeLinks(
       content,
@@ -77,7 +76,9 @@ describe('rewriteMarkdownRelativeLinks', () => {
       'C:/repo/docs/chapter-two'
     )
 
-    expect(result).toBe('Compare [notes](..\\chapter-one\\notes\\intro.md) later.')
+    expect(result).toBe(
+      'Compare [notes](..\\chapter-one\\notes\\intro.md) later.'
+    )
   })
 
   it('ignores destinations that are already absolute, anchors, or protocol relative', () => {

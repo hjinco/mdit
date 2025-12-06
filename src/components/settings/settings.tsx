@@ -5,10 +5,10 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 import { Dialog, DialogContent } from '@/ui/dialog'
 import { AITab } from './ui/ai-tab'
 import { IndexingTab } from './ui/indexing-tab'
+import { LicenseTab } from './ui/license-tab'
 import { SettingsNavigation, type SettingsTab } from './ui/navigation'
 import { PreferencesTab } from './ui/preferences-tab'
 import { SyncTab } from './ui/sync-tab'
-import { LicenseTab } from './ui/license-tab'
 
 export function SettingsDialog() {
   const { isSettingsDialogOpen, setSettingsDialogOpen, settingsInitialTab } =

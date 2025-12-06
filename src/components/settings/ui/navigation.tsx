@@ -24,7 +24,7 @@ export function SettingsNavigation({
           { id: 'indexing', label: 'Indexing' } as const,
         ]
       : []),
-    { id: 'license', label: "License"}
+    { id: 'license', label: 'License' },
   ]
 
   return (

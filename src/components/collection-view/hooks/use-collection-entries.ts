@@ -15,9 +15,7 @@ export function useCollectionEntries(
   const embeddingProvider = indexingConfig?.embeddingProvider ?? ''
   const embeddingModel = indexingConfig?.embeddingModel ?? ''
   const tagEntries = useTagStore((state) => state.tagEntries)
-  const isLoadingTagEntries = useTagStore(
-    (state) => state.isLoadingTagEntries
-  )
+  const isLoadingTagEntries = useTagStore((state) => state.isLoadingTagEntries)
   const loadTagEntries = useTagStore((state) => state.loadTagEntries)
 
   useEffect(() => {

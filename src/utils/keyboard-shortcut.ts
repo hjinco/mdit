@@ -13,4 +13,3 @@ import { isMac } from './platform'
 export function getModifierKey(): string {
   return isMac() ? '⌘' : 'Ctrl'
 }
-

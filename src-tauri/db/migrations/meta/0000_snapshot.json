@@ -53,9 +53,7 @@
       "indexes": {
         "doc_rel_path_unique": {
           "name": "doc_rel_path_unique",
-          "columns": [
-            "rel_path"
-          ],
+          "columns": ["rel_path"],
           "isUnique": true
         }
       },
@@ -106,9 +104,7 @@
       "indexes": {
         "embedding_segment_id_unique": {
           "name": "embedding_segment_id_unique",
-          "columns": [
-            "segment_id"
-          ],
+          "columns": ["segment_id"],
           "isUnique": true
         }
       },
@@ -117,12 +113,8 @@
           "name": "embedding_segment_id_segment_id_fk",
           "tableFrom": "embedding",
           "tableTo": "segment",
-          "columnsFrom": [
-            "segment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["segment_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -166,10 +158,7 @@
       "indexes": {
         "uniq_seg_doc_ord": {
           "name": "uniq_seg_doc_ord",
-          "columns": [
-            "doc_id",
-            "ordinal"
-          ],
+          "columns": ["doc_id", "ordinal"],
           "isUnique": true
         }
       },
@@ -178,12 +167,8 @@
           "name": "segment_doc_id_doc_id_fk",
           "tableFrom": "segment",
           "tableTo": "doc",
-          "columnsFrom": [
-            "doc_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["doc_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
