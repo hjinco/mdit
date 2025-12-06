@@ -15,13 +15,13 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <ErrorBoundary>
       <ThemeProvider>
         <ConfettiProvider>
-          <DropProvider>
-            <DndProvider>
-              <PlateController>
+          <PlateController>
+            <DropProvider>
+              <DndProvider>
                 <Router />
-              </PlateController>
-            </DndProvider>
-          </DropProvider>
+              </DndProvider>
+            </DropProvider>
+          </PlateController>
         </ConfettiProvider>
       </ThemeProvider>
       <WindowMenu />

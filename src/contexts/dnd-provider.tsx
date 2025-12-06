@@ -7,11 +7,17 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import { insertImage } from '@platejs/media'
+import { dirname, extname, relative } from 'pathe'
+import { KEYS, PathApi } from 'platejs'
+import { useEditorRef } from 'platejs/react'
 import type React from 'react'
 import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
+import { useTabStore } from '@/store/tab-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
+import { isImageFile } from '@/utils/file-icon'
 import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
 type DndProviderProps = {
@@ -40,12 +46,46 @@ const depthAwareCollision: CollisionDetection = (args) => {
 }
 
 export function DndProvider({ children }: DndProviderProps) {
-  const { moveEntry } = useWorkspaceStore()
+  const editor = useEditorRef()
+  const moveEntry = useWorkspaceStore((s) => s.moveEntry)
   const { selectedEntryPaths, resetSelection } = useFileExplorerSelectionStore(
     useShallow((state) => ({
       selectedEntryPaths: state.selectedEntryPaths,
       resetSelection: state.resetSelection,
     }))
+  )
+
+  const toRelativeImagePath = useCallback((path: string) => {
+    const tabPath = useTabStore.getState().tab?.path
+    if (!tabPath) {
+      return path
+    }
+
+    const tabDir = dirname(tabPath)
+    return relative(tabDir, path)
+  }, [])
+
+  const collectImagePaths = useCallback(
+    (activeData: { path?: string; isDirectory?: boolean } | undefined) => {
+      const activePath = activeData?.path
+      if (!activePath || activeData?.isDirectory) {
+        return []
+      }
+
+      const selection = Array.from(selectedEntryPaths)
+      const candidatePaths = selection.includes(activePath)
+        ? selection
+        : [activePath]
+
+      const filterImagePaths = (paths: string[]) =>
+        paths.filter((path) => {
+          const extension = extname(path)
+          return extension ? isImageFile(extension) : false
+        })
+
+      return filterImagePaths(candidatePaths)
+    },
+    [selectedEntryPaths]
   )
 
   const sensors = useSensors(
@@ -56,8 +96,46 @@ export function DndProvider({ children }: DndProviderProps) {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
-      const overData = event.over?.data.current as { kind?: string } | undefined
+      const overData = event.over?.data.current as
+        | { kind: 'editor'; id?: string }
+        | undefined
       if (overData?.kind === 'editor') {
+        const activeData = event.active.data.current as
+          | { path?: string; isDirectory?: boolean }
+          | { id?: string }
+        if ('path' in activeData) {
+          const imagePaths = collectImagePaths(activeData)
+          if (!overData.id || imagePaths.length === 0) {
+            return
+          }
+
+          const entry = editor.api.node({
+            at: [],
+            block: true,
+            match: (n) => (n as any).id === overData.id,
+          })
+
+          if (!entry) {
+            return
+          }
+
+          const [node, path] = entry
+
+          let nextPath = path
+          // Insert the image after the code block, not inside it.
+          if (node.type === editor.getType(KEYS.codeBlock)) {
+            nextPath = PathApi.next(path)
+          }
+
+          for (const imagePath of imagePaths) {
+            insertImage(editor, toRelativeImagePath(imagePath), {
+              at: nextPath,
+              // For other block types, `nextBlock: true` creates a new block for the image.
+              // For code blocks, we've already moved to the next path, so we can insert directly.
+              nextBlock: node.type !== editor.getType(KEYS.codeBlock),
+            })
+          }
+        }
         return
       }
 
@@ -122,7 +200,14 @@ export function DndProvider({ children }: DndProviderProps) {
       // Reset selection after move
       resetSelection()
     },
-    [moveEntry, selectedEntryPaths, resetSelection]
+    [
+      moveEntry,
+      selectedEntryPaths,
+      resetSelection,
+      collectImagePaths,
+      toRelativeImagePath,
+      editor,
+    ]
   )
 
   return (
