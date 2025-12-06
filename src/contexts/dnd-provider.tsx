@@ -122,7 +122,7 @@ export function DndProvider({ children }: DndProviderProps) {
           const [node, path] = entry
 
           let nextPath = path
-          // This is because the image is inserted into the code block, not after it
+          // Insert the image after the code block, not inside it.
           if (node.type === editor.getType(KEYS.codeBlock)) {
             nextPath = PathApi.next(path)
           }
