@@ -130,7 +130,8 @@ export function DndProvider({ children }: DndProviderProps) {
           for (const imagePath of imagePaths) {
             insertImage(editor, toRelativeImagePath(imagePath), {
               at: nextPath,
-              // This is because the image is inserted into the code block, not after it
+              // For other block types, `nextBlock: true` creates a new block for the image.
+              // For code blocks, we've already moved to the next path, so we can insert directly.
               nextBlock: node.type !== editor.getType(KEYS.codeBlock),
             })
           }
