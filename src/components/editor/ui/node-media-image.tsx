@@ -2,11 +2,13 @@ import { Image, ImagePlugin, useMediaState } from '@platejs/media/react'
 import { ResizableProvider, useResizableValue } from '@platejs/resizable'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { ImageOff } from 'lucide-react'
+import { dirname, isAbsolute, resolve } from 'pathe'
 import type { TImageElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useTabStore } from '@/store/tab-store'
 import { Caption, CaptionTextarea } from './caption'
 import { MediaToolbar } from './media-toolbar'
 import {
@@ -18,16 +20,27 @@ import {
 export const ImageElement = withHOC(
   ResizableProvider,
   function ImageElement(props: PlateElementProps<TImageElement>) {
+    const tabPath = useTabStore((state) => state.tab?.path)
     const { align = 'center', focused, readOnly, selected } = useMediaState()
     const width = useResizableValue('width')
     const [hasError, setHasError] = useState(false)
 
     const src = useMemo(() => {
-      if (props.element.url.startsWith('http')) {
-        return props.element.url
+      const url = props.element.url
+
+      if (url.startsWith('http')) {
+        return url
       }
-      return convertFileSrc(props.element.url)
-    }, [props.element.url])
+
+      const baseDir = tabPath ? dirname(tabPath) : null
+      const absolutePath = isAbsolute(url)
+        ? url
+        : baseDir
+          ? resolve(baseDir, url)
+          : url
+
+      return convertFileSrc(absolutePath)
+    }, [props.element.url, tabPath])
 
     return (
       <MediaToolbar plugin={ImagePlugin} hide={hasError}>

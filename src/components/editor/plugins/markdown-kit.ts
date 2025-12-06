@@ -1,16 +1,9 @@
-import {
-  MarkdownPlugin,
-  type MdImage,
-  remarkMdx,
-  remarkMention,
-} from '@platejs/markdown'
-import { dirname, relative, resolve } from 'pathe'
-import { getPluginType, KEYS, type TEquationElement, type TText } from 'platejs'
+import { MarkdownPlugin, remarkMdx, remarkMention } from '@platejs/markdown'
+import { KEYS, type TEquationElement } from 'platejs'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import YAML from 'yaml'
-import { useTabStore } from '@/store/tab-store'
 import {
   convertValueToType,
   datePattern,
@@ -135,52 +128,6 @@ export const MarkdownKit = [
               data: parseFrontmatterYaml(mdastNode.value),
               children: [{ text: '' }],
             }
-          },
-        },
-        img: {
-          deserialize: (mdastNode, _, options) => {
-            const url = mdastNode.url.startsWith('http')
-              ? mdastNode.url
-              : (() => {
-                  const tabPath = useTabStore.getState().tab?.path
-                  if (!tabPath) throw new Error('Tab path not found')
-
-                  const tabDir = dirname(tabPath)
-                  return resolve(tabDir, mdastNode.url)
-                })()
-
-            return {
-              caption: [{ text: mdastNode.alt } as TText],
-              children: [{ text: '' } as TText],
-              type: getPluginType(options.editor!, KEYS.img),
-              url,
-            }
-          },
-          serialize: ({ caption, url }) => {
-            const normalizedRelUrl = url.startsWith('http')
-              ? url
-              : (() => {
-                  const tabPath = useTabStore.getState().tab?.path
-                  if (!tabPath) throw new Error('Tab path not found')
-
-                  const tabDir = dirname(tabPath)
-                  const relUrl = relative(tabDir, url)
-                  return relUrl.startsWith('.') ? relUrl : `./${relUrl}`
-                })()
-
-            const image: MdImage = {
-              alt: caption
-                ? caption.map((c) => (c as any).text).join('')
-                : undefined,
-              title: caption
-                ? caption.map((c) => (c as any).text).join('')
-                : undefined,
-              type: 'image',
-              url: normalizedRelUrl,
-            }
-
-            // since plate is using block image so we need to wrap it in a paragraph
-            return { children: [image], type: 'paragraph' } as any
           },
         },
       },

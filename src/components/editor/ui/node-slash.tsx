@@ -20,7 +20,7 @@ import {
   TableOfContentsIcon,
   TypeIcon,
 } from 'lucide-react'
-import { dirname, resolve } from 'pathe'
+import { dirname, isAbsolute, relative, resolve } from 'pathe'
 import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
@@ -70,6 +70,20 @@ function extractFrontmatterSource(markdown: string): string | null {
   const match = frontmatterPattern.exec(trimmed)
 
   return match ? match[1] : null
+}
+
+function toRelativeImagePath(path: string): string {
+  if (!path || path.startsWith('http') || !isAbsolute(path)) {
+    return path
+  }
+
+  const tabPath = useTabStore.getState().tab?.path
+  if (!tabPath) {
+    return path
+  }
+
+  const tabDir = dirname(tabPath)
+  return relative(tabDir, path)
 }
 
 async function collectFrontmatterDefaults(): Promise<KVRow[]> {
@@ -349,7 +363,7 @@ const groups: Group[] = [
             ],
           })
           if (path) {
-            insertImage(editor, path)
+            insertImage(editor, toRelativeImagePath(path))
           }
         },
       },
