@@ -15,15 +15,11 @@ import {
   useRef,
 } from 'react'
 import { useFocusMode } from '@/contexts/focus-mode-context'
-import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
+import { useEditorStore } from '@/store/editor-store'
 import { useTabStore } from '@/store/tab-store'
-import { useUIStore } from '@/store/ui-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import { isMac } from '@/utils/platform'
-import { HistoryNavigation } from './header/history-navigation'
-import { MoreButton } from './header/more-button'
-import { Tab } from './header/tab'
+import { Header } from './header/header'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
 import { useCommandMenuSelectionRestore } from './hooks/use-command-menu-selection-restore'
 import { useLinkedTabName } from './hooks/use-linked-tab-name'
@@ -31,13 +27,7 @@ import { EditorKit } from './plugins/editor-kit'
 
 export function Editor() {
   const tab = useTabStore((s) => s.tab)
-  const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
-  const isCollectionViewOpen = useWorkspaceStore(
-    (s) => s.currentCollectionPath !== null
-  )
-  const workspacePath = useWorkspaceStore((s) => s.workspacePath)
-  const isFullscreen = useIsFullscreen()
-  const { isFocusMode, handleTypingProgress } = useFocusMode()
+  const { handleTypingProgress } = useFocusMode()
 
   const editor = useMemo(() => {
     return createSlateEditor({
@@ -64,31 +54,7 @@ export function Editor() {
 
   return (
     <div className="relative max-w-full w-full overflow-x-auto flex flex-col bg-background shadow">
-      <div
-        className={cn(
-          'w-full h-12 flex items-center justify-center relative transition-[opacity] duration-500',
-          isFocusMode && 'pointer-events-none opacity-0'
-        )}
-        {...(isMac() && { 'data-tauri-drag-region': '' })}
-      >
-        <div
-          className={cn(
-            'absolute',
-            !isFileExplorerOpen && !isCollectionViewOpen
-              ? isMac() && !isFullscreen
-                ? 'left-30'
-                : 'left-12'
-              : 'left-2',
-            !workspacePath && (isMac() && !isFullscreen ? 'left-20' : 'left-2')
-          )}
-        >
-          <HistoryNavigation />
-        </div>
-        <Tab />
-        <div className="absolute right-2">
-          <MoreButton />
-        </div>
-      </div>
+      <Header />
       <EditorContent
         key={tab.id}
         path={tab.path}
@@ -111,6 +77,7 @@ function EditorContent({
   const isSaved = useRef(true)
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
+  const handleScroll = useEditorStore((s) => s.handleScroll)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -186,6 +153,7 @@ function EditorContent({
           'ignore-click-outside/toolbar',
           'relative w-full h-full cursor-text overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
         )}
+        onScroll={handleScroll}
         onKeyDown={(e) => {
           handleTypingDetection(e)
           // I wish I could just use shortcuts but it's not working as expected
@@ -202,7 +170,7 @@ function EditorContent({
             'rounded-md ring-offset-background focus-visible:outline-none',
             'placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!',
             '[&_strong]:font-bold',
-            'size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-scale-scope'
+            'size-full px-8 pt-28 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-scale-scope'
           )}
           autoCapitalize="off"
           spellCheck={false}
