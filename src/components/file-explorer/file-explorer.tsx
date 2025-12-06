@@ -402,19 +402,13 @@ export function FileExplorer() {
             : { width: { type: 'spring', bounce: 0, duration: 0.12 } }
         }
       >
-        <div
-          className={cn(
-            'flex items-center justify-between px-2 gap-1 overflow-hidden mt-12'
-          )}
-        >
-          <div className="shrink-0 max-w-40">
-            <WorkspaceDropdown
-              workspacePath={workspacePath}
-              recentWorkspacePaths={recentWorkspacePaths}
-              onWorkspaceSelect={setWorkspace}
-              onOpenFolderPicker={openFolderPicker}
-            />
-          </div>
+        <div className="flex items-center px-2 gap-1 mt-12">
+          <WorkspaceDropdown
+            workspacePath={workspacePath}
+            recentWorkspacePaths={recentWorkspacePaths}
+            onWorkspaceSelect={setWorkspace}
+            onOpenFolderPicker={openFolderPicker}
+          />
           <GitSyncStatus workspacePath={workspacePath} />
         </div>
         <div
@@ -423,7 +417,7 @@ export function FileExplorer() {
             workspaceExternalDropRef(node)
           }}
           className={cn(
-            'flex-1 overflow-y-auto p-2',
+            'flex-1 overflow-y-auto px-2 py-1',
             isOverWorkspace &&
               'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
           )}
@@ -465,7 +459,7 @@ export function FileExplorer() {
             ))}
           </ul>
         </div>
-        <footer className={cn('p-2 flex flex-col')}>
+        <footer className="px-2 pb-2 flex flex-col">
           <SettingsMenu />
           <FeedbackButton />
         </footer>

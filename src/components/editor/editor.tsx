@@ -52,8 +52,8 @@ export function Editor() {
 
   if (!tab || !value)
     return (
-      <div className={cn('flex-1 h-full')}>
-        <div className="h-full bg-background">
+      <div className="flex-1 h-full">
+        <div className="h-full bg-background shadow">
           <div
             className="h-12 w-full"
             {...(isMac() && { 'data-tauri-drag-region': '' })}
@@ -63,7 +63,7 @@ export function Editor() {
     )
 
   return (
-    <div className="relative max-w-full w-full overflow-x-auto flex flex-col bg-background">
+    <div className="relative max-w-full w-full overflow-x-auto flex flex-col bg-background shadow">
       <div
         className={cn(
           'w-full h-12 flex items-center justify-center relative transition-[opacity] duration-500',
