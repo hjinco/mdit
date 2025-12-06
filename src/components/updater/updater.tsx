@@ -39,6 +39,9 @@ export function Updater() {
         duration: 10_000,
         actionButtonStyle: { marginLeft: '0px' },
         cancelButtonStyle: { backgroundColor: 'transparent' },
+        onDismiss: () => {
+          dismissedRef.current = true
+        },
       })
     } catch (err) {
       console.error('Failed to download and install update:', err)
