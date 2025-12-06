@@ -58,8 +58,20 @@ const insertBlockMap: Record<
       select: true,
       type: KEYS.mediaEmbed,
     }),
-  [KEYS.table]: (editor) =>
-    editor.getTransforms(TablePlugin).insert.table({}, { select: true }),
+  [KEYS.table]: (editor) => {
+    const block = editor.api.block()
+    if (block) {
+      editor.getTransforms(TablePlugin).insert.table(
+        {},
+        {
+          at: block[1],
+          select: true,
+        }
+      )
+    } else {
+      editor.getTransforms(TablePlugin).insert.table({}, { select: true })
+    }
+  },
   [KEYS.toc]: (editor) => insertToc(editor, { select: true }),
   [KEYS.video]: (editor) => insertVideoPlaceholder(editor, { select: true }),
 }

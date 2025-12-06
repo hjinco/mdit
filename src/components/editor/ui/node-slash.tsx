@@ -363,7 +363,15 @@ const groups: Group[] = [
             ],
           })
           if (path) {
-            insertImage(editor, toRelativeImagePath(path))
+            const block = editor.api.block()
+            if (block) {
+              insertImage(editor, toRelativeImagePath(path), {
+                at: block[1],
+                nextBlock: false,
+              })
+            } else {
+              insertImage(editor, toRelativeImagePath(path))
+            }
           }
         },
       },
