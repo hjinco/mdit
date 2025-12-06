@@ -33,12 +33,10 @@ export const ImageElement = withHOC(
       }
 
       const baseDir = tabPath ? dirname(tabPath) : null
-      const absolutePath = isAbsolute(url)
-        ? url
-        : baseDir
-          ? resolve(baseDir, url)
-          : url
-
+      if (!isAbsolute(url) && !baseDir) {
+        return ''
+      }
+      const absolutePath = isAbsolute(url) ? url : resolve(baseDir!, url)
       return convertFileSrc(absolutePath)
     }, [props.element.url, tabPath])
 
