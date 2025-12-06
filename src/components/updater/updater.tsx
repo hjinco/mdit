@@ -4,11 +4,12 @@ import {
   type DownloadEvent,
   type Update,
 } from '@tauri-apps/plugin-updater'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 
 export function Updater() {
   const isDev = import.meta.env.DEV
+  const dismissedRef = useRef(false)
 
   const downloadAndInstall = useCallback(async (update: Update) => {
     try {
@@ -31,7 +32,9 @@ export function Updater() {
         },
         cancel: {
           label: 'Later',
-          onClick: () => {},
+          onClick: () => {
+            dismissedRef.current = true
+          },
         },
         duration: 10_000,
         actionButtonStyle: { marginLeft: '0px' },
@@ -60,8 +63,12 @@ export function Updater() {
     // Check immediately on mount
     checkForUpdates()
 
-    // Then check every 1 minute
+    // Then check every 1 minute (only if not dismissed)
     const intervalId = setInterval(() => {
+      if (dismissedRef.current) {
+        clearInterval(intervalId)
+        return
+      }
       checkForUpdates()
     }, 60_000)
 
