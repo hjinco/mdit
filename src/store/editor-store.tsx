@@ -10,21 +10,18 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isScrolling: false,
   scrollTimeoutId: null,
   handleScroll: () => {
-    const state = get()
+    const { scrollTimeoutId } = get()
 
-    // Clear existing timeout if any
-    if (state.scrollTimeoutId) {
-      clearTimeout(state.scrollTimeoutId)
+    if (scrollTimeoutId) {
+      // Clear existing timeout if any
+      clearTimeout(scrollTimeoutId)
     }
-
-    // Set scrolling to true
-    set({ isScrolling: true })
 
     // Set new timeout
     const timeoutId = setTimeout(() => {
       set({ isScrolling: false, scrollTimeoutId: null })
     }, 300)
 
-    set({ scrollTimeoutId: timeoutId })
+    set({ isScrolling: true, scrollTimeoutId: timeoutId })
   },
 }))
