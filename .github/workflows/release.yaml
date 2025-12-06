@@ -226,8 +226,8 @@ jobs:
           sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
           
           # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           
           # Add and commit the updated file
           git add src-tauri/tauri.conf.json
