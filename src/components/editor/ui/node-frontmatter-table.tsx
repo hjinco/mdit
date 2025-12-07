@@ -281,8 +281,6 @@ function InlineEditableField({
           ref={inputRef}
           type={inputType}
           defaultValue={value}
-          onFocus={() => setIsFrontmatterInputting(true)}
-          onBlur={() => setIsFrontmatterInputting(false)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               setIsOpen(false)
