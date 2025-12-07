@@ -98,6 +98,11 @@ export function useGitSync(workspacePath: string | null) {
     }
   }, [resetState, workspacePath])
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Reset state immediately when workspacePath changes
+  useEffect(() => {
+    resetState()
+  }, [workspacePath])
+
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null
     let isDisposed = false
