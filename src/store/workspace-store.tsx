@@ -19,6 +19,7 @@ import {
   normalizePathSeparators,
 } from '@/utils/path-utils'
 import { useAISettingsStore } from './ai-settings-store'
+import { LAST_OPENED_NOTE_KEY } from './constants'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import { useTagStore } from './tag-store'
@@ -1154,7 +1155,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
-      const lastOpenedNotePath = localStorage.getItem('last-opened-note')
+      const lastOpenedNotePath = localStorage.getItem(LAST_OPENED_NOTE_KEY)
       if (
         lastOpenedNotePath &&
         isPathEqualOrDescendant(lastOpenedNotePath, workspacePath) &&
