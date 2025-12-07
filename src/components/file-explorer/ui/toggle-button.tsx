@@ -1,5 +1,4 @@
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
-import { useFocusMode } from '@/contexts/focus-mode-context'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { Button } from '@/ui/button'
@@ -13,7 +12,7 @@ type Props = {
 }
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
-  const { isFocusMode } = useFocusMode()
+  const isFocusMode = useEditorStore((s) => s.isFocusMode)
   const isScrolling = useEditorStore((s) => s.isScrolling)
   return (
     <Tooltip>

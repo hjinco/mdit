@@ -14,7 +14,6 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import { useFocusMode } from '@/contexts/focus-mode-context'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { useTabStore } from '@/store/tab-store'
@@ -27,7 +26,7 @@ import { EditorKit } from './plugins/editor-kit'
 
 export function Editor() {
   const tab = useTabStore((s) => s.tab)
-  const { handleTypingProgress } = useFocusMode()
+  const handleTypingProgress = useEditorStore((s) => s.handleTypingProgress)
 
   const editor = useMemo(() => {
     return createSlateEditor({

@@ -1,4 +1,3 @@
-import { useFocusMode } from '@/contexts/focus-mode-context'
 import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
@@ -16,7 +15,7 @@ export function Header() {
   )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const isFullscreen = useIsFullscreen()
-  const { isFocusMode } = useFocusMode()
+  const isFocusMode = useEditorStore((s) => s.isFocusMode)
   const isScrolling = useEditorStore((s) => s.isScrolling)
 
   return (

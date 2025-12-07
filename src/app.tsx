@@ -8,7 +8,6 @@ import { FileExplorer } from './components/file-explorer/file-explorer'
 import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
-import { FocusModeProvider } from './contexts/focus-mode-context'
 import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
@@ -46,7 +45,7 @@ export function App() {
 
   if (isEditorOnlyMode) {
     return (
-      <FocusModeProvider>
+      <>
         <div className="h-screen flex flex-col bg-muted/70">
           <div className="flex-1 flex">
             <Editor />
@@ -56,7 +55,7 @@ export function App() {
           </div>
         </div>
         <SettingsDialog />
-      </FocusModeProvider>
+      </>
     )
   }
 
@@ -65,25 +64,23 @@ export function App() {
   }
 
   return (
-    <FocusModeProvider>
-      <ScreenCaptureProvider>
-        <div className="h-screen flex flex-col bg-muted/70">
-          <div className="flex-1 overflow-hidden flex">
-            <div className="group/side flex">
-              <FileExplorer />
-              <CollectionView />
-            </div>
-            <Editor />
-            <div className="fixed bottom-1 right-1">
-              <LicenseKeyButton />
-            </div>
+    <ScreenCaptureProvider>
+      <div className="h-screen flex flex-col bg-muted/70">
+        <div className="flex-1 overflow-hidden flex">
+          <div className="group/side flex">
+            <FileExplorer />
+            <CollectionView />
+          </div>
+          <Editor />
+          <div className="fixed bottom-1 right-1">
+            <LicenseKeyButton />
           </div>
         </div>
-        <SettingsDialog />
-        <CommandMenu />
-        <ImagePreviewDialog />
-      </ScreenCaptureProvider>
-    </FocusModeProvider>
+      </div>
+      <SettingsDialog />
+      <CommandMenu />
+      <ImagePreviewDialog />
+    </ScreenCaptureProvider>
   )
 }
 
