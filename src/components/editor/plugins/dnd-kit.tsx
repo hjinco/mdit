@@ -78,7 +78,9 @@ function Draggable(props: PlateElementProps) {
   // For outermost nodes, render full wrapper with drag handle and drop zone
   return (
     <div ref={setDropRef} className="group relative">
-      {props.element.id != null && <DragHandle elementId={props.element.id} />}
+      {props.element.id != null && (
+        <DragHandle elementId={props.element.id as string} />
+      )}
       {shouldHighlight && (
         <div
           className={cn(

@@ -178,7 +178,7 @@ export function DndProvider({ children }: DndProviderProps) {
 
           // Check if target is a descendant of source (prevent moving parent into child)
           // A path is a descendant if it starts with the parent path
-          const isDescendant = Path.isDescendant(targetPath, sourcePath)
+          const isDescendant = PathApi.isDescendant(targetPath, sourcePath)
 
           if (isDescendant) {
             return
