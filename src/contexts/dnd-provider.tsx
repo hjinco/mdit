@@ -123,7 +123,10 @@ export function DndProvider({ children }: DndProviderProps) {
 
           let nextPath = path
           // Insert the image after the code block, not inside it.
-          if (node.type === editor.getType(KEYS.codeBlock)) {
+          if (
+            node.type === editor.getType(KEYS.codeBlock) ||
+            node.type === editor.getType(KEYS.table)
+          ) {
             nextPath = PathApi.next(path)
           }
 
@@ -132,9 +135,60 @@ export function DndProvider({ children }: DndProviderProps) {
               at: nextPath,
               // For other block types, `nextBlock: true` creates a new block for the image.
               // For code blocks, we've already moved to the next path, so we can insert directly.
-              nextBlock: node.type !== editor.getType(KEYS.codeBlock),
+              nextBlock:
+                node.type !== editor.getType(KEYS.codeBlock) &&
+                node.type !== editor.getType(KEYS.table),
             })
           }
+        } else if ('id' in activeData && activeData.id && overData.id) {
+          // Block-to-block drag and drop reordering
+          const sourceId = activeData.id
+          const targetId = overData.id
+
+          // Don't move if source and target are the same
+          if (sourceId === targetId) {
+            return
+          }
+
+          // Find source block
+          const sourceEntry = editor.api.node({
+            at: [],
+            block: true,
+            match: (n) => n.id === sourceId,
+          })
+
+          // Find target block
+          const targetEntry = editor.api.node({
+            at: [],
+            block: true,
+            match: (n) => n.id === targetId,
+          })
+
+          if (!sourceEntry || !targetEntry) {
+            return
+          }
+
+          const [, sourcePath] = sourceEntry
+          const [, targetPath] = targetEntry
+
+          // Don't move if paths are the same
+          if (PathApi.equals(sourcePath, targetPath)) {
+            return
+          }
+
+          // Check if target is a descendant of source (prevent moving parent into child)
+          // A path is a descendant if it starts with the parent path
+          const isDescendant = PathApi.isDescendant(targetPath, sourcePath)
+
+          if (isDescendant) {
+            return
+          }
+
+          // Move the source block to before the target block
+          editor.tf.moveNodes({
+            at: sourcePath,
+            to: targetPath,
+          })
         }
         return
       }
