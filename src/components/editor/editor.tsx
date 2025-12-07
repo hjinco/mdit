@@ -78,6 +78,7 @@ function EditorContent({
   const setTabSaved = useTabStore((s) => s.setTabSaved)
   const handleScroll = useEditorStore((s) => s.handleScroll)
   const isFrontmatterInputting = useEditorStore((s) => s.isFrontmatterInputting)
+  const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -119,6 +120,16 @@ function EditorContent({
   useEffect(() => {
     editor.tf.focus()
   }, [editor])
+
+  useEffect(() => {
+    const handleMouseMove = () => {
+      resetFocusMode()
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [resetFocusMode])
 
   useCommandMenuSelectionRestore(editor)
   useLinkedTabName(path, value)
