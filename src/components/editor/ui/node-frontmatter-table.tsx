@@ -285,8 +285,6 @@ function InlineEditableField({
           onBlur={() => setIsFrontmatterInputting(false)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              onCommit(e.currentTarget.value)
-              setIsFrontmatterInputting(false)
               setIsOpen(false)
             }
 
