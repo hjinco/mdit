@@ -17,6 +17,7 @@ import {
 import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useEditorStore } from '@/store/editor-store'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
 import {
@@ -208,6 +209,9 @@ function InlineEditableField({
     width: number
     height: number
   }>({ width: 0, height: 0 })
+  const setIsFrontmatterInputting = useEditorStore(
+    (s) => s.setIsFrontmatterInputting
+  )
 
   useEffect(() => {
     if (isOpen) {
@@ -236,8 +240,11 @@ function InlineEditableField({
     <Popover
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) {
+        if (open) {
+          setIsFrontmatterInputting(true)
+        } else {
           onCommit(inputRef.current!.value)
+          setIsFrontmatterInputting(false)
         }
         setIsOpen(open)
       }}
@@ -266,6 +273,7 @@ function InlineEditableField({
         style={popoverStyle}
         onEscapeKeyDown={(e) => {
           e.preventDefault()
+          setIsFrontmatterInputting(false)
           setIsOpen(false)
         }}
       >
@@ -275,41 +283,7 @@ function InlineEditableField({
           defaultValue={value}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              onCommit(e.currentTarget.value)
               setIsOpen(false)
-            }
-
-            // Handle Select All (Ctrl+A / Cmd+A)
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
-              e.preventDefault()
-              e.stopPropagation()
-              inputRef.current?.select()
-            }
-
-            // Handle Cut (Ctrl+X / Cmd+X)
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
-              e.preventDefault()
-              e.stopPropagation()
-              const input = inputRef.current
-              if (
-                input &&
-                input.selectionStart !== null &&
-                input.selectionEnd !== null
-              ) {
-                const selectedText = input.value.substring(
-                  input.selectionStart,
-                  input.selectionEnd
-                )
-                if (selectedText) {
-                  navigator.clipboard.writeText(selectedText).then(() => {
-                    const newValue =
-                      input.value.substring(0, input.selectionStart!) +
-                      input.value.substring(input.selectionEnd!)
-                    input.value = newValue
-                    input.dispatchEvent(new Event('input', { bubbles: true }))
-                  })
-                }
-              }
             }
           }}
           className="bg-background dark:bg-background text-foreground"
@@ -332,6 +306,9 @@ function ValueEditor({
 }) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const stringValue = String(value ?? '')
+  const setIsFrontmatterInputting = useEditorStore(
+    (s) => s.setIsFrontmatterInputting
+  )
 
   switch (type) {
     case 'boolean':
@@ -416,7 +393,11 @@ function ValueEditor({
       return (
         <Input
           defaultValue={stringValue}
-          onBlur={(e) => onValueChange(e.target.value)}
+          onFocus={() => setIsFrontmatterInputting(true)}
+          onBlur={(e) => {
+            setIsFrontmatterInputting(false)
+            onValueChange(e.target.value)
+          }}
           placeholder="Enter text"
           className="border-none shadow-none focus-visible:ring-0 focus:text-foreground"
         />
