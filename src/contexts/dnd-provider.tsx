@@ -135,6 +135,57 @@ export function DndProvider({ children }: DndProviderProps) {
               nextBlock: node.type !== editor.getType(KEYS.codeBlock),
             })
           }
+        } else if ('id' in activeData && activeData.id && overData.id) {
+          // Block-to-block drag and drop reordering
+          const sourceId = activeData.id
+          const targetId = overData.id
+
+          // Don't move if source and target are the same
+          if (sourceId === targetId) {
+            return
+          }
+
+          // Find source block
+          const sourceEntry = editor.api.node({
+            at: [],
+            block: true,
+            match: (n) => n.id === sourceId,
+          })
+
+          // Find target block
+          const targetEntry = editor.api.node({
+            at: [],
+            block: true,
+            match: (n) => n.id === targetId,
+          })
+
+          if (!sourceEntry || !targetEntry) {
+            return
+          }
+
+          const [, sourcePath] = sourceEntry
+          const [, targetPath] = targetEntry
+
+          // Don't move if paths are the same
+          if (PathApi.equals(sourcePath, targetPath)) {
+            return
+          }
+
+          // Check if target is a descendant of source (prevent moving parent into child)
+          // A path is a descendant if it starts with the parent path
+          const isDescendant =
+            targetPath.length > sourcePath.length &&
+            sourcePath.every((segment, index) => segment === targetPath[index])
+
+          if (isDescendant) {
+            return
+          }
+
+          // Move the source block to before the target block
+          editor.tf.moveNodes({
+            at: sourcePath,
+            to: targetPath,
+          })
         }
         return
       }

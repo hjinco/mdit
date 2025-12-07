@@ -1,4 +1,5 @@
-import { useDroppable } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { GripVertical } from 'lucide-react'
 import { isType, KEYS } from 'platejs'
 import {
   createPlatePlugin,
@@ -6,6 +7,7 @@ import {
   type RenderNodeWrapper,
 } from 'platejs/react'
 import { useMemo } from 'react'
+import { useFocusMode } from '@/contexts/focus-mode-context'
 import { cn } from '@/lib/utils'
 
 const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
@@ -34,8 +36,34 @@ export const BlockDraggable: RenderNodeWrapper = (props) => {
   return (props) => <Draggable {...props} />
 }
 
+function DragHandle({ elementId }: { elementId: string }) {
+  const { setNodeRef, attributes, listeners } = useDraggable({
+    id: `editor-${elementId}`,
+    data: { kind: 'editor', id: elementId },
+  })
+
+  const { isFocusMode } = useFocusMode()
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'absolute -left-6 top-2 flex h-full',
+        'opacity-0 transition-opacity group-hover:opacity-100',
+        'cursor-grab active:cursor-grabbing',
+        'text-muted-foreground hover:text-foreground',
+        isFocusMode && 'opacity-0 group-hover:opacity-0'
+      )}
+    >
+      <GripVertical className="size-4" />
+    </div>
+  )
+}
+
 function Draggable(props: PlateElementProps) {
-  const { setNodeRef, isOver: isOverDnd } = useDroppable({
+  const { setNodeRef: setDropRef, isOver: isOverDnd } = useDroppable({
     id: `editor-${props.element.id}`,
     data: { kind: 'editor', id: props.element.id },
   })
@@ -43,7 +71,8 @@ function Draggable(props: PlateElementProps) {
   const shouldHighlight = isOverDnd
 
   return (
-    <div ref={setNodeRef} className="relative">
+    <div ref={setDropRef} className="group relative">
+      <DragHandle elementId={props.element.id as string} />
       {shouldHighlight && (
         <div
           className={cn(
