@@ -70,6 +70,12 @@ function Draggable(props: PlateElementProps) {
 
   const shouldHighlight = isOverDnd
 
+  // If not the outermost node, render only children
+  if (props.path.length !== 1) {
+    return <>{props.children}</>
+  }
+
+  // For outermost nodes, render full wrapper with drag handle and drop zone
   return (
     <div ref={setDropRef} className="group relative">
       <DragHandle elementId={props.element.id as string} />
