@@ -146,6 +146,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
             historyIndex: newIndex,
           })
         }
+
+        // Save last opened note path to localStorage
+        try {
+          localStorage.setItem('last-opened-note', path)
+        } catch (error) {
+          console.debug('Failed to save last opened note:', error)
+        }
       }
     }
   },
