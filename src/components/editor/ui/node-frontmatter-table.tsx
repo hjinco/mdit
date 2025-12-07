@@ -283,6 +283,7 @@ function InlineEditableField({
           defaultValue={value}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
+              onCommit(inputRef.current!.value)
               setIsOpen(false)
             }
           }}
