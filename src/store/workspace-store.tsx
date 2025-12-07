@@ -19,6 +19,7 @@ import {
   normalizePathSeparators,
 } from '@/utils/path-utils'
 import { useAISettingsStore } from './ai-settings-store'
+import { LAST_OPENED_NOTE_KEY } from './constants'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import { useTagStore } from './tag-store'
@@ -124,6 +125,7 @@ type WorkspaceStore = {
   ) => Promise<string | null>
   moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
+  restoreLastOpenedNote: () => Promise<void>
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -241,8 +243,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             set({ isMigrationsComplete: false })
           }
         }
-        get().refreshWorkspaceEntries()
+        await get().refreshWorkspaceEntries()
         useTagStore.getState().loadTags(workspacePath)
+        await get().restoreLastOpenedNote()
       } else {
         set({ isMigrationsComplete: true })
         useTagStore.getState().loadTags(null)
@@ -318,7 +321,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           set({ isMigrationsComplete: false })
         }
       }
-      get().refreshWorkspaceEntries()
+      await get().refreshWorkspaceEntries()
       useTagStore.getState().loadTags(path)
       if (prevWorkspacePath && prevWorkspacePath !== path) {
         useTagStore.getState().invalidateTagCache()
@@ -1142,6 +1145,28 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (error) {
       // Silently fail if metadata cannot be retrieved
       console.debug('Failed to update entry modified date:', path, error)
+    }
+  },
+
+  restoreLastOpenedNote: async () => {
+    const workspacePath = get().workspacePath
+    if (!workspacePath) {
+      return
+    }
+
+    try {
+      const lastOpenedNotePath = localStorage.getItem(LAST_OPENED_NOTE_KEY)
+      if (
+        lastOpenedNotePath &&
+        isPathEqualOrDescendant(lastOpenedNotePath, workspacePath) &&
+        (await exists(lastOpenedNotePath)) &&
+        get().workspacePath === workspacePath
+      ) {
+        useTabStore.getState().openNote(lastOpenedNotePath)
+      }
+    } catch (error) {
+      // Silently fail if note doesn't exist or workspace doesn't match
+      console.debug('Failed to restore last opened note:', error)
     }
   },
 }))

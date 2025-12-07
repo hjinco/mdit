@@ -1,6 +1,7 @@
 import { readTextFile, rename as renameFile } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 import { getFileNameWithoutExtension } from '@/utils/path-utils'
+import { LAST_OPENED_NOTE_KEY } from './constants'
 
 let tabIdCounter = 0
 
@@ -145,6 +146,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
             history: newHistory,
             historyIndex: newIndex,
           })
+        }
+
+        // Save last opened note path to localStorage
+        try {
+          localStorage.setItem(LAST_OPENED_NOTE_KEY, path)
+        } catch (error) {
+          console.debug('Failed to save last opened note:', error)
         }
       }
     }
