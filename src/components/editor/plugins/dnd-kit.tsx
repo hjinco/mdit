@@ -53,7 +53,7 @@ function DragHandle({ elementId }: { elementId: string }) {
         'absolute -left-6 top-2 flex h-full',
         'opacity-0 transition-opacity group-hover:opacity-100',
         'cursor-grab active:cursor-grabbing',
-        'text-muted-foreground hover:text-foreground',
+        'text-muted-foreground hover:text-foreground z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0'
       )}
     >
