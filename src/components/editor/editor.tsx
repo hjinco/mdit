@@ -175,6 +175,8 @@ function EditorContent({
             'size-full px-8 pt-28 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-scale-scope'
           )}
           autoCapitalize="off"
+          autoCorrect="off"
+          autoComplete="off"
           spellCheck={false}
           disableDefaultStyles
           onBlur={() => {
