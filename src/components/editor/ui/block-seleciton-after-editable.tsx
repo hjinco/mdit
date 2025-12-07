@@ -397,12 +397,16 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 
         if (!Array.isArray(fragment) || fragment.length === 0) return
 
-        editor.getTransforms(BlockSelectionPlugin).blockSelection.select()
-        editor.tf.insertFragment(fragment as any)
-        editor.tf.focus()
+        const firstPath = removeSelectedBlocks()
+
+        if (firstPath) {
+          editor.tf.insertNodes(fragment, { at: firstPath })
+          editor.tf.select(firstPath, { edge: 'end' })
+          editor.tf.focus()
+        }
       }
     },
-    [editor]
+    [editor, removeSelectedBlocks]
   )
 
   if (!isMounted || typeof window === 'undefined') {
