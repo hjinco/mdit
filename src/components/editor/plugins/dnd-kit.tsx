@@ -9,6 +9,7 @@ import {
 import { useMemo } from 'react'
 import { useFocusMode } from '@/contexts/focus-mode-context'
 import { cn } from '@/lib/utils'
+import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
 
@@ -71,7 +72,7 @@ function Draggable(props: PlateElementProps) {
   const shouldHighlight = isOverDnd
 
   // If not the outermost node, render only children
-  if (props.path.length !== 1) {
+  if (props.path.length !== 1 || props.element.type === FRONTMATTER_KEY) {
     return <>{props.children}</>
   }
 
