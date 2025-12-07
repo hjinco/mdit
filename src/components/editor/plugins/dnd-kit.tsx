@@ -7,8 +7,8 @@ import {
   type RenderNodeWrapper,
 } from 'platejs/react'
 import { useMemo } from 'react'
-import { useFocusMode } from '@/contexts/focus-mode-context'
 import { cn } from '@/lib/utils'
+import { useEditorStore } from '@/store/editor-store'
 import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
@@ -43,7 +43,7 @@ function DragHandle({ elementId }: { elementId: string }) {
     data: { kind: 'editor', id: elementId },
   })
 
-  const { isFocusMode } = useFocusMode()
+  const isFocusMode = useEditorStore((s) => s.isFocusMode)
 
   return (
     <div
