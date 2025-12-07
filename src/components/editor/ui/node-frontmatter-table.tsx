@@ -285,39 +285,6 @@ function InlineEditableField({
             if (e.key === 'Enter') {
               setIsOpen(false)
             }
-
-            // Handle Select All (Ctrl+A / Cmd+A)
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
-              e.preventDefault()
-              e.stopPropagation()
-              inputRef.current?.select()
-            }
-
-            // Handle Cut (Ctrl+X / Cmd+X)
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'x') {
-              e.preventDefault()
-              e.stopPropagation()
-              const input = inputRef.current
-              if (
-                input &&
-                input.selectionStart !== null &&
-                input.selectionEnd !== null
-              ) {
-                const selectedText = input.value.substring(
-                  input.selectionStart,
-                  input.selectionEnd
-                )
-                if (selectedText) {
-                  navigator.clipboard.writeText(selectedText).then(() => {
-                    const newValue =
-                      input.value.substring(0, input.selectionStart!) +
-                      input.value.substring(input.selectionEnd!)
-                    input.value = newValue
-                    input.dispatchEvent(new Event('input', { bubbles: true }))
-                  })
-                }
-              }
-            }
           }}
           className="bg-background dark:bg-background text-foreground"
           autoFocus
