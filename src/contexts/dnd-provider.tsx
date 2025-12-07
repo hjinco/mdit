@@ -123,7 +123,10 @@ export function DndProvider({ children }: DndProviderProps) {
 
           let nextPath = path
           // Insert the image after the code block, not inside it.
-          if (node.type === editor.getType(KEYS.codeBlock)) {
+          if (
+            node.type === editor.getType(KEYS.codeBlock) ||
+            node.type === editor.getType(KEYS.table)
+          ) {
             nextPath = PathApi.next(path)
           }
 
@@ -132,7 +135,9 @@ export function DndProvider({ children }: DndProviderProps) {
               at: nextPath,
               // For other block types, `nextBlock: true` creates a new block for the image.
               // For code blocks, we've already moved to the next path, so we can insert directly.
-              nextBlock: node.type !== editor.getType(KEYS.codeBlock),
+              nextBlock:
+                node.type !== editor.getType(KEYS.codeBlock) &&
+                node.type !== editor.getType(KEYS.table),
             })
           }
         } else if ('id' in activeData && activeData.id && overData.id) {
