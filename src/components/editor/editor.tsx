@@ -184,6 +184,7 @@ function EditorContent({
             '[&_strong]:font-bold',
             'size-full px-8 pt-28 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/85 font-scale-scope'
           )}
+          placeholder="'/' for commands..."
           autoCapitalize="off"
           autoCorrect="off"
           autoComplete="off"
