@@ -212,16 +212,20 @@ export function ImageEditDialog() {
         options.format = format
       }
 
-      // Quality (only for JPEG)
-      if (
-        (format === 'jpeg' ||
-          (format === 'keep' &&
-            imageEditPath.toLowerCase().endsWith('.jpg'))) &&
-        quality
-      ) {
+      // Quality (for JPEG and WebP)
+      if (quality) {
         const qualityNum = Number.parseInt(quality, 10)
         if (qualityNum >= 0 && qualityNum <= 100) {
-          options.quality = qualityNum
+          const shouldApplyQuality =
+            format === 'jpeg' ||
+            format === 'webp' ||
+            (format === 'keep' &&
+              (imageEditPath.toLowerCase().endsWith('.jpg') ||
+                imageEditPath.toLowerCase().endsWith('.jpeg') ||
+                imageEditPath.toLowerCase().endsWith('.webp')))
+          if (shouldApplyQuality) {
+            options.quality = qualityNum
+          }
         }
       }
 
@@ -280,9 +284,19 @@ export function ImageEditDialog() {
     }
   }
 
-  const isJPEGFormat =
+  const isJPEGOrWebPFormat =
     format === 'jpeg' ||
-    (format === 'keep' && imageEditPath?.toLowerCase().endsWith('.jpg'))
+    format === 'webp' ||
+    (format === 'keep' &&
+      (imageEditPath?.toLowerCase().endsWith('.jpg') ||
+        imageEditPath?.toLowerCase().endsWith('.jpeg') ||
+        imageEditPath?.toLowerCase().endsWith('.webp')))
+
+  const qualityLabel =
+    format === 'webp' ||
+    (format === 'keep' && imageEditPath?.toLowerCase().endsWith('.webp'))
+      ? 'WebP Quality (0-100)'
+      : 'JPEG Quality (0-100)'
 
   return (
     <Dialog open={!!imageEditPath} onOpenChange={handleOpenChange}>
@@ -399,15 +413,14 @@ export function ImageEditDialog() {
                 <SelectItem value="keep">Keep original</SelectItem>
                 <SelectItem value="jpeg">JPEG</SelectItem>
                 <SelectItem value="png">PNG</SelectItem>
-                <SelectItem value="heic">HEIC</SelectItem>
-                <SelectItem value="tiff">TIFF</SelectItem>
                 <SelectItem value="webp">WebP</SelectItem>
+                <SelectItem value="avif">AVIF</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Quality Section (only for JPEG) */}
-          {isJPEGFormat && (
+          {/* Quality Section (for JPEG and WebP) */}
+          {isJPEGOrWebPFormat && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -417,7 +430,7 @@ export function ImageEditDialog() {
                     htmlFor="quality"
                     className="text-xs text-muted-foreground"
                   >
-                    JPEG Quality (0-100)
+                    {qualityLabel}
                   </Label>
                   <Input
                     id="quality"

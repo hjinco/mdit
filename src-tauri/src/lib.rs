@@ -1,4 +1,5 @@
 mod file_opener;
+mod image_processing;
 mod indexing;
 mod migrations;
 
@@ -104,6 +105,24 @@ async fn search_query_entries(
     .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn get_image_properties(path: String) -> Result<image_processing::ImageProperties, String> {
+    image_processing::get_image_properties(&path)
+}
+
+#[tauri::command]
+async fn edit_image(
+    input_path: String,
+    options: image_processing::ImageEditOptions,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        image_processing::edit_image(&input_path, options)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = file_opener::AppState::default();
@@ -129,7 +148,9 @@ pub fn run() {
             apply_workspace_migrations,
             index_workspace,
             get_indexing_meta,
-            search_query_entries
+            search_query_entries,
+            get_image_properties,
+            edit_image
         ])
         .manage(app_state)
         .build(tauri::generate_context!())
