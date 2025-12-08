@@ -49,11 +49,21 @@ function formatFileSize(bytes: number): string {
  * @returns File path with new extension
  */
 function replaceFileExtension(filePath: string, newExtension: string): string {
+  const lastSeparator = Math.max(
+    filePath.lastIndexOf('/'),
+    filePath.lastIndexOf('\\')
+  )
   const lastDotIndex = filePath.lastIndexOf('.')
-  if (lastDotIndex > 0) {
+  const basenameStart = lastSeparator + 1 // points to the first char of the filename
+
+  // Only treat the dot as an extension delimiter when:
+  // - it appears after the last path separator, and
+  // - it is not the leading character of the basename (so hidden files like ".env" are preserved)
+  if (lastDotIndex > basenameStart) {
     return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
   }
-  // If no extension found, just append the new extension
+
+  // If no valid extension is found, append the new one
   return `${filePath}.${newExtension}`
 }
 
