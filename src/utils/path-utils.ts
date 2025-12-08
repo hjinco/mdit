@@ -143,3 +143,76 @@ export const isPathInPaths = (path: string, targetPaths: string[]): boolean => {
 
   return false
 }
+
+/**
+ * Replaces the file extension with a new one.
+ * Handles both Windows (`\`) and Unix (`/`) path separators.
+ * Preserves hidden files (e.g., `.env`) by only treating dots after the basename start as extension delimiters.
+ *
+ * @param filePath - Original file path
+ * @param newExtension - New extension (without the dot, e.g., 'png', 'jpeg')
+ * @returns File path with new extension
+ *
+ * @example
+ * replaceFileExtension('C:\\Users\\file.txt', 'png') // 'C:\\Users\\file.png'
+ * replaceFileExtension('/home/user/archive.tar.gz', 'zip') // '/home/user/archive.tar.zip'
+ * replaceFileExtension('/home/user/file', 'txt') // '/home/user/file.txt'
+ */
+export const replaceFileExtension = (
+  filePath: string,
+  newExtension: string
+): string => {
+  const lastSeparator = Math.max(
+    filePath.lastIndexOf('/'),
+    filePath.lastIndexOf('\\')
+  )
+  const lastDotIndex = filePath.lastIndexOf('.')
+  const basenameStart = lastSeparator + 1 // points to the first char of the filename
+
+  // Only treat the dot as an extension delimiter when:
+  // - it appears after the last path separator, and
+  // - it is not the leading character of the basename (so hidden files like ".env" are preserved)
+  if (lastDotIndex > basenameStart) {
+    return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
+  }
+
+  // If no valid extension is found, append the new one
+  return `${filePath}.${newExtension}`
+}
+
+/**
+ * Splits a file path into its base path (without extension) and extension.
+ * Handles filenames with multiple dots and files without an extension.
+ * Handles both Windows (`\`) and Unix (`/`) path separators.
+ *
+ * @param filePath - The file path
+ * @returns Object with basePath and extension (null if no extension)
+ *
+ * @example
+ * getBasePathAndExtension('C:\\Users\\file.txt') // { basePath: 'C:\\Users\\file', extension: 'txt' }
+ * getBasePathAndExtension('/home/user/archive.tar.gz') // { basePath: '/home/user/archive.tar', extension: 'gz' }
+ * getBasePathAndExtension('/home/user/file') // { basePath: '/home/user/file', extension: null }
+ */
+export const getBasePathAndExtension = (
+  filePath: string
+): {
+  basePath: string
+  extension: string | null
+} => {
+  const lastSeparator = Math.max(
+    filePath.lastIndexOf('/'),
+    filePath.lastIndexOf('\\')
+  )
+  const basenameStart = lastSeparator + 1
+  const lastDotIndex = filePath.lastIndexOf('.')
+
+  const hasExtension = lastDotIndex > basenameStart
+  if (hasExtension) {
+    return {
+      basePath: filePath.slice(0, lastDotIndex),
+      extension: filePath.slice(lastDotIndex + 1),
+    }
+  }
+
+  return { basePath: filePath, extension: null }
+}

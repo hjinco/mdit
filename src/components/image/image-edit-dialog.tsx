@@ -26,46 +26,16 @@ import {
   SelectValue,
 } from '@/ui/select'
 import { Separator } from '@/ui/separator'
+import { formatFileSize } from '@/utils/format-utils'
+import {
+  getBasePathAndExtension,
+  replaceFileExtension,
+} from '@/utils/path-utils'
 import {
   executeSipsCommand,
   getImageProperties,
   type ImageFormat,
 } from './utils/image-process-utils'
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-/**
- * Replaces the file extension with a new one
- * @param filePath Original file path
- * @param newExtension New extension (without the dot, e.g., 'png', 'jpeg')
- * @returns File path with new extension
- */
-function replaceFileExtension(filePath: string, newExtension: string): string {
-  const lastSeparator = Math.max(
-    filePath.lastIndexOf('/'),
-    filePath.lastIndexOf('\\')
-  )
-  const lastDotIndex = filePath.lastIndexOf('.')
-  const basenameStart = lastSeparator + 1 // points to the first char of the filename
-
-  // Only treat the dot as an extension delimiter when:
-  // - it appears after the last path separator, and
-  // - it is not the leading character of the basename (so hidden files like ".env" are preserved)
-  if (lastDotIndex > basenameStart) {
-    return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
-  }
-
-  // If no valid extension is found, append the new one
-  return `${filePath}.${newExtension}`
-}
 
 export function ImageEditDialog() {
   const { imageEditPath, closeImageEdit } = useImageEditStore(
@@ -257,11 +227,18 @@ export function ImageEditDialog() {
 
       // Output path
       if (saveAsNewFile) {
-        // Generate new filename
-        const pathParts = imageEditPath.split('.')
-        const extension = format !== 'keep' ? format : (pathParts.at(-1) ?? '')
-        const basePath = pathParts.slice(0, -1).join('.')
-        options.outputPath = `${basePath}_edited.${extension}`
+        const { basePath, extension: currentExtension } =
+          getBasePathAndExtension(imageEditPath)
+        const fallbackExtension =
+          imageProperties?.format === 'jpg'
+            ? 'jpeg'
+            : (imageProperties?.format ?? null)
+        const extension =
+          format !== 'keep' ? format : (currentExtension ?? fallbackExtension)
+
+        options.outputPath = extension
+          ? `${basePath}_edited.${extension}`
+          : `${basePath}_edited`
       } else if (isFormatChanging) {
         // Format is changing and not saving as new file
         // Generate new filename with new extension
