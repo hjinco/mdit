@@ -14,7 +14,6 @@ import { useImageEditStore } from '@/store/image-edit-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
-import { isMac } from '@/utils/platform'
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
 
@@ -80,8 +79,8 @@ export const useFileExplorerMenus = ({
           })
         )
 
-        // Add image edit option for Mac
-        if (isMac() && isImageFile(entry.name)) {
+        // Add image edit option
+        if (isImageFile(entry.name)) {
           itemPromises.push(
             MenuItem.new({
               id: `edit-image-${entry.path}`,
