@@ -76,6 +76,7 @@ export function ImageEditDialog() {
   const [quality, setQuality] = useState<string>('80')
   const [saveAsNewFile, setSaveAsNewFile] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [imageProperties, setImageProperties] = useState<{
     width: number
     height: number
@@ -86,6 +87,7 @@ export function ImageEditDialog() {
 
   useEffect(() => {
     if (imageEditPath) {
+      setIsLoading(true)
       basename(imageEditPath).then(setFilename).catch(console.error)
       // Reset form
       setResizeWidth('')
@@ -97,21 +99,27 @@ export function ImageEditDialog() {
       setImageProperties(null)
       setFileSize(null)
 
-      // Fetch image properties
-      getImageProperties(imageEditPath)
-        .then(setImageProperties)
-        .catch((error) => {
-          console.error('Failed to get image properties:', error)
-        })
-
-      // Fetch file size
-      stat(imageEditPath)
-        .then((fileStat) => {
-          setFileSize(fileStat.size ?? null)
-        })
-        .catch((error) => {
-          console.error('Failed to get file size:', error)
-        })
+      // Fetch image properties and file size in parallel
+      Promise.all([
+        getImageProperties(imageEditPath)
+          .then(setImageProperties)
+          .catch((error) => {
+            console.error('Failed to get image properties:', error)
+            setImageProperties(null)
+          }),
+        stat(imageEditPath)
+          .then((fileStat) => {
+            setFileSize(fileStat.size ?? null)
+          })
+          .catch((error) => {
+            console.error('Failed to get file size:', error)
+            setFileSize(null)
+          }),
+      ]).finally(() => {
+        setIsLoading(false)
+      })
+    } else {
+      setIsLoading(false)
     }
   }, [imageEditPath])
 
@@ -299,7 +307,10 @@ export function ImageEditDialog() {
       : 'JPEG Quality (0-100)'
 
   return (
-    <Dialog open={!!imageEditPath} onOpenChange={handleOpenChange}>
+    <Dialog
+      open={!!imageEditPath && !isLoading}
+      onOpenChange={handleOpenChange}
+    >
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Image</DialogTitle>
