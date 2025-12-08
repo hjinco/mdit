@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { basename } from '@tauri-apps/api/path'
 import { stat } from '@tauri-apps/plugin-fs'
 import { useEffect, useRef, useState } from 'react'
@@ -39,6 +40,21 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1024).toFixed(1)} KB`
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/**
+ * Replaces the file extension with a new one
+ * @param filePath Original file path
+ * @param newExtension New extension (without the dot, e.g., 'png', 'jpeg')
+ * @returns File path with new extension
+ */
+function replaceFileExtension(filePath: string, newExtension: string): string {
+  const lastDotIndex = filePath.lastIndexOf('.')
+  if (lastDotIndex > 0) {
+    return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
+  }
+  // If no extension found, just append the new extension
+  return `${filePath}.${newExtension}`
 }
 
 export function ImageEditDialog() {
@@ -209,6 +225,14 @@ export function ImageEditDialog() {
         }
       }
 
+      // Detect format change
+      const normalizedOriginalFormat =
+        imageProperties?.format === 'jpg' ? 'jpeg' : imageProperties?.format
+      const isFormatChanging =
+        format !== 'keep' &&
+        imageProperties &&
+        normalizedOriginalFormat !== format
+
       // Output path
       if (saveAsNewFile) {
         // Generate new filename
@@ -216,9 +240,29 @@ export function ImageEditDialog() {
         const extension = format !== 'keep' ? format : (pathParts.at(-1) ?? '')
         const basePath = pathParts.slice(0, -1).join('.')
         options.outputPath = `${basePath}_edited.${extension}`
+      } else if (isFormatChanging) {
+        // Format is changing and not saving as new file
+        // Generate new filename with new extension
+        options.outputPath = replaceFileExtension(imageEditPath, format)
       }
 
       await executeSipsCommand(imageEditPath, options)
+
+      // If format changed and not saving as new file, delete the original
+      if (isFormatChanging && !saveAsNewFile) {
+        try {
+          await invoke('move_to_trash', { path: imageEditPath })
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : 'Failed to delete original file'
+          toast.error(
+            `Image converted but failed to delete original: ${errorMessage}`
+          )
+          console.error('Failed to delete original file:', error)
+        }
+      }
 
       toast.success('Image edited successfully')
 
