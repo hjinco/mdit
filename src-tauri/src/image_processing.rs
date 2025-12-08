@@ -85,18 +85,14 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
                 }
             }
         } else if let Some(w) = target_width {
-            // Only width specified - calculate height based on aspect ratio
+            // Only width specified, height is auto-calculated to maintain aspect ratio
             if w != width {
-                let aspect_ratio = height as f64 / width as f64;
-                let calculated_height = (w as f64 * aspect_ratio).round() as u32;
-                img = img.resize_exact(w, calculated_height, FilterType::Lanczos3);
+                img = img.resize(w, u32::MAX, FilterType::Lanczos3);
             }
         } else if let Some(h) = target_height {
-            // Only height specified - calculate width based on aspect ratio
+            // Only height specified, width is auto-calculated to maintain aspect ratio
             if h != height {
-                let aspect_ratio = width as f64 / height as f64;
-                let calculated_width = (h as f64 * aspect_ratio).round() as u32;
-                img = img.resize_exact(calculated_width, h, FilterType::Lanczos3);
+                img = img.resize(u32::MAX, h, FilterType::Lanczos3);
             }
         }
     }
