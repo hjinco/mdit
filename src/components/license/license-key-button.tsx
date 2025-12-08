@@ -14,10 +14,8 @@ export function LicenseKeyButton() {
   const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
 
   useEffect(() => {
-    // Check license when online
     if (navigator.onLine) {
       checkLicense()
-      return
     }
 
     // Listen to online event to check when connection is restored
