@@ -5,6 +5,7 @@ import {
   type SetStateAction,
   useCallback,
 } from 'react'
+import clipboard from 'tauri-plugin-clipboard-api'
 import {
   getRevealInFileManagerLabel,
   revealInFileManager,
@@ -12,6 +13,7 @@ import {
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
@@ -57,6 +59,8 @@ export const useFileExplorerMenus = ({
   unpinDirectory,
 }: UseFileExplorerMenusProps) => {
   const openImageEdit = useImageEditStore((state) => state.openImageEdit)
+  const copyEntry = useWorkspaceStore((state) => state.copyEntry)
+
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
       try {
@@ -139,6 +143,18 @@ export const useFileExplorerMenus = ({
           })
         )
 
+        if (selectionPaths.length > 0) {
+          itemPromises.push(
+            MenuItem.new({
+              id: `copy-${entry.path}`,
+              text: 'Copy',
+              action: async () => {
+                await clipboard.writeFiles(selectionPaths)
+              },
+            })
+          )
+        }
+
         itemPromises.push(
           MenuItem.new({
             id: `delete-${entry.path}`,
@@ -177,6 +193,15 @@ export const useFileExplorerMenus = ({
       const directoryPath = directoryEntry.path
       const normalizedDirectoryPath = normalizePathSeparators(directoryPath)
       const isPinned = pinnedDirectories.includes(normalizedDirectoryPath)
+
+      // Check if clipboard contains files
+      let clipboardFiles: string[] = []
+      try {
+        clipboardFiles = (await clipboard.readFiles()) || []
+      } catch (_e) {
+        // Silently fail if clipboard read fails
+      }
+
       try {
         const items = [
           await MenuItem.new({
@@ -207,6 +232,46 @@ export const useFileExplorerMenus = ({
             text: 'Separator',
             item: 'Separator',
           }),
+        ]
+
+        // Add Copy menu item if items are selected
+        if (selectionPaths.length > 0) {
+          items.push(
+            await MenuItem.new({
+              id: `copy-directory-${normalizedDirectoryPath}`,
+              text: 'Copy',
+              action: async () => {
+                await clipboard.writeFiles(selectionPaths)
+              },
+            })
+          )
+        }
+
+        // Add Paste menu item if clipboard contains files
+        if (clipboardFiles.length > 0) {
+          items.push(
+            await MenuItem.new({
+              id: `paste-directory-${normalizedDirectoryPath}`,
+              text: 'Paste',
+              action: async () => {
+                const files = await clipboard.readFiles()
+                if (!files || files.length === 0) {
+                  return
+                }
+
+                for (const filePath of files) {
+                  await copyEntry(filePath, directoryPath)
+                }
+              },
+            })
+          )
+        }
+
+        items.push(
+          await PredefinedMenuItem.new({
+            text: 'Separator',
+            item: 'Separator',
+          }),
           await MenuItem.new({
             id: `pin-directory-${normalizedDirectoryPath}`,
             text: isPinned ? 'Unpin' : 'Pin',
@@ -217,8 +282,8 @@ export const useFileExplorerMenus = ({
                 await pinDirectory(normalizedDirectoryPath)
               }
             },
-          }),
-        ]
+          })
+        )
 
         if (!workspacePath || directoryPath !== workspacePath) {
           items.push(
@@ -265,6 +330,7 @@ export const useFileExplorerMenus = ({
       pinnedDirectories,
       pinDirectory,
       unpinDirectory,
+      copyEntry,
     ]
   )
 

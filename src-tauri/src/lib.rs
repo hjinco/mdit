@@ -3,6 +3,7 @@ mod image_processing;
 mod indexing;
 mod migrations;
 
+use std::fs;
 use std::fs::File;
 use std::io::Read;
 use tauri::Manager;
@@ -106,6 +107,13 @@ async fn search_query_entries(
 }
 
 #[tauri::command]
+fn copy_file(source_path: String, destination_path: String) -> Result<(), String> {
+    fs::copy(&source_path, &destination_path)
+        .map_err(|e| format!("Failed to copy file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
 fn get_image_properties(path: String) -> Result<image_processing::ImageProperties, String> {
     image_processing::get_image_properties(&path)
 }
@@ -142,6 +150,7 @@ pub fn run() {
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
             file_opener::get_opened_files,
+            copy_file,
             move_to_trash,
             move_many_to_trash,
             get_note_preview,
