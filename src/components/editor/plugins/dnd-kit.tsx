@@ -51,14 +51,14 @@ function DragHandle({ elementId }: { elementId: string }) {
       {...attributes}
       {...listeners}
       className={cn(
-        'absolute -left-6 top-2 flex h-full',
+        'absolute -left-6 top-1 flex py-1 rounded-xs',
         'opacity-0 transition-opacity group-hover:opacity-100',
         'cursor-grab active:cursor-grabbing',
-        'text-muted-foreground hover:text-foreground z-50',
+        'text-muted-foreground hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0'
       )}
     >
-      <GripVertical className="size-4" />
+      <GripVertical className="size-4.5" />
     </div>
   )
 }

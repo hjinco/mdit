@@ -402,7 +402,7 @@ export function FileExplorer() {
             : { width: { type: 'spring', bounce: 0, duration: 0.12 } }
         }
       >
-        <div className="flex items-center px-2 gap-1 mt-12">
+        <div className="flex items-center px-2 gap-1 mt-12 mb-0.5">
           <WorkspaceDropdown
             workspacePath={workspacePath}
             recentWorkspacePaths={recentWorkspacePaths}
