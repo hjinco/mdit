@@ -1,6 +1,6 @@
 import { Command } from '@tauri-apps/plugin-shell'
 
-export type ImageFormat = 'jpeg' | 'png' | 'heic' | 'tiff' | 'webp'
+export type ImageFormat = 'jpeg' | 'png' | 'webp'
 
 export type ImageProperties = {
   width: number
@@ -117,6 +117,7 @@ export async function executeSipsCommand(
   args.push(inputPath)
 
   try {
+    console.log('Executing sips command:', args)
     const command = Command.create('sips', args)
     const result = await command.execute()
 

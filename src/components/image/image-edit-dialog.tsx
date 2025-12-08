@@ -30,7 +30,7 @@ import {
   executeSipsCommand,
   getImageProperties,
   type ImageFormat,
-} from './image-utils'
+} from './utils/image-process-utils'
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
