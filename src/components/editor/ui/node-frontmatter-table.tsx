@@ -284,6 +284,7 @@ function InlineEditableField({
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               onCommit(inputRef.current!.value)
+              setIsFrontmatterInputting(false)
               setIsOpen(false)
             }
           }}
