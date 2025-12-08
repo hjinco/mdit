@@ -311,7 +311,7 @@ export function ImageEditDialog() {
       open={!!imageEditPath && !isLoading}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" disableFadeAnimation>
         <DialogHeader>
           <DialogTitle>Edit Image</DialogTitle>
           <DialogDescription>
