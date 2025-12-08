@@ -46,7 +46,7 @@ export async function getImageProperties(
  * @param options Image editing options
  * @returns Promise that resolves to the output path
  */
-export async function executeSipsCommand(
+export async function editImage(
   inputPath: string,
   options: ImageEditOptions
 ): Promise<string> {

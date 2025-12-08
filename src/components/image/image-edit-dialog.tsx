@@ -32,7 +32,7 @@ import {
   replaceFileExtension,
 } from '@/utils/path-utils'
 import {
-  executeSipsCommand,
+  editImage,
   getImageProperties,
   type ImageFormat,
 } from './utils/image-process-utils'
@@ -160,7 +160,7 @@ export function ImageEditDialog() {
     setIsProcessing(true)
 
     try {
-      const options: Parameters<typeof executeSipsCommand>[1] = {}
+      const options: Parameters<typeof editImage>[1] = {}
 
       // Resize options
       if (resizeWidth || resizeHeight) {
@@ -245,7 +245,7 @@ export function ImageEditDialog() {
         options.outputPath = replaceFileExtension(imageEditPath, format)
       }
 
-      await executeSipsCommand(imageEditPath, options)
+      await editImage(imageEditPath, options)
 
       // If format changed and not saving as new file, delete the original
       if (isFormatChanging && !saveAsNewFile) {
