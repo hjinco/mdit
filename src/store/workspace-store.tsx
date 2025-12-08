@@ -1176,38 +1176,27 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const sourceStat = await stat(sourcePath)
     const isDirectory = sourceStat.isDirectory
 
-    if (isDirectory) {
-      // Recursively copy directory
-      await mkdir(newPath, { recursive: true })
-      const entries = await readDir(sourcePath)
+    await invoke('copy', {
+      sourcePath,
+      destinationPath: newPath,
+    })
 
-      for (const entry of entries) {
-        const sourceEntryPath = await join(sourcePath, entry.name)
-        await get().copyEntry(sourceEntryPath, newPath)
-      }
-    } else {
-      // Copy file using Rust command (handles both binary and text files)
-      await invoke('copy_file', {
-        sourcePath,
-        destinationPath: newPath,
-      })
+    // Handle markdown link rewriting for markdown files
+    if (fileName.endsWith('.md')) {
+      const sourceDirectory = await dirname(sourcePath)
+      if (sourceDirectory !== destinationPath) {
+        const content = await readTextFile(newPath)
+        const updatedContent = rewriteMarkdownRelativeLinks(
+          content,
+          sourceDirectory,
+          destinationPath
+        )
 
-      // Handle markdown link rewriting for markdown files
-      if (fileName.endsWith('.md')) {
-        const sourceDirectory = await dirname(sourcePath)
-        if (sourceDirectory !== destinationPath) {
-          const content = await readTextFile(newPath)
-          const updatedContent = rewriteMarkdownRelativeLinks(
-            content,
-            sourceDirectory,
-            destinationPath
-          )
-
-          if (updatedContent !== content) {
-            await writeTextFile(newPath, updatedContent)
-          }
+        if (updatedContent !== content) {
+          await writeTextFile(newPath, updatedContent)
         }
       }
+      // }
     }
 
     // Fetch file metadata
@@ -1240,9 +1229,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
     })
 
-    await get().refreshWorkspaceEntries()
-
     if (isDirectory) {
+      await get().refreshWorkspaceEntries()
       // Expand destination directory and the newly copied folder (if it's a directory)
       const updatedExpandedDirectories: Record<string, boolean> = {
         ...get().expandedDirectories,

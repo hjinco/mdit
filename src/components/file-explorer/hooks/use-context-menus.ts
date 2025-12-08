@@ -254,12 +254,11 @@ export const useFileExplorerMenus = ({
               id: `paste-directory-${normalizedDirectoryPath}`,
               text: 'Paste',
               action: async () => {
-                const files = await clipboard.readFiles()
-                if (!files || files.length === 0) {
+                if (!clipboardFiles || clipboardFiles.length === 0) {
                   return
                 }
 
-                for (const filePath of files) {
+                for (const filePath of clipboardFiles) {
                   await copyEntry(filePath, directoryPath)
                 }
               },
