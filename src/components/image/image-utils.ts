@@ -2,6 +2,12 @@ import { Command } from '@tauri-apps/plugin-shell'
 
 export type ImageFormat = 'jpeg' | 'png' | 'heic' | 'tiff' | 'webp'
 
+export type ImageProperties = {
+  width: number
+  height: number
+  format: string
+}
+
 export type ImageEditOptions = {
   resize?: {
     width?: number
@@ -11,6 +17,58 @@ export type ImageEditOptions = {
   format?: ImageFormat
   quality?: number // 0-100, only for JPEG
   outputPath?: string // If not provided, overwrites original
+}
+
+// Regex patterns for parsing sips output
+const PIXEL_WIDTH_REGEX = /pixelWidth:\s*(\d+)/
+const PIXEL_HEIGHT_REGEX = /pixelHeight:\s*(\d+)/
+const FORMAT_REGEX = /format:\s*(\w+)/
+
+/**
+ * Gets image properties (dimensions and format) using sips command
+ * @param imagePath Path to the image file
+ * @returns Promise that resolves to image properties
+ */
+export async function getImageProperties(
+  imagePath: string
+): Promise<ImageProperties> {
+  try {
+    const command = Command.create('sips', [
+      '-g',
+      'pixelWidth',
+      '-g',
+      'pixelHeight',
+      '-g',
+      'format',
+      imagePath,
+    ])
+    const result = await command.execute()
+
+    if (result.code !== 0) {
+      const errorMessage = result.stderr || 'Unknown error occurred'
+      throw new Error(`sips command failed: ${errorMessage}`)
+    }
+
+    const output = result.stdout
+    const widthMatch = output.match(PIXEL_WIDTH_REGEX)
+    const heightMatch = output.match(PIXEL_HEIGHT_REGEX)
+    const formatMatch = output.match(FORMAT_REGEX)
+
+    if (!widthMatch || !heightMatch || !formatMatch) {
+      throw new Error('Failed to parse image properties from sips output')
+    }
+
+    return {
+      width: Number.parseInt(widthMatch[1], 10),
+      height: Number.parseInt(heightMatch[1], 10),
+      format: formatMatch[1].toLowerCase(),
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(`Failed to get image properties: ${String(error)}`)
+  }
 }
 
 /**
