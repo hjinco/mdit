@@ -4,7 +4,8 @@ import { CollectionView } from './components/collection-view/collection-view'
 import { CommandMenu } from './components/command-menu/command-menu'
 import { Editor } from './components/editor/editor'
 import { FileExplorer } from './components/file-explorer/file-explorer'
-import { ImagePreviewDialog } from './components/image-preview/image-preview-dialog'
+import { ImageEditDialog } from './components/image/image-edit-dialog'
+import { ImagePreviewDialog } from './components/image/image-preview-dialog'
 import { LicenseKeyButton } from './components/license/license-key-button'
 import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
@@ -77,6 +78,7 @@ export function App() {
       <SettingsDialog />
       <CommandMenu />
       <ImagePreviewDialog />
+      <ImageEditDialog />
     </ScreenCaptureProvider>
   )
 }

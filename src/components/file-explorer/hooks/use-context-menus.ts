@@ -10,8 +10,11 @@ import {
   revealInFileManager,
 } from '@/components/file-explorer/utils/file-manager'
 import type { ChatConfig } from '@/store/ai-settings-store'
+import { useImageEditStore } from '@/store/image-edit-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
+import { isMac } from '@/utils/platform'
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
 
@@ -54,6 +57,7 @@ export const useFileExplorerMenus = ({
   pinDirectory,
   unpinDirectory,
 }: UseFileExplorerMenusProps) => {
+  const openImageEdit = useImageEditStore((state) => state.openImageEdit)
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
       try {
@@ -75,6 +79,25 @@ export const useFileExplorerMenus = ({
             item: 'Separator',
           })
         )
+
+        // Add image edit option for Mac
+        if (isMac() && isImageFile(entry.name)) {
+          itemPromises.push(
+            MenuItem.new({
+              id: `edit-image-${entry.path}`,
+              text: 'Edit Image',
+              action: async () => {
+                openImageEdit(entry.path)
+              },
+            })
+          )
+          itemPromises.push(
+            PredefinedMenuItem.new({
+              text: 'Separator',
+              item: 'Separator',
+            })
+          )
+        }
 
         if (entry.name.toLowerCase().endsWith('.md')) {
           itemPromises.push(
@@ -146,6 +169,7 @@ export const useFileExplorerMenus = ({
       renameConfig,
       renameNoteWithAI,
       setAiRenamingEntryPaths,
+      openImageEdit,
     ]
   )
 

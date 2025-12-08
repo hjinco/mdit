@@ -39,7 +39,8 @@
         { "cmd": "findstr", "name": "findstr", "args": true },
         { "cmd": "open", "name": "open", "args": true },
         { "cmd": "xdg-open", "name": "xdg-open", "args": true },
-        { "cmd": "explorer.exe", "name": "explorer.exe", "args": true }
+        { "cmd": "explorer.exe", "name": "explorer.exe", "args": true },
+        { "cmd": "sips", "name": "sips", "args": true }
       ]
     }
   ]
