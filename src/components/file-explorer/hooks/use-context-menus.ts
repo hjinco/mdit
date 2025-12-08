@@ -18,6 +18,11 @@ import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
+const REVEAL_ACCELERATOR = 'CmdOrCtrl+Alt+R'
+const DELETE_ACCELERATOR =
+  typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
+    ? 'Backspace'
+    : 'Delete'
 
 type UseFileExplorerMenusProps = {
   renameConfig: ChatConfig | null
@@ -70,6 +75,7 @@ export const useFileExplorerMenus = ({
           MenuItem.new({
             id: `reveal-${entry.path}`,
             text: REVEAL_LABEL,
+            accelerator: REVEAL_ACCELERATOR,
             action: async () => {
               await revealInFileManager(entry.path, entry.isDirectory)
             },
@@ -148,6 +154,7 @@ export const useFileExplorerMenus = ({
             MenuItem.new({
               id: `copy-${entry.path}`,
               text: 'Copy',
+              accelerator: 'CmdOrCtrl+C',
               action: async () => {
                 await clipboard.writeFiles(selectionPaths)
               },
@@ -159,6 +166,7 @@ export const useFileExplorerMenus = ({
           MenuItem.new({
             id: `delete-${entry.path}`,
             text: 'Delete',
+            accelerator: DELETE_ACCELERATOR,
             action: async () => {
               const targets =
                 selectionPaths.length > 0 ? selectionPaths : [entry.path]
@@ -224,6 +232,7 @@ export const useFileExplorerMenus = ({
           await MenuItem.new({
             id: `reveal-directory-${normalizedDirectoryPath}`,
             text: REVEAL_LABEL,
+            accelerator: REVEAL_ACCELERATOR,
             action: async () => {
               await revealInFileManager(directoryPath, true)
             },
@@ -240,6 +249,7 @@ export const useFileExplorerMenus = ({
             await MenuItem.new({
               id: `copy-directory-${normalizedDirectoryPath}`,
               text: 'Copy',
+              accelerator: 'CmdOrCtrl+C',
               action: async () => {
                 await clipboard.writeFiles(selectionPaths)
               },
@@ -253,11 +263,8 @@ export const useFileExplorerMenus = ({
             await MenuItem.new({
               id: `paste-directory-${normalizedDirectoryPath}`,
               text: 'Paste',
+              accelerator: 'CmdOrCtrl+V',
               action: async () => {
-                if (!clipboardFiles || clipboardFiles.length === 0) {
-                  return
-                }
-
                 for (const filePath of clipboardFiles) {
                   await copyEntry(filePath, directoryPath)
                 }
@@ -301,6 +308,7 @@ export const useFileExplorerMenus = ({
             await MenuItem.new({
               id: `delete-directory-${directoryPath}`,
               text: 'Delete',
+              accelerator: DELETE_ACCELERATOR,
               action: async () => {
                 const targets =
                   selectionPaths.length > 0 ? selectionPaths : [directoryPath]

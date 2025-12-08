@@ -1196,7 +1196,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           await writeTextFile(newPath, updatedContent)
         }
       }
-      // }
     }
 
     // Fetch file metadata

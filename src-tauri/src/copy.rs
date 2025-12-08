@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 fn copy_recursive(source: &Path, destination: &Path) -> Result<(), std::io::Error> {
-    let metadata = fs::symlink_metadata(source)?;
+      let metadata = fs::metadata(source)?;
 
     if metadata.is_dir() {
         fs::create_dir_all(destination)?;
