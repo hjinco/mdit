@@ -124,6 +124,7 @@ type WorkspaceStore = {
     newName: string
   ) => Promise<string | null>
   moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
+  copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
 }
@@ -1125,6 +1126,122 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       console.error('Failed to move entry:', sourcePath, destinationPath, error)
       return false
     }
+  },
+
+  copyEntry: async (sourcePath: string, destinationPath: string) => {
+    const workspacePath = get().workspacePath
+
+    // Validation 1: Check if workspace is set
+    if (!workspacePath) {
+      return false
+    }
+
+    // Validation 2: Prevent copying to itself
+    if (sourcePath === destinationPath) {
+      return false
+    }
+
+    // Validation 3: Ensure destination is within workspace (source can be external)
+    const destinationInWorkspace = isPathEqualOrDescendant(
+      destinationPath,
+      workspacePath
+    )
+
+    if (!destinationInWorkspace) {
+      return false
+    }
+
+    // Get the file/folder name from source path
+    const fileName = getFileNameFromPath(sourcePath)
+    if (!fileName) {
+      return false
+    }
+
+    // Construct the new path with auto-rename if needed
+    let newPath = await join(destinationPath, fileName)
+    let attempt = 0
+    while (await exists(newPath)) {
+      attempt += 1
+      const extIndex = fileName.lastIndexOf('.')
+      if (extIndex > 0) {
+        const baseName = fileName.slice(0, extIndex)
+        const ext = fileName.slice(extIndex)
+        newPath = await join(destinationPath, `${baseName} (${attempt})${ext}`)
+      } else {
+        newPath = await join(destinationPath, `${fileName} (${attempt})`)
+      }
+    }
+
+    // Check if source is a directory
+    const sourceStat = await stat(sourcePath)
+    const isDirectory = sourceStat.isDirectory
+
+    await invoke('copy', {
+      sourcePath,
+      destinationPath: newPath,
+    })
+
+    // Handle markdown link rewriting for markdown files
+    if (fileName.endsWith('.md')) {
+      const sourceDirectory = await dirname(sourcePath)
+      if (sourceDirectory !== destinationPath) {
+        const content = await readTextFile(newPath)
+        const updatedContent = rewriteMarkdownRelativeLinks(
+          content,
+          sourceDirectory,
+          destinationPath
+        )
+
+        if (updatedContent !== content) {
+          await writeTextFile(newPath, updatedContent)
+        }
+      }
+    }
+
+    // Fetch file metadata
+    const fileMetadata: { createdAt?: Date; modifiedAt?: Date } = {}
+    const statResult = await stat(newPath)
+    if (statResult.birthtime) {
+      fileMetadata.createdAt = new Date(statResult.birthtime)
+    }
+    if (statResult.mtime) {
+      fileMetadata.modifiedAt = new Date(statResult.mtime)
+    }
+
+    // Update workspace entries state
+    const newFileName = getFileNameFromPath(newPath) ?? fileName
+    const newFileEntry: WorkspaceEntry = {
+      path: newPath,
+      name: newFileName,
+      isDirectory,
+      ...fileMetadata,
+    }
+
+    set((state) => {
+      const updatedEntries =
+        destinationPath === workspacePath
+          ? sortWorkspaceEntries([...state.entries, newFileEntry])
+          : addEntryToState(state.entries, destinationPath, newFileEntry)
+
+      return {
+        entries: updatedEntries,
+      }
+    })
+
+    if (isDirectory) {
+      await get().refreshWorkspaceEntries()
+      // Expand destination directory and the newly copied folder (if it's a directory)
+      const updatedExpandedDirectories: Record<string, boolean> = {
+        ...get().expandedDirectories,
+        [destinationPath]: true,
+        [newPath]: true,
+      }
+      set({
+        expandedDirectories: updatedExpandedDirectories,
+      })
+    }
+
+    return true
   },
 
   updateEntryModifiedDate: async (path: string) => {

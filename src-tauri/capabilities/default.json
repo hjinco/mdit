@@ -17,6 +17,7 @@
     "fs:read-all",
     "fs:write-all",
     "clipboard:read-all",
+    "clipboard:write-all",
     "window-state:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",

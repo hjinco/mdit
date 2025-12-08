@@ -1,3 +1,4 @@
+mod copy;
 mod file_opener;
 mod image_processing;
 mod indexing;
@@ -142,6 +143,7 @@ pub fn run() {
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
             file_opener::get_opened_files,
+            copy::copy,
             move_to_trash,
             move_many_to_trash,
             get_note_preview,
