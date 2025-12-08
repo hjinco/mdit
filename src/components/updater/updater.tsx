@@ -66,14 +66,14 @@ export function Updater() {
     // Check immediately on mount
     checkForUpdates()
 
-    // Then check every 1 minute (only if not dismissed)
+    // Then check every 5 minutes (only if not dismissed)
     const intervalId = setInterval(() => {
       if (dismissedRef.current) {
         clearInterval(intervalId)
         return
       }
       checkForUpdates()
-    }, 60_000)
+    }, 5 * 60_000)
 
     // Cleanup interval on unmount
     return () => {
