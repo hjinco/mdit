@@ -151,17 +151,31 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
     } else if output_format == ImageFormat::WebP && options.quality.is_some() {
         // Use custom WebP quality with webp crate for lossy encoding
         let quality = options.quality.unwrap();
-        let rgb_img = img.to_rgb8();
         
         // Convert quality from 0-100 to 0.0-100.0 for webp crate
         let quality_f32 = quality as f32;
-        
-        // Encode with webp crate
-        let encoder: Encoder = Encoder::from_rgb(rgb_img.as_raw(), rgb_img.width(), rgb_img.height());
-        let webp: WebPMemory = encoder.encode(quality_f32);
+
+        // Encode with webp crate, preserving alpha when present
+        let webp_memory: WebPMemory = if img.color().has_alpha() {
+            let rgba_img = img.to_rgba8();
+            let encoder = Encoder::from_rgba(
+                rgba_img.as_raw(),
+                rgba_img.width(),
+                rgba_img.height(),
+            );
+            encoder.encode(quality_f32)
+        } else {
+            let rgb_img = img.to_rgb8();
+            let encoder = Encoder::from_rgb(
+                rgb_img.as_raw(),
+                rgb_img.width(),
+                rgb_img.height(),
+            );
+            encoder.encode(quality_f32)
+        };
         
         // Write to file (WebPMemory implements Deref to &[u8])
-        std::fs::write(output_path_buf, &*webp)
+        std::fs::write(output_path_buf, &*webp_memory)
             .map_err(|e| format!("Failed to write WebP file: {}", e))?;
     } else {
         // Use save_with_format to ensure correct format is used
