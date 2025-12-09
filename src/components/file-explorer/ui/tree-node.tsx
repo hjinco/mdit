@@ -326,12 +326,11 @@ export function TreeNode({
             setDroppableRef(node)
             externalDropRef(node)
           }}
-          className={cn(
-            'rounded-sm transition-colors',
-            isOver &&
-              'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
-          )}
+          className="relative rounded-sm"
         >
+          {isOver && (
+            <div className="absolute inset-0 z-10 rounded-sm bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600 pointer-events-none" />
+          )}
           <div className="flex items-center">
             <button
               ref={handleButtonRef}
