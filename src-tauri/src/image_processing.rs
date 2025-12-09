@@ -108,7 +108,9 @@ mod macos_heic {
             CGRect::new(&CGPoint::new(0.0, 0.0), &CGSize::new(width as f64, height as f64));
         context.draw_image(rect, &cg_image);
 
-        let rgba = RgbaImage::from_raw(width as u32, height as u32, buf)
+        let width_u32 = width.try_into().map_err(|_| format!("Image width {} is too large and exceeds u32::MAX", width))?;
+        let height_u32 = height.try_into().map_err(|_| format!("Image height {} is too large and exceeds u32::MAX", height))?;
+        let rgba = RgbaImage::from_raw(width_u32, height_u32, buf)
             .ok_or_else(|| "Failed to convert HEIC buffer to image".to_string())?;
 
         Ok(DynamicImage::ImageRgba8(rgba))
