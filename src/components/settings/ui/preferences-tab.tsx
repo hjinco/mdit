@@ -1,5 +1,6 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/contexts/theme-context'
+import { useMDXSettingsStore } from '@/store/mdx-settings-store'
 import {
   Field,
   FieldContent,
@@ -16,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
+import { Switch } from '@/ui/switch'
 
 export function PreferencesTab() {
   const { theme, setTheme } = useTheme()
+  const { isMDXEnabled, setMDXEnabled } = useMDXSettingsStore()
 
   const themeOptions: Array<{
     value: 'light' | 'dark' | 'system'
@@ -61,6 +64,16 @@ export function PreferencesTab() {
                 ))}
               </SelectContent>
             </Select>
+          </Field>
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldLabel>MDX Mode</FieldLabel>
+              <FieldDescription>
+                Enable MDX mode. MDX blocks are saved as JSX components like{' '}
+                <code>&lt;toc /&gt;</code>
+              </FieldDescription>
+            </FieldContent>
+            <Switch checked={isMDXEnabled} onCheckedChange={setMDXEnabled} />
           </Field>
         </FieldGroup>
       </FieldSet>

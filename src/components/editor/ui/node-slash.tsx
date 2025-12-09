@@ -25,6 +25,7 @@ import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
+import { useMDXSettingsStore } from '@/store/mdx-settings-store'
 import { useTabStore } from '@/store/tab-store'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
@@ -446,6 +447,7 @@ export function SlashInputElement(
   props: PlateElementProps<TComboboxInputElement>
 ) {
   const { editor, element } = props
+  const isMDXEnabled = useMDXSettingsStore((state) => state.isMDXEnabled)
 
   return (
     <PlateElement {...props} as="span">
@@ -457,28 +459,48 @@ export function SlashInputElement(
 
           {groups
             .filter(({ shouldHide }) => !shouldHide?.(editor))
-            .map(({ group, items }) => (
-              <InlineComboboxGroup key={group}>
-                <InlineComboboxGroupLabel>{group}</InlineComboboxGroupLabel>
+            .map(({ group, items }) => {
+              const filteredItems = items.filter((item) => {
+                if (isMDXEnabled) {
+                  return true
+                }
+                if (item.value === KEYS.callout || item.value === KEYS.toc) {
+                  return false
+                }
+                return true
+              })
 
-                {items.map(
-                  ({ focusEditor, icon, keywords, label, value, onSelect }) => (
-                    <InlineComboboxItem
-                      key={value}
-                      value={value}
-                      onClick={() => onSelect(editor, value)}
-                      label={label}
-                      focusEditor={focusEditor}
-                      group={group}
-                      keywords={keywords}
-                    >
-                      <div className="mr-2 text-muted-foreground">{icon}</div>
-                      {label ?? value}
-                    </InlineComboboxItem>
-                  )
-                )}
-              </InlineComboboxGroup>
-            ))}
+              return (
+                <InlineComboboxGroup key={group}>
+                  <InlineComboboxGroupLabel>{group}</InlineComboboxGroupLabel>
+
+                  {filteredItems.map(
+                    ({
+                      focusEditor,
+                      icon,
+                      keywords,
+                      label,
+                      value,
+                      onSelect,
+                    }) => (
+                      <InlineComboboxItem
+                        key={value}
+                        value={value}
+                        onClick={() => onSelect(editor, value)}
+                        label={label}
+                        focusEditor={focusEditor}
+                        group={group}
+                        keywords={keywords}
+                      >
+                        <div className="mr-2 text-muted-foreground">{icon}</div>
+                        {label ?? value}
+                      </InlineComboboxItem>
+                    )
+                  )}
+                </InlineComboboxGroup>
+              )
+            })
+            .filter(Boolean)}
         </InlineComboboxContent>
       </InlineCombobox>
 
