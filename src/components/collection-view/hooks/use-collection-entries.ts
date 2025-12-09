@@ -1,54 +1,14 @@
-import { useEffect, useMemo } from 'react'
-import { useIndexingStore } from '@/store/indexing-store'
-import { useTagStore } from '@/store/tag-store'
+import { useMemo } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
 export function useCollectionEntries(
   currentCollectionPath: string | null,
   entries: WorkspaceEntry[],
   workspacePath: string | null
-): { entries: WorkspaceEntry[]; isLoadingTagEntries: boolean } {
-  const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
-  const indexingConfig = useIndexingStore((state) =>
-    workspacePath ? (state.configs[workspacePath] ?? null) : null
-  )
-  const embeddingProvider = indexingConfig?.embeddingProvider ?? ''
-  const embeddingModel = indexingConfig?.embeddingModel ?? ''
-  const tagEntries = useTagStore((state) => state.tagEntries)
-  const isLoadingTagEntries = useTagStore((state) => state.isLoadingTagEntries)
-  const loadTagEntries = useTagStore((state) => state.loadTagEntries)
-
-  useEffect(() => {
-    if (workspacePath) {
-      getIndexingConfig(workspacePath).catch((error) => {
-        console.error('Failed to load indexing config:', error)
-      })
-    }
-  }, [workspacePath, getIndexingConfig])
-
-  useEffect(() => {
-    loadTagEntries(
-      currentCollectionPath,
-      workspacePath,
-      embeddingProvider,
-      embeddingModel
-    )
-  }, [
-    currentCollectionPath,
-    workspacePath,
-    embeddingProvider,
-    embeddingModel,
-    loadTagEntries,
-  ])
-
-  const computedEntries = useMemo(() => {
+) {
+  return useMemo(() => {
     if (!currentCollectionPath) {
       return []
-    }
-
-    // Handle tag path: when currentCollectionPath starts with "#", it's a tag
-    if (currentCollectionPath.startsWith('#')) {
-      return tagEntries
     }
 
     // Handle root case: when currentCollectionPath is the workspace root,
@@ -89,7 +49,5 @@ export function useCollectionEntries(
     return folderEntry.children.filter(
       (entry) => !entry.isDirectory && entry.name.toLowerCase().endsWith('.md')
     )
-  }, [currentCollectionPath, entries, tagEntries, workspacePath])
-
-  return { entries: computedEntries, isLoadingTagEntries }
+  }, [currentCollectionPath, entries, workspacePath])
 }

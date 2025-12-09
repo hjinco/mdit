@@ -22,7 +22,6 @@ import { useAISettingsStore } from './ai-settings-store'
 import { LAST_OPENED_NOTE_KEY } from './constants'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
-import { useTagStore } from './tag-store'
 import {
   AI_RENAME_SYSTEM_PROMPT,
   buildRenamePrompt,
@@ -245,11 +244,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
           }
         }
         await get().refreshWorkspaceEntries()
-        useTagStore.getState().loadTags(workspacePath)
         await get().restoreLastOpenedNote()
       } else {
         set({ isMigrationsComplete: true })
-        useTagStore.getState().loadTags(null)
       }
     } catch (error) {
       console.error('Failed to initialize workspace:', error)
@@ -271,7 +268,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   setWorkspace: async (path: string) => {
     try {
       const { tab, closeTab, clearHistory } = useTabStore.getState()
-      const prevWorkspacePath = get().workspacePath
 
       if (tab) {
         closeTab(tab.path)
@@ -323,10 +319,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         }
       }
       await get().refreshWorkspaceEntries()
-      useTagStore.getState().loadTags(path)
-      if (prevWorkspacePath && prevWorkspacePath !== path) {
-        useTagStore.getState().invalidateTagCache()
-      }
     } catch (error) {
       console.error('Failed to set workspace:', error)
     }
@@ -656,11 +648,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         })
       }
 
-      // If deleting from a tag collection, also remove from tagEntries
-      if (currentCollectionPath?.startsWith('#')) {
-        useTagStore.getState().removeTagEntries(paths)
-      }
-
       // Remove deleted entries from state without full refresh
       const workspacePath = get().workspacePath
       let nextPinned: string[] | null = null
@@ -810,12 +797,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       await tabState.renameTab(entry.path, nextPath)
       tabState.updateHistoryPath(entry.path, nextPath)
-
-      // If renaming in a tag collection, also update tagEntries
-      const { currentCollectionPath } = get()
-      if (currentCollectionPath?.startsWith('#')) {
-        useTagStore.getState().updateTagEntry(entry.path, nextPath, trimmedName)
-      }
 
       const workspacePath = get().workspacePath
       let nextPinned: string[] | null = null
@@ -977,11 +958,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       })
       tabState.updateHistoryPath(sourcePath, newPath)
 
-      // If moving in a tag collection, also update tagEntries
       const { currentCollectionPath } = get()
-      if (currentCollectionPath?.startsWith('#')) {
-        useTagStore.getState().updateTagEntry(sourcePath, newPath, fileName)
-      }
 
       // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath

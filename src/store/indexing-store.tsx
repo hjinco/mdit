@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { create } from 'zustand'
 import { loadSettings, saveSettings } from '@/lib/settings-utils'
-import { useTagStore } from './tag-store'
 
 type IndexingConfig = {
   embeddingProvider: string
@@ -141,7 +140,6 @@ export const useIndexingStore = create<IndexingStore>((set, get) => ({
         embeddingModel,
         forceReindex,
       })
-      useTagStore.getState().invalidateTagCache()
       return result
     } finally {
       set((state) => ({

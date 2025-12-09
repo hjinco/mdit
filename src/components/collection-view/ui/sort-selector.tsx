@@ -10,7 +10,6 @@ import {
   CalendarIcon,
   CaseSensitiveIcon,
   type LucideIcon,
-  SparklesIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/ui/button'
@@ -29,7 +28,6 @@ const SORT_LABELS: Record<SortOption, string> = {
   name: 'Name',
   createdAt: 'Created Date',
   modifiedAt: 'Modified Date',
-  tagRelevance: 'Relevance',
 }
 
 function getDirectionLabel(
@@ -63,7 +61,6 @@ interface SortSelectorProps {
   onValueChange: (value: SortOption) => void
   sortDirection: SortDirection
   onDirectionChange: (direction: SortDirection) => void
-  enableTagRelevance?: boolean
 }
 
 export function SortSelector({
@@ -71,7 +68,6 @@ export function SortSelector({
   onValueChange,
   sortDirection,
   onDirectionChange,
-  enableTagRelevance = false,
 }: SortSelectorProps) {
   const [open, setOpen] = useState(false)
 
@@ -82,13 +78,9 @@ export function SortSelector({
     if (
       newValue === 'name' ||
       newValue === 'createdAt' ||
-      newValue === 'modifiedAt' ||
-      (enableTagRelevance && newValue === 'tagRelevance')
+      newValue === 'modifiedAt'
     ) {
       onValueChange(newValue)
-      if (newValue === 'tagRelevance') {
-        onDirectionChange('desc')
-      }
     } else if (newValue === 'asc' || newValue === 'desc') {
       onDirectionChange(newValue)
     }
@@ -125,31 +117,21 @@ export function SortSelector({
             <CaseSensitiveIcon />
             {SORT_LABELS.name}
           </DropdownMenuRadioItem>
-          {enableTagRelevance && (
-            <DropdownMenuRadioItem value="tagRelevance">
-              <SparklesIcon />
-              {SORT_LABELS.tagRelevance}
-            </DropdownMenuRadioItem>
-          )}
         </DropdownMenuRadioGroup>
-        {value !== 'tagRelevance' && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup
-              value={sortDirection}
-              onValueChange={handleValueChange}
-            >
-              <DropdownMenuRadioItem value="asc">
-                <AscIcon className="size-4" />
-                {getDirectionLabel(value, 'asc')}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="desc">
-                <DescIcon className="size-4" />
-                {getDirectionLabel(value, 'desc')}
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </>
-        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          value={sortDirection}
+          onValueChange={handleValueChange}
+        >
+          <DropdownMenuRadioItem value="asc">
+            <AscIcon className="size-4" />
+            {getDirectionLabel(value, 'asc')}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="desc">
+            <DescIcon className="size-4" />
+            {getDirectionLabel(value, 'desc')}
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
