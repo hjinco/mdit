@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 
-export type SortOption = 'name' | 'createdAt' | 'modifiedAt' | 'tagRelevance'
+export type SortOption = 'name' | 'createdAt' | 'modifiedAt'
 export type SortDirection = 'asc' | 'desc'
 
 const COLLECTION_SORT_OPTION_KEY = 'collection-sort-option'
@@ -14,12 +14,7 @@ const readInitialSortOption = (): SortOption => {
   const stored = localStorage.getItem(COLLECTION_SORT_OPTION_KEY)
   if (!stored) return DEFAULT_SORT_OPTION
 
-  if (
-    stored === 'name' ||
-    stored === 'createdAt' ||
-    stored === 'modifiedAt' ||
-    stored === 'tagRelevance'
-  ) {
+  if (stored === 'name' || stored === 'createdAt' || stored === 'modifiedAt') {
     return stored
   }
 
@@ -39,11 +34,7 @@ const readInitialSortDirection = (): SortDirection => {
   return DEFAULT_SORT_DIRECTION
 }
 
-export function useCollectionSort(
-  entries: WorkspaceEntry[],
-  options?: { isTagPath?: boolean }
-) {
-  const isTagPath = options?.isTagPath ?? false
+export function useCollectionSort(entries: WorkspaceEntry[]) {
   const [sortOptionState, setSortOptionState] = useState<SortOption>(
     readInitialSortOption
   )
@@ -59,21 +50,7 @@ export function useCollectionSort(
     localStorage.setItem(COLLECTION_SORT_DIRECTION_KEY, sortDirectionState)
   }, [sortDirectionState])
 
-  useEffect(() => {
-    if (
-      isTagPath &&
-      sortOptionState === 'tagRelevance' &&
-      sortDirectionState !== 'desc'
-    ) {
-      setSortDirectionState('desc')
-    }
-  }, [isTagPath, sortOptionState, sortDirectionState])
-
-  const sortOption =
-    sortOptionState === 'tagRelevance' && !isTagPath
-      ? DEFAULT_SORT_OPTION
-      : sortOptionState
-
+  const sortOption = sortOptionState
   const sortDirection = sortDirectionState
 
   const sortedEntries = useMemo(() => {
@@ -119,13 +96,6 @@ export function useCollectionSort(
             comparison = -1
           }
           break
-
-        case 'tagRelevance': {
-          const aScore = a.tagSimilarity ?? Number.NEGATIVE_INFINITY
-          const bScore = b.tagSimilarity ?? Number.NEGATIVE_INFINITY
-          comparison = aScore - bScore
-          break
-        }
 
         default:
       }

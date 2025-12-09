@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FolderIcon, HashIcon, Loader2Icon } from 'lucide-react'
+import { FolderIcon } from 'lucide-react'
 import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -73,17 +73,15 @@ export function CollectionView() {
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
-  const isTagPath = currentCollectionPath?.startsWith('#') ?? false
-  const tagName =
-    isTagPath && currentCollectionPath ? currentCollectionPath.slice(1) : null
-  const displayName = isTagPath
-    ? tagName
-    : currentCollectionPath
-      ? getFolderNameFromPath(currentCollectionPath)
-      : undefined
+  const displayName = currentCollectionPath
+    ? getFolderNameFromPath(currentCollectionPath)
+    : undefined
 
-  const { entries: collectionEntries, isLoadingTagEntries } =
-    useCollectionEntries(currentCollectionPath, entries, workspacePath)
+  const collectionEntries = useCollectionEntries(
+    currentCollectionPath,
+    entries,
+    workspacePath
+  )
 
   const {
     sortedEntries,
@@ -91,13 +89,12 @@ export function CollectionView() {
     sortDirection,
     setSortOption,
     setSortDirection,
-  } = useCollectionSort(collectionEntries, { isTagPath })
+  } = useCollectionSort(collectionEntries)
 
   const parentRef = useRef<HTMLDivElement>(null)
   const { getPreview, setPreview, invalidatePreview } = usePreviewCache(
     currentCollectionPath
   )
-  const showTagLoadingState = isTagPath && isLoadingTagEntries
 
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
@@ -207,11 +204,7 @@ export function CollectionView() {
             !isFileExplorerOpen && 'hidden'
           )}
         >
-          {isTagPath ? (
-            <HashIcon className="size-4.5 shrink-0" />
-          ) : (
-            <FolderIcon className="size-4.5 shrink-0" />
-          )}
+          <FolderIcon className="size-4.5 shrink-0" />
           <h2 className="text-sm font-medium truncate cursor-default">
             {displayName}
           </h2>
@@ -222,9 +215,8 @@ export function CollectionView() {
             onValueChange={setSortOption}
             sortDirection={sortDirection}
             onDirectionChange={setSortDirection}
-            enableTagRelevance={isTagPath}
           />
-          {!isTagPath && <NewNoteButton />}
+          <NewNoteButton />
         </div>
       </div>
       <div
@@ -236,11 +228,7 @@ export function CollectionView() {
           setSelectedEntryPaths(new Set())
         }}
       >
-        {showTagLoadingState ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-            <Loader2Icon className="size-4 animate-spin" />
-          </div>
-        ) : sortedEntries.length === 0 ? (
+        {sortedEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <p className="text-sm text-muted-foreground">
               No notes in this folder
