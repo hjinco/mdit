@@ -65,7 +65,7 @@ export function GitSyncStatus({ workspacePath }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              className="relative shrink-0 h-6 w-6 rounded-full p-0"
+              className="relative shrink-0 h-6 w-6 rounded-full p-0 hover:bg-background/40"
               disabled={status === 'syncing'}
             >
               <span

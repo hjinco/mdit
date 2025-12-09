@@ -6,7 +6,7 @@ import {
   type PlateElementProps,
   type RenderNodeWrapper,
 } from 'platejs/react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { FRONTMATTER_KEY } from './frontmatter-kit'
@@ -37,13 +37,24 @@ export const BlockDraggable: RenderNodeWrapper = (props) => {
   return (props) => <Draggable {...props} />
 }
 
-function DragHandle({ elementId }: { elementId: string }) {
-  const { setNodeRef, attributes, listeners } = useDraggable({
+function DragHandle({
+  elementId,
+  onDraggingChange,
+}: {
+  elementId: string
+  onDraggingChange?: (isDragging: boolean) => void
+}) {
+  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: `editor-${elementId}`,
     data: { kind: 'editor', id: elementId },
   })
 
   const isFocusMode = useEditorStore((s) => s.isFocusMode)
+
+  // Notify parent component when dragging state changes
+  useEffect(() => {
+    onDraggingChange?.(isDragging)
+  }, [isDragging, onDraggingChange])
 
   return (
     <div
@@ -69,6 +80,8 @@ function Draggable(props: PlateElementProps) {
     data: { kind: 'editor', id: props.element.id },
   })
 
+  const [isDragging, setIsDragging] = useState(false)
+
   const shouldHighlight = isOverDnd
 
   // If not the outermost node, render only children
@@ -78,9 +91,18 @@ function Draggable(props: PlateElementProps) {
 
   // For outermost nodes, render full wrapper with drag handle and drop zone
   return (
-    <div ref={setDropRef} className="group relative">
+    <div
+      ref={setDropRef}
+      className={cn(
+        'group relative transition-opacity',
+        isDragging && 'opacity-30'
+      )}
+    >
       {props.element.id != null && (
-        <DragHandle elementId={props.element.id as string} />
+        <DragHandle
+          elementId={props.element.id as string}
+          onDraggingChange={setIsDragging}
+        />
       )}
       {shouldHighlight && (
         <div

@@ -1,6 +1,7 @@
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
@@ -14,6 +15,9 @@ type Props = {
 export function ToggleButton({ isOpen, onToggle }: Props) {
   const isFocusMode = useEditorStore((s) => s.isFocusMode)
   const isScrolling = useEditorStore((s) => s.isScrolling)
+  const isCollectionViewOpen = useWorkspaceStore(
+    (s) => s.currentCollectionPath !== null
+  )
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -24,7 +28,8 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
             'text-foreground/70 transition-[opacity] duration-500',
             (isFocusMode || isScrolling) &&
               !isOpen &&
-              'pointer-events-none opacity-0'
+              'pointer-events-none opacity-0',
+            (isOpen || isCollectionViewOpen) && 'hover:bg-background/40'
           )}
           onClick={onToggle}
         >

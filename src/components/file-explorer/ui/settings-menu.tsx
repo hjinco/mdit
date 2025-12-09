@@ -11,7 +11,7 @@ export function SettingsMenu() {
       type="button"
       variant="ghost"
       size="sm"
-      className="text-foreground/70 justify-start group"
+      className="text-foreground/80 justify-start group hover:bg-background/40"
       onClick={() => setSettingsDialogOpen(true)}
     >
       <SettingsIcon /> Settings

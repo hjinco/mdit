@@ -127,7 +127,7 @@ export function FeedbackButton() {
         <Button
           type="button"
           variant="ghost"
-          className="text-foreground/70 justify-start"
+          className="text-foreground/80 justify-start hover:bg-background/40"
           size="sm"
         >
           <SendIcon /> Feedback

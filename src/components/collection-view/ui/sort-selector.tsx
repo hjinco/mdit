@@ -102,7 +102,7 @@ export function SortSelector({
             <Button
               variant="ghost"
               size="icon"
-              className="text-foreground/70"
+              className="text-foreground/70 hover:bg-background/40"
               aria-label="Select sort option"
             >
               <ArrowUpDownIcon />

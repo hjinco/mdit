@@ -13,7 +13,7 @@ export function SearchButton() {
         <Button
           variant="ghost"
           size="icon"
-          className="text-foreground/70"
+          className="text-foreground/70 hover:bg-background/40"
           onClick={openCommandMenu}
         >
           <SearchIcon />
