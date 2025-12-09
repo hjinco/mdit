@@ -42,7 +42,8 @@ tauri-plugin-global-shortcut = "2"
 pulldown-cmark = { version = "0.13.0", default-features = false, features = ["simd"] }
 image = "0.25.9"
 webp = "0.3"
-# for macOS HEIC support
+
+[target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
 core-foundation = "0.10"
 foreign-types = "0.5"

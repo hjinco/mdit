@@ -42,28 +42,44 @@ mod macos_heic {
         ) -> core_graphics::sys::CGImageRef;
     }
 
+    struct ImageSourceHandle(CGImageSourceRef);
+
+    impl ImageSourceHandle {
+        fn new(ptr: CGImageSourceRef) -> Self {
+            Self(ptr)
+        }
+
+        fn as_ptr(&self) -> CGImageSourceRef {
+            self.0
+        }
+    }
+
+    impl Drop for ImageSourceHandle {
+        fn drop(&mut self) {
+            unsafe { CFRelease(self.0 as _) };
+        }
+    }
+
     pub fn decode_heic_to_rgba(path: &Path) -> Result<DynamicImage, String> {
         let data = std::fs::read(path)
             .map_err(|e| format!("Failed to read HEIC file: {}", e))?;
 
         let cf_data = CFData::from_buffer(&data);
-        let source = unsafe { CGImageSourceCreateWithData(cf_data.as_concrete_TypeRef(), std::ptr::null()) };
-        if source.is_null() {
+        let source_ptr =
+            unsafe { CGImageSourceCreateWithData(cf_data.as_concrete_TypeRef(), std::ptr::null()) };
+        if source_ptr.is_null() {
             return Err("ImageIO failed to create image source".to_string());
         }
 
+        let source = ImageSourceHandle::new(source_ptr);
         let cg_image_ref =
-            unsafe { CGImageSourceCreateImageAtIndex(source, 0, std::ptr::null()) };
-
-        // Release the source as soon as we have the decoded image.
-        unsafe {
-            CFRelease(source as _);
-        }
+            unsafe { CGImageSourceCreateImageAtIndex(source.as_ptr(), 0, std::ptr::null()) };
 
         if cg_image_ref.is_null() {
             return Err("ImageIO failed to decode HEIC".to_string());
         }
 
+        // from_ptr takes ownership and will release the CGImageRef when dropped.
         let cg_image = unsafe { CGImage::from_ptr(cg_image_ref) };
 
         let width = cg_image.width();
@@ -72,7 +88,7 @@ mod macos_heic {
             return Err("Decoded HEIC has zero dimensions".to_string());
         }
 
-        let mut buf = vec![0u8; width * height * 4];
+        let mut buf = vec![0u8; width.checked_mul(height).and_then(|s| s.checked_mul(4)).ok_or_else(|| "Image dimensions are too large.".to_string())?];
         let color_space = CGColorSpace::create_device_rgb();
         let bytes_per_row = width * 4;
         let bitmap_info = (CGImageAlphaInfo::CGImageAlphaPremultipliedLast as u32)
@@ -291,35 +307,32 @@ fn detect_format_from_path(path: &Path) -> ImageFormat {
         .unwrap_or(ImageFormat::Png)
 }
 
-#[cfg(target_os = "macos")]
 fn open_image_with_heic_support(path: &Path) -> Result<DynamicImage, String> {
-    let ext = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_lowercase());
+    #[cfg(target_os = "macos")]
+    {
+        let ext = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_lowercase());
 
-    if matches!(
-        ext.as_deref(),
-        Some("heic") | Some("heif") | Some("hif")
-    ) {
-        match macos_heic::decode_heic_to_rgba(path) {
-            Ok(img) => return Ok(img),
-            Err(heic_err) => {
-                // Fall back to the standard decoder but surface the HEIC error if both fail.
-                return image::open(path).map_err(|fallback_err| {
-                    format!(
-                        "HEIC decode failed: {}; fallback decoder failed: {}",
-                        heic_err, fallback_err
-                    )
-                });
+        if matches!(
+            ext.as_deref(),
+            Some("heic") | Some("heif") | Some("hif")
+        ) {
+            match macos_heic::decode_heic_to_rgba(path) {
+                Ok(img) => return Ok(img),
+                Err(heic_err) => {
+                    // Fall back to the standard decoder but surface the HEIC error if both fail.
+                    return image::open(path).map_err(|fallback_err| {
+                        format!(
+                            "HEIC decode failed: {}; fallback decoder failed: {}",
+                            heic_err, fallback_err
+                        )
+                    });
+                }
             }
         }
     }
 
-    image::open(path).map_err(|e| format!("Failed to open image: {}", e))
-}
-
-#[cfg(not(target_os = "macos"))]
-fn open_image_with_heic_support(path: &Path) -> Result<DynamicImage, String> {
     image::open(path).map_err(|e| format!("Failed to open image: {}", e))
 }
