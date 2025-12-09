@@ -30,9 +30,11 @@ export const aiChatPlugin = AIChatPlugin.extend({
     const toolName = usePluginOption(AIChatPlugin, 'toolName')
 
     useChatChunk({
-      onChunk: ({ chunk, isFirst, nodes, text: content }) => {
-        if (isFirst && mode === 'insert') {
-          editor.tf.withoutSaving(() => {
+      onChunk: ({ chunk, isFirst, text }) => {
+        if (mode === 'insert') {
+          if (isFirst) {
+            editor.setOption(AIChatPlugin, 'streaming', true)
+
             editor.tf.insertNodes(
               {
                 children: [{ text: '' }],
@@ -42,21 +44,17 @@ export const aiChatPlugin = AIChatPlugin.extend({
                 at: PathApi.next(editor.selection!.focus.path.slice(0, 1)),
               }
             )
-          })
-          editor.setOption(AIChatPlugin, 'streaming', true)
-        }
+          }
 
-        if (mode === 'insert' && nodes.length > 0) {
+          if (!getOption('streaming')) return
+
           withAIBatch(
             editor,
             () => {
-              if (!getOption('streaming')) return
-              editor.tf.withScrolling(() => {
-                streamInsertChunk(editor, chunk, {
-                  textProps: {
-                    [getPluginType(editor, KEYS.ai)]: true,
-                  },
-                })
+              streamInsertChunk(editor, chunk, {
+                textProps: {
+                  [getPluginType(editor, KEYS.ai)]: true,
+                },
               })
             },
             { split: isFirst }
@@ -67,11 +65,9 @@ export const aiChatPlugin = AIChatPlugin.extend({
           withAIBatch(
             editor,
             () => {
-              applyAISuggestions(editor, content)
+              applyAISuggestions(editor, text)
             },
-            {
-              split: isFirst,
-            }
+            { split: isFirst }
           )
         }
       },
