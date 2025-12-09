@@ -1,7 +1,121 @@
-use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, GenericImageView, ImageEncoder, ImageFormat};
+use image::{
+    codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, GenericImageView, ImageEncoder,
+    ImageFormat,
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use webp::{Encoder, WebPMemory};
+
+#[cfg(target_os = "macos")]
+mod macos_heic {
+    use core_foundation::{
+        base::{CFRelease, TCFType},
+        data::{CFData, CFDataRef},
+        dictionary::CFDictionaryRef,
+    };
+    use core_graphics::{
+        color_space::CGColorSpace,
+        context::CGContext,
+        geometry::{CGPoint, CGRect, CGSize},
+        image::{CGImage, CGImageAlphaInfo, CGImageByteOrderInfo},
+    };
+    use image::{DynamicImage, RgbaImage};
+    use foreign_types::ForeignType;
+    use std::path::Path;
+
+    #[repr(C)]
+    struct __CGImageSource {
+        _private: [u8; 0],
+    }
+    type CGImageSourceRef = *mut __CGImageSource;
+
+    #[link(name = "ImageIO", kind = "framework")]
+    extern "C" {
+        fn CGImageSourceCreateWithData(
+            data: CFDataRef,
+            options: CFDictionaryRef,
+        ) -> CGImageSourceRef;
+        fn CGImageSourceCreateImageAtIndex(
+            isrc: CGImageSourceRef,
+            index: usize,
+            options: CFDictionaryRef,
+        ) -> core_graphics::sys::CGImageRef;
+    }
+
+    struct ImageSourceHandle(CGImageSourceRef);
+
+    impl ImageSourceHandle {
+        fn new(ptr: CGImageSourceRef) -> Self {
+            Self(ptr)
+        }
+
+        fn as_ptr(&self) -> CGImageSourceRef {
+            self.0
+        }
+    }
+
+    impl Drop for ImageSourceHandle {
+        fn drop(&mut self) {
+            unsafe { CFRelease(self.0 as _) };
+        }
+    }
+
+    pub fn decode_heic_to_rgba(path: &Path) -> Result<DynamicImage, String> {
+        let data = std::fs::read(path)
+            .map_err(|e| format!("Failed to read HEIC file: {}", e))?;
+
+        let cf_data = CFData::from_buffer(&data);
+        let source_ptr =
+            unsafe { CGImageSourceCreateWithData(cf_data.as_concrete_TypeRef(), std::ptr::null()) };
+        if source_ptr.is_null() {
+            return Err("ImageIO failed to create image source".to_string());
+        }
+
+        let source = ImageSourceHandle::new(source_ptr);
+        let cg_image_ref =
+            unsafe { CGImageSourceCreateImageAtIndex(source.as_ptr(), 0, std::ptr::null()) };
+
+        if cg_image_ref.is_null() {
+            return Err("ImageIO failed to decode HEIC".to_string());
+        }
+
+        // from_ptr takes ownership and will release the CGImageRef when dropped.
+        let cg_image = unsafe { CGImage::from_ptr(cg_image_ref) };
+
+        let width = cg_image.width();
+        let height = cg_image.height();
+        if width == 0 || height == 0 {
+            return Err("Decoded HEIC has zero dimensions".to_string());
+        }
+
+        let mut buf = vec![0u8; width.checked_mul(height).and_then(|s| s.checked_mul(4)).ok_or_else(|| "Image dimensions are too large.".to_string())?];
+        let color_space = CGColorSpace::create_device_rgb();
+        let bytes_per_row = width * 4;
+        let bitmap_info = (CGImageAlphaInfo::CGImageAlphaPremultipliedLast as u32)
+            | (CGImageByteOrderInfo::CGImageByteOrder32Big as u32);
+
+        let context = CGContext::create_bitmap_context(
+            Some(buf.as_mut_ptr() as *mut _),
+            width,
+            height,
+            8,
+            bytes_per_row,
+            &color_space,
+            bitmap_info,
+        );
+
+        let rect =
+            CGRect::new(&CGPoint::new(0.0, 0.0), &CGSize::new(width as f64, height as f64));
+        context.draw_image(rect, &cg_image);
+
+        let width_u32 = width.try_into().map_err(|_| format!("Image width {} is too large and exceeds u32::MAX", width))?;
+        let height_u32 = height.try_into().map_err(|_| format!("Image height {} is too large and exceeds u32::MAX", height))?;
+        let rgba = RgbaImage::from_raw(width_u32, height_u32, buf)
+            .ok_or_else(|| "Failed to convert HEIC buffer to image".to_string())?;
+
+        Ok(DynamicImage::ImageRgba8(rgba))
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ImageProperties {
@@ -33,8 +147,7 @@ pub fn get_image_properties(path: &str) -> Result<ImageProperties, String> {
     let img_path = Path::new(path);
     
     // Open and decode the image
-    let img = image::open(img_path)
-        .map_err(|e| format!("Failed to open image: {}", e))?;
+    let img = open_image_with_heic_support(img_path)?;
     
     // Get dimensions
     let (width, height) = img.dimensions();
@@ -58,8 +171,7 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
     let input_path_buf = Path::new(input_path);
     
     // Open the image
-    let mut img = image::open(input_path_buf)
-        .map_err(|e| format!("Failed to open image: {}", e))?;
+    let mut img = open_image_with_heic_support(input_path_buf)?;
     
     // Apply resize if specified
     if let Some(resize_opts) = options.resize {
@@ -197,3 +309,32 @@ fn detect_format_from_path(path: &Path) -> ImageFormat {
         .unwrap_or(ImageFormat::Png)
 }
 
+fn open_image_with_heic_support(path: &Path) -> Result<DynamicImage, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let ext = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.to_lowercase());
+
+        if matches!(
+            ext.as_deref(),
+            Some("heic") | Some("heif") | Some("hif")
+        ) {
+            match macos_heic::decode_heic_to_rgba(path) {
+                Ok(img) => return Ok(img),
+                Err(heic_err) => {
+                    // Fall back to the standard decoder but surface the HEIC error if both fail.
+                    return image::open(path).map_err(|fallback_err| {
+                        format!(
+                            "HEIC decode failed: {}; fallback decoder failed: {}",
+                            heic_err, fallback_err
+                        )
+                    });
+                }
+            }
+        }
+    }
+
+    image::open(path).map_err(|e| format!("Failed to open image: {}", e))
+}
