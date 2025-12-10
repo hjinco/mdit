@@ -69,8 +69,8 @@ export function PreferencesTab() {
             <FieldContent>
               <FieldLabel>MDX Mode</FieldLabel>
               <FieldDescription>
-                Enable MDX mode. MDX blocks are saved as JSX components like{' '}
-                <code>&lt;toc /&gt;</code>
+                Enable JSX blocks like callouts and table of contents. Add them
+                using slash commands.
               </FieldDescription>
             </FieldContent>
             <Switch checked={isMDXEnabled} onCheckedChange={setMDXEnabled} />
