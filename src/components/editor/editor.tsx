@@ -184,11 +184,6 @@ function EditorContent({
         onScroll={handleScrollThrottled}
         onKeyDown={(e) => {
           handleTypingDetection(e)
-          // I wish I could just use shortcuts but it's not working as expected
-          if (e.key === 'Tab') {
-            e.preventDefault()
-            e.stopPropagation()
-          }
         }}
       >
         <PlateContent
