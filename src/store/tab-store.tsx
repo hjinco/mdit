@@ -1,7 +1,9 @@
 import { readTextFile, rename as renameFile } from '@tauri-apps/plugin-fs'
+import { relative } from 'pathe'
 import { create } from 'zustand'
+import { saveSettings } from '@/lib/settings-utils'
 import { getFileNameWithoutExtension } from '@/utils/path-utils'
-import { LAST_OPENED_NOTE_KEY } from './constants'
+import { useWorkspaceStore } from './workspace-store'
 
 let tabIdCounter = 0
 
@@ -148,11 +150,13 @@ export const useTabStore = create<TabStore>((set, get) => ({
           })
         }
 
-        // Save last opened note path to localStorage
-        try {
-          localStorage.setItem(LAST_OPENED_NOTE_KEY, path)
-        } catch (error) {
-          console.debug('Failed to save last opened note:', error)
+        // Save last opened note path to workspace.json as relative path
+        const workspacePath = useWorkspaceStore.getState().workspacePath
+        if (workspacePath) {
+          const relativePath = relative(workspacePath, path)
+          await saveSettings(workspacePath, {
+            lastOpenedNotePath: relativePath,
+          })
         }
       }
     }

@@ -11,15 +11,16 @@ import {
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { generateText } from 'ai'
+import { resolve } from 'pathe'
 import { toast } from 'sonner'
 import { create } from 'zustand'
+import { loadSettings } from '@/lib/settings-utils'
 import {
   getFileNameFromPath,
   isPathEqualOrDescendant,
   normalizePathSeparators,
 } from '@/utils/path-utils'
 import { useAISettingsStore } from './ai-settings-store'
-import { LAST_OPENED_NOTE_KEY } from './constants'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import {
@@ -79,7 +80,6 @@ export type WorkspaceEntry = {
   children?: WorkspaceEntry[]
   createdAt?: Date
   modifiedAt?: Date
-  tagSimilarity?: number
 }
 
 type WorkspaceStore = {
@@ -1249,14 +1249,21 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
-      const lastOpenedNotePath = localStorage.getItem(LAST_OPENED_NOTE_KEY)
+      const settings = await loadSettings(workspacePath)
+      const relativePath = settings.lastOpenedNotePath
+      if (!relativePath) {
+        return
+      }
+
+      // Convert relative path to absolute path using pathe
+      const absolutePath = resolve(workspacePath, relativePath)
+
       if (
-        lastOpenedNotePath &&
-        isPathEqualOrDescendant(lastOpenedNotePath, workspacePath) &&
-        (await exists(lastOpenedNotePath)) &&
+        isPathEqualOrDescendant(absolutePath, workspacePath) &&
+        (await exists(absolutePath)) &&
         get().workspacePath === workspacePath
       ) {
-        useTabStore.getState().openNote(lastOpenedNotePath)
+        useTabStore.getState().openNote(absolutePath)
       }
     } catch (error) {
       // Silently fail if note doesn't exist or workspace doesn't match

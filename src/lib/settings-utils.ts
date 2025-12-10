@@ -10,7 +10,6 @@ const WORKSPACE_STATE_DIR = '.mdit'
 const WORKSPACE_CONFIG_FILE = 'workspace.json'
 
 export type WorkspaceSettings = {
-  tags?: string[]
   gitSync?: {
     branchName: string
     commitMessage: string
@@ -22,6 +21,7 @@ export type WorkspaceSettings = {
     autoIndex?: boolean
   }
   pinnedDirectories?: string[]
+  lastOpenedNotePath?: string
 }
 
 const getWorkspaceConfigPath = async (
