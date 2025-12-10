@@ -1,4 +1,3 @@
-import { PopoverContent as PopoverContentPrimitive } from '@radix-ui/react-popover'
 import {
   type ColumnDef,
   flexRender,
@@ -17,7 +16,6 @@ import {
 import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { useEditorStore } from '@/store/editor-store'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
 import {
@@ -202,98 +200,64 @@ function InlineEditableField({
   buttonProps,
   inputProps,
 }: InlineEditableFieldProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const [triggerDimensions, setTriggerDimensions] = useState<{
-    width: number
-    height: number
-  }>({ width: 0, height: 0 })
-  const setIsFrontmatterInputting = useEditorStore(
-    (s) => s.setIsFrontmatterInputting
-  )
 
   useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus()
-    }
-  }, [isOpen])
+    if (!isEditing) return
+    setTimeout(() => {
+      inputRef.current?.select()
+    }, 0)
+  }, [isEditing])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: true
-  useEffect(() => {
-    const node = triggerRef.current
-    if (!node) return
-    setTriggerDimensions({
-      width: node.offsetWidth,
-      height: node.offsetHeight,
-    })
-  }, [isOpen])
+  const commitAndClose = (nextValue?: string) => {
+    const resolved = nextValue ?? inputRef.current?.value ?? ''
+    onCommit(resolved)
+    setIsEditing(false)
+  }
 
-  const popoverSideOffset =
-    triggerDimensions.height > 0 ? -triggerDimensions.height : 0
-  const popoverStyle =
-    triggerDimensions.width > 0
-      ? { width: `${triggerDimensions.width}px` }
-      : undefined
+  const cancelEditing = () => {
+    setIsEditing(false)
+  }
 
   return (
-    <Popover
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (open) {
-          setIsFrontmatterInputting(true)
-        } else {
-          onCommit(inputRef.current!.value)
-          setIsFrontmatterInputting(false)
-        }
-        setIsOpen(open)
-      }}
-      modal
-    >
-      <PopoverTrigger asChild>
-        <Button
-          ref={triggerRef}
-          type="button"
-          variant="ghost"
-          className={cn(
-            'w-full justify-start border border-transparent h-9 px-3 text-left truncate',
-            !value && 'text-muted-foreground italic'
-          )}
-          {...buttonProps}
-        >
-          {value || placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContentPrimitive
-        side="top"
-        align="start"
-        sideOffset={popoverSideOffset}
-        collisionPadding={0}
-        avoidCollisions={false}
-        style={popoverStyle}
-        onEscapeKeyDown={(e) => {
-          e.preventDefault()
-          setIsFrontmatterInputting(false)
-          setIsOpen(false)
-        }}
-      >
+    <div className="relative w-full h-8">
+      {isEditing ? (
         <Input
           ref={inputRef}
           type={inputType}
           defaultValue={value}
+          onBlur={() => commitAndClose()}
           onKeyDown={(e) => {
+            e.stopPropagation()
             if (e.key === 'Enter') {
-              onCommit(inputRef.current!.value)
-              setIsFrontmatterInputting(false)
-              setIsOpen(false)
+              commitAndClose()
+            } else if (e.key === 'Escape') {
+              cancelEditing()
             }
           }}
-          className="bg-background dark:bg-background text-foreground"
+          className="bg-background dark:bg-background text-foreground absolute left-0 w-full h-8 -top-[0.5px]"
           autoFocus
           {...inputProps}
         />
-      </PopoverContentPrimitive>
-    </Popover>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'w-full justify-start border border-transparent px-3 text-left truncate',
+            !value && 'text-muted-foreground italic'
+          )}
+          onClick={() => {
+            setIsEditing(true)
+          }}
+          {...buttonProps}
+        >
+          {value || placeholder}
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -308,9 +272,6 @@ function ValueEditor({
 }) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const stringValue = String(value ?? '')
-  const setIsFrontmatterInputting = useEditorStore(
-    (s) => s.setIsFrontmatterInputting
-  )
 
   switch (type) {
     case 'boolean':
@@ -392,18 +353,7 @@ function ValueEditor({
         />
       )
     default:
-      return (
-        <Input
-          defaultValue={stringValue}
-          onFocus={() => setIsFrontmatterInputting(true)}
-          onBlur={(e) => {
-            setIsFrontmatterInputting(false)
-            onValueChange(e.target.value)
-          }}
-          placeholder="Enter text"
-          className="border-none shadow-none focus-visible:ring-0 focus:text-foreground"
-        />
-      )
+      return null
   }
 }
 

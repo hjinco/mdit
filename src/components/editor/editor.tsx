@@ -77,7 +77,6 @@ function EditorContent({
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
   const handleScroll = useEditorStore((s) => s.handleScroll)
-  const isFrontmatterInputting = useEditorStore((s) => s.isFrontmatterInputting)
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
   const scrollRafId = useRef<number | null>(null)
 
@@ -90,7 +89,6 @@ function EditorContent({
 
   const handleSave = useCallback(() => {
     if (isSaved.current) return
-    if (isFrontmatterInputting) return
     writeTextFile(path, editor.api.markdown.serialize())
       .then(() => {
         isSaved.current = true
@@ -101,7 +99,7 @@ function EditorContent({
         isSaved.current = false
         setTabSaved(false)
       })
-  }, [editor, path, setTabSaved, handleRenameAfterSave, isFrontmatterInputting])
+  }, [editor, path, setTabSaved, handleRenameAfterSave])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()

@@ -8,8 +8,6 @@ type EditorStore = {
   isScrolling: boolean
   scrollTimeoutId: NodeJS.Timeout | null
   handleScroll: () => void
-  isFrontmatterInputting: boolean
-  setIsFrontmatterInputting: (isInputting: boolean) => void
   // Focus mode state
   isFocusMode: boolean
   typingBurstCount: number
@@ -34,10 +32,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }, 300)
 
     set({ isScrolling: true, scrollTimeoutId: timeoutId })
-  },
-  isFrontmatterInputting: false,
-  setIsFrontmatterInputting: (isInputting: boolean) => {
-    set({ isFrontmatterInputting: isInputting })
   },
   // Focus mode state
   isFocusMode: false,

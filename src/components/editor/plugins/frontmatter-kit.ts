@@ -8,6 +8,7 @@ export const frontmatterPlugin = createPlatePlugin({
   node: {
     component: FrontmatterElement,
     isElement: true,
+    isVoid: true,
   },
 })
 
