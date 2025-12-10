@@ -80,7 +80,6 @@ function EditorContent({
   const isFrontmatterInputting = useEditorStore((s) => s.isFrontmatterInputting)
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
   const scrollRafId = useRef<number | null>(null)
-  const isScrollScheduled = useRef(false)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
