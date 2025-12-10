@@ -200,7 +200,7 @@ export function CollectionView() {
       >
         <div
           className={cn(
-            'flex items-center gap-1.5 px-1.5 shrink min-w-0 text-foreground/80',
+            'flex items-center gap-1.5 px-1 shrink min-w-0 text-foreground/80',
             !isFileExplorerOpen && 'hidden'
           )}
         >
@@ -240,6 +240,7 @@ export function CollectionView() {
               height: `${virtualizer.getTotalSize()}px`,
               width: '100%',
               position: 'relative',
+              top: '-0.25rem',
             }}
           >
             {virtualizer.getVirtualItems().map((virtualItem) => {

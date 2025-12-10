@@ -402,7 +402,7 @@ export function FileExplorer() {
             : { width: { type: 'spring', bounce: 0, duration: 0.12 } }
         }
       >
-        <div className="flex items-center px-2 gap-1 mt-12 mb-0.5">
+        <div className="flex items-center px-2 gap-1 mt-12">
           <WorkspaceDropdown
             workspacePath={workspacePath}
             recentWorkspacePaths={recentWorkspacePaths}
@@ -417,7 +417,7 @@ export function FileExplorer() {
             workspaceExternalDropRef(node)
           }}
           className={cn(
-            'flex-1 overflow-y-auto px-2 py-1',
+            'flex-1 overflow-y-auto px-2 pb-1',
             isOverWorkspace &&
               'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
           )}

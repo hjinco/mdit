@@ -127,10 +127,10 @@ export function FeedbackButton() {
         <Button
           type="button"
           variant="ghost"
-          className="text-foreground/80 justify-start hover:bg-background/40"
+          className="text-foreground/80 justify-start hover:bg-background/40 px-1.5!"
           size="sm"
         >
-          <SendIcon /> Feedback
+          <SendIcon className="size-4" /> Feedback
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
