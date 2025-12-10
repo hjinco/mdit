@@ -63,7 +63,7 @@ function DragHandle({
       {...listeners}
       className={cn(
         'absolute -left-6 top-1 flex py-1 rounded-xs',
-        'opacity-0 transition-opacity group-hover:opacity-100',
+        'opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]',
         'cursor-grab active:cursor-grabbing',
         'text-muted-foreground hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0'
@@ -107,8 +107,8 @@ function Draggable(props: PlateElementProps) {
       {shouldHighlight && (
         <div
           className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-px',
-            'bg-blue-400 dark:bg-blue-600'
+            'pointer-events-none absolute inset-x-0 bottom-0 h-[1.5px]',
+            'bg-blue-400 dark:bg-blue-600/80'
           )}
         />
       )}
