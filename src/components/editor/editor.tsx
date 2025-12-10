@@ -134,17 +134,17 @@ function EditorContent({
   }, [resetFocusMode])
 
   const handleScrollThrottled = useCallback(() => {
-    if (isScrollScheduled.current) return
-    isScrollScheduled.current = true
+    if (scrollRafId.current) return
+
     scrollRafId.current = requestAnimationFrame(() => {
-      isScrollScheduled.current = false
+      scrollRafId.current = null
       handleScroll()
     })
   }, [handleScroll])
 
   useEffect(() => {
     return () => {
-      if (scrollRafId.current !== null) {
+      if (scrollRafId.current) {
         cancelAnimationFrame(scrollRafId.current)
       }
     }
