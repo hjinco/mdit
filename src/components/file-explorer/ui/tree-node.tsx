@@ -366,13 +366,8 @@ export function TreeNode({
                   <ChevronRight className="size-4" />
                 )}
               </div>
-              <div className="relative flex-1 flex items-center text-overflow-mask overflow-hidden">
-                <span
-                  className={cn(
-                    'text-sm whitespace-nowrap',
-                    isRenaming && 'opacity-0'
-                  )}
-                >
+              <div className="relative flex-1 flex items-center text-overflow-mask">
+                <span className={cn('text-sm', isRenaming && 'opacity-0')}>
                   {entry.name}
                 </span>
                 {isRenaming && (
@@ -474,13 +469,8 @@ export function TreeNode({
           ) : (
             <FileTextIcon className="size-4 mx-1.5 shrink-0" />
           )}
-          <div className="relative flex-1 overflow-hidden text-overflow-mask">
-            <span
-              className={cn(
-                'text-sm whitespace-nowrap',
-                isRenaming && 'opacity-0'
-              )}
-            >
+          <div className="relative flex-1 text-overflow-mask">
+            <span className={cn('text-sm', isRenaming && 'opacity-0')}>
               {baseName}
             </span>
             {isRenaming && (
