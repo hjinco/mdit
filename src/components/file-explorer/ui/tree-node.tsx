@@ -331,7 +331,7 @@ export function TreeNode({
           {isOver && (
             <div className="absolute inset-0 z-10 rounded-sm bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600 pointer-events-none" />
           )}
-          <div className="flex items-center">
+          <div className="flex items-center group">
             <button
               ref={handleButtonRef}
               type="button"
@@ -345,8 +345,7 @@ export function TreeNode({
                   isRenaming,
                   isAiRenaming,
                   widthClass: 'flex-1',
-                }),
-                'group relative'
+                })
               )}
               style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
               disabled={isBusy}
@@ -383,21 +382,21 @@ export function TreeNode({
                   />
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleCollectionViewClick}
-                className={cn(
-                  'absolute right-1 shrink-0 px-0.5 py-0.5 outline-none',
-                  'bg-background/40 text-foreground/70 hover:text-foreground rounded-sm',
-                  'opacity-0 group-hover:opacity-100 transition-opacity duration-250',
-                  'cursor-pointer',
-                  isBusy && 'cursor-not-allowed opacity-50'
-                )}
-                aria-label="Open collection view"
-                disabled={isBusy}
-              >
-                <PanelLeftIcon className="size-4" />
-              </button>
+            </button>
+            <button
+              type="button"
+              onClick={handleCollectionViewClick}
+              className={cn(
+                'absolute right-1 shrink-0 px-0.5 py-0.5 outline-none',
+                'bg-background/40 text-foreground/70 hover:text-foreground rounded-sm',
+                'opacity-0 group-hover:opacity-100 transition-opacity duration-250',
+                'cursor-pointer',
+                isBusy && 'cursor-not-allowed opacity-50'
+              )}
+              aria-label="Open collection view"
+              disabled={isBusy}
+            >
+              <PanelLeftIcon className="size-4" />
             </button>
           </div>
           {hasPendingNewFolder && (
