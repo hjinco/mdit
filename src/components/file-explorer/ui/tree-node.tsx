@@ -366,9 +366,12 @@ export function TreeNode({
                   <ChevronRight className="size-4" />
                 )}
               </div>
-              <div className="relative flex-1 min-w-0 flex items-center">
+              <div className="relative flex-1 flex items-center text-overflow-mask overflow-hidden">
                 <span
-                  className={cn('text-sm truncate', isRenaming && 'opacity-0')}
+                  className={cn(
+                    'text-sm whitespace-nowrap',
+                    isRenaming && 'opacity-0'
+                  )}
                 >
                   {entry.name}
                 </span>
@@ -388,7 +391,7 @@ export function TreeNode({
               onClick={handleCollectionViewClick}
               className={cn(
                 'absolute right-1 shrink-0 px-0.5 py-0.5 outline-none',
-                'bg-background/40 text-foreground/70 hover:text-foreground rounded-sm',
+                'bg-background text-foreground/70 hover:text-foreground rounded-sm',
                 'opacity-0 group-hover:opacity-100 transition-opacity duration-250',
                 'cursor-pointer',
                 isBusy && 'cursor-not-allowed opacity-50'
@@ -471,8 +474,13 @@ export function TreeNode({
           ) : (
             <FileTextIcon className="size-4 mx-1.5 shrink-0" />
           )}
-          <div className="relative flex-1 min-w-0 truncate">
-            <span className={cn('text-sm', isRenaming && 'opacity-0')}>
+          <div className="relative flex-1 overflow-hidden text-overflow-mask">
+            <span
+              className={cn(
+                'text-sm whitespace-nowrap',
+                isRenaming && 'opacity-0'
+              )}
+            >
               {baseName}
             </span>
             {isRenaming && (

@@ -171,6 +171,10 @@
     font-size: calc(2.25rem * var(--font-scale-current));
     line-height: calc(2.5rem * var(--font-scale-current));
   }
+
+  .text-overflow-mask {
+    @apply overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat];
+  }
 }
 
 /**

@@ -160,14 +160,14 @@ export function NoteEntry({
         )}
       >
         <div className="flex relative">
-          <span
+          <div
             className={cn(
-              'text-base font-medium truncate h-6',
+              'relative flex-1 text-base font-medium h-6 text-overflow-mask',
               isRenaming && 'invisible'
             )}
           >
             {baseName}
-          </span>
+          </div>
           {isRenaming && (
             <input
               ref={inputRef}
