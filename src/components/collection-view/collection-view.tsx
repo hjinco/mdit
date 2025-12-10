@@ -205,7 +205,7 @@ export function CollectionView() {
           )}
         >
           <FolderIcon className="size-4.5 shrink-0" />
-          <h2 className="text-sm font-medium truncate cursor-default">
+          <h2 className="text-sm font-medium cursor-default text-overflow-mask">
             {displayName}
           </h2>
         </div>
