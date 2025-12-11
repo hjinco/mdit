@@ -15,17 +15,18 @@ export function collectDirectoryPaths(
 
 // Drops expanded-directory flags that no longer exist in the refreshed tree.
 export function syncExpandedDirectoriesWithEntries(
-  expanded: Record<string, boolean>,
+  expanded: string[],
   entries: WorkspaceEntry[]
-): Record<string, boolean> {
+): string[] {
   const validDirectories = new Set<string>()
   collectDirectoryPaths(entries, validDirectories)
 
-  const normalized: Record<string, boolean> = {}
+  const expandedSet = new Set(expanded)
+  const normalized: string[] = []
 
-  for (const path of validDirectories) {
-    if (expanded[path]) {
-      normalized[path] = true
+  for (const path of expandedSet) {
+    if (validDirectories.has(path)) {
+      normalized.push(path)
     }
   }
 
@@ -33,47 +34,43 @@ export function syncExpandedDirectoriesWithEntries(
 }
 
 export function renameExpandedDirectories(
-  expanded: Record<string, boolean>,
+  expanded: string[],
   oldPath: string,
   newPath: string
-): Record<string, boolean> {
+): string[] {
   if (oldPath === newPath) {
     return expanded
   }
 
-  const next: Record<string, boolean> = {}
+  const next: string[] = []
   const oldPrefix = `${oldPath}/`
   const newPrefix = `${newPath}/`
 
-  for (const [path, isExpanded] of Object.entries(expanded)) {
-    if (!isExpanded) continue
-
+  for (const path of expanded) {
     if (path === oldPath) {
-      next[newPath] = true
+      next.push(newPath)
       continue
     }
 
     if (path.startsWith(oldPrefix)) {
       const suffix = path.slice(oldPrefix.length)
-      next[`${newPrefix}${suffix}`] = true
+      next.push(`${newPrefix}${suffix}`)
       continue
     }
 
-    next[path] = true
+    next.push(path)
   }
 
   return next
 }
 
 export function removeExpandedDirectories(
-  expanded: Record<string, boolean>,
+  expanded: string[],
   pathsToRemove: string[]
-): Record<string, boolean> {
-  const next: Record<string, boolean> = {}
+): string[] {
+  const next: string[] = []
 
-  for (const [path, isExpanded] of Object.entries(expanded)) {
-    if (!isExpanded) continue
-
+  for (const path of expanded) {
     // Skip if this path or any parent path is being deleted
     let shouldSkip = false
     for (const pathToRemove of pathsToRemove) {
@@ -84,9 +81,54 @@ export function removeExpandedDirectories(
     }
 
     if (!shouldSkip) {
-      next[path] = true
+      next.push(path)
     }
   }
 
   return next
+}
+
+/**
+ * Adds one or more directory paths to the expanded directories array.
+ * Skips paths that are already in the array.
+ */
+export function addExpandedDirectories(
+  expanded: string[],
+  paths: string[]
+): string[] {
+  const next = [...expanded]
+
+  for (const path of paths) {
+    if (!next.includes(path)) {
+      next.push(path)
+    }
+  }
+
+  return next
+}
+
+/**
+ * Adds a single directory path to the expanded directories array.
+ * Returns the same array if the path is already present.
+ */
+export function addExpandedDirectory(
+  expanded: string[],
+  path: string
+): string[] {
+  if (expanded.includes(path)) {
+    return expanded
+  }
+  return [...expanded, path]
+}
+
+/**
+ * Toggles a directory path in the expanded directories array.
+ * Removes it if present, adds it if not present.
+ */
+export function toggleExpandedDirectory(
+  expanded: string[],
+  path: string
+): string[] {
+  const isExpanded = expanded.includes(path)
+  return isExpanded ? expanded.filter((p) => p !== path) : [...expanded, path]
 }

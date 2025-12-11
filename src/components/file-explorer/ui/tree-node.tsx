@@ -20,7 +20,7 @@ type TreeNodeProps = {
   entry: WorkspaceEntry
   tab: Tab | null
   depth: number
-  expandedDirectories: Record<string, boolean>
+  expandedDirectories: string[]
   onDirectoryClick: (path: string) => void
   onEntryPrimaryAction: (
     entry: WorkspaceEntry,
@@ -65,7 +65,7 @@ export function TreeNode({
   const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
   const isBusy = isRenaming || isAiRenaming
 
-  const isExpanded = Boolean(expandedDirectories[entry.path])
+  const isExpanded = expandedDirectories.includes(entry.path)
   const isSelected = selectedEntryPaths.has(entry.path)
 
   const extension = useMemo(() => {
