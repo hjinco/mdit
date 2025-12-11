@@ -9,6 +9,7 @@ import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
+import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
@@ -100,7 +101,7 @@ export function FileExplorer() {
         paths.push(node.path)
         if (
           node.isDirectory &&
-          expandedDirectories[node.path] &&
+          expandedDirectories.includes(node.path) &&
           node.children
         ) {
           traverse(node.children)
@@ -171,10 +172,9 @@ export function FileExplorer() {
     (directoryPath: string) => {
       setPendingNewFolderPath(directoryPath)
       // Expand the parent directory to show the pending new folder input
-      setExpandedDirectories((prev) => ({
-        ...prev,
-        [directoryPath]: true,
-      }))
+      setExpandedDirectories((prev) =>
+        addExpandedDirectory(prev, directoryPath)
+      )
     },
     [setExpandedDirectories]
   )
@@ -227,14 +227,13 @@ export function FileExplorer() {
         return
       }
 
-      if (expandedDirectories[directoryPath]) {
+      if (expandedDirectories.includes(directoryPath)) {
         return
       }
 
-      setExpandedDirectories((prev) => ({
-        ...prev,
-        [directoryPath]: true,
-      }))
+      setExpandedDirectories((prev) =>
+        addExpandedDirectory(prev, directoryPath)
+      )
     },
     [expandedDirectories, setExpandedDirectories]
   )

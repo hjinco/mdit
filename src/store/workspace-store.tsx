@@ -42,9 +42,11 @@ import {
   updateEntryMetadata,
 } from './workspace/utils/entry-utils'
 import {
+  addExpandedDirectories,
   removeExpandedDirectories,
   renameExpandedDirectories,
   syncExpandedDirectoriesWithEntries,
+  toggleExpandedDirectory,
 } from './workspace/utils/expanded-directories-utils'
 import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
 import {
@@ -88,15 +90,13 @@ type WorkspaceStore = {
   recentWorkspacePaths: string[]
   isTreeLoading: boolean
   entries: WorkspaceEntry[]
-  expandedDirectories: Record<string, boolean>
+  expandedDirectories: string[]
   currentCollectionPath: string | null
   lastCollectionPath: string | null
   isMigrationsComplete: boolean
   pinnedDirectories: string[]
   setExpandedDirectories: (
-    action: (
-      expandedDirectories: Record<string, boolean>
-    ) => Record<string, boolean>
+    action: (expandedDirectories: string[]) => string[]
   ) => void
   setCurrentCollectionPath: (
     path: string | null | ((prev: string | null) => string | null)
@@ -154,7 +154,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   recentWorkspacePaths: [],
   isTreeLoading: false,
   entries: [],
-  expandedDirectories: {},
+  expandedDirectories: [],
   currentCollectionPath: null,
   lastCollectionPath: null,
   isMigrationsComplete: false,
@@ -212,7 +212,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         recentWorkspacePaths,
         entries: [],
         isTreeLoading: Boolean(workspacePath),
-        expandedDirectories: {},
+        expandedDirectories: [],
         currentCollectionPath: null,
         lastCollectionPath: null,
         isMigrationsComplete: false,
@@ -256,7 +256,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         recentWorkspacePaths: [],
         entries: [],
         isTreeLoading: false,
-        expandedDirectories: {},
+        expandedDirectories: [],
         currentCollectionPath: null,
         lastCollectionPath: null,
         isMigrationsComplete: false,
@@ -293,7 +293,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         recentWorkspacePaths: updatedHistory,
         entries: [],
         isTreeLoading: true,
-        expandedDirectories: {},
+        expandedDirectories: [],
         currentCollectionPath: null,
         isMigrationsComplete: false,
         pinnedDirectories: [],
@@ -437,16 +437,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   toggleDirectory: (path: string) => {
-    set((state) => {
-      const nextValue = !(state.expandedDirectories[path] ?? false)
-
-      return {
-        expandedDirectories: {
-          ...state.expandedDirectories,
-          [path]: nextValue,
-        },
-      }
-    })
+    set((state) => ({
+      expandedDirectories: toggleExpandedDirectory(
+        state.expandedDirectories,
+        path
+      ),
+    }))
   },
 
   createFolder: async (directoryPath: string, folderName: string) => {
@@ -491,11 +487,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
         return {
           entries: updatedEntries,
-          expandedDirectories: {
-            ...state.expandedDirectories,
-            [directoryPath]: true,
-            [folderPath]: true,
-          },
+          expandedDirectories: addExpandedDirectories(
+            state.expandedDirectories,
+            [directoryPath, folderPath]
+          ),
           currentCollectionPath: folderPath,
         }
       })
@@ -1208,13 +1203,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     if (isDirectory) {
       await get().refreshWorkspaceEntries()
       // Expand destination directory and the newly copied folder (if it's a directory)
-      const updatedExpandedDirectories: Record<string, boolean> = {
-        ...get().expandedDirectories,
-        [destinationPath]: true,
-        [newPath]: true,
-      }
+      const currentExpanded = get().expandedDirectories
       set({
-        expandedDirectories: updatedExpandedDirectories,
+        expandedDirectories: addExpandedDirectories(currentExpanded, [
+          destinationPath,
+          newPath,
+        ]),
       })
     }
 
