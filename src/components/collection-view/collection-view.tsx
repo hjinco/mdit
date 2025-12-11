@@ -158,11 +158,8 @@ export function CollectionView() {
         return
       }
 
-      const success = await deleteEntries(paths)
-
-      if (success) {
-        resetSelection()
-      }
+      await deleteEntries(paths)
+      resetSelection()
     },
     [deleteEntries, resetSelection]
   )
