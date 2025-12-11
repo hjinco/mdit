@@ -5,7 +5,10 @@ import { join, resourceDir } from '@tauri-apps/api/path'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+
+// Module-level singleton to track tray instance
+let trayInstance: TrayIcon | null = null
 
 const createQuickNoteWindow = () => {
   new WebviewWindow('quick-note', {
@@ -20,11 +23,16 @@ const createQuickNoteWindow = () => {
 }
 
 async function createSystemTray() {
+  // Return existing tray if already created
+  if (trayInstance !== null) {
+    return trayInstance
+  }
+
   const resDir = await resourceDir()
   const iconPath = await join(resDir, 'icons', 'trayTemplate.png')
   const icon = await Image.fromPath(iconPath)
 
-  return await TrayIcon.new({
+  const tray = await TrayIcon.new({
     icon,
     menu: await Menu.new({
       items: [
@@ -39,9 +47,14 @@ async function createSystemTray() {
       ],
     }),
   })
+
+  trayInstance = tray
+  return tray
 }
 
 export function SystemTray() {
+  const cleanupRef = useRef(false)
+
   useEffect(() => {
     const shortcut = 'CmdOrCtrl+Alt+N'
 
@@ -49,12 +62,19 @@ export function SystemTray() {
       createQuickNoteWindow()
     })
 
-    const tray = createSystemTray()
+    const trayPromise = createSystemTray()
 
     return () => {
+      cleanupRef.current = true
       // Cleanup: unregister shortcut and close tray
       unregister(shortcut)
-      tray.then((tray) => tray.close())
+      trayPromise.then((tray) => {
+        // Only cleanup if this is the active instance
+        if (cleanupRef.current && trayInstance === tray) {
+          tray.close()
+          trayInstance = null
+        }
+      })
     }
   }, [])
   return null
