@@ -96,13 +96,11 @@ export function addExpandedDirectories(
   expanded: string[],
   paths: string[]
 ): string[] {
-  const expandedSet = new Set(expanded)
   const next = [...expanded]
 
   for (const path of paths) {
-    if (!expandedSet.has(path)) {
+    if (!next.includes(path)) {
       next.push(path)
-      expandedSet.add(path)
     }
   }
 
