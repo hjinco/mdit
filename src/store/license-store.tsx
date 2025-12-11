@@ -19,6 +19,7 @@ const ACTIVATION_ID_STORAGE_KEY = 'license-activation-id'
 type LicenseStore = {
   status: 'valid' | 'invalid' | 'validating' | 'activating' | 'deactivating'
   error: string | null
+  isChecking: boolean
   clearLicenseError: () => void
   checkLicense: () => Promise<void>
   registerLicenseKey: (key: string) => Promise<void>
@@ -33,17 +34,23 @@ type LicenseStore = {
 export const useLicenseStore = create<LicenseStore>((set, get) => ({
   status: 'valid',
   error: null,
+  isChecking: false,
 
   clearLicenseError: () => set({ error: null }),
 
   checkLicense: async () => {
-    set({ status: 'validating', error: null })
+    // Prevent concurrent calls
+    if (get().isChecking) {
+      return
+    }
+
+    set({ status: 'validating', error: null, isChecking: true })
 
     // If Polar environment variables are not set, assume license is valid
     const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
     const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
     if (!polarApiBaseUrl || !organizationId) {
-      set({ status: 'valid' })
+      set({ status: 'valid', isChecking: false })
       return
     }
 
@@ -54,7 +61,7 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
 
       if (!licenseKey) {
         // Step 2: If license key is missing, set as unauthenticated
-        set({ status: 'invalid' })
+        set({ status: 'invalid', isChecking: false })
         return
       }
 
@@ -62,6 +69,7 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
         // Step 3: If license key exists but activation ID is missing, try to activate
         const activationResult = await get().activateLicense(licenseKey)
         if (!activationResult) {
+          set({ isChecking: false })
           return
         }
         activationId = activationResult.id
@@ -69,10 +77,12 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
 
       // Step 4: If both exist, try to validate with retry
       await get().validateLicense(licenseKey, activationId)
+      set({ isChecking: false })
     } catch (_e) {
       set({
         status: 'invalid',
         error: 'Failed to check license',
+        isChecking: false,
       })
     }
   },
@@ -99,6 +109,7 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
     try {
       const activationResult = await activateLicenseKey(key)
       localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, activationResult.id)
+      // Status will be updated by validateLicense or checkLicense
       return activationResult
     } catch (error) {
       await deletePassword(LICENSE_SERVICE, LICENSE_USER)
@@ -116,7 +127,10 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
 
     try {
       const validationResult = await validateLicenseKey(key, activationId)
-      set({ status: 'valid' })
+      // Only update status if we're still in validating state (not interrupted)
+      if (get().status === 'validating') {
+        set({ status: 'valid' })
+      }
       return validationResult
     } catch (error) {
       // TODO: Improve error handling to distinguish between network errors and invalid licenses.
@@ -125,11 +139,16 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       // returns. Consider implementing retry logic or preserving credentials for network errors.
       await deletePassword(LICENSE_SERVICE, LICENSE_USER)
       localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-      set({
-        status: 'invalid',
-        error:
-          error instanceof Error ? error.message : 'Failed to validate license',
-      })
+      // Only update status if we're still in validating state (not interrupted)
+      if (get().status === 'validating') {
+        set({
+          status: 'invalid',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to validate license',
+        })
+      }
       return null
     }
   },
