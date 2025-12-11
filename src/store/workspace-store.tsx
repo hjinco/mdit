@@ -343,34 +343,39 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     set({ isTreeLoading: true })
 
-    const entries = await buildWorkspaceEntries(workspacePath)
+    try {
+      const entries = await buildWorkspaceEntries(workspacePath)
 
-    if (get().workspacePath !== workspacePath) {
-      return
-    }
+      if (get().workspacePath !== workspacePath) {
+        return
+      }
 
-    const prevPinned = get().pinnedDirectories
-    const nextPinned = filterPinsWithEntries(
-      filterPinsForWorkspace(prevPinned, workspacePath),
-      entries,
-      workspacePath
-    )
-    const pinsChanged =
-      prevPinned.length !== nextPinned.length ||
-      prevPinned.some((path, index) => path !== nextPinned[index])
+      const prevPinned = get().pinnedDirectories
+      const nextPinned = filterPinsWithEntries(
+        filterPinsForWorkspace(prevPinned, workspacePath),
+        entries,
+        workspacePath
+      )
+      const pinsChanged =
+        prevPinned.length !== nextPinned.length ||
+        prevPinned.some((path, index) => path !== nextPinned[index])
 
-    set((state) => ({
-      entries,
-      isTreeLoading: false,
-      expandedDirectories: syncExpandedDirectoriesWithEntries(
-        state.expandedDirectories,
-        entries
-      ),
-      ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
-    }))
+      set((state) => ({
+        entries,
+        isTreeLoading: false,
+        expandedDirectories: syncExpandedDirectoriesWithEntries(
+          state.expandedDirectories,
+          entries
+        ),
+        ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
+      }))
 
-    if (pinsChanged) {
-      await persistPinnedDirectories(workspacePath, nextPinned)
+      if (pinsChanged) {
+        await persistPinnedDirectories(workspacePath, nextPinned)
+      }
+    } catch (e) {
+      set({ isTreeLoading: false })
+      throw e
     }
   },
 
@@ -623,7 +628,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
     })
 
-    if (nextPinned) {
+    if (workspacePath && nextPinned) {
       await persistPinnedDirectories(workspacePath, nextPinned)
     }
   },
@@ -677,10 +682,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     )
 
     const renamedPath = await get().renameEntry(entry, finalFileName)
-
-    if (!renamedPath) {
-      throw new Error('Could not apply the AI-generated name.')
-    }
 
     const { tab, openNote } = useTabStore.getState()
 
