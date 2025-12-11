@@ -1,5 +1,14 @@
-import { MarkdownPlugin, remarkMdx, remarkMention } from '@platejs/markdown'
-import { KEYS, type TEquationElement } from 'platejs'
+import {
+  convertChildrenDeserialize,
+  convertNodesSerialize,
+  MarkdownPlugin,
+  type MdMdxJsxFlowElement,
+  parseAttributes,
+  propsToAttributes,
+  remarkMdx,
+  remarkMention,
+} from '@platejs/markdown'
+import { getPluginType, KEYS, type TEquationElement } from 'platejs'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
@@ -127,6 +136,37 @@ export const MarkdownKit = [
               type: FRONTMATTER_KEY,
               data: parseFrontmatterYaml(mdastNode.value),
               children: [{ text: '' }],
+            }
+          },
+        },
+        callout: {
+          deserialize: (mdastNode, deco, options) => {
+            const props = parseAttributes(mdastNode.attributes)
+            return {
+              children: convertChildrenDeserialize(
+                mdastNode.children,
+                deco,
+                options
+              ),
+              type: getPluginType(options.editor!, KEYS.callout),
+              ...props,
+            }
+          },
+          serialize(slateNode, options): MdMdxJsxFlowElement {
+            const { icon, backgroundColor, variant } = slateNode
+            const attributes = propsToAttributes({
+              icon,
+              backgroundColor,
+              variant,
+            }).filter((attribute) => attribute.value !== 'null')
+            return {
+              attributes,
+              children: convertNodesSerialize(
+                slateNode.children,
+                options
+              ) as any,
+              name: 'callout',
+              type: 'mdxJsxFlowElement',
             }
           },
         },

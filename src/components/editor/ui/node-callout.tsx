@@ -34,7 +34,7 @@ export function CalloutElement({
       }}
       {...props}
     >
-      <div className="flex w-full gap-2 rounded-md">
+      <div className="flex w-full items-center gap-2 rounded-md">
         <EmojiPopover
           {...emojiToolbarDropdownProps}
           control={
