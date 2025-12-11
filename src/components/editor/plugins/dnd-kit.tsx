@@ -39,9 +39,11 @@ export const BlockDraggable: RenderNodeWrapper = (props) => {
 
 function DragHandle({
   elementId,
+  type,
   onDraggingChange,
 }: {
   elementId: string
+  type: string
   onDraggingChange?: (isDragging: boolean) => void
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
@@ -62,14 +64,25 @@ function DragHandle({
       {...attributes}
       {...listeners}
       className={cn(
-        'absolute -left-6 top-1 flex py-1 rounded-xs',
+        'absolute -left-7 flex py-1 rounded-xs',
         'opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]',
         'cursor-grab active:cursor-grabbing',
-        'text-muted-foreground hover:text-foreground hover:bg-accent/50 z-50',
-        isFocusMode && 'opacity-0 group-hover:opacity-0'
+        'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50',
+        isFocusMode && 'opacity-0 group-hover:opacity-0',
+        type === KEYS.codeBlock
+          ? 'top-1'
+          : type === KEYS.table
+            ? 'top-5'
+            : type === KEYS.img
+              ? 'top-2'
+              : type === KEYS.blockquote
+                ? '-top-0.5'
+                : type === KEYS.callout
+                  ? 'top-0'
+                  : 'top-0.5'
       )}
     >
-      <GripVertical className="size-4.5" />
+      <GripVertical className="size-5 stroke-[1.4]!" />
     </div>
   )
 }
@@ -101,6 +114,7 @@ function Draggable(props: PlateElementProps) {
       {props.element.id != null && (
         <DragHandle
           elementId={props.element.id as string}
+          type={props.element.type}
           onDraggingChange={setIsDragging}
         />
       )}
