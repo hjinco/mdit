@@ -28,16 +28,23 @@ export const ImageElement = withHOC(
     const src = useMemo(() => {
       const url = props.element.url
 
+      let baseSrc: string
       if (url.startsWith('http')) {
-        return url
+        baseSrc = url
+      } else {
+        const baseDir = tabPath ? dirname(tabPath) : null
+        if (!isAbsolute(url) && !baseDir) {
+          return ''
+        }
+        const absolutePath = isAbsolute(url) ? url : resolve(baseDir!, url)
+        baseSrc = convertFileSrc(absolutePath)
       }
 
-      const baseDir = tabPath ? dirname(tabPath) : null
-      if (!isAbsolute(url) && !baseDir) {
-        return ''
-      }
-      const absolutePath = isAbsolute(url) ? url : resolve(baseDir!, url)
-      return convertFileSrc(absolutePath)
+      // Add cache-busting query parameter using current timestamp
+      // This ensures the browser always fetches a fresh copy, bypassing cache
+      const cacheBuster = Date.now()
+      const separator = baseSrc.includes('?') ? '&' : '?'
+      return `${baseSrc}${separator}nocache=${cacheBuster}`
     }, [props.element.url, tabPath])
 
     return (
