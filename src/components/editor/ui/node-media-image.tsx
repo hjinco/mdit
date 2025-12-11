@@ -32,12 +32,23 @@ export const ImageElement = withHOC(
         return url
       }
 
-      const baseDir = tabPath ? dirname(tabPath) : null
-      if (!isAbsolute(url) && !baseDir) {
-        return ''
+      let baseSrc: string
+
+      if (isAbsolute(url)) {
+        baseSrc = url
+      } else {
+        if (!tabPath) {
+          return ''
+        }
+        baseSrc = resolve(dirname(tabPath), url)
       }
-      const absolutePath = isAbsolute(url) ? url : resolve(baseDir!, url)
-      return convertFileSrc(absolutePath)
+
+      baseSrc = convertFileSrc(baseSrc)
+      // Add cache-busting query parameter using current timestamp
+      // This ensures the browser always fetches a fresh copy, bypassing cache
+      const cacheBuster = Date.now()
+      const separator = baseSrc.includes('?') ? '&' : '?'
+      return `${baseSrc}${separator}nocache=${cacheBuster}`
     }, [props.element.url, tabPath])
 
     return (
