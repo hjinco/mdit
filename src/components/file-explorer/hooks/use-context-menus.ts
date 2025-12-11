@@ -31,7 +31,7 @@ type UseFileExplorerMenusProps = {
   beginRenaming: (entry: WorkspaceEntry) => void
   beginNewFolder: (directoryPath: string) => void
   handleDeleteEntries: (paths: string[]) => Promise<void>
-  createNote: (directoryPath: string) => Promise<string | null>
+  createNote: (directoryPath: string) => Promise<string>
   openNote: (path: string) => void
   workspacePath: string | null
   selectedEntryPaths: Set<string>
@@ -217,9 +217,7 @@ export const useFileExplorerMenus = ({
             text: 'New Note',
             action: async () => {
               const filePath = await createNote(directoryPath)
-              if (filePath) {
-                openNote(filePath)
-              }
+              openNote(filePath)
             },
           }),
           await MenuItem.new({

@@ -155,12 +155,10 @@ export function FileExplorer() {
   const handleRenameSubmit = useCallback(
     async (entry: WorkspaceEntry, nextName: string) => {
       try {
-        const newPath = await renameEntry(entry, nextName)
-        if (newPath !== null && tab?.path === entry.path) {
+        await renameEntry(entry, nextName)
+        if (tab?.path === entry.path) {
           clearLinkedTab()
         }
-      } catch (error) {
-        console.error('Failed to rename entry:', error)
       } finally {
         setRenamingEntryPath(null)
       }
@@ -212,11 +210,8 @@ export function FileExplorer() {
         return
       }
 
-      const success = await deleteEntries(paths)
-
-      if (success) {
-        resetSelection()
-      }
+      await deleteEntries(paths)
+      resetSelection()
     },
     [deleteEntries, resetSelection]
   )

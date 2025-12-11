@@ -113,15 +113,12 @@ type WorkspaceStore = {
     directoryPath: string,
     folderName: string
   ) => Promise<string | null>
-  createNote: (directoryPath: string) => Promise<string | null>
+  createNote: (directoryPath: string) => Promise<string>
   createAndOpenNote: () => Promise<void>
-  deleteEntries: (paths: string[]) => Promise<boolean>
-  deleteEntry: (path: string) => Promise<boolean>
+  deleteEntries: (paths: string[]) => Promise<void>
+  deleteEntry: (path: string) => Promise<void>
   renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
-  renameEntry: (
-    entry: WorkspaceEntry,
-    newName: string
-  ) => Promise<string | null>
+  renameEntry: (entry: WorkspaceEntry, newName: string) => Promise<string>
   moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
@@ -325,18 +322,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   openFolderPicker: async () => {
-    try {
-      const path = await open({
-        multiple: false,
-        directory: true,
-        title: 'Select Workspace Folder',
-      })
+    const path = await open({
+      multiple: false,
+      directory: true,
+      title: 'Select Workspace Folder',
+    })
 
-      if (path) {
-        get().setWorkspace(path)
-      }
-    } catch (error) {
-      console.error('Failed to open folder picker:', error)
+    if (path) {
+      get().setWorkspace(path)
     }
   },
 
@@ -350,42 +343,34 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     set({ isTreeLoading: true })
 
-    try {
-      const entries = await buildWorkspaceEntries(workspacePath)
+    const entries = await buildWorkspaceEntries(workspacePath)
 
-      if (get().workspacePath !== workspacePath) {
-        return
-      }
+    if (get().workspacePath !== workspacePath) {
+      return
+    }
 
-      const prevPinned = get().pinnedDirectories
-      const nextPinned = filterPinsWithEntries(
-        filterPinsForWorkspace(prevPinned, workspacePath),
-        entries,
-        workspacePath
-      )
-      const pinsChanged =
-        prevPinned.length !== nextPinned.length ||
-        prevPinned.some((path, index) => path !== nextPinned[index])
+    const prevPinned = get().pinnedDirectories
+    const nextPinned = filterPinsWithEntries(
+      filterPinsForWorkspace(prevPinned, workspacePath),
+      entries,
+      workspacePath
+    )
+    const pinsChanged =
+      prevPinned.length !== nextPinned.length ||
+      prevPinned.some((path, index) => path !== nextPinned[index])
 
-      set((state) => ({
-        entries,
-        isTreeLoading: false,
-        expandedDirectories: syncExpandedDirectoriesWithEntries(
-          state.expandedDirectories,
-          entries
-        ),
-        ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
-      }))
+    set((state) => ({
+      entries,
+      isTreeLoading: false,
+      expandedDirectories: syncExpandedDirectoriesWithEntries(
+        state.expandedDirectories,
+        entries
+      ),
+      ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
+    }))
 
-      if (pinsChanged && get().workspacePath === workspacePath) {
-        await persistPinnedDirectories(workspacePath, nextPinned)
-      }
-    } catch (error) {
-      console.error('Failed to refresh workspace entries:', error)
-
-      if (get().workspacePath === workspacePath) {
-        set({ entries: [], isTreeLoading: false })
-      }
+    if (pinsChanged) {
+      await persistPinnedDirectories(workspacePath, nextPinned)
     }
   },
 
@@ -401,9 +386,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     const isDirectory =
-      normalizePathSeparators(path) ===
-        normalizePathSeparators(workspacePath) ||
-      Boolean(findDirectoryEntry(get().entries, path))
+      path === workspacePath || findDirectoryEntry(get().entries, path) !== null
     if (!isDirectory) {
       return
     }
@@ -511,66 +494,49 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const workspacePath = get().workspacePath
 
     if (!workspacePath) {
-      return null
+      throw new Error('Workspace path is not set')
     }
 
-    try {
-      const baseName = 'Untitled'
-      let attempt = 0
-      let fileName = `${baseName}.md`
-      let filePath = await join(directoryPath, fileName)
+    const baseName = 'Untitled'
+    let attempt = 0
+    let fileName = `${baseName}.md`
+    let filePath = await join(directoryPath, fileName)
 
-      while (await exists(filePath)) {
-        attempt += 1
-        fileName = `${baseName} ${attempt}.md`
-        filePath = await join(directoryPath, fileName)
-      }
-
-      await writeTextFile(filePath, '')
-
-      // Fetch file metadata
-      const fileMetadata: { createdAt?: Date; modifiedAt?: Date } = {}
-      try {
-        const statResult = await stat(filePath)
-        if (statResult.birthtime) {
-          fileMetadata.createdAt = new Date(statResult.birthtime)
-        }
-        if (statResult.mtime) {
-          fileMetadata.modifiedAt = new Date(statResult.mtime)
-        }
-      } catch (error) {
-        // Silently fail if metadata cannot be retrieved
-        console.debug('Failed to get metadata for:', filePath, error)
-      }
-
-      const newFileEntry: WorkspaceEntry = {
-        path: filePath,
-        name: fileName,
-        isDirectory: false,
-        ...fileMetadata,
-      }
-
-      set((state) => {
-        const updatedEntries =
-          directoryPath === workspacePath
-            ? sortWorkspaceEntries([...state.entries, newFileEntry])
-            : addEntryToState(state.entries, directoryPath, newFileEntry)
-
-        return {
-          entries: updatedEntries,
-        }
-      })
-
-      const { setSelectedEntryPaths, setSelectionAnchorPath } =
-        useFileExplorerSelectionStore.getState()
-      setSelectedEntryPaths(new Set([filePath]))
-      setSelectionAnchorPath(filePath)
-
-      return filePath
-    } catch (error) {
-      console.error('Failed to create note:', error)
-      return null
+    while (await exists(filePath)) {
+      attempt += 1
+      fileName = `${baseName} ${attempt}.md`
+      filePath = await join(directoryPath, fileName)
     }
+
+    await writeTextFile(filePath, '')
+
+    const now = new Date()
+
+    const newFileEntry: WorkspaceEntry = {
+      path: filePath,
+      name: fileName,
+      isDirectory: false,
+      createdAt: now,
+      modifiedAt: now,
+    }
+
+    set((state) => {
+      const updatedEntries =
+        directoryPath === workspacePath
+          ? sortWorkspaceEntries([...state.entries, newFileEntry])
+          : addEntryToState(state.entries, directoryPath, newFileEntry)
+
+      return {
+        entries: updatedEntries,
+      }
+    })
+
+    const { setSelectedEntryPaths, setSelectionAnchorPath } =
+      useFileExplorerSelectionStore.getState()
+    setSelectedEntryPaths(new Set([filePath]))
+    setSelectionAnchorPath(filePath)
+
+    return filePath
   },
 
   createAndOpenNote: async () => {
@@ -580,112 +546,90 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return
     }
 
-    try {
-      const { tab, openTab } = useTabStore.getState()
-      const { currentCollectionPath } = get()
-      let targetDirectory = workspacePath
+    const { tab, openTab } = useTabStore.getState()
+    const { currentCollectionPath } = get()
+    let targetDirectory = workspacePath
 
-      // Priority: currentCollectionPath > tab directory > workspace root
-      if (currentCollectionPath) {
-        targetDirectory = currentCollectionPath
-      } else if (tab) {
-        targetDirectory = await dirname(tab.path)
-      }
-
-      const newNotePath = await get().createNote(targetDirectory)
-
-      if (newNotePath) {
-        await openTab(newNotePath)
-      }
-    } catch (error) {
-      console.error('Failed to create and open note:', error)
+    // Priority: currentCollectionPath > tab directory > workspace root
+    if (currentCollectionPath) {
+      targetDirectory = currentCollectionPath
+    } else if (tab) {
+      targetDirectory = await dirname(tab.path)
     }
+
+    const newNotePath = await get().createNote(targetDirectory)
+    await openTab(newNotePath)
   },
 
   deleteEntries: async (paths: string[]) => {
-    try {
-      let tabState = useTabStore.getState()
-      const activeTabPath = tabState.tab?.path
+    let tabState = useTabStore.getState()
+    const activeTabPath = tabState.tab?.path
 
-      if (activeTabPath && paths.includes(activeTabPath)) {
-        tabState = await waitForUnsavedTabToSettle(activeTabPath, () =>
-          useTabStore.getState()
-        )
-        tabState.closeTab(activeTabPath)
-      }
+    if (activeTabPath && paths.includes(activeTabPath)) {
+      tabState = await waitForUnsavedTabToSettle(activeTabPath, () =>
+        useTabStore.getState()
+      )
+      tabState.closeTab(activeTabPath)
+    }
 
-      if (paths.length === 1) {
-        await invoke('move_to_trash', { path: paths[0] })
-      } else {
-        await invoke('move_many_to_trash', { paths })
-      }
+    if (paths.length === 1) {
+      await invoke('move_to_trash', { path: paths[0] })
+    } else {
+      await invoke('move_many_to_trash', { paths })
+    }
 
-      // Remove deleted paths from history
-      for (const path of paths) {
-        tabState.removePathFromHistory(path)
-      }
+    // Remove deleted paths from history
+    for (const path of paths) {
+      tabState.removePathFromHistory(path)
+    }
 
-      // Update currentCollectionPath and lastCollectionPath if they're being deleted
-      const { currentCollectionPath, lastCollectionPath } = get()
-      const shouldClearCurrentCollectionPath =
-        currentCollectionPath && paths.includes(currentCollectionPath)
-      const shouldClearLastCollectionPath =
-        lastCollectionPath && paths.includes(lastCollectionPath)
+    // Update currentCollectionPath and lastCollectionPath if they're being deleted
+    const { currentCollectionPath, lastCollectionPath } = get()
+    const shouldClearCurrentCollectionPath =
+      currentCollectionPath && paths.includes(currentCollectionPath)
+    const shouldClearLastCollectionPath =
+      lastCollectionPath && paths.includes(lastCollectionPath)
 
-      if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
-        set({
-          currentCollectionPath: shouldClearCurrentCollectionPath
-            ? null
-            : currentCollectionPath,
-          lastCollectionPath: shouldClearLastCollectionPath
-            ? null
-            : lastCollectionPath,
-        })
-      }
-
-      // Remove deleted entries from state without full refresh
-      const workspacePath = get().workspacePath
-      let nextPinned: string[] | null = null
-
-      set((state) => {
-        const filteredPins = removePinsForPaths(state.pinnedDirectories, paths)
-        const pinsChanged =
-          filteredPins.length !== state.pinnedDirectories.length
-
-        if (pinsChanged) {
-          nextPinned = filteredPins
-        }
-
-        return {
-          entries: removeEntriesFromState(state.entries, paths),
-          expandedDirectories: removeExpandedDirectories(
-            state.expandedDirectories,
-            paths
-          ),
-          ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
-        }
+    if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
+      set({
+        currentCollectionPath: shouldClearCurrentCollectionPath
+          ? null
+          : currentCollectionPath,
+        lastCollectionPath: shouldClearLastCollectionPath
+          ? null
+          : lastCollectionPath,
       })
+    }
 
-      if (
-        workspacePath &&
-        nextPinned &&
-        get().workspacePath === workspacePath
-      ) {
-        await persistPinnedDirectories(workspacePath, nextPinned)
+    // Remove deleted entries from state without full refresh
+    const workspacePath = get().workspacePath
+    let nextPinned: string[] | null = null
+
+    set((state) => {
+      const filteredPins = removePinsForPaths(state.pinnedDirectories, paths)
+      const pinsChanged = filteredPins.length !== state.pinnedDirectories.length
+
+      if (pinsChanged) {
+        nextPinned = filteredPins
       }
 
-      return true
-    } catch (error) {
-      console.error('Failed to delete entries:', paths, error)
-      toast.error('Failed to delete', {
-        position: 'bottom-left',
-      })
-      return false
+      return {
+        entries: removeEntriesFromState(state.entries, paths),
+        expandedDirectories: removeExpandedDirectories(
+          state.expandedDirectories,
+          paths
+        ),
+        ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
+      }
+    })
+
+    if (nextPinned) {
+      await persistPinnedDirectories(workspacePath, nextPinned)
     }
   },
 
   deleteEntry: async (path: string) => {
-    return get().deleteEntries([path])
+    get().deleteEntries([path])
   },
 
   renameNoteWithAI: async (entry) => {
@@ -699,68 +643,59 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return
     }
 
-    try {
-      const [dirPath, rawContent] = await Promise.all([
-        dirname(entry.path),
-        readTextFile(entry.path),
-      ])
+    const [dirPath, rawContent] = await Promise.all([
+      dirname(entry.path),
+      readTextFile(entry.path),
+    ])
 
-      const dirEntries = await readDir(dirPath)
-      const otherNoteNames = collectSiblingNoteNames(dirEntries, entry.name)
+    const dirEntries = await readDir(dirPath)
+    const otherNoteNames = collectSiblingNoteNames(dirEntries, entry.name)
 
-      const model = createModelFromConfig(renameConfig)
-      const aiResponse = await generateText({
-        model,
-        system: AI_RENAME_SYSTEM_PROMPT,
-        temperature: 0.3,
-        prompt: buildRenamePrompt({
-          currentName: entry.name,
-          otherNoteNames,
-          content: rawContent,
-          dirPath,
-        }),
-      })
-
-      const suggestedBaseName = extractAndSanitizeName(aiResponse.text)
-      if (!suggestedBaseName) {
-        throw new Error('The AI did not return a usable name.')
-      }
-
-      const { fileName: finalFileName } = await ensureUniqueNoteName(
+    const model = createModelFromConfig(renameConfig)
+    const aiResponse = await generateText({
+      model,
+      system: AI_RENAME_SYSTEM_PROMPT,
+      temperature: 0.3,
+      prompt: buildRenamePrompt({
+        currentName: entry.name,
+        otherNoteNames,
+        content: rawContent,
         dirPath,
-        suggestedBaseName,
-        entry.path,
-        exists
-      )
+      }),
+    })
 
-      const renamedPath = await get().renameEntry(entry, finalFileName)
-
-      if (!renamedPath) {
-        throw new Error('Could not apply the AI-generated name.')
-      }
-
-      const { tab, openNote } = useTabStore.getState()
-
-      toast.success(`Renamed note to “${finalFileName}”`, {
-        position: 'bottom-left',
-        action:
-          tab?.path === renamedPath
-            ? undefined
-            : {
-                label: 'Open',
-                onClick: () => {
-                  openNote(renamedPath)
-                },
-              },
-      })
-    } catch (error) {
-      console.error('Failed to rename note with AI:', entry.path, error)
-
-      toast.error('Failed to rename with AI', {
-        description: error instanceof Error ? error.message : undefined,
-        position: 'bottom-left',
-      })
+    const suggestedBaseName = extractAndSanitizeName(aiResponse.text)
+    if (!suggestedBaseName) {
+      throw new Error('The AI did not return a usable name.')
     }
+
+    const { fileName: finalFileName } = await ensureUniqueNoteName(
+      dirPath,
+      suggestedBaseName,
+      entry.path,
+      exists
+    )
+
+    const renamedPath = await get().renameEntry(entry, finalFileName)
+
+    if (!renamedPath) {
+      throw new Error('Could not apply the AI-generated name.')
+    }
+
+    const { tab, openNote } = useTabStore.getState()
+
+    toast.success(`Renamed note to “${finalFileName}”`, {
+      position: 'bottom-left',
+      action:
+        tab?.path === renamedPath
+          ? undefined
+          : {
+              label: 'Open',
+              onClick: () => {
+                openNote(renamedPath)
+              },
+            },
+    })
   },
 
   renameEntry: async (entry, newName) => {
@@ -771,86 +706,72 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       return entry.path
     }
 
-    try {
-      const tabState = await waitForUnsavedTabToSettle(entry.path, () =>
-        useTabStore.getState()
-      )
+    const tabState = await waitForUnsavedTabToSettle(entry.path, () =>
+      useTabStore.getState()
+    )
 
-      const directoryPath = await dirname(entry.path)
-      const nextPath = await join(directoryPath, trimmedName)
+    const directoryPath = await dirname(entry.path)
+    const nextPath = await join(directoryPath, trimmedName)
 
-      if (nextPath === entry.path) {
-        return entry.path
-      }
-
-      if (await exists(nextPath)) {
-        console.warn('Cannot rename, target already exists:', nextPath)
-        return null
-      }
-
-      await rename(entry.path, nextPath)
-
-      await tabState.renameTab(entry.path, nextPath)
-      tabState.updateHistoryPath(entry.path, nextPath)
-
-      const workspacePath = get().workspacePath
-      let nextPinned: string[] | null = null
-
-      set((state) => {
-        const updatedPins = entry.isDirectory
-          ? renamePinnedDirectories(
-              state.pinnedDirectories,
-              entry.path,
-              nextPath
-            )
-          : state.pinnedDirectories
-        const pinsChanged =
-          updatedPins.length !== state.pinnedDirectories.length ||
-          updatedPins.some(
-            (path, index) => path !== state.pinnedDirectories[index]
-          )
-
-        if (pinsChanged) {
-          nextPinned = updatedPins
-        }
-
-        const updatedExpanded = entry.isDirectory
-          ? renameExpandedDirectories(
-              state.expandedDirectories,
-              entry.path,
-              nextPath
-            )
-          : state.expandedDirectories
-
-        return {
-          entries: updateEntryInState(
-            state.entries,
-            entry.path,
-            nextPath,
-            trimmedName
-          ),
-          expandedDirectories: updatedExpanded,
-          currentCollectionPath:
-            entry.isDirectory && state.currentCollectionPath === entry.path
-              ? nextPath
-              : state.currentCollectionPath,
-          ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
-        }
-      })
-
-      if (
-        workspacePath &&
-        nextPinned &&
-        get().workspacePath === workspacePath
-      ) {
-        await persistPinnedDirectories(workspacePath, nextPinned)
-      }
-
-      return nextPath
-    } catch (error) {
-      console.error('Failed to rename entry:', entry.path, error)
-      return null
+    if (nextPath === entry.path) {
+      return entry.path
     }
+
+    if (await exists(nextPath)) {
+      return entry.path
+    }
+
+    await rename(entry.path, nextPath)
+
+    await tabState.renameTab(entry.path, nextPath)
+    tabState.updateHistoryPath(entry.path, nextPath)
+
+    const workspacePath = get().workspacePath
+    let nextPinned: string[] | null = null
+
+    set((state) => {
+      const updatedPins = entry.isDirectory
+        ? renamePinnedDirectories(state.pinnedDirectories, entry.path, nextPath)
+        : state.pinnedDirectories
+      const pinsChanged =
+        updatedPins.length !== state.pinnedDirectories.length ||
+        updatedPins.some(
+          (path, index) => path !== state.pinnedDirectories[index]
+        )
+
+      if (pinsChanged) {
+        nextPinned = updatedPins
+      }
+
+      const updatedExpanded = entry.isDirectory
+        ? renameExpandedDirectories(
+            state.expandedDirectories,
+            entry.path,
+            nextPath
+          )
+        : state.expandedDirectories
+
+      return {
+        entries: updateEntryInState(
+          state.entries,
+          entry.path,
+          nextPath,
+          trimmedName
+        ),
+        expandedDirectories: updatedExpanded,
+        currentCollectionPath:
+          entry.isDirectory && state.currentCollectionPath === entry.path
+            ? nextPath
+            : state.currentCollectionPath,
+        ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
+      }
+    })
+
+    if (workspacePath && nextPinned && get().workspacePath === workspacePath) {
+      await persistPinnedDirectories(workspacePath, nextPinned)
+    }
+
+    return nextPath
   },
 
   moveEntry: async (sourcePath: string, destinationPath: string) => {
