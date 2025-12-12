@@ -125,10 +125,7 @@ export function DndProvider({ children }: DndProviderProps) {
           const position = overData.position ?? 'bottom'
           let insertPath = path
 
-          if (position === 'top') {
-            // Insert before the target block
-            insertPath = path
-          } else if (
+          if (
             node.type === editor.getType(KEYS.codeBlock) ||
             node.type === editor.getType(KEYS.table)
           ) {
@@ -194,10 +191,7 @@ export function DndProvider({ children }: DndProviderProps) {
 
           // Check if source and target are adjacent siblings (same parent, index differs by 1)
           const areAdjacentSiblings =
-            sourcePath.length === targetPath.length &&
-            sourcePath
-              .slice(0, -1)
-              .every((val, idx) => val === targetPath[idx]) &&
+            PathApi.isSibling(sourcePath, targetPath) &&
             Math.abs((sourcePath.at(-1) ?? 0) - (targetPath.at(-1) ?? 0)) === 1
 
           // Determine target position based on drop zone
@@ -230,7 +224,7 @@ export function DndProvider({ children }: DndProviderProps) {
 
           if (position === 'top') {
             moveToPath = isMovingDown
-              ? PathApi.previous(targetPath) ?? targetPath
+              ? (PathApi.previous(targetPath) ?? targetPath)
               : targetPath
           } else {
             moveToPath = isMovingDown ? targetPath : PathApi.next(targetPath)
