@@ -76,9 +76,7 @@ function EditorContent({
   const isSaved = useRef(true)
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
-  const handleScroll = useEditorStore((s) => s.handleScroll)
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
-  const scrollRafId = useRef<number | null>(null)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -130,23 +128,6 @@ function EditorContent({
     }
   }, [resetFocusMode])
 
-  const handleScrollThrottled = useCallback(() => {
-    if (scrollRafId.current) return
-
-    scrollRafId.current = requestAnimationFrame(() => {
-      scrollRafId.current = null
-      handleScroll()
-    })
-  }, [handleScroll])
-
-  useEffect(() => {
-    return () => {
-      if (scrollRafId.current) {
-        cancelAnimationFrame(scrollRafId.current)
-      }
-    }
-  }, [])
-
   useCommandMenuSelectionRestore(editor)
   useLinkedTabName(path, value)
 
@@ -181,7 +162,6 @@ function EditorContent({
           'ignore-click-outside/toolbar',
           'relative w-full h-full overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14'
         )}
-        onScroll={handleScrollThrottled}
         onKeyDown={(e) => {
           handleTypingDetection(e)
         }}
