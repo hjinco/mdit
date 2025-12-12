@@ -39,21 +39,6 @@ export async function buildWorkspaceEntries(
         }
 
         // Fetch metadata for files (not directories to avoid performance issues)
-        if (!entry.isDirectory) {
-          try {
-            const fileMetadata = await stat(fullPath)
-            if (fileMetadata.birthtime) {
-              workspaceEntry.createdAt = new Date(fileMetadata.birthtime)
-            }
-            if (fileMetadata.mtime) {
-              workspaceEntry.modifiedAt = new Date(fileMetadata.mtime)
-            }
-          } catch (error) {
-            // Silently fail if metadata cannot be retrieved
-            console.debug('Failed to get metadata for:', fullPath, error)
-          }
-        }
-
         if (entry.isDirectory) {
           try {
             if (visited.has(fullPath)) {
@@ -69,6 +54,19 @@ export async function buildWorkspaceEntries(
           } catch (error) {
             console.error('Failed to build workspace entry:', fullPath, error)
             workspaceEntry.children = EMPTY_CHILDREN
+          }
+        } else {
+          try {
+            const fileMetadata = await stat(fullPath)
+            if (fileMetadata.birthtime) {
+              workspaceEntry.createdAt = new Date(fileMetadata.birthtime)
+            }
+            if (fileMetadata.mtime) {
+              workspaceEntry.modifiedAt = new Date(fileMetadata.mtime)
+            }
+          } catch (error) {
+            // Silently fail if metadata cannot be retrieved
+            console.debug('Failed to get metadata for:', fullPath, error)
           }
         }
 
