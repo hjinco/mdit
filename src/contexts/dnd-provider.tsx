@@ -192,10 +192,49 @@ export function DndProvider({ children }: DndProviderProps) {
             return
           }
 
+          // Check if source and target are adjacent siblings (same parent, index differs by 1)
+          const areAdjacentSiblings =
+            sourcePath.length === targetPath.length &&
+            sourcePath
+              .slice(0, -1)
+              .every((val, idx) => val === targetPath[idx]) &&
+            Math.abs((sourcePath.at(-1) ?? 0) - (targetPath.at(-1) ?? 0)) === 1
+
           // Determine target position based on drop zone
           const position = overData.position ?? 'top'
-          const moveToPath =
-            position === 'top' ? targetPath : PathApi.next(targetPath)
+
+          // Prevent dropping to adjacent block's top/bottom if it would result in no effective movement
+          if (areAdjacentSiblings) {
+            const sourceIndex = sourcePath.at(-1) ?? 0
+            const targetIndex = targetPath.at(-1) ?? 0
+
+            // Prevent: source is immediately above target and dropping to target's top
+            if (position === 'top' && sourceIndex === targetIndex - 1) {
+              return
+            }
+
+            // Prevent: source is immediately below target and dropping to target's bottom
+            if (position === 'bottom' && sourceIndex === targetIndex + 1) {
+              return
+            }
+          }
+
+          const areSiblings = PathApi.isSibling(sourcePath, targetPath)
+          const isMovingDown =
+            areSiblings && PathApi.isBefore(sourcePath, targetPath)
+
+          // Slate/Plate moveNodes expects `to` to be the final path.
+          // When moving a sibling downwards, the target index shifts after removal,
+          // so we need to adjust the insertion path to preserve top/bottom semantics.
+          let moveToPath = targetPath
+
+          if (position === 'top') {
+            moveToPath = isMovingDown
+              ? PathApi.previous(targetPath) ?? targetPath
+              : targetPath
+          } else {
+            moveToPath = isMovingDown ? targetPath : PathApi.next(targetPath)
+          }
 
           // Move the source block to the determined position
           editor.tf.moveNodes({
