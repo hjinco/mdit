@@ -272,7 +272,22 @@ export function useGitSync(workspacePath: string | null) {
   }
 }
 
+async function checkGitInstalled(): Promise<boolean> {
+  try {
+    const command = Command.create('git', ['--version'])
+    const result = await command.execute()
+    return result.code === 0
+  } catch {
+    return false
+  }
+}
+
 async function isGitRepository(workspacePath: string) {
+  // Check if git is installed first
+  if (!(await checkGitInstalled())) {
+    return false
+  }
+
   try {
     // Check if it's a git repository
     const repoResult = await executeGit(workspacePath, [
