@@ -20,7 +20,7 @@ export function Header() {
   return (
     <div
       className={cn(
-        'absolute z-40 top-0 left-0 bg-background h-12 flex items-center justify-center transition-[opacity] duration-600 w-[calc(100%-8px)]',
+        'absolute z-100 top-0 left-0 bg-background h-12 flex items-center justify-center transition-[opacity] duration-600 w-[calc(100%-8px)]',
         isFocusMode && 'pointer-events-none opacity-0'
       )}
       {...(isMac() && { 'data-tauri-drag-region': '' })}

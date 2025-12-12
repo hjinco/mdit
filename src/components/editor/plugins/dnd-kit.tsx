@@ -91,7 +91,7 @@ function DragHandle({
         'absolute -left-7 flex py-1 rounded-xs',
         'opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]',
         'cursor-grab active:cursor-grabbing',
-        'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50',
+        'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0',
         'top-0.75',
         topClass
