@@ -16,14 +16,14 @@ export function Header() {
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
   const isFullscreen = useIsFullscreen()
   const isFocusMode = useEditorStore((s) => s.isFocusMode)
-  const isScrolling = useEditorStore((s) => s.isScrolling)
 
   return (
     <div
       className={cn(
-        'absolute z-40 top-0 left-0 bg-gradient-to-b from-background/60 via-background/30 to-transparent w-full h-12 flex items-center justify-center transition-[opacity] duration-600',
-        (isFocusMode || isScrolling) && 'pointer-events-none opacity-0'
+        'absolute z-40 top-0 left-0 bg-background h-12 flex items-center justify-center transition-[opacity] duration-600',
+        isFocusMode && 'pointer-events-none opacity-0'
       )}
+      style={{ width: 'calc(100% - 8px)' }}
       {...(isMac() && { 'data-tauri-drag-region': '' })}
     >
       <div
@@ -40,7 +40,7 @@ export function Header() {
         <HistoryNavigation />
       </div>
       <Tab />
-      <div className="absolute right-2">
+      <div className="absolute right-0">
         <MoreButton />
       </div>
     </div>

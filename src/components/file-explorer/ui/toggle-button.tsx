@@ -14,7 +14,6 @@ type Props = {
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
   const isFocusMode = useEditorStore((s) => s.isFocusMode)
-  const isScrolling = useEditorStore((s) => s.isScrolling)
   const isCollectionViewOpen = useWorkspaceStore(
     (s) => s.currentCollectionPath !== null
   )
@@ -26,9 +25,7 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
           size="icon"
           className={cn(
             'text-foreground/70 transition-[opacity] duration-500',
-            (isFocusMode || isScrolling) &&
-              !isOpen &&
-              'pointer-events-none opacity-0',
+            isFocusMode && !isOpen && 'pointer-events-none opacity-0',
             (isOpen || isCollectionViewOpen) && 'hover:bg-background/40'
           )}
           onClick={onToggle}

@@ -5,9 +5,6 @@ import { create } from 'zustand'
 const FOCUS_TYPING_THRESHOLD = 4
 
 type EditorStore = {
-  isScrolling: boolean
-  scrollTimeoutId: NodeJS.Timeout | null
-  handleScroll: () => void
   // Focus mode state
   isFocusMode: boolean
   typingBurstCount: number
@@ -16,23 +13,6 @@ type EditorStore = {
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
-  isScrolling: false,
-  scrollTimeoutId: null,
-  handleScroll: () => {
-    const { scrollTimeoutId } = get()
-
-    if (scrollTimeoutId) {
-      // Clear existing timeout if any
-      clearTimeout(scrollTimeoutId)
-    }
-
-    // Set new timeout
-    const timeoutId = setTimeout(() => {
-      set({ isScrolling: false, scrollTimeoutId: null })
-    }, 300)
-
-    set({ isScrolling: true, scrollTimeoutId: timeoutId })
-  },
   // Focus mode state
   isFocusMode: false,
   typingBurstCount: 0,
