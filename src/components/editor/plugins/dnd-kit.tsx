@@ -63,7 +63,7 @@ function DragHandle({
   elementId: string
   type: string
   isFirstChild: boolean
-  onDraggingChange?: (isDragging: boolean) => void
+  onDraggingChange: (isDragging: boolean) => void
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: `editor-${elementId}`,
@@ -74,7 +74,7 @@ function DragHandle({
 
   // Notify parent component when dragging state changes
   useEffect(() => {
-    onDraggingChange?.(isDragging)
+    onDraggingChange(isDragging)
   }, [isDragging, onDraggingChange])
 
   const topClass =
