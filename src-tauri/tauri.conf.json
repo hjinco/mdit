@@ -23,7 +23,7 @@
           "effects": ["hudWindow"]
         },
         "trafficLightPosition": {
-          "x": 15,
+          "x": 18,
           "y": 22
         }
       }
