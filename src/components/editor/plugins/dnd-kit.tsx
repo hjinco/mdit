@@ -69,6 +69,20 @@ function DragHandle({
         'cursor-grab active:cursor-grabbing',
         'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0',
+        'top-0.75',
+        type === KEYS.h1
+          ? 'top-11'
+          : type === KEYS.h2
+            ? 'top-6.5'
+            : type === KEYS.h3
+              ? 'top-5'
+              : type === KEYS.h4
+                ? 'top-3.5'
+                : type === KEYS.h5
+                  ? 'top-5'
+                  : type === KEYS.h6
+                    ? 'top-6'
+                    : '',
         type === KEYS.codeBlock
           ? 'top-1'
           : type === KEYS.table
@@ -76,10 +90,10 @@ function DragHandle({
             : type === KEYS.img
               ? 'top-2'
               : type === KEYS.blockquote
-                ? '-top-0.5'
+                ? 'top-0.5'
                 : type === KEYS.callout
                   ? 'top-0'
-                  : 'top-0.5'
+                  : ''
       )}
     >
       <GripVertical className="size-5 stroke-[1.4]!" />
