@@ -13,6 +13,23 @@ import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
 
+const headingTopMap: Record<string, string> = {
+  [KEYS.h1]: 'top-11',
+  [KEYS.h2]: 'top-6.5',
+  [KEYS.h3]: 'top-5',
+  [KEYS.h4]: 'top-3.5',
+  [KEYS.h5]: 'top-5',
+  [KEYS.h6]: 'top-6',
+}
+
+const otherTypeTopMap: Record<string, string> = {
+  [KEYS.codeBlock]: 'top-1',
+  [KEYS.table]: 'top-5',
+  [KEYS.img]: 'top-2',
+  [KEYS.blockquote]: 'top-0.5',
+  [KEYS.callout]: 'top-0',
+}
+
 export const BlockDraggable: RenderNodeWrapper = (props) => {
   const { editor, element, path } = props
   const enabled = useMemo(() => {
@@ -40,11 +57,13 @@ export const BlockDraggable: RenderNodeWrapper = (props) => {
 function DragHandle({
   elementId,
   type,
+  isFirstChild,
   onDraggingChange,
 }: {
   elementId: string
   type: string
-  onDraggingChange?: (isDragging: boolean) => void
+  isFirstChild: boolean
+  onDraggingChange: (isDragging: boolean) => void
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: `editor-${elementId}`,
@@ -55,8 +74,13 @@ function DragHandle({
 
   // Notify parent component when dragging state changes
   useEffect(() => {
-    onDraggingChange?.(isDragging)
+    onDraggingChange(isDragging)
   }, [isDragging, onDraggingChange])
+
+  const topClass =
+    isFirstChild && headingTopMap[type]
+      ? 'top-0.75'
+      : headingTopMap[type] || otherTypeTopMap[type] || ''
 
   return (
     <div
@@ -69,18 +93,10 @@ function DragHandle({
         'cursor-grab active:cursor-grabbing',
         'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0',
-        type === KEYS.codeBlock
-          ? 'top-1'
-          : type === KEYS.table
-            ? 'top-5'
-            : type === KEYS.img
-              ? 'top-2'
-              : type === KEYS.blockquote
-                ? '-top-0.5'
-                : type === KEYS.callout
-                  ? 'top-0'
-                  : 'top-0.5'
+        'top-0.75',
+        topClass
       )}
+      contentEditable={false}
     >
       <GripVertical className="size-5 stroke-[1.4]!" />
     </div>
@@ -88,45 +104,92 @@ function DragHandle({
 }
 
 function Draggable(props: PlateElementProps) {
-  const { setNodeRef: setDropRef, isOver: isOverDnd } = useDroppable({
-    id: `editor-${props.element.id}`,
-    data: { kind: 'editor', id: props.element.id },
-  })
-
   const [isDragging, setIsDragging] = useState(false)
 
-  const shouldHighlight = isOverDnd
+  const elementId = props.element.id as string
+  const isFirstChild = props.path.length === 1 && props.path[0] === 0
+
+  // Top drop zone - always call hooks, but only use when valid
+  const {
+    setNodeRef: setTopDropRef,
+    isOver: isOverTop,
+    active: activeTop,
+  } = useDroppable({
+    id: `editor-${elementId}-top`,
+    data: { kind: 'editor', id: elementId, position: 'top' },
+  })
+
+  // Bottom drop zone - always call hooks, but only use when valid
+  const {
+    setNodeRef: setBottomDropRef,
+    isOver: isOverBottom,
+    active: activeBottom,
+  } = useDroppable({
+    id: `editor-${elementId}-bottom`,
+    data: { kind: 'editor', id: elementId, position: 'bottom' },
+  })
+
+  // Check if the active drag item is the same as this element
+  const activeId = activeTop?.data.current?.id || activeBottom?.data.current?.id
+  const isSelfDrag = activeId === elementId
 
   // If not the outermost node, render only children
-  if (props.path.length !== 1 || props.element.type === FRONTMATTER_KEY) {
+  if (
+    !elementId ||
+    props.path.length > 1 ||
+    props.element.type === FRONTMATTER_KEY
+  ) {
     return <>{props.children}</>
   }
 
-  // For outermost nodes, render full wrapper with drag handle and drop zone
   return (
     <div
-      ref={setDropRef}
       className={cn(
-        'group relative transition-opacity',
+        'group relative transition-opacity flow-root',
         isDragging && 'opacity-30'
       )}
     >
-      {props.element.id != null && (
-        <DragHandle
-          elementId={props.element.id as string}
-          type={props.element.type}
-          onDraggingChange={setIsDragging}
-        />
-      )}
-      {shouldHighlight && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-[1.5px]',
-            'bg-blue-400 dark:bg-blue-600/80'
-          )}
-        />
-      )}
+      <DragHandle
+        elementId={elementId}
+        type={props.element.type}
+        isFirstChild={isFirstChild}
+        onDraggingChange={setIsDragging}
+      />
+      {/* Top drop zone */}
+      <div
+        ref={setTopDropRef}
+        className="absolute inset-x-0 top-0 h-1/2 z-10"
+        style={{ pointerEvents: 'none' }}
+        contentEditable={false}
+      />
+      {/* Bottom drop zone */}
+      <div
+        ref={setBottomDropRef}
+        className="absolute inset-x-0 bottom-0 h-1/2 z-10"
+        style={{ pointerEvents: 'none' }}
+        contentEditable={false}
+      />
       {props.children}
+      {/* Top drop line */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 -top-px h-0.5',
+          'bg-blue-400 dark:bg-blue-600/80',
+          'opacity-0 transition-opacity',
+          isOverTop && !isSelfDrag && 'opacity-100'
+        )}
+        contentEditable={false}
+      />
+      {/* Bottom drop line */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
+          'bg-blue-400 dark:bg-blue-600/80',
+          'opacity-0 transition-opacity',
+          isOverBottom && !isSelfDrag && 'opacity-100'
+        )}
+        contentEditable={false}
+      />
     </div>
   )
 }

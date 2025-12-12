@@ -97,7 +97,7 @@ export function DndProvider({ children }: DndProviderProps) {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const overData = event.over?.data.current as
-        | { kind: 'editor'; id?: string }
+        | { kind: 'editor'; id?: string; position?: 'top' | 'bottom' }
         | undefined
       if (overData?.kind === 'editor') {
         const activeData = event.active.data.current as
@@ -121,21 +121,26 @@ export function DndProvider({ children }: DndProviderProps) {
 
           const [node, path] = entry
 
-          let nextPath = path
-          // Insert the image after the code block, not inside it.
+          // Determine insertion path based on drop position
+          const position = overData.position ?? 'bottom'
+          let insertPath = path
+
           if (
             node.type === editor.getType(KEYS.codeBlock) ||
             node.type === editor.getType(KEYS.table)
           ) {
-            nextPath = PathApi.next(path)
+            // Insert after the target block
+            // For code blocks and tables, use next path
+            insertPath = PathApi.next(path)
           }
 
           for (const imagePath of imagePaths) {
             insertImage(editor, toRelativeImagePath(imagePath), {
-              at: nextPath,
-              // For other block types, `nextBlock: true` creates a new block for the image.
-              // For code blocks, we've already moved to the next path, so we can insert directly.
+              at: insertPath,
+              // For top position, insert before (nextBlock: false)
+              // For bottom position with non-code/table blocks, use nextBlock
               nextBlock:
+                position === 'bottom' &&
                 node.type !== editor.getType(KEYS.codeBlock) &&
                 node.type !== editor.getType(KEYS.table),
             })
@@ -184,10 +189,51 @@ export function DndProvider({ children }: DndProviderProps) {
             return
           }
 
-          // Move the source block to before the target block
+          // Check if source and target are adjacent siblings (same parent, index differs by 1)
+          const areAdjacentSiblings =
+            PathApi.isSibling(sourcePath, targetPath) &&
+            Math.abs((sourcePath.at(-1) ?? 0) - (targetPath.at(-1) ?? 0)) === 1
+
+          // Determine target position based on drop zone
+          const position = overData.position ?? 'top'
+
+          // Prevent dropping to adjacent block's top/bottom if it would result in no effective movement
+          if (areAdjacentSiblings) {
+            const sourceIndex = sourcePath.at(-1) ?? 0
+            const targetIndex = targetPath.at(-1) ?? 0
+
+            // Prevent: source is immediately above target and dropping to target's top
+            if (position === 'top' && sourceIndex === targetIndex - 1) {
+              return
+            }
+
+            // Prevent: source is immediately below target and dropping to target's bottom
+            if (position === 'bottom' && sourceIndex === targetIndex + 1) {
+              return
+            }
+          }
+
+          const areSiblings = PathApi.isSibling(sourcePath, targetPath)
+          const isMovingDown =
+            areSiblings && PathApi.isBefore(sourcePath, targetPath)
+
+          // Slate/Plate moveNodes expects `to` to be the final path.
+          // When moving a sibling downwards, the target index shifts after removal,
+          // so we need to adjust the insertion path to preserve top/bottom semantics.
+          let moveToPath = targetPath
+
+          if (position === 'top') {
+            moveToPath = isMovingDown
+              ? (PathApi.previous(targetPath) ?? targetPath)
+              : targetPath
+          } else {
+            moveToPath = isMovingDown ? targetPath : PathApi.next(targetPath)
+          }
+
+          // Move the source block to the determined position
           editor.tf.moveNodes({
             at: sourcePath,
-            to: targetPath,
+            to: moveToPath,
           })
         }
         return

@@ -183,7 +183,7 @@
  * This is a temporary workaround - should be removed once the styling issue is resolved.
  */
 .slate-p {
-  @apply my-0.5 px-0 py-1;
+  @apply my-px px-0 py-1;
 }
 
 .lucide {
