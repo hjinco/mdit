@@ -8,6 +8,8 @@ import {
 
 import type { WorkspaceEntry } from '../../workspace-store'
 
+const EMPTY_CHILDREN: WorkspaceEntry[] = []
+
 export async function buildWorkspaceEntries(
   path: string,
   visited: Set<string> = new Set<string>()
@@ -31,6 +33,9 @@ export async function buildWorkspaceEntries(
           path: fullPath,
           name: entry.name,
           isDirectory: entry.isDirectory,
+          children: entry.isDirectory ? EMPTY_CHILDREN : undefined,
+          createdAt: undefined,
+          modifiedAt: undefined,
         }
 
         // Fetch metadata for files (not directories to avoid performance issues)
@@ -56,14 +61,14 @@ export async function buildWorkspaceEntries(
                 'Detected cyclic workspace entry, skipping recursion:',
                 fullPath
               )
-              workspaceEntry.children = []
+              workspaceEntry.children = EMPTY_CHILDREN
             } else {
               const children = await buildWorkspaceEntries(fullPath, visited)
               workspaceEntry.children = children
             }
           } catch (error) {
             console.error('Failed to build workspace entry:', fullPath, error)
-            workspaceEntry.children = []
+            workspaceEntry.children = EMPTY_CHILDREN
           }
         }
 
@@ -347,7 +352,7 @@ export function moveEntryInState(
         ? entryToMove.children.map((child: WorkspaceEntry) =>
             updateChildPathsForMove(child, sourcePath, newPath)
           )
-        : undefined,
+        : EMPTY_CHILDREN,
       createdAt: entryToMove.createdAt,
       modifiedAt: entryToMove.modifiedAt,
     }
@@ -356,6 +361,7 @@ export function moveEntryInState(
       path: newPath,
       name: entryToMove.name,
       isDirectory: false,
+      children: undefined,
       createdAt: entryToMove.createdAt,
       modifiedAt: entryToMove.modifiedAt,
     }
