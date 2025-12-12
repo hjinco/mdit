@@ -69,6 +69,7 @@ export function SystemTray() {
     const closeListener = appWindow.listen('tauri://close-requested', () => {
       trayPromise.then((tray) => {
         tray.close()
+        trayInstance = null
       })
     })
 
