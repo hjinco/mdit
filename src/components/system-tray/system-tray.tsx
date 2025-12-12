@@ -4,6 +4,7 @@ import { Menu } from '@tauri-apps/api/menu'
 import { join, resourceDir } from '@tauri-apps/api/path'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
 import { useEffect, useRef } from 'react'
 
@@ -64,10 +65,18 @@ export function SystemTray() {
 
     const trayPromise = createSystemTray()
 
+    const appWindow = getCurrentWindow()
+    const closeListener = appWindow.listen('tauri://close-requested', () => {
+      trayPromise.then((tray) => {
+        tray.close()
+      })
+    })
+
     return () => {
       cleanupRef.current = true
       // Cleanup: unregister shortcut and close tray
       unregister(shortcut)
+      closeListener.then((unlisten) => unlisten())
       trayPromise.then((tray) => {
         // Only cleanup if this is the active instance
         if (cleanupRef.current && trayInstance === tray) {
