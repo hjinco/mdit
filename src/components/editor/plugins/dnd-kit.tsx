@@ -13,6 +13,23 @@ import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
 
+const headingTopMap: Record<string, string> = {
+  [KEYS.h1]: 'top-11',
+  [KEYS.h2]: 'top-6.5',
+  [KEYS.h3]: 'top-5',
+  [KEYS.h4]: 'top-3.5',
+  [KEYS.h5]: 'top-5',
+  [KEYS.h6]: 'top-6',
+}
+
+const otherTypeTopMap: Record<string, string> = {
+  [KEYS.codeBlock]: 'top-1',
+  [KEYS.table]: 'top-5',
+  [KEYS.img]: 'top-2',
+  [KEYS.blockquote]: 'top-0.5',
+  [KEYS.callout]: 'top-0',
+}
+
 export const BlockDraggable: RenderNodeWrapper = (props) => {
   const { editor, element, path } = props
   const enabled = useMemo(() => {
@@ -40,10 +57,12 @@ export const BlockDraggable: RenderNodeWrapper = (props) => {
 function DragHandle({
   elementId,
   type,
+  isFirstChild,
   onDraggingChange,
 }: {
   elementId: string
   type: string
+  isFirstChild: boolean
   onDraggingChange?: (isDragging: boolean) => void
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
@@ -58,6 +77,11 @@ function DragHandle({
     onDraggingChange?.(isDragging)
   }, [isDragging, onDraggingChange])
 
+  const topClass =
+    isFirstChild && headingTopMap[type]
+      ? 'top-0.75'
+      : headingTopMap[type] || otherTypeTopMap[type] || ''
+
   return (
     <div
       ref={setNodeRef}
@@ -70,30 +94,7 @@ function DragHandle({
         'text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50',
         isFocusMode && 'opacity-0 group-hover:opacity-0',
         'top-0.75',
-        type === KEYS.h1
-          ? 'top-11'
-          : type === KEYS.h2
-            ? 'top-6.5'
-            : type === KEYS.h3
-              ? 'top-5'
-              : type === KEYS.h4
-                ? 'top-3.5'
-                : type === KEYS.h5
-                  ? 'top-5'
-                  : type === KEYS.h6
-                    ? 'top-6'
-                    : '',
-        type === KEYS.codeBlock
-          ? 'top-1'
-          : type === KEYS.table
-            ? 'top-5'
-            : type === KEYS.img
-              ? 'top-2'
-              : type === KEYS.blockquote
-                ? 'top-0.5'
-                : type === KEYS.callout
-                  ? 'top-0'
-                  : ''
+        topClass
       )}
     >
       <GripVertical className="size-5 stroke-[1.4]!" />
@@ -105,6 +106,7 @@ function Draggable(props: PlateElementProps) {
   const [isDragging, setIsDragging] = useState(false)
 
   const elementId = props.element.id as string
+  const isFirstChild = props.path.length === 1 && props.path[0] === 0
 
   // Top drop zone - always call hooks, but only use when valid
   const { setNodeRef: setTopDropRef, isOver: isOverTop } = useDroppable({
@@ -137,6 +139,7 @@ function Draggable(props: PlateElementProps) {
       <DragHandle
         elementId={elementId}
         type={props.element.type}
+        isFirstChild={isFirstChild}
         onDraggingChange={setIsDragging}
       />
       {/* Top drop zone */}
