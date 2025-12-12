@@ -8,6 +8,8 @@ import {
 
 import type { WorkspaceEntry } from '../../workspace-store'
 
+const EMPTY_CHILDREN: WorkspaceEntry[] = []
+
 export async function buildWorkspaceEntries(
   path: string,
   visited: Set<string> = new Set<string>()
@@ -31,10 +33,29 @@ export async function buildWorkspaceEntries(
           path: fullPath,
           name: entry.name,
           isDirectory: entry.isDirectory,
+          children: entry.isDirectory ? EMPTY_CHILDREN : undefined,
+          createdAt: undefined,
+          modifiedAt: undefined,
         }
 
         // Fetch metadata for files (not directories to avoid performance issues)
-        if (!entry.isDirectory) {
+        if (entry.isDirectory) {
+          try {
+            if (visited.has(fullPath)) {
+              console.warn(
+                'Detected cyclic workspace entry, skipping recursion:',
+                fullPath
+              )
+              workspaceEntry.children = EMPTY_CHILDREN
+            } else {
+              const children = await buildWorkspaceEntries(fullPath, visited)
+              workspaceEntry.children = children
+            }
+          } catch (error) {
+            console.error('Failed to build workspace entry:', fullPath, error)
+            workspaceEntry.children = EMPTY_CHILDREN
+          }
+        } else {
           try {
             const fileMetadata = await stat(fullPath)
             if (fileMetadata.birthtime) {
@@ -46,24 +67,6 @@ export async function buildWorkspaceEntries(
           } catch (error) {
             // Silently fail if metadata cannot be retrieved
             console.debug('Failed to get metadata for:', fullPath, error)
-          }
-        }
-
-        if (entry.isDirectory) {
-          try {
-            if (visited.has(fullPath)) {
-              console.warn(
-                'Detected cyclic workspace entry, skipping recursion:',
-                fullPath
-              )
-              workspaceEntry.children = []
-            } else {
-              const children = await buildWorkspaceEntries(fullPath, visited)
-              workspaceEntry.children = children
-            }
-          } catch (error) {
-            console.error('Failed to build workspace entry:', fullPath, error)
-            workspaceEntry.children = []
           }
         }
 
@@ -347,7 +350,7 @@ export function moveEntryInState(
         ? entryToMove.children.map((child: WorkspaceEntry) =>
             updateChildPathsForMove(child, sourcePath, newPath)
           )
-        : undefined,
+        : EMPTY_CHILDREN,
       createdAt: entryToMove.createdAt,
       modifiedAt: entryToMove.modifiedAt,
     }
@@ -356,6 +359,7 @@ export function moveEntryInState(
       path: newPath,
       name: entryToMove.name,
       isDirectory: false,
+      children: undefined,
       createdAt: entryToMove.createdAt,
       modifiedAt: entryToMove.modifiedAt,
     }

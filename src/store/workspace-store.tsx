@@ -465,6 +465,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         name: finalFolderName,
         isDirectory: true,
         children: [],
+        createdAt: undefined,
+        modifiedAt: undefined,
       }
 
       set((state) => {
@@ -521,6 +523,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       path: filePath,
       name: fileName,
       isDirectory: false,
+      children: undefined,
       createdAt: now,
       modifiedAt: now,
     }
@@ -1108,7 +1111,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       path: newPath,
       name: newFileName,
       isDirectory,
-      ...fileMetadata,
+      children: isDirectory ? [] : undefined,
+      createdAt: fileMetadata.createdAt,
+      modifiedAt: fileMetadata.modifiedAt,
     }
 
     set((state) => {
