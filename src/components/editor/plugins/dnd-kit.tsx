@@ -109,16 +109,28 @@ function Draggable(props: PlateElementProps) {
   const isFirstChild = props.path.length === 1 && props.path[0] === 0
 
   // Top drop zone - always call hooks, but only use when valid
-  const { setNodeRef: setTopDropRef, isOver: isOverTop } = useDroppable({
+  const {
+    setNodeRef: setTopDropRef,
+    isOver: isOverTop,
+    active: activeTop,
+  } = useDroppable({
     id: `editor-${elementId}-top`,
     data: { kind: 'editor', id: elementId, position: 'top' },
   })
 
   // Bottom drop zone - always call hooks, but only use when valid
-  const { setNodeRef: setBottomDropRef, isOver: isOverBottom } = useDroppable({
+  const {
+    setNodeRef: setBottomDropRef,
+    isOver: isOverBottom,
+    active: activeBottom,
+  } = useDroppable({
     id: `editor-${elementId}-bottom`,
     data: { kind: 'editor', id: elementId, position: 'bottom' },
   })
+
+  // Check if the active drag item is the same as this element
+  const activeId = activeTop?.data.current?.id || activeBottom?.data.current?.id
+  const isSelfDrag = activeId === elementId
 
   // If not the outermost node, render only children
   if (
@@ -158,7 +170,7 @@ function Draggable(props: PlateElementProps) {
       />
       {props.children}
       {/* Top drop line */}
-      {isOverTop && (
+      {isOverTop && !isSelfDrag && (
         <div
           className={cn(
             'pointer-events-none absolute inset-x-0 -top-px h-0.5',
@@ -167,7 +179,7 @@ function Draggable(props: PlateElementProps) {
         />
       )}
       {/* Bottom drop line */}
-      {isOverBottom && (
+      {isOverBottom && !isSelfDrag && (
         <div
           className={cn(
             'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
