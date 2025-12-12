@@ -9,7 +9,7 @@
         "transparent": true,
         "visible": false,
         "windowEffects": {
-          "effects": ["mica"]
+          "effects": ["acrylic"]
         }
       }
     ]
