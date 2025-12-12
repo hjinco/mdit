@@ -97,7 +97,7 @@ export function DndProvider({ children }: DndProviderProps) {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const overData = event.over?.data.current as
-        | { kind: 'editor'; id?: string }
+        | { kind: 'editor'; id?: string; position?: 'top' | 'bottom' }
         | undefined
       if (overData?.kind === 'editor') {
         const activeData = event.active.data.current as
@@ -121,21 +121,29 @@ export function DndProvider({ children }: DndProviderProps) {
 
           const [node, path] = entry
 
-          let nextPath = path
-          // Insert the image after the code block, not inside it.
-          if (
+          // Determine insertion path based on drop position
+          const position = overData.position ?? 'bottom'
+          let insertPath = path
+
+          if (position === 'top') {
+            // Insert before the target block
+            insertPath = path
+          } else if (
             node.type === editor.getType(KEYS.codeBlock) ||
             node.type === editor.getType(KEYS.table)
           ) {
-            nextPath = PathApi.next(path)
+            // Insert after the target block
+            // For code blocks and tables, use next path
+            insertPath = PathApi.next(path)
           }
 
           for (const imagePath of imagePaths) {
             insertImage(editor, toRelativeImagePath(imagePath), {
-              at: nextPath,
-              // For other block types, `nextBlock: true` creates a new block for the image.
-              // For code blocks, we've already moved to the next path, so we can insert directly.
+              at: insertPath,
+              // For top position, insert before (nextBlock: false)
+              // For bottom position with non-code/table blocks, use nextBlock
               nextBlock:
+                position === 'bottom' &&
                 node.type !== editor.getType(KEYS.codeBlock) &&
                 node.type !== editor.getType(KEYS.table),
             })
@@ -184,10 +192,15 @@ export function DndProvider({ children }: DndProviderProps) {
             return
           }
 
-          // Move the source block to before the target block
+          // Determine target position based on drop zone
+          const position = overData.position ?? 'top'
+          const moveToPath =
+            position === 'top' ? targetPath : PathApi.next(targetPath)
+
+          // Move the source block to the determined position
           editor.tf.moveNodes({
             at: sourcePath,
-            to: targetPath,
+            to: moveToPath,
           })
         }
         return

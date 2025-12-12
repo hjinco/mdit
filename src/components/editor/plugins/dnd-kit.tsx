@@ -88,45 +88,76 @@ function DragHandle({
 }
 
 function Draggable(props: PlateElementProps) {
-  const { setNodeRef: setDropRef, isOver: isOverDnd } = useDroppable({
-    id: `editor-${props.element.id}`,
-    data: { kind: 'editor', id: props.element.id },
-  })
-
   const [isDragging, setIsDragging] = useState(false)
 
-  const shouldHighlight = isOverDnd
+  const elementId = props.element.id as string
+
+  // Top drop zone - always call hooks, but only use when valid
+  const { setNodeRef: setTopDropRef, isOver: isOverTop } = useDroppable({
+    id: `editor-${elementId}-top`,
+    data: { kind: 'editor', id: elementId, position: 'top' },
+  })
+
+  // Bottom drop zone - always call hooks, but only use when valid
+  const { setNodeRef: setBottomDropRef, isOver: isOverBottom } = useDroppable({
+    id: `editor-${elementId}-bottom`,
+    data: { kind: 'editor', id: elementId, position: 'bottom' },
+  })
 
   // If not the outermost node, render only children
-  if (props.path.length !== 1 || props.element.type === FRONTMATTER_KEY) {
+  if (
+    !elementId ||
+    props.path.length > 1 ||
+    props.element.type === FRONTMATTER_KEY
+  ) {
     return <>{props.children}</>
   }
 
-  // For outermost nodes, render full wrapper with drag handle and drop zone
   return (
     <div
-      ref={setDropRef}
       className={cn(
-        'group relative transition-opacity',
+        'group relative transition-opacity flow-root',
         isDragging && 'opacity-30'
       )}
     >
-      {props.element.id != null && (
-        <DragHandle
-          elementId={props.element.id as string}
-          type={props.element.type}
-          onDraggingChange={setIsDragging}
-        />
-      )}
-      {shouldHighlight && (
+      <DragHandle
+        elementId={elementId}
+        type={props.element.type}
+        onDraggingChange={setIsDragging}
+      />
+      {/* Top drop zone */}
+      <div
+        ref={setTopDropRef}
+        className="absolute inset-x-0 top-0 h-1/2 z-10"
+        style={{ pointerEvents: 'none' }}
+        contentEditable={false}
+      />
+      {/* Bottom drop zone */}
+      <div
+        ref={setBottomDropRef}
+        className="absolute inset-x-0 bottom-0 h-1/2 z-10"
+        style={{ pointerEvents: 'none' }}
+        contentEditable={false}
+      />
+      {props.children}
+      {/* Top drop line */}
+      {isOverTop && (
         <div
           className={cn(
-            'pointer-events-none absolute inset-x-0 bottom-0 h-[1.5px]',
+            'pointer-events-none absolute inset-x-0 -top-px h-0.5',
             'bg-blue-400 dark:bg-blue-600/80'
           )}
         />
       )}
-      {props.children}
+      {/* Bottom drop line */}
+      {isOverBottom && (
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
+            'bg-blue-400 dark:bg-blue-600/80'
+          )}
+        />
+      )}
     </div>
   )
 }
