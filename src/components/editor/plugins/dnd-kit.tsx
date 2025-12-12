@@ -96,6 +96,7 @@ function DragHandle({
         'top-0.75',
         topClass
       )}
+      contentEditable={false}
     >
       <GripVertical className="size-5 stroke-[1.4]!" />
     </div>
@@ -170,23 +171,25 @@ function Draggable(props: PlateElementProps) {
       />
       {props.children}
       {/* Top drop line */}
-      {isOverTop && !isSelfDrag && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-x-0 -top-px h-0.5',
-            'bg-blue-400 dark:bg-blue-600/80'
-          )}
-        />
-      )}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 -top-px h-0.5',
+          'bg-blue-400 dark:bg-blue-600/80',
+          'opacity-0 transition-opacity',
+          isOverTop && !isSelfDrag && 'opacity-100'
+        )}
+        contentEditable={false}
+      />
       {/* Bottom drop line */}
-      {isOverBottom && !isSelfDrag && (
-        <div
-          className={cn(
-            'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
-            'bg-blue-400 dark:bg-blue-600/80'
-          )}
-        />
-      )}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
+          'bg-blue-400 dark:bg-blue-600/80',
+          'opacity-0 transition-opacity',
+          isOverBottom && !isSelfDrag && 'opacity-100'
+        )}
+        contentEditable={false}
+      />
     </div>
   )
 }
