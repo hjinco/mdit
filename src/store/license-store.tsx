@@ -16,6 +16,29 @@ const LICENSE_SERVICE = 'app.mdit.license.lifetime'
 const LICENSE_USER = 'mdit'
 const ACTIVATION_ID_STORAGE_KEY = 'license-activation-id'
 
+/**
+ * Checks if an error is a network error (as opposed to a license validation error).
+ * Network errors should not cause credentials to be deleted.
+ */
+function isNetworkError(error: unknown): boolean {
+  if (error instanceof TypeError) {
+    // TypeError typically indicates network failure (fetch failed, no connection, etc.)
+    return true
+  }
+  if (error instanceof Error) {
+    // Check for common network error messages
+    const message = error.message.toLowerCase()
+    return (
+      message.includes('network') ||
+      message.includes('fetch') ||
+      message.includes('timeout') ||
+      message.includes('abort') ||
+      message.includes('failed to fetch')
+    )
+  }
+  return false
+}
+
 type LicenseStore = {
   status: 'valid' | 'invalid' | 'validating' | 'activating' | 'deactivating'
   error: string | null
@@ -112,7 +135,11 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       // Status will be updated by validateLicense or checkLicense
       return activationResult
     } catch (error) {
-      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      // Only delete credentials if it's not a network error
+      // Network errors are temporary and credentials should be preserved
+      if (!isNetworkError(error)) {
+        await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+      }
       set({
         status: 'invalid',
         error:
@@ -133,12 +160,13 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       }
       return validationResult
     } catch (error) {
-      // TODO: Improve error handling to distinguish between network errors and invalid licenses.
-      // Currently, a temporary network or server error during validation will wipe saved
-      // credentials, forcing users to re-enter and reactivate their license once connectivity
-      // returns. Consider implementing retry logic or preserving credentials for network errors.
-      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
-      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      // Only delete credentials if it's not a network error
+      // Network errors are temporary and credentials should be preserved
+      // This prevents users from having to re-enter their license when connectivity returns
+      if (!isNetworkError(error)) {
+        await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+        localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      }
       // Only update status if we're still in validating state (not interrupted)
       if (get().status === 'validating') {
         set({
