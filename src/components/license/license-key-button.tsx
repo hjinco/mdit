@@ -24,18 +24,9 @@ export function LicenseKeyButton() {
 
     checkAndValidateLicense()
 
-    const handleOnline = async () => {
-      const isOnline = await checkInternetConnectivity()
-      if (isOnline) {
-        checkLicense()
-      }
-    }
-
-    window.addEventListener('online', handleOnline)
-
-    // Cleanup
+    window.addEventListener('online', checkAndValidateLicense)
     return () => {
-      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('online', checkAndValidateLicense)
     }
   }, [checkLicense])
 
