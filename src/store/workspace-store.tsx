@@ -8,6 +8,8 @@ import {
   readTextFile,
   rename,
   stat,
+  type UnwatchFn,
+  watch,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { generateText } from 'ai'
@@ -123,6 +125,8 @@ type WorkspaceStore = {
   copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
+  watchWorkspace: () => Promise<void>
+  unwatchWorkspace: () => void
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -144,6 +148,8 @@ const findDirectoryEntry = (
   }
   return null
 }
+
+let workspaceUnwatch: UnwatchFn | null = null
 
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isLoading: true,
@@ -182,6 +188,35 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Restore the last opened path
       set({ currentCollectionPath: lastCollectionPath })
     }
+  },
+
+  watchWorkspace: async () => {
+    const workspacePath = get().workspacePath
+    if (!workspacePath) {
+      return
+    }
+
+    console.log('watching workspace', workspacePath)
+
+    workspaceUnwatch?.()
+
+    const unwatch = await watch(workspacePath, (event) => {}, {
+      recursive: true,
+      delayMs: 500,
+    })
+
+    if (get().workspacePath !== workspacePath) {
+      unwatch()
+      return
+    }
+
+    workspaceUnwatch = unwatch
+  },
+
+  unwatchWorkspace: () => {
+    console.log('unwatching workspace')
+    workspaceUnwatch?.()
+    workspaceUnwatch = null
   },
 
   initializeWorkspace: async () => {
