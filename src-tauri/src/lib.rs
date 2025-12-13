@@ -116,12 +116,10 @@ async fn edit_image(
     input_path: String,
     options: image_processing::ImageEditOptions,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        image_processing::edit_image(&input_path, options)
-    })
-    .await
-    .map_err(|error| error.to_string())?
-    .map_err(|error| error.to_string())
+    tauri::async_runtime::spawn_blocking(move || image_processing::edit_image(&input_path, options))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -130,6 +128,7 @@ pub fn run() {
     file_opener::initialize_opened_files(&app_state);
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())

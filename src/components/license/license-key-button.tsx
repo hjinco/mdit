@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/shallow'
 import { useLicenseStore } from '../../store/license-store'
 import { useUIStore } from '../../store/ui-store'
 import { Button } from '../../ui/button'
+import { checkInternetConnectivity } from '../../utils/network-utils'
 
 export function LicenseKeyButton() {
   const { status, checkLicense } = useLicenseStore(
@@ -14,20 +15,18 @@ export function LicenseKeyButton() {
   const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
 
   useEffect(() => {
-    if (navigator.onLine) {
-      checkLicense()
+    const checkAndValidateLicense = async () => {
+      const isOnline = await checkInternetConnectivity()
+      if (isOnline) {
+        checkLicense()
+      }
     }
 
-    // Listen to online event to check when connection is restored
-    const handleOnline = () => {
-      checkLicense()
-    }
+    checkAndValidateLicense()
 
-    window.addEventListener('online', handleOnline)
-
-    // Cleanup
+    window.addEventListener('online', checkAndValidateLicense)
     return () => {
-      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('online', checkAndValidateLicense)
     }
   }, [checkLicense])
 

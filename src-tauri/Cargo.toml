@@ -42,6 +42,7 @@ tauri-plugin-global-shortcut = "2"
 pulldown-cmark = { version = "0.13.0", default-features = false, features = ["simd"] }
 image = "0.25.9"
 webp = "0.3"
+tauri-plugin-http = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"

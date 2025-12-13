@@ -42,6 +42,13 @@
         { "cmd": "xdg-open", "name": "xdg-open", "args": true },
         { "cmd": "explorer.exe", "name": "explorer.exe", "args": true }
       ]
+    },
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://www.google.com/generate_204" },
+        { "url": "https://example.com" }
+      ]
     }
   ]
 }
