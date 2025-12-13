@@ -49,37 +49,58 @@ export class ErrorBoundary extends Component<
     this.setState({ errorInfo })
   }
 
-  formatErrorReport = () => {
+  formatErrorReport = (): string => {
     const { error, errorInfo } = this.state
     const timestamp = new Date().toISOString()
     const appVersion = '0.0.0' // from package.json
     const userAgent = navigator.userAgent
     const platform = navigator.platform
 
-    return {
-      timestamp,
-      appVersion,
-      platform,
-      userAgent,
-      message: error?.message || 'Unknown error',
-      stack: error?.stack || 'No stack trace available',
-      componentStack:
-        errorInfo?.componentStack || 'No component stack available',
-    }
+    const errorMessage = error?.message || 'Unknown error'
+    const stackTrace = error?.stack || 'No stack trace available'
+    const componentStack =
+      errorInfo?.componentStack || 'No component stack available'
+
+    return `Error Report
+=============
+
+Timestamp: ${timestamp}
+App Version: ${appVersion}
+Platform: ${platform}
+User Agent: ${userAgent}
+
+Error Message:
+${errorMessage}
+
+Stack Trace:
+${stackTrace}
+
+Component Stack:
+${componentStack}`
   }
 
   handleSendError = async () => {
+    const apiUrl = import.meta.env.VITE_FEEDBACK_API_URL
+    if (!apiUrl) {
+      this.setState({
+        sendError: 'Feedback API URL is not configured',
+      })
+      return
+    }
+
     this.setState({ isSending: true, sendError: null })
 
-    const errorReport = this.formatErrorReport()
+    const errorReportMessage = this.formatErrorReport()
 
     try {
-      const response = await fetch('https://api.mdit.app/errors', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(errorReport),
+        body: JSON.stringify({
+          message: errorReportMessage,
+        }),
       })
 
       if (!response.ok) {
