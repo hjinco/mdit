@@ -19,8 +19,8 @@ mod macos_heic {
         geometry::{CGPoint, CGRect, CGSize},
         image::{CGImage, CGImageAlphaInfo, CGImageByteOrderInfo},
     };
-    use image::{DynamicImage, RgbaImage};
     use foreign_types::ForeignType;
+    use image::{DynamicImage, RgbaImage};
     use std::path::Path;
 
     #[repr(C)]
@@ -61,8 +61,7 @@ mod macos_heic {
     }
 
     pub fn decode_heic_to_rgba(path: &Path) -> Result<DynamicImage, String> {
-        let data = std::fs::read(path)
-            .map_err(|e| format!("Failed to read HEIC file: {}", e))?;
+        let data = std::fs::read(path).map_err(|e| format!("Failed to read HEIC file: {}", e))?;
 
         let cf_data = CFData::from_buffer(&data);
         let source_ptr =
@@ -88,7 +87,13 @@ mod macos_heic {
             return Err("Decoded HEIC has zero dimensions".to_string());
         }
 
-        let mut buf = vec![0u8; width.checked_mul(height).and_then(|s| s.checked_mul(4)).ok_or_else(|| "Image dimensions are too large.".to_string())?];
+        let mut buf = vec![
+            0u8;
+            width
+                .checked_mul(height)
+                .and_then(|s| s.checked_mul(4))
+                .ok_or_else(|| "Image dimensions are too large.".to_string())?
+        ];
         let color_space = CGColorSpace::create_device_rgb();
         let bytes_per_row = width * 4;
         let bitmap_info = (CGImageAlphaInfo::CGImageAlphaPremultipliedLast as u32)
@@ -104,12 +109,18 @@ mod macos_heic {
             bitmap_info,
         );
 
-        let rect =
-            CGRect::new(&CGPoint::new(0.0, 0.0), &CGSize::new(width as f64, height as f64));
+        let rect = CGRect::new(
+            &CGPoint::new(0.0, 0.0),
+            &CGSize::new(width as f64, height as f64),
+        );
         context.draw_image(rect, &cg_image);
 
-        let width_u32 = width.try_into().map_err(|_| format!("Image width {} is too large and exceeds u32::MAX", width))?;
-        let height_u32 = height.try_into().map_err(|_| format!("Image height {} is too large and exceeds u32::MAX", height))?;
+        let width_u32 = width
+            .try_into()
+            .map_err(|_| format!("Image width {} is too large and exceeds u32::MAX", width))?;
+        let height_u32 = height
+            .try_into()
+            .map_err(|_| format!("Image height {} is too large and exceeds u32::MAX", height))?;
         let rgba = RgbaImage::from_raw(width_u32, height_u32, buf)
             .ok_or_else(|| "Failed to convert HEIC buffer to image".to_string())?;
 
@@ -145,20 +156,20 @@ pub struct ImageEditOptions {
 /// Gets image properties (dimensions and format) from an image file
 pub fn get_image_properties(path: &str) -> Result<ImageProperties, String> {
     let img_path = Path::new(path);
-    
+
     // Open and decode the image
     let img = open_image_with_heic_support(img_path)?;
-    
+
     // Get dimensions
     let (width, height) = img.dimensions();
-    
+
     // Detect format from file extension
     let format = img_path
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_lowercase())
         .unwrap_or_else(|| "unknown".to_string());
-    
+
     Ok(ImageProperties {
         width,
         height,
@@ -169,21 +180,20 @@ pub fn get_image_properties(path: &str) -> Result<ImageProperties, String> {
 /// Edits an image according to the provided options
 pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String, String> {
     let input_path_buf = Path::new(input_path);
-    
+
     // Open the image
     let mut img = open_image_with_heic_support(input_path_buf)?;
-    
+
     // Apply resize if specified
     if let Some(resize_opts) = options.resize {
         let (width, height) = img.dimensions();
         let target_width = resize_opts.width;
         let target_height = resize_opts.height;
-        
+
         // If only one dimension is specified, always maintain aspect ratio
-        let maintain_ratio = resize_opts.maintain_aspect_ratio 
-            || target_width.is_none() 
-            || target_height.is_none();
-        
+        let maintain_ratio =
+            resize_opts.maintain_aspect_ratio || target_width.is_none() || target_height.is_none();
+
         if let (Some(w), Some(h)) = (target_width, target_height) {
             if maintain_ratio {
                 // Maintain aspect ratio - use resize() which fits within bounds while preserving aspect ratio
@@ -208,11 +218,11 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
             }
         }
     }
-    
+
     // Determine output path
     let output_path = options.output_path.as_deref().unwrap_or(input_path);
     let output_path_buf = Path::new(output_path);
-    
+
     // Determine output format
     let output_format = if let Some(format_str) = options.format {
         // Format specified in options
@@ -238,14 +248,14 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
         // No format specified, detect from output file extension
         detect_format_from_path(output_path_buf)
     };
-    
+
     // Save the image
     if output_format == ImageFormat::Jpeg && options.quality.is_some() {
         // Use custom JPEG quality
         let quality = options.quality.unwrap();
         let file = std::fs::File::create(output_path_buf)
             .map_err(|e| format!("Failed to create output file: {}", e))?;
-        
+
         let rgb_img = img.to_rgb8();
         let encoder = JpegEncoder::new_with_quality(&file, quality);
         encoder
@@ -259,29 +269,22 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
     } else if output_format == ImageFormat::WebP && options.quality.is_some() {
         // Use custom WebP quality with webp crate for lossy encoding
         let quality = options.quality.unwrap();
-        
+
         // Convert quality from 0-100 to 0.0-100.0 for webp crate
         let quality_f32 = quality as f32;
 
         // Encode with webp crate, preserving alpha when present
         let webp_memory: WebPMemory = if img.color().has_alpha() {
             let rgba_img = img.to_rgba8();
-            let encoder = Encoder::from_rgba(
-                rgba_img.as_raw(),
-                rgba_img.width(),
-                rgba_img.height(),
-            );
+            let encoder =
+                Encoder::from_rgba(rgba_img.as_raw(), rgba_img.width(), rgba_img.height());
             encoder.encode(quality_f32)
         } else {
             let rgb_img = img.to_rgb8();
-            let encoder = Encoder::from_rgb(
-                rgb_img.as_raw(),
-                rgb_img.width(),
-                rgb_img.height(),
-            );
+            let encoder = Encoder::from_rgb(rgb_img.as_raw(), rgb_img.width(), rgb_img.height());
             encoder.encode(quality_f32)
         };
-        
+
         // Write to file (WebPMemory implements Deref to &[u8])
         std::fs::write(output_path_buf, &*webp_memory)
             .map_err(|e| format!("Failed to write WebP file: {}", e))?;
@@ -291,7 +294,7 @@ pub fn edit_image(input_path: &str, options: ImageEditOptions) -> Result<String,
         img.save_with_format(output_path_buf, output_format)
             .map_err(|e| format!("Failed to save image: {}", e))?;
     }
-    
+
     Ok(output_path.to_string())
 }
 
@@ -317,10 +320,7 @@ fn open_image_with_heic_support(path: &Path) -> Result<DynamicImage, String> {
             .and_then(|ext| ext.to_str())
             .map(|ext| ext.to_lowercase());
 
-        if matches!(
-            ext.as_deref(),
-            Some("heic") | Some("heif") | Some("hif")
-        ) {
+        if matches!(ext.as_deref(), Some("heic") | Some("heif") | Some("hif")) {
             match macos_heic::decode_heic_to_rgba(path) {
                 Ok(img) => return Ok(img),
                 Err(heic_err) => {

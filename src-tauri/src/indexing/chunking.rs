@@ -469,9 +469,7 @@ fn enforce_min_chunk_tokens(mut chunks: Vec<String>, min_tokens: usize) -> Vec<S
                     index = merge_with_previous(&mut chunks, index);
                     last_direction = Some(MergeDirection::Previous);
                     merged_this_round = true;
-                } else if last_direction != Some(MergeDirection::Next)
-                    && index + 1 < chunks.len()
-                {
+                } else if last_direction != Some(MergeDirection::Next) && index + 1 < chunks.len() {
                     index = merge_with_next(&mut chunks, index);
                     last_direction = Some(MergeDirection::Next);
                     merged_this_round = true;

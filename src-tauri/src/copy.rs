@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 fn copy_recursive(source: &Path, destination: &Path) -> Result<(), std::io::Error> {
-      let metadata = fs::metadata(source)?;
+    let metadata = fs::metadata(source)?;
 
     if metadata.is_dir() {
         fs::create_dir_all(destination)?;
@@ -30,4 +30,3 @@ pub fn copy(source_path: String, destination_path: String) -> Result<(), String>
 
     copy_recursive(source, destination).map_err(|e| format!("Failed to copy: {}", e))
 }
-

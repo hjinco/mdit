@@ -139,7 +139,11 @@ fn merges_short_chunk_with_both_neighbors_when_needed() {
         min_tokens,
     );
 
-    assert_eq!(merged.len(), 1, "short chunk should be absorbed by neighbors");
+    assert_eq!(
+        merged.len(),
+        1,
+        "short chunk should be absorbed by neighbors"
+    );
     let combined = &merged[0];
     assert!(combined.contains("Intro"));
     assert!(combined.contains("Short note"));

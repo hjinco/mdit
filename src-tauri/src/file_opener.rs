@@ -38,7 +38,8 @@ fn get_opened_files_from_args() -> Vec<String> {
         .skip(1) // First argument is the executable path
         .filter_map(|arg| {
             let path = PathBuf::from(arg);
-            if path.exists() && path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+            if path.exists() && path.is_file() && path.extension().map_or(false, |ext| ext == "md")
+            {
                 Some(path.to_string_lossy().to_string())
             } else {
                 None
