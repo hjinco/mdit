@@ -16,29 +16,6 @@ const LICENSE_SERVICE = 'app.mdit.license.lifetime'
 const LICENSE_USER = 'mdit'
 const ACTIVATION_ID_STORAGE_KEY = 'license-activation-id'
 
-/**
- * Checks if an error is a network error (as opposed to a license validation error).
- * Network errors should not cause credentials to be deleted.
- */
-function isNetworkError(error: unknown): boolean {
-  if (error instanceof TypeError) {
-    // TypeError typically indicates network failure (fetch failed, no connection, etc.)
-    return true
-  }
-  if (error instanceof Error) {
-    // Check for common network error messages
-    const message = error.message.toLowerCase()
-    return (
-      message.includes('network') ||
-      message.includes('fetch') ||
-      message.includes('timeout') ||
-      message.includes('abort') ||
-      message.includes('failed to fetch')
-    )
-  }
-  return false
-}
-
 type LicenseStore = {
   status: 'valid' | 'invalid' | 'validating' | 'activating' | 'deactivating'
   error: string | null
@@ -77,37 +54,29 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       return
     }
 
-    try {
-      // Step 1: Retrieve stored license key and activation ID
-      const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
-      let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
+    // Step 1: Retrieve stored license key and activation ID
+    const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+    let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
-      if (!licenseKey) {
-        // Step 2: If license key is missing, set as unauthenticated
-        set({ status: 'invalid', isChecking: false })
+    if (!licenseKey) {
+      // Step 2: If license key is missing, set as unauthenticated
+      set({ status: 'invalid', isChecking: false })
+      return
+    }
+
+    if (!activationId) {
+      // Step 3: If license key exists but activation ID is missing, try to activate
+      const activationResult = await get().activateLicense(licenseKey)
+      if (!activationResult) {
+        set({ isChecking: false })
         return
       }
-
-      if (!activationId) {
-        // Step 3: If license key exists but activation ID is missing, try to activate
-        const activationResult = await get().activateLicense(licenseKey)
-        if (!activationResult) {
-          set({ isChecking: false })
-          return
-        }
-        activationId = activationResult.id
-      }
-
-      // Step 4: If both exist, try to validate with retry
-      await get().validateLicense(licenseKey, activationId)
-      set({ isChecking: false })
-    } catch (_e) {
-      set({
-        status: 'invalid',
-        error: 'Failed to check license',
-        isChecking: false,
-      })
+      activationId = activationResult.id
     }
+
+    // Step 4: If both exist, try to validate
+    await get().validateLicense(licenseKey, activationId)
+    set({ isChecking: false })
   },
 
   registerLicenseKey: async (key: string) => {
@@ -121,93 +90,102 @@ export const useLicenseStore = create<LicenseStore>((set, get) => ({
       activationResult.id
     )
     if (!validationResult) {
-      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
-      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+      // validateLicense already handles credential deletion for validation errors
+      // and preserves credentials for other errors, so we don't need to delete here
       return
     }
   },
 
   activateLicense: async (key: string) => {
     set({ status: 'activating' })
-    try {
-      const activationResult = await activateLicenseKey(key)
-      localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, activationResult.id)
-      // Status will be updated by validateLicense or checkLicense
-      return activationResult
-    } catch (error) {
-      // Only delete credentials if it's not a network error
-      // Network errors are temporary and credentials should be preserved
-      if (!isNetworkError(error)) {
+    const result = await activateLicenseKey(key)
+
+    if (!result.success) {
+      // Validation errors: delete stored credentials
+      if (result.isValidationError) {
         await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+        localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+        set({
+          status: 'invalid',
+          error: result.error.message,
+        })
+      } else {
+        // Other errors (network/server): assume valid, preserve credentials
+        set({ status: 'valid', error: null })
       }
-      set({
-        status: 'invalid',
-        error:
-          error instanceof Error ? error.message : 'Failed to activate license',
-      })
       return null
     }
+
+    localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, result.data.id)
+    // Status will be updated by validateLicense or checkLicense
+    return result.data
   },
 
   validateLicense: async (key: string, activationId: string) => {
     set({ status: 'validating' })
 
-    try {
-      const validationResult = await validateLicenseKey(key, activationId)
+    const result = await validateLicenseKey(key, activationId)
+
+    if (!result.success) {
       // Only update status if we're still in validating state (not interrupted)
       if (get().status === 'validating') {
-        set({ status: 'valid' })
-      }
-      return validationResult
-    } catch (error) {
-      // Only delete credentials if it's not a network error
-      // Network errors are temporary and credentials should be preserved
-      // This prevents users from having to re-enter their license when connectivity returns
-      if (!isNetworkError(error)) {
-        await deletePassword(LICENSE_SERVICE, LICENSE_USER)
-        localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-      }
-      // Only update status if we're still in validating state (not interrupted)
-      if (get().status === 'validating') {
-        set({
-          status: 'invalid',
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to validate license',
-        })
+        // Validation errors: delete stored credentials
+        if (result.isValidationError) {
+          await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+          localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+          set({
+            status: 'invalid',
+            error: result.error.message,
+          })
+        } else {
+          // Other errors (network/server): assume valid, preserve credentials
+          set({ status: 'valid', error: null })
+        }
       }
       return null
     }
+
+    // Only update status if we're still in validating state (not interrupted)
+    if (get().status === 'validating') {
+      set({ status: 'valid' })
+    }
+    return result.data
   },
 
   deactivateLicense: async () => {
     set({ status: 'deactivating', error: null })
 
-    try {
-      // Retrieve stored license key and activation ID
-      const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
-      const activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
+    // Retrieve stored license key and activation ID
+    const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+    const activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
-      if (!licenseKey || !activationId) {
-        throw new Error('No license key or activation ID found')
-      }
-
-      // Call deactivate API
-      await deactivateLicenseKey(licenseKey, activationId)
-
-      // On success: clear stored credentials
-      await deletePassword(LICENSE_SERVICE, LICENSE_USER)
-      localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-      set({ status: 'invalid' })
-    } catch (error) {
+    if (!licenseKey || !activationId) {
       set({
         status: 'valid',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to deactivate license',
+        error: 'No license key or activation ID found',
       })
+      return
     }
+
+    // Call deactivate API
+    const result = await deactivateLicenseKey(licenseKey, activationId)
+
+    if (!result.success) {
+      // Validation errors: delete stored credentials
+      if (result.isValidationError) {
+        await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+        localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+        set({ status: 'invalid', error: result.error.message })
+      } else {
+        // Other errors (network/server): assume still valid
+        set({ status: 'valid', error: result.error.message })
+      }
+      return
+    }
+
+    // On success: clear stored credentials
+    await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+    localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
+    set({ status: 'invalid' })
   },
 }))

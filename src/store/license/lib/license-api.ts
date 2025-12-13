@@ -54,9 +54,13 @@ export type LicenseError = {
   code?: string
 }
 
+export type LicenseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: LicenseError; isValidationError: boolean }
+
 export async function activateLicenseKey(
   key: string
-): Promise<LicenseActivationResponse> {
+): Promise<LicenseResult<LicenseActivationResponse>> {
   try {
     const response = await fetch(
       `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/activate`,
@@ -79,26 +83,47 @@ export async function activateLicenseKey(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.detail ||
-          errorData.message ||
-          `Activation failed: ${response.status}`
-      )
+      const isValidationError = response.status >= 400 && response.status < 500
+      return {
+        success: false,
+        error: {
+          message:
+            errorData.detail ||
+            errorData.message ||
+            `Activation failed: ${response.status}`,
+          code: errorData.code,
+        },
+        isValidationError,
+      }
     }
 
-    return await response.json()
+    const data = await response.json()
+    return { success: true, data }
   } catch (error) {
+    const isValidationError = false // Network/other errors are not validation errors
     if (error instanceof Error) {
-      throw error
+      return {
+        success: false,
+        error: {
+          message: error.message,
+        },
+        isValidationError,
+      }
     }
-    throw new Error('Failed to activate license key')
+    return {
+      success: false,
+      error: {
+        message: 'Failed to activate license key',
+      },
+      isValidationError,
+    }
   }
 }
 
 export async function validateLicenseKey(
   key: string,
   activationId: string
-): Promise<LicenseValidationResponse> {
+): Promise<LicenseResult<LicenseValidationResponse>> {
   try {
     const response = await fetch(
       `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/validate`,
@@ -117,26 +142,47 @@ export async function validateLicenseKey(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.detail ||
-          errorData.message ||
-          `Validation failed: ${response.status}`
-      )
+      const isValidationError = response.status >= 400 && response.status < 500
+      return {
+        success: false,
+        error: {
+          message:
+            errorData.detail ||
+            errorData.message ||
+            `Validation failed: ${response.status}`,
+          code: errorData.code,
+        },
+        isValidationError,
+      }
     }
 
-    return await response.json()
+    const data = await response.json()
+    return { success: true, data }
   } catch (error) {
+    const isValidationError = false // Network/other errors are not validation errors
     if (error instanceof Error) {
-      throw error
+      return {
+        success: false,
+        error: {
+          message: error.message,
+        },
+        isValidationError,
+      }
     }
-    throw new Error('Failed to validate license key')
+    return {
+      success: false,
+      error: {
+        message: 'Failed to validate license key',
+      },
+      isValidationError,
+    }
   }
 }
 
 export async function deactivateLicenseKey(
   key: string,
   activationId: string
-): Promise<void> {
+): Promise<LicenseResult<void>> {
   try {
     const response = await fetch(
       `${POLAR_API_BASE_URL}/v1/customer-portal/license-keys/deactivate`,
@@ -155,16 +201,38 @@ export async function deactivateLicenseKey(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.detail ||
-          errorData.message ||
-          `Deactivation failed: ${response.status}`
-      )
+      const isValidationError = response.status >= 400 && response.status < 500
+      return {
+        success: false,
+        error: {
+          message:
+            errorData.detail ||
+            errorData.message ||
+            `Deactivation failed: ${response.status}`,
+          code: errorData.code,
+        },
+        isValidationError,
+      }
     }
+
+    return { success: true, data: undefined }
   } catch (error) {
+    const isValidationError = false // Network/other errors are not validation errors
     if (error instanceof Error) {
-      throw error
+      return {
+        success: false,
+        error: {
+          message: error.message,
+        },
+        isValidationError,
+      }
     }
-    throw new Error('Failed to deactivate license key')
+    return {
+      success: false,
+      error: {
+        message: 'Failed to deactivate license key',
+      },
+      isValidationError,
+    }
   }
 }
