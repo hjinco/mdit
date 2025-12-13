@@ -230,7 +230,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
                   if (entryToMove.isDirectory) {
                     updatedEntryToMove = {
                       path: newPath,
-                      name: entryToMove.name,
+                      name: getFileNameFromPath(newPath),
                       isDirectory: true,
                       children: entryToMove.children
                         ? entryToMove.children.map((child: WorkspaceEntry) =>
@@ -243,7 +243,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
                   } else {
                     updatedEntryToMove = {
                       path: newPath,
-                      name: entryToMove.name,
+                      name: getFileNameFromPath(newPath),
                       isDirectory: false,
                       createdAt: entryToMove.createdAt,
                       modifiedAt: entryToMove.modifiedAt,
@@ -285,6 +285,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
                         const updated: WorkspaceEntry = {
                           ...entry,
                           path: newPath,
+                          name: getFileNameFromPath(newPath),
                         }
                         if (entry.isDirectory && entry.children) {
                           updated.children = entry.children.map((child) =>
