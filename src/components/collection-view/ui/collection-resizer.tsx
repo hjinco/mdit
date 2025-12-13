@@ -86,17 +86,17 @@ export const CollectionResizer = memo(function CollectionResizer({
         </PopoverAnchor>
       )}
       <div
-        className="absolute top-0 -right-1 z-10 h-full w-2 cursor-col-resize bg-transparent"
+        className="absolute top-0 -right-2 z-10 h-full w-4 cursor-col-resize bg-transparent"
         onPointerDown={handlePointerDown}
-        onPointerEnter={handlePointerEnter}
         onPointerMove={handlePointerMove}
+        onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
       />
       {!isResizing && (
         <PopoverContent
           align="center"
           side="right"
-          sideOffset={4}
+          sideOffset={8}
           onOpenAutoFocus={(event) => event.preventDefault()}
           className={cn(tooltipContentVariants, 'pr-1')}
         >
