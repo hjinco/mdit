@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { CollectionView } from './components/collection-view/collection-view'
 import { CommandMenu } from './components/command-menu/command-menu'
 import { Editor } from './components/editor/editor'
@@ -14,9 +15,21 @@ import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
 import { useWorkspaceStore } from './store/workspace-store'
+import { useWorkspaceWatchStore } from './store/workspace-watch-store'
 
 export function App() {
-  const { workspacePath, isLoading } = useWorkspaceStore()
+  const { workspacePath, isLoading } = useWorkspaceStore(
+    useShallow((s) => ({
+      workspacePath: s.workspacePath,
+      isLoading: s.isLoading,
+    }))
+  )
+  const { watchWorkspace, unwatchWorkspace } = useWorkspaceWatchStore(
+    useShallow((s) => ({
+      watchWorkspace: s.watchWorkspace,
+      unwatchWorkspace: s.unwatchWorkspace,
+    }))
+  )
   const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
   useFontScale()
   useAutoIndexing(workspacePath)
@@ -32,6 +45,19 @@ export function App() {
       closeListener.then((unlisten) => unlisten())
     }
   }, [])
+
+  useEffect(() => {
+    if (!workspacePath) {
+      unwatchWorkspace()
+      return
+    }
+
+    watchWorkspace()
+
+    return () => {
+      unwatchWorkspace()
+    }
+  }, [watchWorkspace, unwatchWorkspace, workspacePath])
 
   if (!hasCheckedOpenedFiles) {
     return <div className="h-screen bg-muted/70" />
