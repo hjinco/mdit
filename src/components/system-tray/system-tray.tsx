@@ -4,12 +4,8 @@ import { Menu } from '@tauri-apps/api/menu'
 import { join, resourceDir } from '@tauri-apps/api/path'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
-import { useEffect, useRef } from 'react'
-
-// Module-level singleton to track tray instance
-let trayInstance: TrayIcon | null = null
+import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
   new WebviewWindow('quick-note', {
@@ -24,16 +20,18 @@ const createQuickNoteWindow = () => {
 }
 
 async function createSystemTray() {
-  // Return existing tray if already created
-  if (trayInstance !== null) {
-    return trayInstance
-  }
-
   const resDir = await resourceDir()
   const iconPath = await join(resDir, 'icons', 'trayTemplate.png')
   const icon = await Image.fromPath(iconPath)
 
-  const tray = await TrayIcon.new({
+  const tray = await TrayIcon.getById('tray')
+
+  if (tray) {
+    return tray
+  }
+
+  return await TrayIcon.new({
+    id: 'tray',
     icon,
     menu: await Menu.new({
       items: [
@@ -48,14 +46,9 @@ async function createSystemTray() {
       ],
     }),
   })
-
-  trayInstance = tray
-  return tray
 }
 
 export function SystemTray() {
-  const cleanupRef = useRef(false)
-
   useEffect(() => {
     const shortcut = 'CmdOrCtrl+Alt+N'
 
@@ -63,27 +56,14 @@ export function SystemTray() {
       createQuickNoteWindow()
     })
 
-    const trayPromise = createSystemTray()
-
-    const appWindow = getCurrentWindow()
-    const closeListener = appWindow.listen('tauri://close-requested', () => {
-      trayPromise.then((tray) => {
-        tray.close()
-        trayInstance = null
-      })
+    const trayPromise = createSystemTray().catch(() => {
+      return null
     })
 
     return () => {
-      cleanupRef.current = true
-      // Cleanup: unregister shortcut and close tray
       unregister(shortcut)
-      closeListener.then((unlisten) => unlisten())
       trayPromise.then((tray) => {
-        // Only cleanup if this is the active instance
-        if (cleanupRef.current && trayInstance === tray) {
-          tray.close()
-          trayInstance = null
-        }
+        tray?.close()
       })
     }
   }, [])
