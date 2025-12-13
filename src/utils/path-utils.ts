@@ -229,9 +229,13 @@ export const getBasePathAndExtension = (
  * hasDotFolderInPaths(['/home/user/.vscode/file.txt']) // true
  * hasDotFolderInPaths(['C:\\Users\\Documents\\file.txt']) // false
  */
-export const hasDotFolderInPaths = (paths: string[]): boolean => {
+export const hasHiddenEntryInPaths = (paths: string[]): boolean => {
   return paths.some((path) => {
     const segments = path.split(PATH_SEGMENT_REGEX)
-    return segments.some((segment) => segment.startsWith('.'))
+    // A hidden segment starts with a dot, but is not '.' or '..'
+    return segments.some(
+      (segment) =>
+        segment.startsWith('.') && segment !== '.' && segment !== '..'
+    )
   })
 }

@@ -3,7 +3,7 @@ import { stat, type UnwatchFn, watch } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 import {
   getFileNameFromPath,
-  hasDotFolderInPaths,
+  hasHiddenEntryInPaths,
   isPathEqualOrDescendant,
   normalizePathSeparators,
 } from '@/utils/path-utils'
@@ -52,7 +52,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
         workspacePath,
         (event) => {
           // Skip events with paths containing dot folders
-          if (hasDotFolderInPaths(event.paths)) {
+          if (hasHiddenEntryInPaths(event.paths)) {
             return
           }
 
