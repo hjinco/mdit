@@ -137,6 +137,24 @@ export function removeEntriesFromState(
     })
 }
 
+export function findEntryByPath(
+  entries: WorkspaceEntry[],
+  targetPath: string
+): WorkspaceEntry | null {
+  for (const entry of entries) {
+    if (entry.path === targetPath) {
+      return entry
+    }
+    if (entry.children) {
+      const found = findEntryByPath(entry.children, targetPath)
+      if (found) {
+        return found
+      }
+    }
+  }
+  return null
+}
+
 export function findParentDirectory(
   entries: WorkspaceEntry[],
   targetPath: string

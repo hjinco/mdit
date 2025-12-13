@@ -216,3 +216,22 @@ export const getBasePathAndExtension = (
 
   return { basePath: filePath, extension: null }
 }
+
+/**
+ * Checks if any path in the array contains a "." folder (hidden directory).
+ * Handles both Windows (`\`) and Unix (`/`) path separators.
+ *
+ * @param paths - Array of file or directory paths
+ * @returns True if any path contains a segment starting with "."
+ *
+ * @example
+ * hasDotFolderInPaths(['C:\\Users\\.git\\file.txt']) // true
+ * hasDotFolderInPaths(['/home/user/.vscode/file.txt']) // true
+ * hasDotFolderInPaths(['C:\\Users\\Documents\\file.txt']) // false
+ */
+export const hasDotFolderInPaths = (paths: string[]): boolean => {
+  return paths.some((path) => {
+    const segments = path.split(PATH_SEGMENT_REGEX)
+    return segments.some((segment) => segment.startsWith('.'))
+  })
+}
