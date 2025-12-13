@@ -197,12 +197,12 @@ export function CollectionView() {
       >
         <div
           className={cn(
-            'flex items-center gap-1.5 px-1 shrink min-w-0 text-foreground/80',
+            'flex-1 flex items-center gap-1.5 px-1 shrink min-w-0 text-foreground/80',
             !isFileExplorerOpen && 'hidden'
           )}
         >
           <FolderIcon className="size-4.5 shrink-0" />
-          <h2 className="text-sm font-medium cursor-default text-overflow-mask">
+          <h2 className="flex-1 text-sm font-medium cursor-default text-overflow-mask">
             {displayName}
           </h2>
         </div>
