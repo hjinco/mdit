@@ -8,8 +8,6 @@ import {
   readTextFile,
   rename,
   stat,
-  type UnwatchFn,
-  watch,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { generateText } from 'ai'
@@ -19,7 +17,6 @@ import { create } from 'zustand'
 import { loadSettings } from '@/lib/settings-utils'
 import {
   getFileNameFromPath,
-  hasDotFolderInPaths,
   isPathEqualOrDescendant,
   normalizePathSeparators,
 } from '@/utils/path-utils'
@@ -37,7 +34,6 @@ import {
 import {
   addEntryToState,
   buildWorkspaceEntries,
-  findEntryByPath,
   moveEntryInState,
   removeEntriesFromState,
   sortWorkspaceEntries,
@@ -127,8 +123,6 @@ type WorkspaceStore = {
   copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
-  watchWorkspace: () => Promise<void>
-  unwatchWorkspace: () => void
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -150,8 +144,6 @@ const findDirectoryEntry = (
   }
   return null
 }
-
-let workspaceUnwatch: UnwatchFn | null = null
 
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isLoading: true,
@@ -190,115 +182,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Restore the last opened path
       set({ currentCollectionPath: lastCollectionPath })
     }
-  },
-
-  watchWorkspace: async () => {
-    const workspacePath = get().workspacePath
-    if (!workspacePath) {
-      return
-    }
-
-    workspaceUnwatch?.()
-
-    const unwatch = await watch(
-      workspacePath,
-      (event) => {
-        // Skip events with paths containing dot folders
-        if (hasDotFolderInPaths(event.paths)) {
-          return
-        }
-
-        // Handle rename events for files moving in/out of workspace
-        if (
-          event.type &&
-          typeof event.type === 'object' &&
-          'modify' in event.type &&
-          event.type.modify &&
-          typeof event.type.modify === 'object' &&
-          'kind' in event.type.modify &&
-          event.type.modify.kind === 'rename' &&
-          event.paths.length === 1
-        ) {
-          const path = event.paths[0]
-          const currentEntries = get().entries
-          const existingEntry = findEntryByPath(currentEntries, path)
-          console.log(path)
-
-          if (existingEntry) {
-            // Entry exists → file moved out of workspace, remove it
-            set((state) => ({
-              entries: removeEntriesFromState(state.entries, [path]),
-            }))
-            return
-          }
-          // Entry doesn't exist → file moved into workspace, add it
-          ;(async () => {
-            const fileStat = await stat(path)
-            const isDirectory = fileStat.isDirectory
-            const fileName = getFileNameFromPath(path)
-            const parentPath = await dirname(path)
-
-            const newEntry: WorkspaceEntry = {
-              path,
-              name: fileName,
-              isDirectory,
-              children: isDirectory ? [] : undefined,
-              createdAt: fileStat.birthtime
-                ? new Date(fileStat.birthtime)
-                : undefined,
-              modifiedAt: fileStat.mtime ? new Date(fileStat.mtime) : undefined,
-            }
-
-            // If it's a directory, build its children
-            if (isDirectory) {
-              try {
-                const children = await buildWorkspaceEntries(path)
-                newEntry.children = children
-              } catch (error) {
-                console.error(
-                  'Failed to build children for moved directory:',
-                  path,
-                  error
-                )
-                newEntry.children = []
-              }
-            }
-
-            set((state) => {
-              if (parentPath === workspacePath) {
-                // Moving to workspace root
-                return {
-                  entries: sortWorkspaceEntries([...state.entries, newEntry]),
-                }
-              }
-              // Moving to a subdirectory
-              return {
-                entries: addEntryToState(state.entries, parentPath, newEntry),
-              }
-            })
-          })()
-          return
-        }
-
-        console.log(event)
-      },
-      {
-        recursive: true,
-        delayMs: 1000,
-      }
-    )
-
-    if (get().workspacePath !== workspacePath) {
-      unwatch()
-      return
-    }
-
-    workspaceUnwatch = unwatch
-  },
-
-  unwatchWorkspace: () => {
-    workspaceUnwatch?.()
-    workspaceUnwatch = null
   },
 
   initializeWorkspace: async () => {

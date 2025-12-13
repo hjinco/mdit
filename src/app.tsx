@@ -15,17 +15,21 @@ import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
 import { useWorkspaceStore } from './store/workspace-store'
+import { useWorkspaceWatchStore } from './store/workspace-watch-store'
 
 export function App() {
-  const { workspacePath, isLoading, watchWorkspace, unwatchWorkspace } =
-    useWorkspaceStore(
-      useShallow((s) => ({
-        workspacePath: s.workspacePath,
-        isLoading: s.isLoading,
-        watchWorkspace: s.watchWorkspace,
-        unwatchWorkspace: s.unwatchWorkspace,
-      }))
-    )
+  const { workspacePath, isLoading } = useWorkspaceStore(
+    useShallow((s) => ({
+      workspacePath: s.workspacePath,
+      isLoading: s.isLoading,
+    }))
+  )
+  const { watchWorkspace, unwatchWorkspace } = useWorkspaceWatchStore(
+    useShallow((s) => ({
+      watchWorkspace: s.watchWorkspace,
+      unwatchWorkspace: s.unwatchWorkspace,
+    }))
+  )
   const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
   useFontScale()
   useAutoIndexing(workspacePath)
