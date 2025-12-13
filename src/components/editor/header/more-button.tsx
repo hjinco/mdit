@@ -36,7 +36,7 @@ export function MoreButton() {
           <InfoIcon />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-48" align="end">
+      <PopoverContent className="w-48 z-101" align="end">
         <div className="space-y-1 text-xs">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Characters</span>
