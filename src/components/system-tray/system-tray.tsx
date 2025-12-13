@@ -56,12 +56,14 @@ export function SystemTray() {
       createQuickNoteWindow()
     })
 
-    const trayPromise = createSystemTray()
+    const trayPromise = createSystemTray().catch(() => {
+      return null
+    })
 
     return () => {
       unregister(shortcut)
       trayPromise.then((tray) => {
-        tray.close()
+        tray?.close()
       })
     }
   }, [])
