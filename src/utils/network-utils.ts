@@ -10,11 +10,6 @@ import { fetch } from '@tauri-apps/plugin-http'
 export async function checkInternetConnectivity(
   timeoutMs = 3000
 ): Promise<boolean> {
-  // First check navigator.onLine as a quick filter
-  if (!navigator.onLine) {
-    return false
-  }
-
   // Try Google's generate_204 endpoint first, then fallback to example.com
   const checkUrls = [
     'https://www.google.com/generate_204',
@@ -22,17 +17,14 @@ export async function checkInternetConnectivity(
   ]
 
   for (const checkUrl of checkUrls) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
       const response = await fetch(checkUrl, {
         method: 'HEAD',
         signal: controller.signal,
         cache: 'no-cache',
       })
-
-      clearTimeout(timeoutId)
 
       // Consider 2xx and 3xx status codes as successful connectivity
       if (response.status >= 200 && response.status < 400) {
@@ -40,6 +32,8 @@ export async function checkInternetConnectivity(
       }
     } catch {
       // Try next URL if this one fails
+    } finally {
+      clearTimeout(timeoutId)
     }
   }
 
