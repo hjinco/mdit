@@ -149,12 +149,13 @@ function Draggable(props: PlateElementProps) {
         type={props.element.type}
         isFirstChild={isFirstChild}
         setNodeRef={setNodeRef}
+        {...attributes}
+        {...listeners}
         onMouseDown={(e) => {
+          listeners.onMouseDown?.(e)
           e.preventDefault()
           e.stopPropagation()
         }}
-        {...attributes}
-        {...listeners}
         data-plate-prevent-deselect
       />
       {/* Top drop zone */}
