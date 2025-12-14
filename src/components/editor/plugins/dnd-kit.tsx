@@ -59,11 +59,13 @@ function DragHandle({
   type,
   isFirstChild,
   onDraggingChange,
+  onMouseDown,
 }: {
   elementId: string
   type: string
   isFirstChild: boolean
   onDraggingChange: (isDragging: boolean) => void
+  onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
 }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
     id: `editor-${elementId}`,
@@ -97,6 +99,11 @@ function DragHandle({
         topClass
       )}
       contentEditable={false}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      onMouseDown={onMouseDown}
     >
       <GripVertical className="size-5 stroke-[1.4]!" />
     </div>
@@ -154,6 +161,11 @@ function Draggable(props: PlateElementProps) {
         type={props.element.type}
         isFirstChild={isFirstChild}
         onDraggingChange={setIsDragging}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        data-plate-prevent-deselect
       />
       {/* Top drop zone */}
       <div

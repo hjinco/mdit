@@ -8,6 +8,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { insertImage } from '@platejs/media'
+import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { dirname, extname, relative } from 'pathe'
 import { KEYS, PathApi } from 'platejs'
 import { useEditorRef } from 'platejs/react'
@@ -155,12 +156,17 @@ export function DndProvider({ children }: DndProviderProps) {
             return
           }
 
-          // Find source block
-          const sourceEntry = editor.api.node({
-            at: [],
-            block: true,
-            match: (n) => n.id === sourceId,
+          // Get selected blocks from BlockSelectionPlugin
+          const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
+          const selectedBlocks = blockSelectionApi.blockSelection.getNodes({
+            sort: true,
           })
+
+          // Check if the dragged block is part of a multi-selection
+          const isDraggedBlockSelected = selectedBlocks.some(
+            ([node]) => node.id === sourceId
+          )
+          const hasMultipleSelections = selectedBlocks.length > 1
 
           // Find target block
           const targetEntry = editor.api.node({
@@ -169,72 +175,189 @@ export function DndProvider({ children }: DndProviderProps) {
             match: (n) => n.id === targetId,
           })
 
-          if (!sourceEntry || !targetEntry) {
+          if (!targetEntry) {
             return
           }
 
-          const [, sourcePath] = sourceEntry
           const [, targetPath] = targetEntry
-
-          // Don't move if paths are the same
-          if (PathApi.equals(sourcePath, targetPath)) {
-            return
-          }
-
-          // Check if target is a descendant of source (prevent moving parent into child)
-          // A path is a descendant if it starts with the parent path
-          const isDescendant = PathApi.isDescendant(targetPath, sourcePath)
-
-          if (isDescendant) {
-            return
-          }
-
-          // Check if source and target are adjacent siblings (same parent, index differs by 1)
-          const areAdjacentSiblings =
-            PathApi.isSibling(sourcePath, targetPath) &&
-            Math.abs((sourcePath.at(-1) ?? 0) - (targetPath.at(-1) ?? 0)) === 1
 
           // Determine target position based on drop zone
           const position = overData.position ?? 'top'
 
-          // Prevent dropping to adjacent block's top/bottom if it would result in no effective movement
-          if (areAdjacentSiblings) {
-            const sourceIndex = sourcePath.at(-1) ?? 0
-            const targetIndex = targetPath.at(-1) ?? 0
+          if (isDraggedBlockSelected && hasMultipleSelections) {
+            // Multi-block drag and drop
+            // Filter out any selected blocks that are descendants of other selected blocks
+            const blocksToMove = selectedBlocks.filter(([, path]) => {
+              return !selectedBlocks.some(
+                ([, otherPath]) =>
+                  otherPath !== path && PathApi.isDescendant(path, otherPath)
+              )
+            })
 
-            // Prevent: source is immediately above target and dropping to target's top
-            if (position === 'top' && sourceIndex === targetIndex - 1) {
+            if (blocksToMove.length === 0) {
               return
             }
 
-            // Prevent: source is immediately below target and dropping to target's bottom
-            if (position === 'bottom' && sourceIndex === targetIndex + 1) {
+            // Check if target is a descendant of any selected block
+            const isTargetDescendant = blocksToMove.some(([, path]) =>
+              PathApi.isDescendant(targetPath, path)
+            )
+
+            if (isTargetDescendant) {
               return
             }
-          }
 
-          const areSiblings = PathApi.isSibling(sourcePath, targetPath)
-          const isMovingDown =
-            areSiblings && PathApi.isBefore(sourcePath, targetPath)
+            // Check if any selected block is the target itself
+            const isTargetSelected = blocksToMove.some(
+              ([node]) => node.id === targetId
+            )
 
-          // Slate/Plate moveNodes expects `to` to be the final path.
-          // When moving a sibling downwards, the target index shifts after removal,
-          // so we need to adjust the insertion path to preserve top/bottom semantics.
-          let moveToPath = targetPath
+            if (isTargetSelected) {
+              return
+            }
 
-          if (position === 'top') {
-            moveToPath = isMovingDown
-              ? (PathApi.previous(targetPath) ?? targetPath)
-              : targetPath
+            // Sort blocks by path to maintain order
+            const sortedBlocks = [...blocksToMove].sort((a, b) => {
+              const [, pathA] = a
+              const [, pathB] = b
+              return PathApi.compare(pathA, pathB)
+            })
+
+            const firstSelectedPath = sortedBlocks[0]?.[1]
+            const lastSelectedPath = sortedBlocks.at(-1)?.[1]
+
+            // Prevent no-op drops that can still reorder the selection.
+            // Example: selecting [B,C], dropping on D's top should be no-op.
+            if (
+              position === 'top' &&
+              lastSelectedPath &&
+              PathApi.isSibling(lastSelectedPath, targetPath) &&
+              PathApi.equals(PathApi.next(lastSelectedPath), targetPath)
+            ) {
+              return
+            }
+
+            // Example: selecting [C,D], dropping on B's bottom should be no-op.
+            if (
+              position === 'bottom' &&
+              firstSelectedPath &&
+              PathApi.isSibling(firstSelectedPath, targetPath) &&
+              PathApi.equals(firstSelectedPath, PathApi.next(targetPath))
+            ) {
+              return
+            }
+
+            editor.tf.withoutNormalizing(() => {
+              const nodesToMove = sortedBlocks.map(([node]) => node)
+
+              // Remove nodes from bottom to top so paths don't shift.
+              for (const [, path] of [...sortedBlocks].reverse()) {
+                editor.tf.removeNodes({ at: path })
+              }
+
+              // Re-resolve targetPath after removals (it may have shifted).
+              const currentTargetEntry = editor.api.node({
+                at: [],
+                block: true,
+                match: (n) => n.id === targetId,
+              })
+
+              if (!currentTargetEntry) return
+
+              const [, currentTargetPath] = currentTargetEntry
+              const insertAt =
+                position === 'top'
+                  ? currentTargetPath
+                  : PathApi.next(currentTargetPath)
+
+              editor.tf.insertNodes(nodesToMove as any, { at: insertAt })
+            })
+
+            // Update blockSelection order after move
+            // Get nodes again with new paths (already sorted by getNodes)
+            const updatedBlocks = blockSelectionApi.blockSelection.getNodes({
+              sort: true,
+            })
+
+            if (updatedBlocks.length > 0) {
+              const updatedIds = updatedBlocks.map(
+                ([node]) => node.id as string
+              )
+              blockSelectionApi.blockSelection.set(updatedIds)
+            }
           } else {
-            moveToPath = isMovingDown ? targetPath : PathApi.next(targetPath)
-          }
+            // Single block drag and drop (existing logic)
+            // Find source block
+            const sourceEntry = editor.api.node({
+              at: [],
+              block: true,
+              match: (n) => n.id === sourceId,
+            })
 
-          // Move the source block to the determined position
-          editor.tf.moveNodes({
-            at: sourcePath,
-            to: moveToPath,
-          })
+            if (!sourceEntry) {
+              return
+            }
+
+            const [, sourcePath] = sourceEntry
+
+            // Don't move if paths are the same
+            if (PathApi.equals(sourcePath, targetPath)) {
+              return
+            }
+
+            // Check if target is a descendant of source (prevent moving parent into child)
+            // A path is a descendant if it starts with the parent path
+            const isDescendant = PathApi.isDescendant(targetPath, sourcePath)
+
+            if (isDescendant) {
+              return
+            }
+
+            // Check if source and target are adjacent siblings (same parent, index differs by 1)
+            const areAdjacentSiblings =
+              PathApi.isSibling(sourcePath, targetPath) &&
+              Math.abs((sourcePath.at(-1) ?? 0) - (targetPath.at(-1) ?? 0)) ===
+                1
+
+            // Prevent dropping to adjacent block's top/bottom if it would result in no effective movement
+            if (areAdjacentSiblings) {
+              const sourceIndex = sourcePath.at(-1) ?? 0
+              const targetIndex = targetPath.at(-1) ?? 0
+
+              // Prevent: source is immediately above target and dropping to target's top
+              if (position === 'top' && sourceIndex === targetIndex - 1) {
+                return
+              }
+
+              // Prevent: source is immediately below target and dropping to target's bottom
+              if (position === 'bottom' && sourceIndex === targetIndex + 1) {
+                return
+              }
+            }
+
+            const areSiblings = PathApi.isSibling(sourcePath, targetPath)
+            const isMovingDown =
+              areSiblings && PathApi.isBefore(sourcePath, targetPath)
+
+            // Slate/Plate moveNodes expects `to` to be the final path.
+            // When moving a sibling downwards, the target index shifts after removal,
+            // so we need to adjust the insertion path to preserve top/bottom semantics.
+            let moveToPath = targetPath
+
+            if (position === 'top') {
+              moveToPath = isMovingDown
+                ? (PathApi.previous(targetPath) ?? targetPath)
+                : targetPath
+            } else {
+              moveToPath = isMovingDown ? targetPath : PathApi.next(targetPath)
+            }
+
+            // Move the source block to the determined position
+            editor.tf.moveNodes({
+              at: sourcePath,
+              to: moveToPath,
+            })
+          }
         }
         return
       }
