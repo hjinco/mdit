@@ -152,7 +152,7 @@ function Draggable(props: PlateElementProps) {
         {...attributes}
         {...listeners}
         onMouseDown={(e) => {
-          listeners.onMouseDown?.(e)
+          listeners?.onMouseDown?.(e)
           e.preventDefault()
           e.stopPropagation()
         }}
