@@ -223,6 +223,9 @@ export function DndProvider({ children }: DndProviderProps) {
               return PathApi.compare(pathA, pathB)
             })
 
+            // Save IDs before moving (to use after move)
+            const idsToMove = sortedBlocks.map(([node]) => node.id as string)
+
             const firstSelectedPath = sortedBlocks[0]?.[1]
             const lastSelectedPath = sortedBlocks.at(-1)?.[1]
 
@@ -273,18 +276,8 @@ export function DndProvider({ children }: DndProviderProps) {
               editor.tf.insertNodes(nodesToMove as any, { at: insertAt })
             })
 
-            // Update blockSelection order after move
-            // Get nodes again with new paths (already sorted by getNodes)
-            const updatedBlocks = blockSelectionApi.blockSelection.getNodes({
-              sort: true,
-            })
-
-            if (updatedBlocks.length > 0) {
-              const updatedIds = updatedBlocks.map(
-                ([node]) => node.id as string
-              )
-              blockSelectionApi.blockSelection.set(updatedIds)
-            }
+            // Update blockSelection with the IDs we moved (they're still valid after move)
+            blockSelectionApi.blockSelection.set(idsToMove)
           } else {
             // Single block drag and drop (existing logic)
             // Find source block
@@ -357,6 +350,18 @@ export function DndProvider({ children }: DndProviderProps) {
               at: sourcePath,
               to: moveToPath,
             })
+
+            // Set blockSelection on the moved block
+            const movedEntry = editor.api.node({
+              at: moveToPath,
+              block: true,
+            })
+            if (movedEntry) {
+              const [movedNode] = movedEntry
+              if (movedNode.id) {
+                blockSelectionApi.blockSelection.set(movedNode.id as string)
+              }
+            }
           }
         }
         return
