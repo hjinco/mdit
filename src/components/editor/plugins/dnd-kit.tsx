@@ -177,7 +177,7 @@ function Draggable(props: PlateElementProps) {
         className={cn(
           'pointer-events-none absolute inset-x-0 -top-px h-0.5',
           'bg-blue-400 dark:bg-blue-600/80',
-          'opacity-0 transition-opacity',
+          'opacity-0',
           isOverTop && 'opacity-100'
         )}
         contentEditable={false}
@@ -187,7 +187,7 @@ function Draggable(props: PlateElementProps) {
         className={cn(
           'pointer-events-none absolute inset-x-0 -bottom-px h-0.5',
           'bg-blue-400 dark:bg-blue-600/80',
-          'opacity-0 transition-opacity',
+          'opacity-0',
           isOverBottom && 'opacity-100'
         )}
         contentEditable={false}
