@@ -20,6 +20,8 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
@@ -37,10 +39,7 @@ export function ThemeProvider({
       root.classList.remove('light', 'dark')
 
       if (theme === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-          .matches
-          ? 'dark'
-          : 'light'
+        const systemTheme = mediaQuery.matches ? 'dark' : 'light'
 
         root.classList.add(systemTheme)
         return
@@ -52,15 +51,10 @@ export function ThemeProvider({
     applyTheme()
 
     if (theme === 'system') {
-      const interval = setInterval(
-        () => {
-          applyTheme()
-        },
-        10 * 60 * 1000
-      ) // 10 minutes
+      mediaQuery.addEventListener('change', applyTheme)
 
       return () => {
-        clearInterval(interval)
+        mediaQuery.removeEventListener('change', applyTheme)
       }
     }
   }, [theme])
