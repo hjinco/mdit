@@ -95,6 +95,7 @@ type WorkspaceStore = {
   lastCollectionPath: string | null
   isMigrationsComplete: boolean
   pinnedDirectories: string[]
+  lastFsOperationTime: number | null
   setExpandedDirectories: (
     action: (expandedDirectories: string[]) => string[]
   ) => void
@@ -123,6 +124,7 @@ type WorkspaceStore = {
   copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
+  recordFsOperation: () => void
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -156,6 +158,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   lastCollectionPath: null,
   isMigrationsComplete: false,
   pinnedDirectories: [],
+  lastFsOperationTime: null,
+
+  recordFsOperation: () => {
+    set({ lastFsOperationTime: Date.now() })
+  },
 
   setExpandedDirectories: (action) => {
     set((state) => ({ expandedDirectories: action(state.expandedDirectories) }))
@@ -214,6 +221,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         lastCollectionPath: null,
         isMigrationsComplete: false,
         pinnedDirectories: [],
+        lastFsOperationTime: null,
       })
 
       if (workspacePath) {
@@ -258,6 +266,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         lastCollectionPath: null,
         isMigrationsComplete: false,
         pinnedDirectories: [],
+        lastFsOperationTime: null,
       })
     }
   },
@@ -294,6 +303,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         currentCollectionPath: null,
         isMigrationsComplete: false,
         pinnedDirectories: [],
+        lastFsOperationTime: null,
       })
 
       const pinnedDirectories = await readPinnedDirectories(path)
@@ -459,6 +469,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       await mkdir(folderPath, { recursive: true })
+      get().recordFsOperation()
 
       const newFolderEntry: WorkspaceEntry = {
         path: folderPath,
@@ -516,6 +527,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     await writeTextFile(filePath, '')
+    get().recordFsOperation()
 
     const now = new Date()
 
@@ -585,6 +597,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } else {
       await invoke('move_many_to_trash', { paths })
     }
+    get().recordFsOperation()
 
     // Remove deleted paths from history
     for (const path of paths) {
@@ -726,6 +739,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     await rename(entry.path, nextPath)
+    get().recordFsOperation()
 
     await tabState.renameTab(entry.path, nextPath)
     tabState.updateHistoryPath(entry.path, nextPath)
@@ -854,6 +868,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       }
 
       await rename(sourcePath, newPath)
+      get().recordFsOperation()
 
       if (markdownRewriteContext) {
         try {
@@ -1077,6 +1092,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       sourcePath,
       destinationPath: newPath,
     })
+    get().recordFsOperation()
 
     // Handle markdown link rewriting for markdown files
     if (fileName.endsWith('.md')) {

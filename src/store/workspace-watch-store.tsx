@@ -5,14 +5,12 @@ import {
   getFileNameFromPath,
   hasHiddenEntryInPaths,
   isPathEqualOrDescendant,
-  normalizePathSeparators,
 } from '@/utils/path-utils'
 import { useTabStore } from './tab-store'
 import {
   addEntryToState,
   buildWorkspaceEntries,
   findEntryByPath,
-  moveEntryInState,
   removeEntriesFromState,
   sortWorkspaceEntries,
   updateChildPathsForMove,
@@ -53,6 +51,12 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
         (event) => {
           // Skip events with paths containing dot folders
           if (hasHiddenEntryInPaths(event.paths)) {
+            return
+          }
+
+          // Skip events that occurred within 1.5 second of an internal FS operation
+          const lastFsOpTime = useWorkspaceStore.getState().lastFsOperationTime
+          if (lastFsOpTime !== null && Date.now() - lastFsOpTime < 1500) {
             return
           }
 
@@ -256,54 +260,48 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
                     updatedEntryToMove,
                   ])
                 } else {
-                  // Moving to a subdirectory - use moveEntryInState but need to update the path
-                  // moveEntryInState creates newPath from destinationPath + fileName,
-                  // but we already have the actual newPath, so we need to handle this differently
-                  const movedEntries = moveEntryInState(
-                    state.entries,
-                    oldPath,
-                    destinationPath
-                  )
-                  // Update the path in the moved entry to match the actual newPath
-                  // moveEntryInState creates a path from destinationPath + fileName,
-                  // but we need to use the actual newPath from the event
-                  const updateMovedPath = (
+                  // Moving to a subdirectory - remove from source and add to destination with actual newPath
+                  // First, remove from source location
+                  const removeEntry = (
                     entryList: WorkspaceEntry[]
                   ): WorkspaceEntry[] => {
-                    return entryList.map((entry) => {
-                      const fileName = getFileNameFromPath(oldPath)
-                      const normalizedDestinationPath =
-                        normalizePathSeparators(destinationPath)
-                      const expectedPath = `${normalizedDestinationPath}/${fileName}`
-                      const normalizedEntryPath = normalizePathSeparators(
-                        entry.path
-                      )
-                      const normalizedExpectedPath =
-                        normalizePathSeparators(expectedPath)
-                      if (normalizedEntryPath === normalizedExpectedPath) {
-                        // Update to actual newPath
-                        const updated: WorkspaceEntry = {
-                          ...entry,
-                          path: newPath,
-                          name: getFileNameFromPath(newPath),
+                    return entryList
+                      .filter((entry) => entry.path !== oldPath)
+                      .map((entry) => {
+                        if (entry.children) {
+                          return {
+                            ...entry,
+                            children: removeEntry(entry.children),
+                          }
                         }
-                        if (entry.isDirectory && entry.children) {
-                          updated.children = entry.children.map((child) =>
-                            updateChildPathsForMove(child, entry.path, newPath)
-                          )
-                        }
-                        return updated
-                      }
-                      if (entry.children) {
-                        return {
-                          ...entry,
-                          children: updateMovedPath(entry.children),
-                        }
-                      }
-                      return entry
-                    })
+                        return entry
+                      })
                   }
-                  updatedEntries = updateMovedPath(movedEntries)
+
+                  const filteredEntries = removeEntry(state.entries)
+
+                  // Update paths if it's a directory
+                  const updatedEntryToMove: WorkspaceEntry = {
+                    path: newPath,
+                    name: getFileNameFromPath(newPath),
+                    isDirectory: entryToMove.isDirectory,
+                    createdAt: entryToMove.createdAt,
+                    modifiedAt: entryToMove.modifiedAt,
+                    ...(entryToMove.isDirectory && {
+                      children: entryToMove.children
+                        ? entryToMove.children.map((child: WorkspaceEntry) =>
+                            updateChildPathsForMove(child, oldPath, newPath)
+                          )
+                        : undefined,
+                    }),
+                  }
+
+                  // Add to destination using addEntryToState
+                  updatedEntries = addEntryToState(
+                    filteredEntries,
+                    destinationPath,
+                    updatedEntryToMove
+                  )
                 }
 
                 const updatedExpanded = isDirectory
