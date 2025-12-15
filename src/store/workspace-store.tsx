@@ -28,7 +28,6 @@ import {
   buildRenamePrompt,
   collectSiblingNoteNames,
   createModelFromConfig,
-  ensureUniqueNoteName,
   extractAndSanitizeName,
 } from './workspace/utils/ai-rename-utils'
 import {
@@ -61,6 +60,7 @@ import {
   renamePinnedDirectories,
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
+import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -463,16 +463,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
-      let attempt = 0
-      let finalFolderName = trimmedName
-      let folderPath = await join(directoryPath, finalFolderName)
-
-      // If folder with this name exists, append number suffix
-      while (await exists(folderPath)) {
-        attempt += 1
-        finalFolderName = `${trimmedName} ${attempt}`
-        folderPath = await join(directoryPath, finalFolderName)
-      }
+      const { fileName: finalFolderName, fullPath: folderPath } =
+        await generateUniqueFileName(trimmedName, directoryPath, exists, {
+          pattern: 'space',
+        })
 
       await mkdir(folderPath, { recursive: true })
       get().recordFsOperation()
@@ -521,16 +515,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       throw new Error('Workspace path is not set')
     }
 
-    const baseName = 'Untitled'
-    let attempt = 0
-    let fileName = `${baseName}.md`
-    let filePath = await join(directoryPath, fileName)
-
-    while (await exists(filePath)) {
-      attempt += 1
-      fileName = `${baseName} ${attempt}.md`
-      filePath = await join(directoryPath, fileName)
-    }
+    const baseName = 'Untitled.md'
+    const { fileName, fullPath: filePath } = await generateUniqueFileName(
+      baseName,
+      directoryPath,
+      exists,
+      { pattern: 'space' }
+    )
 
     await writeTextFile(filePath, '')
     get().recordFsOperation()
@@ -696,10 +687,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       throw new Error('The AI did not return a usable name.')
     }
 
-    const { fileName: finalFileName } = await ensureUniqueNoteName(
+    const { fileName: finalFileName } = await generateUniqueFileName(
+      `${suggestedBaseName}.md`,
       dirPath,
-      suggestedBaseName,
-      entry.path,
       exists
     )
 
@@ -1032,19 +1022,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     // Construct the new path with auto-rename if needed
-    let newPath = await join(destinationPath, fileName)
-    let attempt = 0
-    while (await exists(newPath)) {
-      attempt += 1
-      const extIndex = fileName.lastIndexOf('.')
-      if (extIndex > 0) {
-        const baseName = fileName.slice(0, extIndex)
-        const ext = fileName.slice(extIndex)
-        newPath = await join(destinationPath, `${baseName} (${attempt})${ext}`)
-      } else {
-        newPath = await join(destinationPath, `${fileName} (${attempt})`)
-      }
-    }
+    const { fullPath: newPath } = await generateUniqueFileName(
+      fileName,
+      destinationPath,
+      exists,
+      { pattern: 'parentheses' }
+    )
 
     // Check if source is a directory
     const sourceStat = await stat(sourcePath)
@@ -1135,19 +1118,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     // Construct the new path with auto-rename if needed
-    let newPath = await join(destinationPath, fileName)
-    let attempt = 0
-    while (await exists(newPath)) {
-      attempt += 1
-      const extIndex = fileName.lastIndexOf('.')
-      if (extIndex > 0) {
-        const baseName = fileName.slice(0, extIndex)
-        const ext = fileName.slice(extIndex)
-        newPath = await join(destinationPath, `${baseName} (${attempt})${ext}`)
-      } else {
-        newPath = await join(destinationPath, `${fileName} (${attempt})`)
-      }
-    }
+    const { fullPath: newPath } = await generateUniqueFileName(
+      fileName,
+      destinationPath,
+      exists,
+      { pattern: 'parentheses' }
+    )
 
     // Check if source is a directory
     const sourceStat = await stat(sourcePath)

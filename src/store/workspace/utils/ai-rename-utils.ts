@@ -1,7 +1,6 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import { join } from '@tauri-apps/api/path'
 import type { DirEntry } from '@tauri-apps/plugin-fs'
 import { ollama } from 'ollama-ai-provider-v2'
 
@@ -120,32 +119,4 @@ export function stripExtension(fileName: string, extension: string) {
   return extension && fileName.toLowerCase().endsWith(extension.toLowerCase())
     ? fileName.slice(0, -extension.length)
     : fileName
-}
-
-export async function ensureUniqueNoteName(
-  directoryPath: string,
-  baseName: string,
-  currentPath: string,
-  exists: (path: string) => Promise<boolean>
-) {
-  let attempt = 0
-
-  while (attempt < 100) {
-    const suffix = attempt === 0 ? '' : ` ${attempt}`
-    const candidateBase = `${baseName}${suffix}`.trim()
-    const candidateFileName = `${candidateBase}.md`
-    const nextPath = await join(directoryPath, candidateFileName)
-
-    if (nextPath === currentPath) {
-      return { fileName: candidateFileName, fullPath: nextPath }
-    }
-
-    if (!(await exists(nextPath))) {
-      return { fileName: candidateFileName, fullPath: nextPath }
-    }
-
-    attempt += 1
-  }
-
-  throw new Error('Unable to find a unique filename.')
 }
