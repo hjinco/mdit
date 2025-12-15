@@ -28,7 +28,6 @@ import {
   buildRenamePrompt,
   collectSiblingNoteNames,
   createModelFromConfig,
-  ensureUniqueNoteName,
   extractAndSanitizeName,
 } from './workspace/utils/ai-rename-utils'
 import {
@@ -61,6 +60,7 @@ import {
   renamePinnedDirectories,
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
+import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -124,6 +124,10 @@ type WorkspaceStore = {
   renameEntry: (entry: WorkspaceEntry, newName: string) => Promise<string>
   moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
   copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
+  moveExternalEntry: (
+    sourcePath: string,
+    destinationPath: string
+  ) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
   recordFsOperation: () => void
@@ -459,16 +463,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     try {
-      let attempt = 0
-      let finalFolderName = trimmedName
-      let folderPath = await join(directoryPath, finalFolderName)
-
-      // If folder with this name exists, append number suffix
-      while (await exists(folderPath)) {
-        attempt += 1
-        finalFolderName = `${trimmedName} ${attempt}`
-        folderPath = await join(directoryPath, finalFolderName)
-      }
+      const { fileName: finalFolderName, fullPath: folderPath } =
+        await generateUniqueFileName(trimmedName, directoryPath, exists, {
+          pattern: 'space',
+        })
 
       await mkdir(folderPath, { recursive: true })
       get().recordFsOperation()
@@ -517,16 +515,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       throw new Error('Workspace path is not set')
     }
 
-    const baseName = 'Untitled'
-    let attempt = 0
-    let fileName = `${baseName}.md`
-    let filePath = await join(directoryPath, fileName)
-
-    while (await exists(filePath)) {
-      attempt += 1
-      fileName = `${baseName} ${attempt}.md`
-      filePath = await join(directoryPath, fileName)
-    }
+    const baseName = 'Untitled.md'
+    const { fileName, fullPath: filePath } = await generateUniqueFileName(
+      baseName,
+      directoryPath,
+      exists,
+      { pattern: 'space' }
+    )
 
     await writeTextFile(filePath, '')
     get().recordFsOperation()
@@ -692,10 +687,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       throw new Error('The AI did not return a usable name.')
     }
 
-    const { fileName: finalFileName } = await ensureUniqueNoteName(
+    const { fileName: finalFileName } = await generateUniqueFileName(
+      `${suggestedBaseName}.md`,
       dirPath,
-      suggestedBaseName,
-      entry.path,
       exists
     )
 
@@ -1028,19 +1022,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     // Construct the new path with auto-rename if needed
-    let newPath = await join(destinationPath, fileName)
-    let attempt = 0
-    while (await exists(newPath)) {
-      attempt += 1
-      const extIndex = fileName.lastIndexOf('.')
-      if (extIndex > 0) {
-        const baseName = fileName.slice(0, extIndex)
-        const ext = fileName.slice(extIndex)
-        newPath = await join(destinationPath, `${baseName} (${attempt})${ext}`)
-      } else {
-        newPath = await join(destinationPath, `${fileName} (${attempt})`)
-      }
-    }
+    const { fullPath: newPath } = await generateUniqueFileName(
+      fileName,
+      destinationPath,
+      exists,
+      { pattern: 'parentheses' }
+    )
 
     // Check if source is a directory
     const sourceStat = await stat(sourcePath)
@@ -1104,6 +1091,92 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     if (isDirectory) {
       await get().refreshWorkspaceEntries()
       // Expand destination directory and the newly copied folder (if it's a directory)
+      const currentExpanded = get().expandedDirectories
+      set({
+        expandedDirectories: addExpandedDirectories(currentExpanded, [
+          destinationPath,
+          newPath,
+        ]),
+      })
+    }
+
+    return true
+  },
+
+  moveExternalEntry: async (sourcePath: string, destinationPath: string) => {
+    const workspacePath = get().workspacePath
+
+    // Validation 1: Check if workspace is set
+    if (!workspacePath) {
+      return false
+    }
+
+    // Get the file/folder name from source path
+    const fileName = getFileNameFromPath(sourcePath)
+    if (!fileName) {
+      return false
+    }
+
+    // Construct the new path with auto-rename if needed
+    const { fullPath: newPath } = await generateUniqueFileName(
+      fileName,
+      destinationPath,
+      exists,
+      { pattern: 'parentheses' }
+    )
+
+    // Check if source is a directory
+    const sourceStat = await stat(sourcePath)
+    const isDirectory = sourceStat.isDirectory
+
+    // Move the file
+    await rename(sourcePath, newPath)
+    get().recordFsOperation()
+
+    // Fetch file metadata
+    const fileMetadata: { createdAt?: Date; modifiedAt?: Date } = {}
+    const statResult = await stat(newPath)
+    if (statResult.birthtime) {
+      fileMetadata.createdAt = new Date(statResult.birthtime)
+    }
+    if (statResult.mtime) {
+      fileMetadata.modifiedAt = new Date(statResult.mtime)
+    }
+
+    // Load directory children if it's a directory
+    let directoryChildren: WorkspaceEntry[] | undefined
+    if (isDirectory) {
+      try {
+        directoryChildren = await buildWorkspaceEntries(newPath)
+      } catch (error) {
+        console.error('Failed to load directory children after move:', error)
+        directoryChildren = []
+      }
+    }
+
+    // Update workspace entries state
+    const newFileName = getFileNameFromPath(newPath) ?? fileName
+    const newFileEntry: WorkspaceEntry = {
+      path: newPath,
+      name: newFileName,
+      isDirectory,
+      children: directoryChildren,
+      createdAt: fileMetadata.createdAt,
+      modifiedAt: fileMetadata.modifiedAt,
+    }
+
+    set((state) => {
+      const updatedEntries =
+        destinationPath === workspacePath
+          ? sortWorkspaceEntries([...state.entries, newFileEntry])
+          : addEntryToState(state.entries, destinationPath, newFileEntry)
+
+      return {
+        entries: updatedEntries,
+      }
+    })
+
+    if (isDirectory) {
       const currentExpanded = get().expandedDirectories
       set({
         expandedDirectories: addExpandedDirectories(currentExpanded, [
