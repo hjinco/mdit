@@ -387,7 +387,7 @@ export function FileExplorer() {
       />
       <motion.aside
         ref={fileExplorerRef}
-        className="relative shrink-0 flex flex-col"
+        className="relative shrink-0 flex flex-col overflow-hidden"
         animate={{ width: isOpen ? width : 0 }}
         initial={false}
         transition={
