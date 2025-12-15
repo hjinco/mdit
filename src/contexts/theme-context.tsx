@@ -52,15 +52,11 @@ export function ThemeProvider({
     applyTheme()
 
     if (theme === 'system') {
-      const interval = setInterval(
-        () => {
-          applyTheme()
-        },
-        10 * 60 * 1000
-      ) // 10 minutes
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      mediaQuery.addEventListener('change', applyTheme)
 
       return () => {
-        clearInterval(interval)
+        mediaQuery.removeEventListener('change', applyTheme)
       }
     }
   }, [theme])
