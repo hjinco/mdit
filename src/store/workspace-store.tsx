@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { dirname, join } from '@tauri-apps/api/path'
+import { basename, dirname, join } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   exists,
@@ -827,8 +827,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         useTabStore.getState
       )
 
-      const fileName = getFileNameFromPath(sourcePath)
-      const newPath = await join(destinationPath, fileName)
+      // Find the entry to move before path operations to determine if it's a directory
+      const currentState = get()
+      const entryToMove = findEntryByPath(currentState.entries, sourcePath)
+      const isDirectory = entryToMove?.isDirectory ?? false
+
+      const entryName = await basename(sourcePath)
+      const newPath = await join(destinationPath, entryName)
 
       if (await exists(newPath)) {
         return false
@@ -840,7 +845,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       } | null = null
       let shouldRefreshTab = false
 
-      if (fileName.endsWith('.md')) {
+      if (entryName.endsWith('.md')) {
         try {
           const sourceDirectory = await dirname(sourcePath)
           if (sourceDirectory !== destinationPath) {
@@ -885,11 +890,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
-
-      // Find the entry to move before set() to determine if it's a directory
-      const currentState = get()
-      const entryToMove = findEntryByPath(currentState.entries, sourcePath)
-      const isDirectory = entryToMove?.isDirectory ?? false
 
       let nextPinned: string[] | null = null
 
