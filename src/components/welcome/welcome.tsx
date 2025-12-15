@@ -7,7 +7,7 @@ export function Welcome() {
   const { openFolderPicker } = useWorkspaceStore()
 
   return (
-    <div className="w-full h-screen flex flex-col bg-muted/70">
+    <div className="w-full h-screen flex flex-col">
       <div
         className="w-full h-10"
         {...(isMac() && { 'data-tauri-drag-region': '' })}

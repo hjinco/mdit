@@ -16,6 +16,7 @@ import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
 import { useWorkspaceStore } from './store/workspace-store'
 import { useWorkspaceWatchStore } from './store/workspace-watch-store'
+import { isLinux, isWindows10 } from './utils/platform'
 
 export function App() {
   const { workspacePath, isLoading } = useWorkspaceStore(
@@ -33,6 +34,8 @@ export function App() {
   const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
   useFontScale()
   useAutoIndexing(workspacePath)
+
+  const mutedBgClass = isWindows10() || isLinux() ? 'bg-muted' : 'bg-muted/70'
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
@@ -60,17 +63,17 @@ export function App() {
   }, [watchWorkspace, unwatchWorkspace, workspacePath])
 
   if (!hasCheckedOpenedFiles) {
-    return <div className="h-screen bg-muted/70" />
+    return <div className={`h-screen ${mutedBgClass}`} />
   }
 
   if (!isEditorOnlyMode && isLoading) {
-    return <div className="h-screen bg-muted/70" />
+    return <div className={`h-screen ${mutedBgClass}`} />
   }
 
   if (isEditorOnlyMode) {
     return (
       <>
-        <div className="h-screen flex flex-col bg-muted/70">
+        <div className={`h-screen flex flex-col ${mutedBgClass}`}>
           <div className="flex-1 flex">
             <Editor />
           </div>
@@ -84,12 +87,16 @@ export function App() {
   }
 
   if (!workspacePath) {
-    return <Welcome />
+    return (
+      <div className={mutedBgClass}>
+        <Welcome />
+      </div>
+    )
   }
 
   return (
     <ScreenCaptureProvider>
-      <div className="h-screen flex flex-col bg-muted/70">
+      <div className={`h-screen flex flex-col ${mutedBgClass}`}>
         <div className="flex-1 overflow-hidden flex">
           <div className="group/side flex">
             <FileExplorer />
