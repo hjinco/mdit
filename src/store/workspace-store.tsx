@@ -830,7 +830,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Find the entry to move before path operations to determine if it's a directory
       const currentState = get()
       const entryToMove = findEntryByPath(currentState.entries, sourcePath)
-      const isDirectory = entryToMove?.isDirectory ?? false
+
+      if (!entryToMove) {
+        return false
+      }
+
+      const isDirectory = entryToMove.isDirectory
 
       const entryName = await basename(sourcePath)
       const newPath = await join(destinationPath, entryName)
@@ -904,40 +909,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             sourcePath
           )
 
-          if (entryToMove) {
-            // Update paths if it's a directory
-            let updatedEntryToMove: WorkspaceEntry
-            if (entryToMove.isDirectory) {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: true,
-                children: entryToMove.children
-                  ? entryToMove.children.map((child: WorkspaceEntry) =>
-                      updateChildPathsForMove(child, sourcePath, newPath)
-                    )
-                  : undefined,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
-            } else {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: false,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
+          // Update paths if it's a directory
+          let updatedEntryToMove: WorkspaceEntry
+          if (entryToMove.isDirectory) {
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: true,
+              children: entryToMove.children
+                ? entryToMove.children.map((child: WorkspaceEntry) =>
+                    updateChildPathsForMove(child, sourcePath, newPath)
+                  )
+                : undefined,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
             }
-
-            // Add directly to entries array
-            updatedEntries = sortWorkspaceEntries([
-              ...filteredEntries,
-              updatedEntryToMove,
-            ])
           } else {
-            updatedEntries = filteredEntries
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: false,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
+            }
           }
+
+          // Add directly to entries array
+          updatedEntries = sortWorkspaceEntries([
+            ...filteredEntries,
+            updatedEntryToMove,
+          ])
         } else {
           // Moving to a subdirectory - use existing logic
           updatedEntries = moveEntryInState(
