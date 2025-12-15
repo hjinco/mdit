@@ -14,10 +14,9 @@ import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
-import { useWindows10 } from './hooks/use-windows-10'
 import { useWorkspaceStore } from './store/workspace-store'
 import { useWorkspaceWatchStore } from './store/workspace-watch-store'
-import { isLinux } from './utils/platform'
+import { isLinux, isWindows10 } from './utils/platform'
 
 export function App() {
   const { workspacePath, isLoading } = useWorkspaceStore(
@@ -33,11 +32,10 @@ export function App() {
     }))
   )
   const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
-  const isWin10 = useWindows10()
   useFontScale()
   useAutoIndexing(workspacePath)
 
-  const mutedBgClass = isWin10 || isLinux() ? 'bg-muted' : 'bg-muted/70'
+  const mutedBgClass = isWindows10() || isLinux() ? 'bg-muted' : 'bg-muted/70'
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
