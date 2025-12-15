@@ -19,7 +19,6 @@ const ACTIVATION_ID_STORAGE_KEY = 'license-activation-id'
 type LicenseStore = {
   status: 'valid' | 'invalid' | 'validating' | 'activating' | 'deactivating'
   error: string | null
-  isChecking: boolean
   clearLicenseError: () => void
   checkLicense: () => Promise<void>
   registerLicenseKey: (key: string) => Promise<void>
@@ -54,17 +53,17 @@ export const createLicenseStore = ({
     checkLicense: async () => {
       try {
         // Prevent concurrent calls
-        if (get().isChecking) {
+        if (get().status === 'validating') {
           return
         }
 
-        set({ status: 'validating', error: null, isChecking: true })
+        set({ status: 'validating', error: null })
 
         // If Polar environment variables are not set, assume license is valid
         const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
         const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
         if (!polarApiBaseUrl || !organizationId) {
-          set({ status: 'valid', isChecking: false })
+          set({ status: 'valid' })
           return
         }
 
@@ -74,7 +73,7 @@ export const createLicenseStore = ({
 
         if (!licenseKey) {
           // Step 2: If license key is missing, set as unauthenticated
-          set({ status: 'invalid', isChecking: false })
+          set({ status: 'invalid' })
           return
         }
 
@@ -82,7 +81,6 @@ export const createLicenseStore = ({
           // Step 3: If license key exists but activation ID is missing, try to activate
           const activationResult = await get().activateLicense(licenseKey)
           if (!activationResult) {
-            set({ isChecking: false })
             return
           }
           activationId = activationResult.id
@@ -95,8 +93,6 @@ export const createLicenseStore = ({
           status: 'invalid',
           error: 'Failed to check license',
         })
-      } finally {
-        set({ isChecking: false })
       }
     },
 
