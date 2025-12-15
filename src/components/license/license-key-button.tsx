@@ -30,7 +30,7 @@ export function LicenseKeyButton() {
     }
   }, [checkLicense])
 
-  if (status === 'valid' || status === 'validating') {
+  if (status !== 'invalid') {
     return null
   }
 
