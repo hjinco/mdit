@@ -13,9 +13,9 @@ export function useWindows10(): boolean {
   useEffect(() => {
     let isMounted = true
 
-    const checkWindows10 = async () => {
+    const checkWindows10 = () => {
       try {
-        const result = await isWindows10()
+        const result = isWindows10()
         if (isMounted) {
           setIsWin10(result)
         }

@@ -57,7 +57,7 @@ export function isLinux(): boolean {
  *
  * @returns Promise that resolves to true if Windows 10 or below, false otherwise
  */
-export async function isWindows10(): Promise<boolean> {
+export function isWindows10() {
   if (!isWindows()) {
     return false
   }
