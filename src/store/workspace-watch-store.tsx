@@ -281,28 +281,19 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
                   const filteredEntries = removeEntry(state.entries)
 
                   // Update paths if it's a directory
-                  let updatedEntryToMove: WorkspaceEntry
-                  if (entryToMove.isDirectory) {
-                    updatedEntryToMove = {
-                      path: newPath,
-                      name: getFileNameFromPath(newPath),
-                      isDirectory: true,
+                  const updatedEntryToMove: WorkspaceEntry = {
+                    path: newPath,
+                    name: getFileNameFromPath(newPath),
+                    isDirectory: entryToMove.isDirectory,
+                    createdAt: entryToMove.createdAt,
+                    modifiedAt: entryToMove.modifiedAt,
+                    ...(entryToMove.isDirectory && {
                       children: entryToMove.children
                         ? entryToMove.children.map((child: WorkspaceEntry) =>
                             updateChildPathsForMove(child, oldPath, newPath)
                           )
                         : undefined,
-                      createdAt: entryToMove.createdAt,
-                      modifiedAt: entryToMove.modifiedAt,
-                    }
-                  } else {
-                    updatedEntryToMove = {
-                      path: newPath,
-                      name: getFileNameFromPath(newPath),
-                      isDirectory: false,
-                      createdAt: entryToMove.createdAt,
-                      modifiedAt: entryToMove.modifiedAt,
-                    }
+                    }),
                   }
 
                   // Add to destination using addEntryToState
