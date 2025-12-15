@@ -1,9 +1,7 @@
-import { join } from '@tauri-apps/api/path'
-import { exists, rename } from '@tauri-apps/plugin-fs'
 import { useCallback, useRef } from 'react'
 import { useDropZone } from '@/contexts/drop-context'
 import { useWorkspaceStore } from '@/store/workspace-store'
-import { getFileNameFromPath } from '@/utils/path-utils'
+import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
 export function useFolderDropZone({
   folderPath,
@@ -13,7 +11,7 @@ export function useFolderDropZone({
   depth: number
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
-  const { refreshWorkspaceEntries } = useWorkspaceStore()
+  const { workspacePath, moveEntry, moveExternalEntry } = useWorkspaceStore()
 
   const setRef = useCallback((node: HTMLDivElement | null) => {
     ref.current = node
@@ -21,7 +19,7 @@ export function useFolderDropZone({
 
   const handleDrop = useCallback(
     async (paths: string[]) => {
-      if (!folderPath || paths.length === 0) {
+      if (!folderPath || paths.length === 0 || !workspacePath) {
         return
       }
 
@@ -29,25 +27,18 @@ export function useFolderDropZone({
         // Move each file to the destination folder
         const results = await Promise.allSettled(
           paths.map(async (sourcePath) => {
-            // Get the file name from source path
-            const fileName = getFileNameFromPath(sourcePath)
-            if (!fileName) {
-              console.error('Could not extract file name from source path')
-              return false
+            // Check if sourcePath is within workspace
+            const isInternal = isPathEqualOrDescendant(
+              sourcePath,
+              workspacePath
+            )
+
+            if (isInternal) {
+              // Use moveEntry for internal files
+              return await moveEntry(sourcePath, folderPath)
             }
-
-            // Construct the new path
-            const newPath = await join(folderPath, fileName)
-
-            // Check if destination already has this item
-            if (await exists(newPath)) {
-              console.error(`Destination already contains: ${fileName}`)
-              return false
-            }
-
-            // Move the file
-            await rename(sourcePath, newPath)
-            return true
+            // Use moveExternalEntry for external files
+            return await moveExternalEntry(sourcePath, folderPath)
           })
         )
 
@@ -59,14 +50,11 @@ export function useFolderDropZone({
             console.error(`Failed to move file: ${paths[index]}`)
           }
         })
-
-        // Refresh workspace entries to show the new files
-        await refreshWorkspaceEntries()
       } catch (error) {
-        console.error('Failed to move external files:', error)
+        console.error('Failed to move files:', error)
       }
     },
-    [folderPath, refreshWorkspaceEntries]
+    [folderPath, workspacePath, moveEntry, moveExternalEntry]
   )
 
   const { isOver } = useDropZone({
