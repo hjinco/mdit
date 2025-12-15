@@ -137,6 +137,13 @@ export function removeEntriesFromState(
     })
 }
 
+export function removeEntryFromState(
+  entries: WorkspaceEntry[],
+  pathToRemove: string
+): WorkspaceEntry[] {
+  return removeEntriesFromState(entries, [pathToRemove])
+}
+
 export function findEntryByPath(
   entries: WorkspaceEntry[],
   targetPath: string
@@ -311,47 +318,14 @@ export function moveEntryInState(
   sourcePath: string,
   destinationPath: string
 ): WorkspaceEntry[] {
-  // Helper function to find entry by path
-  const findEntry = (
-    entryList: WorkspaceEntry[],
-    targetPath: string
-  ): WorkspaceEntry | null => {
-    for (const entry of entryList) {
-      if (entry.path === targetPath) {
-        return entry
-      }
-      if (entry.children) {
-        const found = findEntry(entry.children, targetPath)
-        if (found) {
-          return found
-        }
-      }
-    }
-    return null
-  }
-
   // Find the entry to move
-  const entryToMove = findEntry(entries, sourcePath)
+  const entryToMove = findEntryByPath(entries, sourcePath)
   if (!entryToMove) {
     return entries
   }
 
   // Remove entry from source location
-  const removeEntry = (entryList: WorkspaceEntry[]): WorkspaceEntry[] => {
-    return entryList
-      .filter((entry) => entry.path !== sourcePath)
-      .map((entry) => {
-        if (entry.children) {
-          return {
-            ...entry,
-            children: removeEntry(entry.children),
-          }
-        }
-        return entry
-      })
-  }
-
-  const filteredEntries = removeEntry(entries)
+  const filteredEntries = removeEntryFromState(entries, sourcePath)
 
   // Update paths if it's a directory
   const fileName = getFileNameFromPath(sourcePath)

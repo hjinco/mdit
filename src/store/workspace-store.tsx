@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { dirname, join } from '@tauri-apps/api/path'
+import { basename, dirname, join } from '@tauri-apps/api/path'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   exists,
@@ -34,8 +34,10 @@ import {
 import {
   addEntryToState,
   buildWorkspaceEntries,
+  findEntryByPath,
   moveEntryInState,
   removeEntriesFromState,
+  removeEntryFromState,
   sortWorkspaceEntries,
   updateChildPathsForMove,
   updateEntryInState,
@@ -795,25 +797,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   moveEntry: async (sourcePath: string, destinationPath: string) => {
     const workspacePath = get().workspacePath
 
-    // Validation 1: Check if workspace is set
     if (!workspacePath) {
-      console.error('No workspace set')
       return false
     }
 
-    // Validation 2: Prevent moving to itself
     if (sourcePath === destinationPath) {
-      console.error('Cannot move entry to itself')
       return false
     }
 
-    // Validation 3: Check if destination is a child of source (prevent parent moves into children)
+    // Check if destination is a child of source (prevent parent moves into children)
     if (isPathEqualOrDescendant(destinationPath, sourcePath)) {
-      console.error('Cannot move entry to its own parent')
       return false
     }
 
-    // Validation 4: Ensure both paths are within workspace
+    // Ensure both paths are within workspace
     const sourceInWorkspace = isPathEqualOrDescendant(sourcePath, workspacePath)
     const destinationInWorkspace = isPathEqualOrDescendant(
       destinationPath,
@@ -821,28 +818,29 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     )
 
     if (!sourceInWorkspace || !destinationInWorkspace) {
-      console.error('Source or destination is outside workspace')
       return false
     }
 
     try {
-      const tabState = await waitForUnsavedTabToSettle(sourcePath, () =>
-        useTabStore.getState()
+      const tabState = await waitForUnsavedTabToSettle(
+        sourcePath,
+        useTabStore.getState
       )
 
-      // Get the file/folder name from source path
-      const fileName = getFileNameFromPath(sourcePath)
-      if (!fileName) {
-        console.error('Could not extract file name from source path')
+      // Find the entry to move before path operations to determine if it's a directory
+      const currentState = get()
+      const entryToMove = findEntryByPath(currentState.entries, sourcePath)
+
+      if (!entryToMove) {
         return false
       }
 
-      // Construct the new path
-      const newPath = await join(destinationPath, fileName)
+      const isDirectory = entryToMove.isDirectory
 
-      // Check if destination already has this item
+      const entryName = await basename(sourcePath)
+      const newPath = await join(destinationPath, entryName)
+
       if (await exists(newPath)) {
-        console.error('Destination already contains this item')
         return false
       }
 
@@ -852,7 +850,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       } | null = null
       let shouldRefreshTab = false
 
-      if (fileName.endsWith('.md')) {
+      if (entryName.endsWith('.md')) {
         try {
           const sourceDirectory = await dirname(sourcePath)
           if (sourceDirectory !== destinationPath) {
@@ -898,29 +896,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Update currentCollectionPath if it's being moved
       const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
-      // Find the entry to move before set() to determine if it's a directory
-      const findEntry = (
-        entryList: WorkspaceEntry[],
-        targetPath: string
-      ): WorkspaceEntry | null => {
-        for (const entry of entryList) {
-          if (entry.path === targetPath) {
-            return entry
-          }
-          if (entry.children) {
-            const found = findEntry(entry.children, targetPath)
-            if (found) {
-              return found
-            }
-          }
-        }
-        return null
-      }
-
-      const currentState = get()
-      const entryToMove = findEntry(currentState.entries, sourcePath)
-      const isDirectory = entryToMove?.isDirectory ?? false
-
       let nextPinned: string[] | null = null
 
       set((state) => {
@@ -929,58 +904,41 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         if (destinationPath === workspacePath) {
           // Moving to workspace root - add directly to entries array
           // First, remove from source location
-          const removeEntry = (
-            entryList: WorkspaceEntry[]
-          ): WorkspaceEntry[] => {
-            return entryList
-              .filter((entry) => entry.path !== sourcePath)
-              .map((entry) => {
-                if (entry.children) {
-                  return {
-                    ...entry,
-                    children: removeEntry(entry.children),
-                  }
-                }
-                return entry
-              })
-          }
+          const filteredEntries = removeEntryFromState(
+            state.entries,
+            sourcePath
+          )
 
-          const filteredEntries = removeEntry(state.entries)
-
-          if (entryToMove) {
-            // Update paths if it's a directory
-            let updatedEntryToMove: WorkspaceEntry
-            if (entryToMove.isDirectory) {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: true,
-                children: entryToMove.children
-                  ? entryToMove.children.map((child: WorkspaceEntry) =>
-                      updateChildPathsForMove(child, sourcePath, newPath)
-                    )
-                  : undefined,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
-            } else {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: false,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
+          // Update paths if it's a directory
+          let updatedEntryToMove: WorkspaceEntry
+          if (entryToMove.isDirectory) {
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: true,
+              children: entryToMove.children
+                ? entryToMove.children.map((child: WorkspaceEntry) =>
+                    updateChildPathsForMove(child, sourcePath, newPath)
+                  )
+                : undefined,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
             }
-
-            // Add directly to entries array
-            updatedEntries = sortWorkspaceEntries([
-              ...filteredEntries,
-              updatedEntryToMove,
-            ])
           } else {
-            updatedEntries = filteredEntries
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: false,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
+            }
           }
+
+          // Add directly to entries array
+          updatedEntries = sortWorkspaceEntries([
+            ...filteredEntries,
+            updatedEntryToMove,
+          ])
         } else {
           // Moving to a subdirectory - use existing logic
           updatedEntries = moveEntryInState(
