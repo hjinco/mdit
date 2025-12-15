@@ -19,7 +19,7 @@ export function SearchButton() {
           <SearchIcon />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="pr-1">
         <div className="flex items-center gap-1">
           Search
           <KbdGroup>
