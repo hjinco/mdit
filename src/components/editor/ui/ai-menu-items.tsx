@@ -276,7 +276,7 @@ export function AIMenuItems({
   }, [commands, menuGroups, menuState, setValue])
 
   return (
-    <CommandGroup>
+    <CommandGroup className="p-1">
       {menuGroups.map((group) =>
         group.items.map((menuItem) => (
           <CommandItem

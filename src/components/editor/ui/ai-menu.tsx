@@ -190,9 +190,6 @@ export function AIMenu() {
         style={{
           width: anchorElement?.offsetWidth,
         }}
-        onEscapeKeyDown={(e) => {
-          e.preventDefault()
-        }}
       >
         {addCommandOpen ? (
           <AIMenuAddCommand
@@ -222,11 +219,6 @@ export function AIMenu() {
             }}
             onSubmit={handleSubmit}
             onInputKeyDown={(e) => {
-              if (isHotkey('escape')(e)) {
-                e.preventDefault()
-                api.aiChat.hide()
-                return
-              }
               if (isHotkey('backspace')(e) && input.length === 0) {
                 e.preventDefault()
                 return

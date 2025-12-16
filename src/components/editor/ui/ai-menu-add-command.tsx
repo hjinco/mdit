@@ -137,6 +137,7 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
                   <Textarea
                     {...field}
                     id={field.name}
+                    className="text-sm"
                     placeholder="Summarize the selected text in 3 bullet points"
                     autoComplete="off"
                     spellCheck="false"
