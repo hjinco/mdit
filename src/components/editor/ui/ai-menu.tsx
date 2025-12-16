@@ -125,10 +125,10 @@ export function AIMenu() {
         const end = editor.api.end(path)
         if (start && end) {
           editor.tf.select({ anchor: start, focus: end })
+          editor
+            .getApi(BlockSelectionPlugin)
+            .blockSelection.set(ancestor.id as string)
         }
-        editor
-          .getApi(BlockSelectionPlugin)
-          .blockSelection.set(ancestor.id as string)
       }
 
       const domNode = editor.api.toDOMNode(ancestor)
