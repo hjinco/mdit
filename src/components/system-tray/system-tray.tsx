@@ -1,6 +1,6 @@
 import { LogicalPosition } from '@tauri-apps/api/dpi'
 import { Image } from '@tauri-apps/api/image'
-import { Menu } from '@tauri-apps/api/menu'
+import { Menu, PredefinedMenuItem } from '@tauri-apps/api/menu'
 import { join, resourceDir } from '@tauri-apps/api/path'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -43,6 +43,12 @@ async function createSystemTray() {
           },
           accelerator: 'CmdOrCtrl+Alt+N',
         },
+        await PredefinedMenuItem.new({
+          item: 'Separator',
+        }),
+        await PredefinedMenuItem.new({
+          item: 'Quit',
+        }),
       ],
     }),
   })
