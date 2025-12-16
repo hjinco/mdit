@@ -119,10 +119,16 @@ export function AIMenu() {
       if (!highestBlock) return
       const ancestor = highestBlock[0]
 
-      if (!(editor.api.isAt({ end: true }) || editor.api.isEmpty(ancestor))) {
-        editor
-          .getApi(BlockSelectionPlugin)
-          .blockSelection.set(ancestor.id as string)
+      if (!editor.api.isEmpty(ancestor)) {
+        const [, path] = highestBlock
+        const start = editor.api.start(path)
+        const end = editor.api.end(path)
+        if (start && end) {
+          editor.tf.select({ anchor: start, focus: end })
+          editor
+            .getApi(BlockSelectionPlugin)
+            .blockSelection.set(ancestor.id as string)
+        }
       }
 
       const domNode = editor.api.toDOMNode(ancestor)
