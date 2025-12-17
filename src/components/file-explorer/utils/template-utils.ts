@@ -27,7 +27,7 @@ export async function getTemplateFiles(
 
     const entries = await readDir(templatesDir)
     const templateFilesPromises = entries
-      .filter((entry) => !entry.isDirectory && entry.name.endsWith('.md'))
+      .filter((entry) => !entry.isDirectory && MD_EXTENSION_REGEX.test(entry.name))
       .map(async (entry) => ({
         name: entry.name.replace(MD_EXTENSION_REGEX, ''),
         path: await join(templatesDir, entry.name),
