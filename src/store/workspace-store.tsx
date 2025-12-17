@@ -118,7 +118,7 @@ type WorkspaceStore = {
   ) => Promise<string | null>
   createNote: (
     directoryPath: string,
-    options?: { initialContent?: string }
+    options?: { initialName?: string; initialContent?: string }
   ) => Promise<string>
   createAndOpenNote: () => Promise<void>
   deleteEntries: (paths: string[]) => Promise<void>
