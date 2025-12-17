@@ -1,4 +1,5 @@
 import { App } from '@/app'
+import { EditNote } from './components/quick-note/edit-note'
 import { QuickNote } from './components/quick-note/quick-note'
 import { SystemTray } from './components/system-tray/system-tray'
 import { Updater } from './components/updater/updater'
@@ -13,6 +14,10 @@ export function Router() {
 
   if (label === 'quick-note') {
     return <QuickNote />
+  }
+
+  if (label === 'edit') {
+    return <EditNote />
   }
 
   return (

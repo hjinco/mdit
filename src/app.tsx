@@ -12,17 +12,17 @@ import { SettingsDialog } from './components/settings/settings'
 import { Welcome } from './components/welcome/welcome'
 import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
-import { useEditorOnlyMode } from './hooks/use-editor-only-mode'
 import { useFontScale } from './hooks/use-font-scale'
 import { useWorkspaceStore } from './store/workspace-store'
 import { useWorkspaceWatchStore } from './store/workspace-watch-store'
 import { isLinux, isWindows10 } from './utils/platform'
 
 export function App() {
-  const { workspacePath, isLoading } = useWorkspaceStore(
+  const { workspacePath, isLoading, initializeWorkspace } = useWorkspaceStore(
     useShallow((s) => ({
       workspacePath: s.workspacePath,
       isLoading: s.isLoading,
+      initializeWorkspace: s.initializeWorkspace,
     }))
   )
   const { watchWorkspace, unwatchWorkspace } = useWorkspaceWatchStore(
@@ -31,7 +31,6 @@ export function App() {
       unwatchWorkspace: s.unwatchWorkspace,
     }))
   )
-  const { isEditorOnlyMode, hasCheckedOpenedFiles } = useEditorOnlyMode()
   useFontScale()
   useAutoIndexing(workspacePath)
 
@@ -39,7 +38,6 @@ export function App() {
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
-    appWindow.show()
     const closeListener = appWindow.listen('tauri://close-requested', () => {
       appWindow.hide()
     })
@@ -62,28 +60,12 @@ export function App() {
     }
   }, [watchWorkspace, unwatchWorkspace, workspacePath])
 
-  if (!hasCheckedOpenedFiles) {
-    return <div className={`h-screen ${mutedBgClass}`} />
-  }
+  useEffect(() => {
+    initializeWorkspace()
+  }, [initializeWorkspace])
 
-  if (!isEditorOnlyMode && isLoading) {
+  if (isLoading) {
     return <div className={`h-screen ${mutedBgClass}`} />
-  }
-
-  if (isEditorOnlyMode) {
-    return (
-      <>
-        <div className={`h-screen flex flex-col ${mutedBgClass}`}>
-          <div className="flex-1 flex">
-            <Editor />
-          </div>
-          <div className="fixed bottom-1 right-1">
-            <LicenseKeyButton />
-          </div>
-        </div>
-        <SettingsDialog />
-      </>
-    )
   }
 
   if (!workspacePath) {

@@ -7,7 +7,6 @@
         "title": "Mdit",
         "titleBarStyle": "Visible",
         "transparent": true,
-        "visible": false,
         "windowEffects": {
           "effects": ["mica"]
         }
