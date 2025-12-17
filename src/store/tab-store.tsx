@@ -36,7 +36,8 @@ type TabStore = {
   openTab: (
     path: string,
     skipHistory?: boolean,
-    force?: boolean
+    force?: boolean,
+    options?: { initialContent?: string }
   ) => Promise<void>
   openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
@@ -97,7 +98,12 @@ export const useTabStore = create<TabStore>((set, get) => ({
       return false
     }
   },
-  openTab: async (path: string, skipHistory = false, force = false) => {
+  openTab: async (
+    path: string,
+    skipHistory = false,
+    force = false,
+    options?: { initialContent?: string }
+  ) => {
     if (!path.endsWith('.md')) {
       return
     }
@@ -109,7 +115,10 @@ export const useTabStore = create<TabStore>((set, get) => ({
       return
     }
 
-    const content = await readTextFile(path)
+    const content =
+      options?.initialContent !== undefined
+        ? options.initialContent
+        : await readTextFile(path)
     const name = getFileNameWithoutExtension(path)
 
     if (name) {

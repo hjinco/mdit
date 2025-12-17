@@ -116,7 +116,10 @@ type WorkspaceStore = {
     directoryPath: string,
     folderName: string
   ) => Promise<string | null>
-  createNote: (directoryPath: string) => Promise<string>
+  createNote: (
+    directoryPath: string,
+    options?: { initialContent?: string }
+  ) => Promise<string>
   createAndOpenNote: () => Promise<void>
   deleteEntries: (paths: string[]) => Promise<void>
   deleteEntry: (path: string) => Promise<void>
@@ -508,14 +511,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
   },
 
-  createNote: async (directoryPath: string) => {
+  createNote: async (
+    directoryPath: string,
+    options?: { initialName?: string; initialContent?: string }
+  ) => {
     const workspacePath = get().workspacePath
 
     if (!workspacePath) {
       throw new Error('Workspace path is not set')
     }
 
-    const baseName = 'Untitled.md'
+    const baseName = `${options?.initialName ?? 'Untitled'}.md`
     const { fileName, fullPath: filePath } = await generateUniqueFileName(
       baseName,
       directoryPath,
@@ -523,7 +529,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       { pattern: 'space' }
     )
 
-    await writeTextFile(filePath, '')
+    await writeTextFile(filePath, options?.initialContent ?? '')
     get().recordFsOperation()
 
     const now = new Date()

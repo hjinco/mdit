@@ -4,6 +4,7 @@ import {
   PredefinedMenuItem,
   Submenu,
 } from '@tauri-apps/api/menu'
+import { readTextFile } from '@tauri-apps/plugin-fs'
 import {
   type Dispatch,
   type MouseEvent,
@@ -22,6 +23,7 @@ import {
 } from '@/components/file-explorer/utils/template-utils'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
+import { useTabStore } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
@@ -41,7 +43,10 @@ type UseFileExplorerMenusProps = {
   beginRenaming: (entry: WorkspaceEntry) => void
   beginNewFolder: (directoryPath: string) => void
   handleDeleteEntries: (paths: string[]) => Promise<void>
-  createNote: (directoryPath: string) => Promise<string>
+  createNote: (
+    directoryPath: string,
+    options?: { initialName?: string; initialContent?: string }
+  ) => Promise<string>
   openNote: (path: string) => void
   workspacePath: string | null
   selectedEntryPaths: Set<string>
@@ -281,8 +286,23 @@ export const useFileExplorerMenus = ({
                     id: `template-${template.path}-${normalizedDirectoryPath}`,
                     text: template.name,
                     action: async () => {
-                      // Placeholder action - will be implemented later
-                      console.log('Template selected:', template.name)
+                      try {
+                        const templateContent = await readTextFile(
+                          template.path
+                        )
+                        const filePath = await createNote(directoryPath, {
+                          initialName: template.name,
+                          initialContent: templateContent,
+                        })
+                        const { openTab } = useTabStore.getState()
+                        await openTab(filePath, false, false, {
+                          initialContent: templateContent,
+                        })
+                      } catch {
+                        toast.error('Failed to create note from template', {
+                          position: 'bottom-left',
+                        })
+                      }
                     },
                   })
                 )

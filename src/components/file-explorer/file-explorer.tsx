@@ -234,8 +234,11 @@ export function FileExplorer() {
   )
 
   const createNoteAndScroll = useCallback(
-    async (directoryPath: string) => {
-      const newEntryPath = await createNote(directoryPath)
+    async (
+      directoryPath: string,
+      options?: { initialName?: string; initialContent?: string }
+    ) => {
+      const newEntryPath = await createNote(directoryPath, options)
       ensureDirectoryExpanded(directoryPath)
       return newEntryPath
     },
