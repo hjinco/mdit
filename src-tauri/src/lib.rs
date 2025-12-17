@@ -177,6 +177,11 @@ pub fn run() {
             tauri::RunEvent::Opened { urls } => {
                 file_opener::handle_opened_event(app_handle, urls);
             }
+            #[cfg(not(target_os = "macos"))]
+            tauri::RunEvent::Ready { .. } => {
+                // Open edit window if files were passed as command line arguments
+                file_opener::open_edit_window_if_files_exist(app_handle);
+            }
             _ => {}
         }
     });

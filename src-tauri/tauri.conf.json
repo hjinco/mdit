@@ -18,7 +18,6 @@
         "hiddenTitle": true,
         "dragDropEnabled": true,
         "transparent": true,
-        "visible": false,
         "windowEffects": {
           "effects": ["hudWindow"]
         },
