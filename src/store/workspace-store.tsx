@@ -138,24 +138,6 @@ type WorkspaceStore = {
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
 
-const findDirectoryEntry = (
-  entries: WorkspaceEntry[],
-  targetPath: string
-): WorkspaceEntry | null => {
-  for (const entry of entries) {
-    if (entry.isDirectory && entry.path === targetPath) {
-      return entry
-    }
-    if (entry.children) {
-      const found = findDirectoryEntry(entry.children, targetPath)
-      if (found) {
-        return found
-      }
-    }
-  }
-  return null
-}
-
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isLoading: true,
   workspacePath: null,
@@ -348,7 +330,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     })
 
     if (path) {
-      get().setWorkspace(path)
+      await get().setWorkspace(path)
     }
   },
 
@@ -410,7 +392,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
 
     const isDirectory =
-      path === workspacePath || findDirectoryEntry(get().entries, path) !== null
+      path === workspacePath ||
+      Boolean(findEntryByPath(get().entries, path)?.isDirectory)
     if (!isDirectory) {
       return
     }
@@ -653,7 +636,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   deleteEntry: async (path: string) => {
-    get().deleteEntries([path])
+    await get().deleteEntries([path])
   },
 
   renameNoteWithAI: async (entry) => {
