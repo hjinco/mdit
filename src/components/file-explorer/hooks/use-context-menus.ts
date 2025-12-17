@@ -1,4 +1,9 @@
-import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu'
+import {
+  Menu,
+  MenuItem,
+  PredefinedMenuItem,
+  Submenu,
+} from '@tauri-apps/api/menu'
 import {
   type Dispatch,
   type MouseEvent,
@@ -10,6 +15,7 @@ import {
   getRevealInFileManagerLabel,
   revealInFileManager,
 } from '@/components/file-explorer/utils/file-manager'
+import { getTemplateFiles } from '@/components/file-explorer/utils/template-utils'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
@@ -211,7 +217,10 @@ export const useFileExplorerMenus = ({
       }
 
       try {
-        const items = [
+        // Get template files
+        const templateFiles = await getTemplateFiles(workspacePath)
+
+        const items: Array<MenuItem | PredefinedMenuItem | Submenu> = [
           await MenuItem.new({
             id: `new-note-${normalizedDirectoryPath}`,
             text: 'New Note',
@@ -220,6 +229,40 @@ export const useFileExplorerMenus = ({
               openNote(filePath)
             },
           }),
+        ]
+
+        // Add template submenu
+        const templateMenuItems =
+          templateFiles.length === 0
+            ? [
+                await MenuItem.new({
+                  id: `template-none-${normalizedDirectoryPath}`,
+                  text: 'No templates available',
+                  enabled: false,
+                }),
+              ]
+            : await Promise.all(
+                templateFiles.map((template) =>
+                  MenuItem.new({
+                    id: `template-${template.path}-${normalizedDirectoryPath}`,
+                    text: template.name,
+                    action: async () => {
+                      // Placeholder action - will be implemented later
+                      console.log('Template selected:', template.name)
+                    },
+                  })
+                )
+              )
+
+        items.push(
+          await Submenu.new({
+            id: `new-note-from-template-${normalizedDirectoryPath}`,
+            text: 'New Note from Template',
+            items: templateMenuItems,
+          })
+        )
+
+        items.push(
           await MenuItem.new({
             id: `new-folder-${normalizedDirectoryPath}`,
             text: 'New Folder',
@@ -238,8 +281,8 @@ export const useFileExplorerMenus = ({
           await PredefinedMenuItem.new({
             text: 'Separator',
             item: 'Separator',
-          }),
-        ]
+          })
+        )
 
         // Add Copy menu item if items are selected
         if (selectionPaths.length > 0) {
