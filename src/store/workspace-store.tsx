@@ -393,7 +393,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     const isDirectory =
       path === workspacePath ||
-      Boolean(findEntryByPath(get().entries, path)?.isDirectory)
+      !!findEntryByPath(get().entries, path)?.isDirectory
     if (!isDirectory) {
       return
     }
