@@ -1,17 +1,29 @@
-import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu'
+import {
+  Menu,
+  MenuItem,
+  PredefinedMenuItem,
+  Submenu,
+} from '@tauri-apps/api/menu'
+import { readTextFile } from '@tauri-apps/plugin-fs'
 import {
   type Dispatch,
   type MouseEvent,
   type SetStateAction,
   useCallback,
 } from 'react'
+import { toast } from 'sonner'
 import clipboard from 'tauri-plugin-clipboard-api'
 import {
   getRevealInFileManagerLabel,
   revealInFileManager,
 } from '@/components/file-explorer/utils/file-manager'
+import {
+  getTemplateFiles,
+  saveNoteAsTemplate,
+} from '@/components/file-explorer/utils/template-utils'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
+import { useTabStore } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
@@ -31,7 +43,10 @@ type UseFileExplorerMenusProps = {
   beginRenaming: (entry: WorkspaceEntry) => void
   beginNewFolder: (directoryPath: string) => void
   handleDeleteEntries: (paths: string[]) => Promise<void>
-  createNote: (directoryPath: string) => Promise<string>
+  createNote: (
+    directoryPath: string,
+    options?: { initialName?: string; initialContent?: string }
+  ) => Promise<string>
   openNote: (path: string) => void
   workspacePath: string | null
   selectedEntryPaths: Set<string>
@@ -109,6 +124,35 @@ export const useFileExplorerMenus = ({
         }
 
         if (entry.name.toLowerCase().endsWith('.md')) {
+          itemPromises.push(
+            MenuItem.new({
+              id: `save-as-template-${entry.path}`,
+              text: 'Save as Template',
+              action: async () => {
+                if (!workspacePath) return
+                try {
+                  await saveNoteAsTemplate(workspacePath, entry.path)
+                  toast.success(`Template saved successfully: ${entry.name}`, {
+                    position: 'bottom-left',
+                  })
+                } catch (error) {
+                  const errorMessage =
+                    error instanceof Error
+                      ? error.message
+                      : 'Failed to save template'
+                  toast.error(errorMessage, { position: 'bottom-left' })
+                }
+              },
+            })
+          )
+
+          itemPromises.push(
+            PredefinedMenuItem.new({
+              text: 'Separator',
+              item: 'Separator',
+            })
+          )
+
           itemPromises.push(
             MenuItem.new({
               id: `rename-ai-${entry.path}`,
@@ -193,6 +237,7 @@ export const useFileExplorerMenus = ({
       renameNoteWithAI,
       setAiRenamingEntryPaths,
       openImageEdit,
+      workspacePath,
     ]
   )
 
@@ -211,7 +256,10 @@ export const useFileExplorerMenus = ({
       }
 
       try {
-        const items = [
+        // Get template files
+        const templateFiles = await getTemplateFiles(workspacePath)
+
+        const items: Array<MenuItem | PredefinedMenuItem | Submenu> = [
           await MenuItem.new({
             id: `new-note-${normalizedDirectoryPath}`,
             text: 'New Note',
@@ -220,6 +268,55 @@ export const useFileExplorerMenus = ({
               openNote(filePath)
             },
           }),
+        ]
+
+        // Add template submenu
+        const templateMenuItems =
+          templateFiles.length === 0
+            ? [
+                await MenuItem.new({
+                  id: `template-none-${normalizedDirectoryPath}`,
+                  text: 'No templates available',
+                  enabled: false,
+                }),
+              ]
+            : await Promise.all(
+                templateFiles.map((template) =>
+                  MenuItem.new({
+                    id: `template-${template.path}-${normalizedDirectoryPath}`,
+                    text: template.name,
+                    action: async () => {
+                      try {
+                        const templateContent = await readTextFile(
+                          template.path
+                        )
+                        const filePath = await createNote(directoryPath, {
+                          initialName: template.name,
+                          initialContent: templateContent,
+                        })
+                        const { openTab } = useTabStore.getState()
+                        await openTab(filePath, false, false, {
+                          initialContent: templateContent,
+                        })
+                      } catch {
+                        toast.error('Failed to create note from template', {
+                          position: 'bottom-left',
+                        })
+                      }
+                    },
+                  })
+                )
+              )
+
+        items.push(
+          await Submenu.new({
+            id: `new-note-from-template-${normalizedDirectoryPath}`,
+            text: 'New Note from Template',
+            items: templateMenuItems,
+          })
+        )
+
+        items.push(
           await MenuItem.new({
             id: `new-folder-${normalizedDirectoryPath}`,
             text: 'New Folder',
@@ -238,8 +335,8 @@ export const useFileExplorerMenus = ({
           await PredefinedMenuItem.new({
             text: 'Separator',
             item: 'Separator',
-          }),
-        ]
+          })
+        )
 
         // Add Copy menu item if items are selected
         if (selectionPaths.length > 0) {
