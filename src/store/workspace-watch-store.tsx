@@ -54,9 +54,9 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
             return
           }
 
-          // Skip events that occurred within 1.5 second of an internal FS operation
+          // Skip events that occurred within 3 seconds of an internal FS operation
           const lastFsOpTime = useWorkspaceStore.getState().lastFsOperationTime
-          if (lastFsOpTime !== null && Date.now() - lastFsOpTime < 1500) {
+          if (lastFsOpTime !== null && Date.now() - lastFsOpTime < 3000) {
             return
           }
 
@@ -437,7 +437,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
         },
         {
           recursive: true,
-          delayMs: 1000,
+          delayMs: 2000,
         }
       )
 

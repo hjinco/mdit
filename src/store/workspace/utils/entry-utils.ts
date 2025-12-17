@@ -187,6 +187,13 @@ export function addEntryToState(
   parentPath: string,
   newEntry: WorkspaceEntry
 ): WorkspaceEntry[] {
+  // Check if entry with the same path already exists to avoid duplicates
+  const existingEntry = findEntryByPath(entries, newEntry.path)
+  if (existingEntry) {
+    // Entry already exists, return entries as-is
+    return entries
+  }
+
   const parent = findParentDirectory(entries, parentPath)
 
   if (!parent) {
