@@ -48,7 +48,7 @@ fn open_edit_window(app_handle: &tauri::AppHandle) {
 /// Handles the RunEvent::Opened event on macOS.
 #[cfg(target_os = "macos")]
 pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>) {
-        let file_paths: Vec<String> = urls
+    let file_paths: Vec<String> = urls
         .iter()
         .filter_map(|u| u.to_file_path().ok())
         .map(|p| p.to_string_lossy().to_string())
