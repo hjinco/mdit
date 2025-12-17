@@ -326,7 +326,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const path = await open({
       multiple: false,
       directory: true,
-      title: 'Select Workspace Folder',
+      title: 'Select a folder',
     })
 
     if (path) {
