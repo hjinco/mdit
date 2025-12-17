@@ -10,12 +10,16 @@ import {
   type SetStateAction,
   useCallback,
 } from 'react'
+import { toast } from 'sonner'
 import clipboard from 'tauri-plugin-clipboard-api'
 import {
   getRevealInFileManagerLabel,
   revealInFileManager,
 } from '@/components/file-explorer/utils/file-manager'
-import { getTemplateFiles } from '@/components/file-explorer/utils/template-utils'
+import {
+  getTemplateFiles,
+  saveNoteAsTemplate,
+} from '@/components/file-explorer/utils/template-utils'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
@@ -117,6 +121,35 @@ export const useFileExplorerMenus = ({
         if (entry.name.toLowerCase().endsWith('.md')) {
           itemPromises.push(
             MenuItem.new({
+              id: `save-as-template-${entry.path}`,
+              text: 'Save as Template',
+              action: async () => {
+                if (!workspacePath) return
+                try {
+                  await saveNoteAsTemplate(workspacePath, entry.path)
+                  toast.success(`Template saved successfully: ${entry.name}`, {
+                    position: 'bottom-left',
+                  })
+                } catch (error) {
+                  const errorMessage =
+                    error instanceof Error
+                      ? error.message
+                      : 'Failed to save template'
+                  toast.error(errorMessage, { position: 'bottom-left' })
+                }
+              },
+            })
+          )
+
+          itemPromises.push(
+            PredefinedMenuItem.new({
+              text: 'Separator',
+              item: 'Separator',
+            })
+          )
+
+          itemPromises.push(
+            MenuItem.new({
               id: `rename-ai-${entry.path}`,
               text: 'Rename with AI',
               enabled: Boolean(renameConfig),
@@ -199,6 +232,7 @@ export const useFileExplorerMenus = ({
       renameNoteWithAI,
       setAiRenamingEntryPaths,
       openImageEdit,
+      workspacePath,
     ]
   )
 
