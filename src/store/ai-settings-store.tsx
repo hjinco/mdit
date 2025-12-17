@@ -36,9 +36,9 @@ type AISettingsStore = {
 }
 
 const API_MODELS_MAP: Record<string, string[]> = {
-  google: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
-  openai: ['gpt-5', 'gpt-5-mini', 'gpt-5-nano'],
-  anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-1'],
+  google: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+  openai: ['gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano'],
+  anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5'],
 }
 
 const CONNECTED_PROVIDERS_KEY = 'connected-providers'
@@ -82,9 +82,28 @@ export const useAISettingsStore = create<AISettingsStore>((set) => {
     }
     if (rawEnabledChatModels) {
       try {
-        enabledChatModels = JSON.parse(
+        const parsedEnabledChatModels = JSON.parse(
           rawEnabledChatModels
         ) as EnabledChatModels
+
+        // Filter out models that don't exist in API_MODELS_MAP
+        const filteredEnabledChatModels = parsedEnabledChatModels.filter(
+          ({ provider, model }) => {
+            if (provider === 'ollama') return true
+            return API_MODELS_MAP[provider]?.includes(model) ?? false
+          }
+        )
+
+        if (
+          filteredEnabledChatModels.length !== parsedEnabledChatModels.length
+        ) {
+          localStorage.setItem(
+            ENABLED_CHAT_MODELS_KEY,
+            JSON.stringify(filteredEnabledChatModels)
+          )
+        }
+
+        enabledChatModels = filteredEnabledChatModels
       } catch (error) {
         console.error('Failed to parse enabled models:', error)
       }
