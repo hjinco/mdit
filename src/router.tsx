@@ -12,7 +12,7 @@ export function Router() {
     return null
   }
 
-  if (label === 'quick-note') {
+  if (label.startsWith('quick-note')) {
     return <QuickNote />
   }
 

@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
  * @example
  * ```tsx
  * const windowLabel = useCurrentWindowLabel()
- * if (windowLabel === 'quick-note') {
+ * if (windowLabel.startsWith('quick-note')) {
  *   return <QuickNote />
  * }
  * ```

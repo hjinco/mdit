@@ -8,7 +8,10 @@ import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
 import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
-  new WebviewWindow('quick-note', {
+  // Generate a unique window label to allow multiple quick-note windows.
+  const windowLabel = `quick-note-${crypto.randomUUID()}`
+
+  new WebviewWindow(windowLabel, {
     url: '/index.html',
     title: 'Mdit',
     width: 800,
