@@ -173,7 +173,16 @@
   }
 
   .text-overflow-mask {
-    @apply overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat];
+    @apply overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-48px),transparent)] [mask-repeat:no-repeat];
+  }
+
+  .mask-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      black calc(100% - 48px),
+      transparent
+    );
+    mask-image: linear-gradient(to bottom, black calc(100% - 48px), transparent);
   }
 }
 

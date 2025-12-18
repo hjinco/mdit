@@ -415,7 +415,7 @@ export function FileExplorer() {
               workspaceExternalDropRef(node)
             }}
             className={cn(
-              'flex-1 overflow-y-auto px-2 pb-1 pt-0.5',
+              'flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom',
               isOverWorkspace &&
                 'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
             )}
