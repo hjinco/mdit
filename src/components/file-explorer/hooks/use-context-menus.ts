@@ -368,23 +368,25 @@ export const useFileExplorerMenus = ({
           )
         }
 
-        items.push(
-          await PredefinedMenuItem.new({
-            text: 'Separator',
-            item: 'Separator',
-          }),
-          await MenuItem.new({
-            id: `pin-directory-${normalizedDirectoryPath}`,
-            text: isPinned ? 'Unpin' : 'Pin',
-            action: async () => {
-              if (isPinned) {
-                await unpinDirectory(normalizedDirectoryPath)
-              } else {
-                await pinDirectory(normalizedDirectoryPath)
-              }
-            },
-          })
-        )
+        if (workspacePath && directoryPath !== workspacePath) {
+          items.push(
+            await PredefinedMenuItem.new({
+              text: 'Separator',
+              item: 'Separator',
+            }),
+            await MenuItem.new({
+              id: `pin-directory-${normalizedDirectoryPath}`,
+              text: isPinned ? 'Unpin' : 'Pin',
+              action: async () => {
+                if (isPinned) {
+                  await unpinDirectory(normalizedDirectoryPath)
+                } else {
+                  await pinDirectory(normalizedDirectoryPath)
+                }
+              },
+            })
+          )
+        }
 
         if (!workspacePath || directoryPath !== workspacePath) {
           items.push(
