@@ -11,12 +11,10 @@ import { Checkbox } from '@/ui/checkbox'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/ui/dialog'
-import { Input } from '@/ui/input'
 import { Label } from '@/ui/label'
 import {
   Select,
@@ -287,64 +285,66 @@ export function ImageEditDialog() {
         imageEditPath?.toLowerCase().endsWith('.jpeg') ||
         imageEditPath?.toLowerCase().endsWith('.webp')))
 
-  const qualityLabel =
-    format === 'webp' ||
-    (format === 'keep' && imageEditPath?.toLowerCase().endsWith('.webp'))
-      ? 'WebP Quality (0-100)'
-      : 'JPEG Quality (0-100)'
-
   return (
     <Dialog
       open={!!imageEditPath && !isLoading}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="max-w-md" disableFadeAnimation>
-        <DialogHeader>
-          <DialogTitle>Edit Image</DialogTitle>
-          <DialogDescription>
-            {filename
-              ? `Editing: ${filename}`
-              : 'Configure image editing options'}
-          </DialogDescription>
+      <DialogContent className="max-w-md p-0 gap-0" disableFadeAnimation>
+        <DialogHeader className="px-4 pt-4 pb-2">
+          <DialogTitle className="text-sm font-medium">Edit Image</DialogTitle>
         </DialogHeader>
 
-        {/* Current Image Properties */}
-        {(imageProperties || fileSize !== null) && (
-          <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">
-              Current Properties
+        <div className="p-2 grid gap-1">
+          {/* File Name */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5 h-8">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Name
             </Label>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {imageProperties && (
-                <>
-                  <span>
-                    {imageProperties.width} × {imageProperties.height} px
-                  </span>
-                  <span className="capitalize">{imageProperties.format}</span>
-                </>
-              )}
-              {fileSize !== null && <span>{formatFileSize(fileSize)}</span>}
+            <div className="text-xs truncate" title={filename}>
+              {filename || '-'}
             </div>
           </div>
-        )}
 
-        <div className="space-y-4 py-4">
-          {/* Resize Section */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">Resize</Label>
+          {/* Dimensions */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5 h-8">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Dimensions
+            </Label>
+            <div className="text-xs">
+              {imageProperties
+                ? `${imageProperties.width} × ${imageProperties.height}`
+                : '-'}
+            </div>
+          </div>
+
+          {/* Size & Format (Informational) */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5 h-8">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Size
+            </Label>
+            <div className="text-xs">
+              {fileSize !== null ? formatFileSize(fileSize) : '-'}
+            </div>
+          </div>
+
+          <Separator className="my-1" />
+
+          {/* Resize */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Resize
+            </Label>
             <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Label
-                  htmlFor="width"
-                  className="text-xs text-muted-foreground"
-                >
-                  Width (px)
-                </Label>
-                <Input
-                  id="width"
+              <div className="flex items-center gap-1.5 bg-muted/30 rounded border px-2 h-7 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring transition-all w-24">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  W
+                </span>
+                <input
                   type="number"
                   min="1"
                   placeholder="Auto"
+                  className="flex-1 bg-transparent text-xs border-none p-0 h-full focus:outline-none focus:ring-0 placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value={resizeWidth}
                   onChange={(e) => {
                     lastChangedField.current = 'width'
@@ -353,18 +353,15 @@ export function ImageEditDialog() {
                   disabled={isProcessing}
                 />
               </div>
-              <div className="flex-1">
-                <Label
-                  htmlFor="height"
-                  className="text-xs text-muted-foreground"
-                >
-                  Height (px)
-                </Label>
-                <Input
-                  id="height"
+              <div className="flex items-center gap-1.5 bg-muted/30 rounded border px-2 h-7 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring transition-all w-24">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  H
+                </span>
+                <input
                   type="number"
                   min="1"
                   placeholder="Auto"
+                  className="flex-1 bg-transparent text-xs border-none p-0 h-full focus:outline-none focus:ring-0 placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   value={resizeHeight}
                   onChange={(e) => {
                     lastChangedField.current = 'height'
@@ -374,6 +371,13 @@ export function ImageEditDialog() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Aspect Ratio */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5 h-8">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Aspect Ratio
+            </Label>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="maintain-ratio"
@@ -382,21 +386,24 @@ export function ImageEditDialog() {
                   setMaintainAspectRatio(checked === true)
                 }
                 disabled={isProcessing}
+                className="h-4 w-4"
               />
               <Label
                 htmlFor="maintain-ratio"
-                className="text-sm cursor-pointer"
+                className="text-xs font-normal cursor-pointer text-foreground"
               >
-                Maintain aspect ratio
+                Locked
               </Label>
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-1" />
 
-          {/* Format Section */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">Format</Label>
+          {/* Format */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Format
+            </Label>
             <Select
               value={format}
               onValueChange={(value) =>
@@ -404,51 +411,60 @@ export function ImageEditDialog() {
               }
               disabled={isProcessing}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full py-0 h-7! text-xs rounded">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="keep">Keep original</SelectItem>
-                <SelectItem value="jpeg">JPEG</SelectItem>
-                <SelectItem value="png">PNG</SelectItem>
-                <SelectItem value="webp">WebP</SelectItem>
-                <SelectItem value="avif">AVIF</SelectItem>
+              <SelectContent className="rounded">
+                <SelectItem value="keep" className="text-xs rounded-sm">
+                  Keep original
+                </SelectItem>
+                <SelectItem value="jpeg" className="text-xs rounded-sm">
+                  JPEG
+                </SelectItem>
+                <SelectItem value="png" className="text-xs rounded-sm">
+                  PNG
+                </SelectItem>
+                <SelectItem value="webp" className="text-xs rounded-sm">
+                  WebP
+                </SelectItem>
+                <SelectItem value="avif" className="text-xs rounded-sm">
+                  AVIF
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Quality Section (for JPEG and WebP) */}
+          {/* Quality */}
           {isJPEGOrWebPFormat && (
-            <>
-              <Separator />
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">Quality</Label>
-                <div>
-                  <Label
-                    htmlFor="quality"
-                    className="text-xs text-muted-foreground"
-                  >
-                    {qualityLabel}
-                  </Label>
-                  <Input
-                    id="quality"
+            <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5">
+              <Label className="text-xs font-normal text-muted-foreground">
+                Quality
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-muted/30 rounded border px-2 h-7 focus-within:ring-1 focus-within:ring-ring focus-within:border-ring transition-all w-24">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Q
+                  </span>
+                  <input
                     type="number"
                     min="0"
                     max="100"
                     value={quality}
                     onChange={(e) => setQuality(e.target.value)}
                     disabled={isProcessing}
+                    className="flex-1 bg-transparent text-xs border-none p-0 h-full focus:outline-none focus:ring-0 placeholder:text-muted-foreground/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
+                <span className="text-xs text-muted-foreground">%</span>
               </div>
-            </>
+            </div>
           )}
 
-          <Separator />
-
-          {/* Save Options */}
-          <div className="space-y-3">
-            <Label className="text-base font-semibold">Save Options</Label>
+          {/* Save As New */}
+          <div className="grid grid-cols-[100px_1fr] items-center px-2 py-1.5 h-8">
+            <Label className="text-xs font-normal text-muted-foreground">
+              Save Copy
+            </Label>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="save-as-new"
@@ -457,24 +473,35 @@ export function ImageEditDialog() {
                   setSaveAsNewFile(checked === true)
                 }
                 disabled={isProcessing}
+                className="h-4 w-4"
               />
-              <Label htmlFor="save-as-new" className="text-sm cursor-pointer">
-                Save as new file (keeps original)
+              <Label
+                htmlFor="save-as-new"
+                className="text-xs font-normal cursor-pointer text-foreground"
+              >
+                Create new file
               </Label>
             </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="p-3">
           <Button
-            variant="outline"
+            variant="ghost"
+            size="sm"
             onClick={closeImageEdit}
             disabled={isProcessing}
+            className="h-8 text-xs hover:bg-muted/50"
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isProcessing}>
-            {isProcessing ? 'Processing...' : 'Apply'}
+          <Button
+            onClick={handleSubmit}
+            disabled={isProcessing}
+            size="sm"
+            className="h-8 text-xs px-4"
+          >
+            {isProcessing ? 'Processing' : 'Done'}
           </Button>
         </DialogFooter>
       </DialogContent>

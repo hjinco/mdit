@@ -87,11 +87,11 @@ export function ImagePreviewDialog() {
         open={!!imagePreviewPath && (isImageReady || hasError)}
         onOpenChange={handleOpenChange}
       >
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4">
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-4 overflow-hidden">
+          <DialogHeader>
             <DialogTitle>{displayFilename || 'Image Preview'}</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center px-6 pb-6 max-h-[calc(90vh-8rem)] overflow-auto">
+          <div className="flex items-center justify-center max-h-[calc(90vh-8rem)] overflow-auto">
             {hasError ? (
               <div className="flex flex-col items-center justify-center min-h-[300px] py-8">
                 <ImageOff className="w-16 h-16 text-muted-foreground/50 mb-4" />
