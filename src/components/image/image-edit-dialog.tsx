@@ -42,8 +42,11 @@ export function ImageEditDialog() {
       closeImageEdit: state.closeImageEdit,
     }))
   )
-  const refreshWorkspaceEntries = useWorkspaceStore(
-    (state) => state.refreshWorkspaceEntries
+  const { refreshWorkspaceEntries, recordFsOperation } = useWorkspaceStore(
+    (state) => ({
+      refreshWorkspaceEntries: state.refreshWorkspaceEntries,
+      recordFsOperation: state.recordFsOperation,
+    })
   )
 
   const [filename, setFilename] = useState('')
@@ -244,11 +247,13 @@ export function ImageEditDialog() {
       }
 
       await editImage(imageEditPath, options)
+      recordFsOperation()
 
       // If format changed and not saving as new file, delete the original
       if (isFormatChanging && !saveAsNewFile) {
         try {
           await invoke('move_to_trash', { path: imageEditPath })
+          recordFsOperation()
         } catch (error) {
           const errorMessage =
             error instanceof Error
