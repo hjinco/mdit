@@ -1,4 +1,7 @@
+import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { ChevronDown, InboxIcon } from 'lucide-react'
+import { type MouseEvent, useCallback } from 'react'
+import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import {
   DropdownMenu,
@@ -25,9 +28,39 @@ export function WorkspaceDropdown({
   onWorkspaceSelect,
   onOpenFolderPicker,
 }: WorkspaceDropdownProps) {
+  const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspace)
+
   const currentWorkspaceName = workspacePath
     ? getFolderNameFromPath(workspacePath)
     : 'No folder'
+
+  const handleContextMenu = useCallback(
+    async (event: MouseEvent<HTMLButtonElement>) => {
+      if (!workspacePath) return
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      try {
+        const menu = await Menu.new({
+          items: [
+            await MenuItem.new({
+              id: 'delete-workspace',
+              text: 'Delete',
+              action: async () => {
+                await clearWorkspace()
+              },
+            }),
+          ],
+        })
+
+        await menu.popup()
+      } catch (error) {
+        console.error('Failed to open context menu:', error)
+      }
+    },
+    [workspacePath, clearWorkspace]
+  )
 
   return (
     <DropdownMenu>
@@ -36,6 +69,7 @@ export function WorkspaceDropdown({
           variant="ghost"
           size="sm"
           className="text-foreground/90 tracking-tight min-w-0 flex-1 px-1.5! h-8 hover:bg-background/40"
+          onContextMenu={handleContextMenu}
         >
           <InboxIcon className="size-4" />
           <span className="flex-1 text-start text-sm text-overflow-mask">
