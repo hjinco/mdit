@@ -1,4 +1,5 @@
-import { loadSettings, saveSettings } from '@/lib/settings-utils'
+import type { WorkspaceSettings } from '@/lib/settings-utils'
+import { saveSettings } from '@/lib/settings-utils'
 import {
   isPathEqualOrDescendant,
   isPathInPaths,
@@ -71,31 +72,26 @@ const toAbsolutePinPath = (
   return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
 }
 
-export async function readPinnedDirectories(
-  workspacePath: string | null
-): Promise<string[]> {
+export function getPinnedDirectoriesFromSettings(
+  workspacePath: string | null,
+  settings: WorkspaceSettings | null | undefined
+): string[] {
   if (!workspacePath) {
     return []
   }
 
-  try {
-    const settings = await loadSettings(workspacePath)
-    const rawPins = settings.pinnedDirectories ?? []
-    const normalizedPins = normalizePinnedDirectoriesList(rawPins)
-    const absolutePins: string[] = []
+  const rawPins = settings?.pinnedDirectories ?? []
+  const normalizedPins = normalizePinnedDirectoriesList(rawPins)
+  const absolutePins: string[] = []
 
-    for (const pin of normalizedPins) {
-      const absolutePath = toAbsolutePinPath(workspacePath, pin)
-      if (absolutePath) {
-        absolutePins.push(absolutePath)
-      }
+  for (const pin of normalizedPins) {
+    const absolutePath = toAbsolutePinPath(workspacePath, pin)
+    if (absolutePath) {
+      absolutePins.push(absolutePath)
     }
-
-    return Array.from(new Set(absolutePins))
-  } catch (error) {
-    console.error('Failed to read pinned directories:', error)
-    return []
   }
+
+  return Array.from(new Set(absolutePins))
 }
 
 export async function persistPinnedDirectories(
