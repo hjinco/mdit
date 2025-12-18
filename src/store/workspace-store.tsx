@@ -1274,6 +1274,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       const { tab, closeTab, clearHistory } = useTabStore.getState()
       const workspacePath = get().workspacePath
 
+      if (!workspacePath) return
+
       await invoke('move_to_trash', { path: workspacePath })
 
       if (tab) {
