@@ -390,7 +390,7 @@ export function FileExplorer() {
       />
       <motion.aside
         ref={fileExplorerRef}
-        className="relative shrink-0 flex flex-col overflow-hidden"
+        className="relative shrink-0 overflow-hidden"
         animate={{ width: isOpen ? width : 0 }}
         initial={false}
         transition={
@@ -399,67 +399,69 @@ export function FileExplorer() {
             : { width: { type: 'spring', bounce: 0, duration: 0.12 } }
         }
       >
-        <div className="flex items-center px-2 gap-1 mt-12">
-          <WorkspaceDropdown
-            workspacePath={workspacePath}
-            recentWorkspacePaths={recentWorkspacePaths}
-            onWorkspaceSelect={setWorkspace}
-            onOpenFolderPicker={openFolderPicker}
-          />
-          <GitSyncStatus workspacePath={workspacePath} />
-        </div>
-        <div
-          ref={(node) => {
-            setWorkspaceDropRef(node)
-            workspaceExternalDropRef(node)
-          }}
-          className={cn(
-            'flex-1 overflow-y-auto px-2 pb-1 pt-0.5',
-            isOverWorkspace &&
-              'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
-          )}
-          onContextMenu={handleRootContextMenu}
-          onClick={() => {
-            setSelectedEntryPaths(new Set())
-          }}
-        >
-          {/* <TagList /> */}
-          <PinnedList />
-          <ul className="space-y-0.5 pb-4">
-            {pendingNewFolderPath === workspacePath && workspacePath && (
-              <RootNewFolderInput
-                onSubmit={handleNewFolderSubmit}
-                onCancel={cancelNewFolder}
-                workspacePath={workspacePath}
-              />
+        <div className="shrink-0 flex flex-col h-full" style={{ width }}>
+          <div className="flex items-center px-2 gap-1 mt-12">
+            <WorkspaceDropdown
+              workspacePath={workspacePath}
+              recentWorkspacePaths={recentWorkspacePaths}
+              onWorkspaceSelect={setWorkspace}
+              onOpenFolderPicker={openFolderPicker}
+            />
+            <GitSyncStatus workspacePath={workspacePath} />
+          </div>
+          <div
+            ref={(node) => {
+              setWorkspaceDropRef(node)
+              workspaceExternalDropRef(node)
+            }}
+            className={cn(
+              'flex-1 overflow-y-auto px-2 pb-1 pt-0.5',
+              isOverWorkspace &&
+                'bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600'
             )}
-            {entries.map((entry) => (
-              <TreeNode
-                key={entry.path}
-                entry={entry}
-                tab={tab}
-                depth={0}
-                expandedDirectories={expandedDirectories}
-                onDirectoryClick={toggleDirectory}
-                onEntryPrimaryAction={handleEntryPrimaryAction}
-                onEntryContextMenu={handleEntryContextMenu}
-                selectedEntryPaths={selectedEntryPaths}
-                renamingEntryPath={renamingEntryPath}
-                aiRenamingEntryPaths={aiRenamingEntryPaths}
-                onRenameSubmit={handleRenameSubmit}
-                onRenameCancel={cancelRenaming}
-                pendingNewFolderPath={pendingNewFolderPath}
-                onNewFolderSubmit={handleNewFolderSubmit}
-                onNewFolderCancel={cancelNewFolder}
-                onCollectionViewOpen={handleCollectionViewOpen}
-              />
-            ))}
-          </ul>
+            onContextMenu={handleRootContextMenu}
+            onClick={() => {
+              setSelectedEntryPaths(new Set())
+            }}
+          >
+            {/* <TagList /> */}
+            <PinnedList />
+            <ul className="space-y-0.5 pb-4">
+              {pendingNewFolderPath === workspacePath && workspacePath && (
+                <RootNewFolderInput
+                  onSubmit={handleNewFolderSubmit}
+                  onCancel={cancelNewFolder}
+                  workspacePath={workspacePath}
+                />
+              )}
+              {entries.map((entry) => (
+                <TreeNode
+                  key={entry.path}
+                  entry={entry}
+                  tab={tab}
+                  depth={0}
+                  expandedDirectories={expandedDirectories}
+                  onDirectoryClick={toggleDirectory}
+                  onEntryPrimaryAction={handleEntryPrimaryAction}
+                  onEntryContextMenu={handleEntryContextMenu}
+                  selectedEntryPaths={selectedEntryPaths}
+                  renamingEntryPath={renamingEntryPath}
+                  aiRenamingEntryPaths={aiRenamingEntryPaths}
+                  onRenameSubmit={handleRenameSubmit}
+                  onRenameCancel={cancelRenaming}
+                  pendingNewFolderPath={pendingNewFolderPath}
+                  onNewFolderSubmit={handleNewFolderSubmit}
+                  onNewFolderCancel={cancelNewFolder}
+                  onCollectionViewOpen={handleCollectionViewOpen}
+                />
+              ))}
+            </ul>
+          </div>
+          <footer className="px-2 pb-2 flex flex-col">
+            <SettingsMenu />
+            <FeedbackButton />
+          </footer>
         </div>
-        <footer className="px-2 pb-2 flex flex-col">
-          <SettingsMenu />
-          <FeedbackButton />
-        </footer>
         {isOpen && (
           <div
             className="absolute top-0 -right-1 z-10 h-full w-1.5 cursor-col-resize bg-transparent hover:bg-foreground/20 transition-colors delay-100"
