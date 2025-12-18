@@ -9,11 +9,9 @@ use webp::{Encoder, WebPMemory};
 #[cfg(target_os = "macos")]
 mod macos_heic {
     use core_foundation::{
-        base::{CFRelease, TCFType},
-        base::CFType,
+        base::{CFRelease, TCFType, CFType},
         data::{CFData, CFDataRef},
-        dictionary::CFDictionary,
-        dictionary::CFDictionaryRef,
+        dictionary::{CFDictionary, CFDictionaryRef},
         number::CFNumber,
         string::CFString,
     };
@@ -80,15 +78,12 @@ mod macos_heic {
 
         // ImageIO's top-level properties dictionary typically uses "Orientation" for EXIF orientation.
         let key = CFString::from_static_string("Orientation").as_CFType();
-        let value = props.find(&key)?;
-        let number = value.downcast::<CFNumber>()?;
-        let orientation = number.to_i32()?;
-
-        if (1..=8).contains(&orientation) {
-            Some(orientation as u32)
-        } else {
-            None
-        }
+        props
+            .find(&key)
+            .and_then(|value| value.downcast::<CFNumber>())
+            .and_then(|number| number.to_i32())
+            .filter(|&orientation| (1..=8).contains(&orientation))
+            .map(|orientation| orientation as u32)
     }
 
     fn apply_orientation(img: RgbaImage, orientation: u32) -> RgbaImage {
