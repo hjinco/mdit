@@ -43,10 +43,10 @@ export function ImageEditDialog() {
     }))
   )
   const { refreshWorkspaceEntries, recordFsOperation } = useWorkspaceStore(
-    (state) => ({
+    useShallow((state) => ({
       refreshWorkspaceEntries: state.refreshWorkspaceEntries,
       recordFsOperation: state.recordFsOperation,
-    })
+    }))
   )
 
   const [filename, setFilename] = useState('')
