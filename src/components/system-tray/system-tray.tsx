@@ -8,7 +8,11 @@ import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
 import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
-  new WebviewWindow('quick-note', {
+  // Generate unique window label using timestamp to ensure uniqueness
+  const uniqueId = Date.now()
+  const windowLabel = `quick-note-${uniqueId}`
+
+  new WebviewWindow(windowLabel, {
     url: '/index.html',
     title: 'Mdit',
     width: 800,

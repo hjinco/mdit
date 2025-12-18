@@ -62,7 +62,7 @@ export function AIModelSelector({
               No enabled models
             </div>
           )}
-          {windowLabel !== 'quick-note' && (
+          {windowLabel === 'main' && (
             <DropdownMenuItem
               onClick={() => openSettingsWithTab('ai')}
               className="text-xs"
