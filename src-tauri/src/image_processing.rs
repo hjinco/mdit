@@ -9,9 +9,11 @@ use webp::{Encoder, WebPMemory};
 #[cfg(target_os = "macos")]
 mod macos_heic {
     use core_foundation::{
-        base::{CFRelease, TCFType},
+        base::{CFRelease, TCFType, CFType},
         data::{CFData, CFDataRef},
-        dictionary::CFDictionaryRef,
+        dictionary::{CFDictionary, CFDictionaryRef},
+        number::CFNumber,
+        string::CFString,
     };
     use core_graphics::{
         color_space::CGColorSpace,
@@ -35,6 +37,11 @@ mod macos_heic {
             data: CFDataRef,
             options: CFDictionaryRef,
         ) -> CGImageSourceRef;
+        fn CGImageSourceCopyPropertiesAtIndex(
+            isrc: CGImageSourceRef,
+            index: usize,
+            options: CFDictionaryRef,
+        ) -> CFDictionaryRef;
         fn CGImageSourceCreateImageAtIndex(
             isrc: CGImageSourceRef,
             index: usize,
@@ -60,6 +67,49 @@ mod macos_heic {
         }
     }
 
+    fn read_image_orientation(source: CGImageSourceRef) -> Option<u32> {
+        let props_ref = unsafe { CGImageSourceCopyPropertiesAtIndex(source, 0, std::ptr::null()) };
+        if props_ref.is_null() {
+            return None;
+        }
+
+        let props: CFDictionary<CFType, CFType> =
+            unsafe { TCFType::wrap_under_create_rule(props_ref) };
+
+        // ImageIO's top-level properties dictionary typically uses "Orientation" for EXIF orientation.
+        let key = CFString::from_static_string("Orientation").as_CFType();
+        props
+            .find(&key)
+            .and_then(|value| value.downcast::<CFNumber>())
+            .and_then(|number| number.to_i32())
+            .filter(|&orientation| (1..=8).contains(&orientation))
+            .map(|orientation| orientation as u32)
+    }
+
+    fn apply_orientation(img: RgbaImage, orientation: u32) -> RgbaImage {
+        match orientation {
+            1 => img,
+            2 => image::imageops::flip_horizontal(&img),
+            3 => image::imageops::rotate180(&img),
+            4 => image::imageops::flip_vertical(&img),
+            // 5: mirrored horizontally then rotated 270 CW (transpose)
+            5 => {
+                let flipped = image::imageops::flip_horizontal(&img);
+                image::imageops::rotate270(&flipped)
+            }
+            // 6: rotated 90 CW
+            6 => image::imageops::rotate90(&img),
+            // 7: mirrored horizontally then rotated 90 CW (transverse)
+            7 => {
+                let flipped = image::imageops::flip_horizontal(&img);
+                image::imageops::rotate90(&flipped)
+            }
+            // 8: rotated 270 CW
+            8 => image::imageops::rotate270(&img),
+            _ => img,
+        }
+    }
+
     pub fn decode_heic_to_rgba(path: &Path) -> Result<DynamicImage, String> {
         let data = std::fs::read(path).map_err(|e| format!("Failed to read HEIC file: {}", e))?;
 
@@ -71,6 +121,7 @@ mod macos_heic {
         }
 
         let source = ImageSourceHandle::new(source_ptr);
+        let orientation = read_image_orientation(source.as_ptr());
         let cg_image_ref =
             unsafe { CGImageSourceCreateImageAtIndex(source.as_ptr(), 0, std::ptr::null()) };
 
@@ -123,6 +174,11 @@ mod macos_heic {
             .map_err(|_| format!("Image height {} is too large and exceeds u32::MAX", height))?;
         let rgba = RgbaImage::from_raw(width_u32, height_u32, buf)
             .ok_or_else(|| "Failed to convert HEIC buffer to image".to_string())?;
+
+        let rgba = match orientation {
+            Some(o) => apply_orientation(rgba, o),
+            None => rgba,
+        };
 
         Ok(DynamicImage::ImageRgba8(rgba))
     }
