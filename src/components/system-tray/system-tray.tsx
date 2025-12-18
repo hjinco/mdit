@@ -9,7 +9,7 @@ import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
   // Generate a unique window label to allow multiple quick-note windows.
-  const windowLabel = 'quick-note-' + crypto.randomUUID()
+  const windowLabel = `quick-note-${crypto.randomUUID()}`
 
   new WebviewWindow(windowLabel, {
     url: '/index.html',
