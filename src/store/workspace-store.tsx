@@ -275,15 +275,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     initializeWorkspace: async () => {
       try {
         const recentWorkspacePaths = readWorkspaceHistory()
-        const validated = await Promise.all(
-          recentWorkspacePaths.map(async (path) => ({
-            path,
-            ok: await isExistingDirectory(path),
-          }))
-        )
-        const nextRecentWorkspacePaths = validated
-          .filter((entry) => entry.ok)
-          .map((entry) => entry.path)
+        const validationResults = await Promise.all(
+          recentWorkspacePaths.map((path) => isExistingDirectory(path)),
+        );
+        const nextRecentWorkspacePaths = recentWorkspacePaths.filter(
+          (_, index) => validationResults[index],
+        );
 
         if (
           !areStringArraysEqual(recentWorkspacePaths, nextRecentWorkspacePaths)
