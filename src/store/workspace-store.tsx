@@ -123,6 +123,7 @@ type WorkspaceStore = {
   updateEntryModifiedDate: (path: string) => Promise<void>
   restoreLastOpenedNote: () => Promise<void>
   recordFsOperation: () => void
+  clearWorkspace: () => Promise<void>
 }
 
 const WORKSPACE_HISTORY_KEY = 'workspace-history'
@@ -1267,6 +1268,44 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       } catch (error) {
         console.debug('Failed to restore last opened note:', error)
       }
+    },
+
+    clearWorkspace: async () => {
+      const { tab, closeTab, clearHistory } = useTabStore.getState()
+      const workspacePath = get().workspacePath
+
+      if (!workspacePath) return
+
+      await invoke('move_to_trash', { path: workspacePath })
+
+      if (tab) {
+        closeTab(tab.path)
+        clearHistory()
+      }
+
+      const recentWorkspacePaths = get().recentWorkspacePaths
+      const updatedHistory = recentWorkspacePaths.filter(
+        (path) => path !== workspacePath
+      )
+
+      localStorage.setItem(
+        WORKSPACE_HISTORY_KEY,
+        JSON.stringify(updatedHistory)
+      )
+
+      set({
+        isLoading: false,
+        workspacePath: null,
+        entries: [],
+        isTreeLoading: false,
+        expandedDirectories: [],
+        currentCollectionPath: null,
+        lastCollectionPath: null,
+        isMigrationsComplete: true,
+        pinnedDirectories: [],
+        lastFsOperationTime: null,
+        recentWorkspacePaths: updatedHistory,
+      })
     },
   }
 })
