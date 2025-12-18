@@ -51,6 +51,7 @@ import {
   syncExpandedDirectoriesWithEntries,
   toggleExpandedDirectory,
 } from './workspace/utils/expanded-directories-utils'
+import { isExistingDirectory } from './workspace/utils/fs-utils'
 import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
 import {
   filterPinsForWorkspace,
@@ -63,6 +64,11 @@ import {
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
 import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
+import {
+  readWorkspaceHistory,
+  removeFromWorkspaceHistory,
+  writeWorkspaceHistory,
+} from './workspace/utils/workspace-history-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -121,12 +127,9 @@ type WorkspaceStore = {
     destinationPath: string
   ) => Promise<boolean>
   updateEntryModifiedDate: (path: string) => Promise<void>
-  restoreLastOpenedNote: () => Promise<void>
   recordFsOperation: () => void
   clearWorkspace: () => Promise<void>
 }
-
-const WORKSPACE_HISTORY_KEY = 'workspace-history'
 
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
   const restoreLastOpenedNoteFromSettings = async (
@@ -271,22 +274,29 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
     initializeWorkspace: async () => {
       try {
-        let recentWorkspacePaths: string[] = []
+        const recentWorkspacePaths = readWorkspaceHistory()
+        const validated = await Promise.all(
+          recentWorkspacePaths.map(async (path) => ({
+            path,
+            ok: await isExistingDirectory(path),
+          }))
+        )
+        const nextRecentWorkspacePaths = validated
+          .filter((entry) => entry.ok)
+          .map((entry) => entry.path)
 
-        const rawHistory = localStorage.getItem(WORKSPACE_HISTORY_KEY)
-        if (rawHistory) {
-          recentWorkspacePaths = JSON.parse(rawHistory).filter(
-            (entry: unknown): entry is string =>
-              typeof entry === 'string' && entry.length > 0
-          )
+        if (
+          !areStringArraysEqual(recentWorkspacePaths, nextRecentWorkspacePaths)
+        ) {
+          writeWorkspaceHistory(nextRecentWorkspacePaths)
         }
 
-        const workspacePath = recentWorkspacePaths[0] ?? null
+        const workspacePath = nextRecentWorkspacePaths[0] ?? null
 
         set({
           isLoading: false,
           workspacePath,
-          recentWorkspacePaths,
+          recentWorkspacePaths: nextRecentWorkspacePaths,
           entries: [],
           isTreeLoading: Boolean(workspacePath),
           expandedDirectories: [],
@@ -324,6 +334,16 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
     setWorkspace: async (path: string) => {
       try {
+        if (!(await isExistingDirectory(path))) {
+          const updatedHistory = removeFromWorkspaceHistory(path)
+          set({ recentWorkspacePaths: updatedHistory })
+          toast.error('Folder does not exist.', {
+            description: path,
+            position: 'bottom-left',
+          })
+          return
+        }
+
         const { tab, closeTab, clearHistory } = useTabStore.getState()
 
         if (tab) {
@@ -339,10 +359,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           ...recentWorkspacePaths.filter((entry) => entry !== path),
         ].slice(0, MAX_HISTORY_LENGTH)
 
-        localStorage.setItem(
-          WORKSPACE_HISTORY_KEY,
-          JSON.stringify(updatedHistory)
-        )
+        writeWorkspaceHistory(updatedHistory)
 
         set({
           isLoading: false,
@@ -1256,20 +1273,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       }
     },
 
-    restoreLastOpenedNote: async () => {
-      const workspacePath = get().workspacePath
-      if (!workspacePath) {
-        return
-      }
-
-      try {
-        const settings = await loadSettings(workspacePath)
-        await restoreLastOpenedNoteFromSettings(workspacePath, settings)
-      } catch (error) {
-        console.debug('Failed to restore last opened note:', error)
-      }
-    },
-
     clearWorkspace: async () => {
       const { tab, closeTab, clearHistory } = useTabStore.getState()
       const workspacePath = get().workspacePath
@@ -1288,10 +1291,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         (path) => path !== workspacePath
       )
 
-      localStorage.setItem(
-        WORKSPACE_HISTORY_KEY,
-        JSON.stringify(updatedHistory)
-      )
+      writeWorkspaceHistory(updatedHistory)
 
       set({
         isLoading: false,
