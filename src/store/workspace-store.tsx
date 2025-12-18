@@ -66,19 +66,6 @@ import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
-const ensureWorkspaceMigrations = async (workspacePath: string) => {
-  if (!workspacePath) {
-    return
-  }
-
-  try {
-    await invoke('apply_workspace_migrations', { workspacePath })
-  } catch (error) {
-    console.error('Failed to apply workspace migrations:', error)
-    throw error
-  }
-}
-
 export type WorkspaceEntry = {
   path: string
   name: string
@@ -177,7 +164,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     let migrationsComplete = false
 
     try {
-      await ensureWorkspaceMigrations(workspacePath)
+      await invoke('apply_workspace_migrations', { workspacePath })
       migrationsComplete = true
     } catch (error) {
       console.error('Failed to apply workspace migrations:', error)
@@ -287,15 +274,10 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
         const rawHistory = localStorage.getItem(WORKSPACE_HISTORY_KEY)
         if (rawHistory) {
-          try {
-            recentWorkspacePaths = JSON.parse(rawHistory).filter(
-              (entry: unknown): entry is string =>
-                typeof entry === 'string' && entry.length > 0
-            )
-          } catch (error) {
-            console.warn('Failed to parse workspace history:', error)
-            recentWorkspacePaths = []
-          }
+          recentWorkspacePaths = JSON.parse(rawHistory).filter(
+            (entry: unknown): entry is string =>
+              typeof entry === 'string' && entry.length > 0
+          )
         }
 
         const workspacePath = recentWorkspacePaths[0] ?? null
