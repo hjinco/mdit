@@ -8,6 +8,7 @@ import {
   usePlateEditor,
 } from 'platejs/react'
 import { useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
 import { isMac } from '@/utils/platform'
@@ -46,6 +47,7 @@ export function QuickNote() {
       await openTab(path, false, false, { initialContent: content })
     } catch (error) {
       console.error('Failed to save file:', error)
+      toast.error('Failed to save file')
     }
   }, [editor, openTab])
 
