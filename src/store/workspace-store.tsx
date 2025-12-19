@@ -47,6 +47,8 @@ import {
 } from './workspace/utils/entry-utils'
 import {
   addExpandedDirectories,
+  getExpandedDirectoriesFromSettings,
+  persistExpandedDirectories,
   removeExpandedDirectories,
   renameExpandedDirectories,
   syncExpandedDirectoriesWithEntries,
@@ -94,14 +96,14 @@ type WorkspaceStore = {
   lastFsOperationTime: number | null
   setExpandedDirectories: (
     action: (expandedDirectories: string[]) => string[]
-  ) => void
+  ) => Promise<void>
   initializeWorkspace: () => Promise<void>
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
   refreshWorkspaceEntries: () => Promise<void>
   pinDirectory: (path: string) => Promise<void>
   unpinDirectory: (path: string) => Promise<void>
-  toggleDirectory: (path: string) => void
+  toggleDirectory: (path: string) => Promise<void>
   createFolder: (
     directoryPath: string,
     folderName: string
@@ -195,19 +197,33 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         workspacePath
       )
       const pinsChanged = !areStringArraysEqual(pinsFromSettings, nextPinned)
+      const expandedFromSettings = getExpandedDirectoriesFromSettings(
+        workspacePath,
+        settings
+      )
+      const syncedExpandedDirectories = syncExpandedDirectoriesWithEntries(
+        expandedFromSettings,
+        entries
+      )
 
-      set((state) => ({
+      set({
         entries,
         isTreeLoading: false,
-        expandedDirectories: syncExpandedDirectoriesWithEntries(
-          state.expandedDirectories,
-          entries
-        ),
+        expandedDirectories: syncedExpandedDirectories,
         pinnedDirectories: nextPinned,
-      }))
+      })
 
       if (pinsChanged) {
         await persistPinnedDirectories(workspacePath, nextPinned)
+      }
+
+      const expandedChanged = !areStringArraysEqual(
+        expandedFromSettings,
+        syncedExpandedDirectories
+      )
+
+      if (expandedChanged) {
+        persistExpandedDirectories(workspacePath, syncedExpandedDirectories)
       }
 
       if (options?.restoreLastOpenedNote) {
@@ -236,10 +252,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       set({ lastFsOperationTime: Date.now() })
     },
 
-    setExpandedDirectories: (action) => {
-      set((state) => ({
-        expandedDirectories: action(state.expandedDirectories),
-      }))
+    setExpandedDirectories: async (action) => {
+      const { workspacePath, expandedDirectories } = get()
+      if (!workspacePath) throw new Error('Workspace path is not set')
+
+      const previousExpanded = expandedDirectories
+      const updatedExpanded = action(expandedDirectories)
+
+      set({
+        expandedDirectories: updatedExpanded,
+      })
+
+      if (!areStringArraysEqual(previousExpanded, updatedExpanded)) {
+        await persistExpandedDirectories(workspacePath, updatedExpanded)
+      }
     },
 
     initializeWorkspace: async () => {
@@ -382,15 +408,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         )
         const pinsChanged = !areStringArraysEqual(prevPinned, nextPinned)
 
-        set((state) => ({
+        const syncedExpanded = syncExpandedDirectoriesWithEntries(
+          get().expandedDirectories,
+          entries
+        )
+        const nextExpanded = syncedExpanded
+
+        set({
           entries,
           isTreeLoading: false,
-          expandedDirectories: syncExpandedDirectoriesWithEntries(
-            state.expandedDirectories,
-            entries
-          ),
+          expandedDirectories: syncedExpanded,
           ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
-        }))
+        })
+
+        await persistExpandedDirectories(workspacePath, nextExpanded)
 
         if (pinsChanged) {
           await persistPinnedDirectories(workspacePath, nextPinned)
@@ -447,13 +478,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       await persistPinnedDirectories(workspacePath, nextPinned)
     },
 
-    toggleDirectory: (path: string) => {
-      set((state) => ({
-        expandedDirectories: toggleExpandedDirectory(
-          state.expandedDirectories,
-          path
-        ),
-      }))
+    toggleDirectory: async (path: string) => {
+      const { workspacePath, expandedDirectories } = get()
+      if (!workspacePath) throw new Error('Workspace path is not set')
+
+      const updatedExpanded = toggleExpandedDirectory(expandedDirectories, path)
+      set({ expandedDirectories: updatedExpanded })
+
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
     },
 
     createFolder: async (directoryPath: string, folderName: string) => {
@@ -487,20 +519,25 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           modifiedAt: undefined,
         }
 
-        set((state) => {
-          const updatedEntries =
-            directoryPath === workspacePath
-              ? sortWorkspaceEntries([...state.entries, newFolderEntry])
-              : addEntryToState(state.entries, directoryPath, newFolderEntry)
+        const { entries, expandedDirectories } = get()
 
-          return {
-            entries: updatedEntries,
-            expandedDirectories: addExpandedDirectories(
-              state.expandedDirectories,
-              [directoryPath, folderPath]
-            ),
+        const updatedEntries =
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...entries, newFolderEntry])
+            : addEntryToState(entries, directoryPath, newFolderEntry)
+
+        const updatedExpanded = addExpandedDirectories(expandedDirectories, [
+          directoryPath,
+          folderPath,
+        ])
+        set({ entries: updatedEntries, expandedDirectories: updatedExpanded })
+
+        await persistExpandedDirectories(workspacePath, updatedExpanded).catch(
+          (error) => {
+            console.error('Failed to persist expanded directories:', error)
           }
-        })
+        )
+
         useCollectionStore.getState().setCurrentCollectionPath(folderPath)
 
         const { setSelectedEntryPaths, setSelectionAnchorPath } =
@@ -632,30 +669,27 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       }
 
       // Remove deleted entries from state without full refresh
-      const workspacePath = get().workspacePath
-      let nextPinned: string[] | null = null
+      const { workspacePath, pinnedDirectories, expandedDirectories, entries } =
+        get()
+      if (!workspacePath) throw new Error('Workspace path is not set')
 
-      set((state) => {
-        const filteredPins = removePinsForPaths(state.pinnedDirectories, paths)
-        const pinsChanged =
-          filteredPins.length !== state.pinnedDirectories.length
+      const filteredPins = removePinsForPaths(pinnedDirectories, paths)
+      const pinsChanged = filteredPins.length !== pinnedDirectories.length
 
-        if (pinsChanged) {
-          nextPinned = filteredPins
-        }
-
-        return {
-          entries: removeEntriesFromState(state.entries, paths),
-          expandedDirectories: removeExpandedDirectories(
-            state.expandedDirectories,
-            paths
-          ),
-          ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
-        }
+      const updatedExpanded = removeExpandedDirectories(
+        expandedDirectories,
+        paths
+      )
+      set({
+        entries: removeEntriesFromState(entries, paths),
+        expandedDirectories: updatedExpanded,
+        ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
       })
 
-      if (workspacePath && nextPinned) {
-        await persistPinnedDirectories(workspacePath, nextPinned)
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
+
+      if (pinsChanged) {
+        await persistPinnedDirectories(workspacePath, filteredPins)
       }
     },
 
@@ -753,45 +787,32 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       await tabState.renameTab(entry.path, nextPath)
       tabState.updateHistoryPath(entry.path, nextPath)
 
-      const workspacePath = get().workspacePath
+      const { workspacePath, pinnedDirectories, expandedDirectories, entries } =
+        get()
+
+      if (!workspacePath) throw new Error('Workspace path is not set')
+
       let nextPinned: string[] | null = null
 
-      set((state) => {
-        const updatedPins = entry.isDirectory
-          ? renamePinnedDirectories(
-              state.pinnedDirectories,
-              entry.path,
-              nextPath
-            )
-          : state.pinnedDirectories
-        const pinsChanged =
-          updatedPins.length !== state.pinnedDirectories.length ||
-          updatedPins.some(
-            (path, index) => path !== state.pinnedDirectories[index]
-          )
+      const updatedPins = entry.isDirectory
+        ? renamePinnedDirectories(pinnedDirectories, entry.path, nextPath)
+        : pinnedDirectories
+      const pinsChanged =
+        updatedPins.length !== pinnedDirectories.length ||
+        updatedPins.some((path, index) => path !== pinnedDirectories[index])
 
-        if (pinsChanged) {
-          nextPinned = updatedPins
-        }
+      if (pinsChanged) {
+        nextPinned = updatedPins
+      }
 
-        const updatedExpanded = entry.isDirectory
-          ? renameExpandedDirectories(
-              state.expandedDirectories,
-              entry.path,
-              nextPath
-            )
-          : state.expandedDirectories
+      const updatedExpanded = entry.isDirectory
+        ? renameExpandedDirectories(expandedDirectories, entry.path, nextPath)
+        : expandedDirectories
 
-        return {
-          entries: updateEntryInState(
-            state.entries,
-            entry.path,
-            nextPath,
-            trimmedName
-          ),
-          expandedDirectories: updatedExpanded,
-          ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
-        }
+      set({
+        entries: updateEntryInState(entries, entry.path, nextPath, trimmedName),
+        expandedDirectories: updatedExpanded,
+        ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
       })
 
       // Update currentCollectionPath if the renamed entry is a directory and matches the current collection path
@@ -803,11 +824,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         }
       }
 
-      if (
-        workspacePath &&
-        nextPinned &&
-        get().workspacePath === workspacePath
-      ) {
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
+
+      if (nextPinned) {
         await persistPinnedDirectories(workspacePath, nextPinned)
       }
 
@@ -817,9 +836,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     moveEntry: async (sourcePath: string, destinationPath: string) => {
       const workspacePath = get().workspacePath
 
-      if (!workspacePath) {
-        return false
-      }
+      if (!workspacePath) throw new Error('Workspace path is not set')
 
       if (sourcePath === destinationPath) {
         return false
@@ -851,8 +868,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         )
 
         // Find the entry to move before path operations to determine if it's a directory
-        const currentState = get()
-        const entryToMove = findEntryByPath(currentState.entries, sourcePath)
+        const entryToMove = findEntryByPath(get().entries, sourcePath)
 
         if (!entryToMove) {
           return false
@@ -919,88 +935,77 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         // Update currentCollectionPath if it's being moved
         const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
 
+        const { entries, expandedDirectories, pinnedDirectories } = get()
+
         let nextPinned: string[] | null = null
+        let nextExpanded: string[] | null = null
 
-        set((state) => {
-          let updatedEntries: WorkspaceEntry[]
+        let updatedEntries: WorkspaceEntry[]
 
-          if (destinationPath === workspacePath) {
-            // Moving to workspace root - add directly to entries array
-            // First, remove from source location
-            const filteredEntries = removeEntryFromState(
-              state.entries,
-              sourcePath
-            )
+        if (destinationPath === workspacePath) {
+          // Moving to workspace root - add directly to entries array
+          // First, remove from source location
+          const filteredEntries = removeEntryFromState(entries, sourcePath)
 
-            // Update paths if it's a directory
-            let updatedEntryToMove: WorkspaceEntry
-            if (entryToMove.isDirectory) {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: true,
-                children: entryToMove.children
-                  ? entryToMove.children.map((child: WorkspaceEntry) =>
-                      updateChildPathsForMove(child, sourcePath, newPath)
-                    )
-                  : undefined,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
-            } else {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: false,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
+          // Update paths if it's a directory
+          let updatedEntryToMove: WorkspaceEntry
+          if (entryToMove.isDirectory) {
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: true,
+              children: entryToMove.children
+                ? entryToMove.children.map((child: WorkspaceEntry) =>
+                    updateChildPathsForMove(child, sourcePath, newPath)
+                  )
+                : undefined,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
             }
-
-            // Add directly to entries array
-            updatedEntries = sortWorkspaceEntries([
-              ...filteredEntries,
-              updatedEntryToMove,
-            ])
           } else {
-            // Moving to a subdirectory - use existing logic
-            updatedEntries = moveEntryInState(
-              state.entries,
-              sourcePath,
-              destinationPath
-            )
+            updatedEntryToMove = {
+              path: newPath,
+              name: entryToMove.name,
+              isDirectory: false,
+              createdAt: entryToMove.createdAt,
+              modifiedAt: entryToMove.modifiedAt,
+            }
           }
 
-          const updatedExpanded = isDirectory
-            ? renameExpandedDirectories(
-                state.expandedDirectories,
-                sourcePath,
-                newPath
-              )
-            : state.expandedDirectories
+          // Add directly to entries array
+          updatedEntries = sortWorkspaceEntries([
+            ...filteredEntries,
+            updatedEntryToMove,
+          ])
+        } else {
+          // Moving to a subdirectory - use existing logic
+          updatedEntries = moveEntryInState(
+            entries,
+            sourcePath,
+            destinationPath
+          )
+        }
 
-          const updatedPinned = isDirectory
-            ? renamePinnedDirectories(
-                state.pinnedDirectories,
-                sourcePath,
-                newPath
-              )
-            : state.pinnedDirectories
-          const pinsChanged =
-            updatedPinned.length !== state.pinnedDirectories.length ||
-            updatedPinned.some(
-              (path, index) => path !== state.pinnedDirectories[index]
-            )
+        const updatedExpanded = isDirectory
+          ? renameExpandedDirectories(expandedDirectories, sourcePath, newPath)
+          : expandedDirectories
+        nextExpanded = updatedExpanded
 
-          if (pinsChanged) {
-            nextPinned = updatedPinned
-          }
+        const updatedPinned = isDirectory
+          ? renamePinnedDirectories(pinnedDirectories, sourcePath, newPath)
+          : pinnedDirectories
+        const pinsChanged =
+          updatedPinned.length !== pinnedDirectories.length ||
+          updatedPinned.some((path, index) => path !== pinnedDirectories[index])
 
-          return {
-            entries: updatedEntries,
-            expandedDirectories: updatedExpanded,
-            ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
-          }
+        if (pinsChanged) {
+          nextPinned = updatedPinned
+        }
+
+        set({
+          entries: updatedEntries,
+          expandedDirectories: updatedExpanded,
+          ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
         })
 
         // Update currentCollectionPath if it's being moved
@@ -1008,11 +1013,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           useCollectionStore.getState().setCurrentCollectionPath(newPath)
         }
 
-        if (
-          workspacePath &&
-          nextPinned &&
-          get().workspacePath === workspacePath
-        ) {
+        await persistExpandedDirectories(workspacePath, nextExpanded)
+
+        if (nextPinned) {
           await persistPinnedDirectories(workspacePath, nextPinned)
         }
 
@@ -1127,13 +1130,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       if (isDirectory) {
         await get().refreshWorkspaceEntries()
         // Expand destination directory and the newly copied folder (if it's a directory)
-        const currentExpanded = get().expandedDirectories
+        const expandedDirectories = get().expandedDirectories
         set({
-          expandedDirectories: addExpandedDirectories(currentExpanded, [
+          expandedDirectories: addExpandedDirectories(expandedDirectories, [
             destinationPath,
             newPath,
           ]),
         })
+        persistExpandedDirectories(workspacePath, expandedDirectories)
       }
 
       return true
@@ -1201,25 +1205,26 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         modifiedAt: fileMetadata.modifiedAt,
       }
 
-      set((state) => {
-        const updatedEntries =
-          destinationPath === workspacePath
-            ? sortWorkspaceEntries([...state.entries, newFileEntry])
-            : addEntryToState(state.entries, destinationPath, newFileEntry)
+      const { entries, expandedDirectories } = get()
 
-        return {
-          entries: updatedEntries,
-        }
+      const updatedEntries =
+        destinationPath === workspacePath
+          ? sortWorkspaceEntries([...entries, newFileEntry])
+          : addEntryToState(entries, destinationPath, newFileEntry)
+
+      set({
+        entries: updatedEntries,
       })
 
       if (isDirectory) {
-        const currentExpanded = get().expandedDirectories
+        const updatedExpanded = addExpandedDirectories(expandedDirectories, [
+          destinationPath,
+          newPath,
+        ])
         set({
-          expandedDirectories: addExpandedDirectories(currentExpanded, [
-            destinationPath,
-            newPath,
-          ]),
+          expandedDirectories: updatedExpanded,
         })
+        await persistExpandedDirectories(workspacePath, updatedExpanded)
       }
 
       return true
