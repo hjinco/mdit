@@ -271,8 +271,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     },
 
     setExpandedDirectories: (action) => {
-      let nextExpanded: string[] | null = null
-      let previousExpanded: string[] | null = null
+      let nextExpanded: string[];
+      let previousExpanded: string[];
 
       set((state) => {
         previousExpanded = state.expandedDirectories
