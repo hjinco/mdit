@@ -1,3 +1,4 @@
+import { setCodeBlockToDecorations } from '@platejs/code-block'
 import {
   CodeBlockPlugin,
   CodeLinePlugin,
@@ -393,7 +394,30 @@ export const CodeBlockKit = [
         },
       },
     },
-  }),
+  }).overrideEditor(({ editor, getOptions, tf: { apply }, type }) => ({
+    transforms: {
+      apply(operation) {
+        apply(operation)
+
+        if (
+          !getOptions().lowlight ||
+          operation.type !== 'set_node' ||
+          typeof operation.newProperties?.lang !== 'string'
+        ) {
+          return
+        }
+
+        const entry = editor.api.node(operation.path) as
+          | [TCodeBlockElement, number[]]
+          | undefined
+
+        if (!entry || entry[0].type !== type) return
+
+        setCodeBlockToDecorations(editor, entry)
+        editor.api.redecorate()
+      },
+    },
+  })),
   CodeLinePlugin.withComponent(CodeLineElement),
   CodeSyntaxPlugin.withComponent(CodeSyntaxLeaf),
 ]
