@@ -61,19 +61,23 @@ export function SystemTray() {
   useEffect(() => {
     const shortcut = 'CmdOrCtrl+Alt+N'
 
-    register(shortcut, () => {
-      createQuickNoteWindow()
+    register(shortcut, (event) => {
+      if (event.state === 'Released') {
+        createQuickNoteWindow()
+      }
     })
 
-    const trayPromise = createSystemTray().catch(() => {
-      return null
-    })
+    const trayPromise = createSystemTray().catch(() => null)
+
+    const cleanup = async () => {
+      await unregister(shortcut).catch(() => {})
+
+      const tray = await trayPromise
+      await tray?.close().catch(() => {})
+    }
 
     return () => {
-      unregister(shortcut)
-      trayPromise.then((tray) => {
-        tray?.close()
-      })
+      cleanup().catch(() => {})
     }
   }, [])
   return null
