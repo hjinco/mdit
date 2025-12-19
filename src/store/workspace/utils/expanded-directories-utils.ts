@@ -82,18 +82,13 @@ export function getExpandedDirectoriesFromSettings(
     settings?.expandedDirectories ?? []
   )
 
-  const absoluteExpanded: string[] = []
-
-  for (const directory of storedExpanded) {
-    const absolutePath = toAbsoluteExpandedPath(normalizedWorkspace, directory)
-
-    if (
-      absolutePath &&
-      isPathEqualOrDescendant(absolutePath, normalizedWorkspace)
-    ) {
-      absoluteExpanded.push(absolutePath)
-    }
-  }
+  const absoluteExpanded = storedExpanded
+    .map((directory) => toAbsoluteExpandedPath(normalizedWorkspace, directory))
+    .filter(
+      (absolutePath): absolutePath is string =>
+        absolutePath !== null &&
+        isPathEqualOrDescendant(absolutePath, normalizedWorkspace)
+    )
 
   return Array.from(new Set(absoluteExpanded))
 }
@@ -108,15 +103,10 @@ export async function persistExpandedDirectories(
 
   try {
     const normalizedWorkspace = normalizePathSeparators(workspacePath)
-    const filteredExpanded = normalizeExpandedDirectoriesList(
-      expandedDirectories.filter((path) =>
-        isPathEqualOrDescendant(path, normalizedWorkspace)
-      )
-    )
     const relativeExpanded = normalizeExpandedDirectoriesList(
-      filteredExpanded.map((path) =>
-        toRelativeExpandedPath(normalizedWorkspace, path)
-      )
+      expandedDirectories
+        .filter((path) => isPathEqualOrDescendant(path, normalizedWorkspace))
+        .map((path) => toRelativeExpandedPath(normalizedWorkspace, path))
     )
 
     await saveSettings(normalizedWorkspace, {
