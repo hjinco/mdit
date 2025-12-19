@@ -172,7 +172,7 @@ const trailingSlashesRegex = /\/+$/
 function LinkUrlInput() {
   const { ref } = useFloatingLinkUrlInputState()
   const editor = useEditorRef()
-  const { setOption } = useEditorPlugin(LinkPlugin)
+  const { api, setOption } = useEditorPlugin(LinkPlugin)
 
   const workspaceEntries = useWorkspaceStore((state) => state.entries)
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
@@ -384,13 +384,15 @@ function LinkUrlInput() {
     })
     if (didSubmit) {
       setHighlightedIndex(-1)
+      api.floatingLink.hide()
+      editor.tf.focus()
       return
     }
 
     requestAnimationFrame(() => {
       ref.current?.focus()
     })
-  }, [applyUrlToEditor, editor, ref, trimmedValue])
+  }, [api, applyUrlToEditor, editor, ref, trimmedValue])
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
