@@ -6,6 +6,7 @@ import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
+import { useCollectionStore } from '@/store/collection-store'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
@@ -55,11 +56,11 @@ export function FileExplorer() {
     toggleDirectory,
     setWorkspace,
     openFolderPicker,
-    setCurrentCollectionPath,
     pinnedDirectories,
     pinDirectory,
     unpinDirectory,
   } = useWorkspaceStore()
+  const { setCurrentCollectionPath } = useCollectionStore()
   const { tab, openNote, clearLinkedTab } = useTabStore(
     useShallow((s) => ({
       tab: s.tab,
