@@ -388,6 +388,10 @@ function LinkUrlInput() {
       editor.tf.focus()
       return
     }
+
+    requestAnimationFrame(() => {
+      ref.current?.focus()
+    })
   }, [api, applyUrlToEditor, editor, ref, trimmedValue])
 
   const handleKeyDown = useCallback(
