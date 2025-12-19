@@ -506,7 +506,7 @@ async function executeGit(workspacePath: string, args: string[]) {
 async function ensureGitignoreEntry(workspacePath: string) {
   const mditDir = await join(workspacePath, '.mdit')
   const gitignorePath = await join(mditDir, '.gitignore')
-  const entries = ['db.sqlite', '.DS_Store']
+  const entries = ['db.sqlite', '.DS_Store', 'workspace.json']
 
   try {
     // Ensure .mdit directory exists
