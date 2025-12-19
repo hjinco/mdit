@@ -96,14 +96,14 @@ type WorkspaceStore = {
   lastFsOperationTime: number | null
   setExpandedDirectories: (
     action: (expandedDirectories: string[]) => string[]
-  ) => void
+  ) => Promise<void>
   initializeWorkspace: () => Promise<void>
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
   refreshWorkspaceEntries: () => Promise<void>
   pinDirectory: (path: string) => Promise<void>
   unpinDirectory: (path: string) => Promise<void>
-  toggleDirectory: (path: string) => void
+  toggleDirectory: (path: string) => Promise<void>
   createFolder: (
     directoryPath: string,
     folderName: string
@@ -252,7 +252,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       set({ lastFsOperationTime: Date.now() })
     },
 
-    setExpandedDirectories: (action) => {
+    setExpandedDirectories: async (action) => {
       const { workspacePath, expandedDirectories } = get()
       if (!workspacePath) throw new Error('Workspace path is not set')
 
@@ -264,7 +264,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       })
 
       if (!areStringArraysEqual(previousExpanded, updatedExpanded)) {
-        persistExpandedDirectories(workspacePath, updatedExpanded)
+        await persistExpandedDirectories(workspacePath, updatedExpanded)
       }
     },
 
@@ -421,7 +421,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
         })
 
-        persistExpandedDirectories(workspacePath, nextExpanded)
+        await persistExpandedDirectories(workspacePath, nextExpanded)
 
         if (pinsChanged) {
           await persistPinnedDirectories(workspacePath, nextPinned)
@@ -478,14 +478,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       await persistPinnedDirectories(workspacePath, nextPinned)
     },
 
-    toggleDirectory: (path: string) => {
+    toggleDirectory: async (path: string) => {
       const { workspacePath, expandedDirectories } = get()
       if (!workspacePath) throw new Error('Workspace path is not set')
 
       const updatedExpanded = toggleExpandedDirectory(expandedDirectories, path)
       set({ expandedDirectories: updatedExpanded })
 
-      persistExpandedDirectories(workspacePath, updatedExpanded)
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
     },
 
     createFolder: async (directoryPath: string, folderName: string) => {
@@ -532,7 +532,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         ])
         set({ entries: updatedEntries, expandedDirectories: updatedExpanded })
 
-        persistExpandedDirectories(workspacePath, updatedExpanded)
+        await persistExpandedDirectories(workspacePath, updatedExpanded).catch(
+          (error) => {
+            console.error('Failed to persist expanded directories:', error)
+          }
+        )
+
         useCollectionStore.getState().setCurrentCollectionPath(folderPath)
 
         const { setSelectedEntryPaths, setSelectionAnchorPath } =
@@ -681,7 +686,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
       })
 
-      persistExpandedDirectories(workspacePath, updatedExpanded)
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
 
       if (pinsChanged) {
         await persistPinnedDirectories(workspacePath, filteredPins)
@@ -819,7 +824,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         }
       }
 
-      persistExpandedDirectories(workspacePath, updatedExpanded)
+      await persistExpandedDirectories(workspacePath, updatedExpanded)
 
       if (nextPinned) {
         await persistPinnedDirectories(workspacePath, nextPinned)
@@ -1008,7 +1013,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           useCollectionStore.getState().setCurrentCollectionPath(newPath)
         }
 
-        persistExpandedDirectories(workspacePath, nextExpanded)
+        await persistExpandedDirectories(workspacePath, nextExpanded)
 
         if (nextPinned) {
           await persistPinnedDirectories(workspacePath, nextPinned)
@@ -1219,7 +1224,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         set({
           expandedDirectories: updatedExpanded,
         })
-        persistExpandedDirectories(workspacePath, updatedExpanded)
+        await persistExpandedDirectories(workspacePath, updatedExpanded)
       }
 
       return true

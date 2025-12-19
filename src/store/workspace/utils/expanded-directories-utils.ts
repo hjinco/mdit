@@ -109,7 +109,7 @@ export async function persistExpandedDirectories(
         .map((path) => toRelativeExpandedPath(normalizedWorkspace, path))
     )
 
-    await saveSettings(normalizedWorkspace, {
+    await saveSettings(workspacePath, {
       expandedDirectories: relativeExpanded,
     })
   } catch (error) {
