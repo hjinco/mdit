@@ -22,6 +22,7 @@ export type WorkspaceSettings = {
   }
   pinnedDirectories?: string[]
   lastOpenedNotePath?: string
+  expandedDirectories?: string[]
 }
 
 const getWorkspaceConfigPath = async (

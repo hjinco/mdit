@@ -1,4 +1,131 @@
+import type { WorkspaceSettings } from '@/lib/settings-utils'
+import { saveSettings } from '@/lib/settings-utils'
+import {
+  isPathEqualOrDescendant,
+  normalizePathSeparators,
+} from '@/utils/path-utils'
 import type { WorkspaceEntry } from '../../workspace-store'
+
+const DRIVE_LETTER_REGEX = /^[a-zA-Z]:\//
+const isAbsolutePath = (path: string) =>
+  path.startsWith('/') || DRIVE_LETTER_REGEX.test(path)
+
+export function normalizeExpandedDirectoriesList(paths: unknown[]): string[] {
+  const normalizedSet = new Set<string>()
+
+  for (const path of paths) {
+    if (typeof path !== 'string') continue
+    const normalized = normalizePathSeparators(path.trim())
+    if (normalized) {
+      normalizedSet.add(normalized)
+    }
+  }
+
+  return Array.from(normalizedSet)
+}
+
+const toRelativeExpandedPath = (
+  workspacePath: string,
+  directoryPath: string
+): string => {
+  const normalizedWorkspace = normalizePathSeparators(workspacePath)
+  const normalizedPath = normalizePathSeparators(directoryPath)
+
+  if (!normalizedWorkspace || !normalizedPath) return normalizedPath
+
+  if (normalizedPath === normalizedWorkspace) {
+    return '.'
+  }
+
+  if (normalizedPath.startsWith(`${normalizedWorkspace}/`)) {
+    return normalizedPath.slice(normalizedWorkspace.length + 1)
+  }
+
+  return normalizedPath
+}
+
+const toAbsoluteExpandedPath = (
+  workspacePath: string,
+  directoryPath: string
+): string | null => {
+  const normalizedWorkspace = normalizePathSeparators(workspacePath)
+  const normalizedPath = normalizePathSeparators(directoryPath)
+  if (!normalizedPath) return null
+
+  const withoutDotPrefix = normalizedPath.startsWith('./')
+    ? normalizedPath.slice(2)
+    : normalizedPath
+
+  if (withoutDotPrefix === '.' || withoutDotPrefix === '') {
+    return normalizedWorkspace
+  }
+
+  if (isAbsolutePath(withoutDotPrefix)) {
+    return withoutDotPrefix
+  }
+
+  if (!normalizedWorkspace) return null
+
+  return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
+}
+
+export function getExpandedDirectoriesFromSettings(
+  workspacePath: string | null,
+  settings: WorkspaceSettings | null | undefined
+): string[] {
+  if (!workspacePath) {
+    return []
+  }
+
+  const normalizedWorkspace = normalizePathSeparators(workspacePath)
+  const storedExpanded = normalizeExpandedDirectoriesList(
+    settings?.expandedDirectories ?? []
+  )
+
+  const absoluteExpanded: string[] = []
+
+  for (const directory of storedExpanded) {
+    const absolutePath = toAbsoluteExpandedPath(normalizedWorkspace, directory)
+
+    if (
+      absolutePath &&
+      isPathEqualOrDescendant(absolutePath, normalizedWorkspace)
+    ) {
+      absoluteExpanded.push(absolutePath)
+    }
+  }
+
+  return Array.from(new Set(absoluteExpanded))
+}
+
+export async function persistExpandedDirectories(
+  workspacePath: string | null,
+  expandedDirectories: string[]
+): Promise<void> {
+  if (!workspacePath) {
+    return
+  }
+
+  try {
+    const normalizedWorkspace = normalizePathSeparators(workspacePath)
+    const filteredExpanded = normalizeExpandedDirectoriesList(
+      expandedDirectories.filter((path) =>
+        isPathEqualOrDescendant(path, normalizedWorkspace)
+      )
+    )
+    const relativeExpanded = normalizeExpandedDirectoriesList(
+      filteredExpanded.map((path) =>
+        toRelativeExpandedPath(normalizedWorkspace, path)
+      )
+    )
+
+    await saveSettings(normalizedWorkspace, {
+      expandedDirectories: relativeExpanded,
+    })
+  } catch (error) {
+    console.error('Failed to save expanded directories:', error)
+  }
+}
 
 export function collectDirectoryPaths(
   entries: WorkspaceEntry[],
