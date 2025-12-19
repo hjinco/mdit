@@ -23,6 +23,7 @@ import {
   normalizePathSeparators,
 } from '@/utils/path-utils'
 import { useAISettingsStore } from './ai-settings-store'
+import { useCollectionStore } from './collection-store'
 import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
 import { useTabStore } from './tab-store'
 import {
@@ -88,18 +89,12 @@ type WorkspaceStore = {
   isTreeLoading: boolean
   entries: WorkspaceEntry[]
   expandedDirectories: string[]
-  currentCollectionPath: string | null
-  lastCollectionPath: string | null
   isMigrationsComplete: boolean
   pinnedDirectories: string[]
   lastFsOperationTime: number | null
   setExpandedDirectories: (
     action: (expandedDirectories: string[]) => string[]
   ) => void
-  setCurrentCollectionPath: (
-    path: string | null | ((prev: string | null) => string | null)
-  ) => void
-  toggleCollectionView: () => void
   initializeWorkspace: () => Promise<void>
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
@@ -233,8 +228,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     isTreeLoading: false,
     entries: [],
     expandedDirectories: [],
-    currentCollectionPath: null,
-    lastCollectionPath: null,
     isMigrationsComplete: false,
     pinnedDirectories: [],
     lastFsOperationTime: null,
@@ -249,38 +242,15 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       }))
     },
 
-    setCurrentCollectionPath: (path) => {
-      set((state) => {
-        const nextPath =
-          typeof path === 'function' ? path(state.currentCollectionPath) : path
-        return {
-          currentCollectionPath: nextPath,
-          lastCollectionPath:
-            nextPath !== null ? nextPath : state.lastCollectionPath,
-        }
-      })
-    },
-
-    toggleCollectionView: () => {
-      const { currentCollectionPath, lastCollectionPath } = get()
-      if (currentCollectionPath !== null) {
-        // Close the view
-        set({ currentCollectionPath: null })
-      } else if (lastCollectionPath !== null) {
-        // Restore the last opened path
-        set({ currentCollectionPath: lastCollectionPath })
-      }
-    },
-
     initializeWorkspace: async () => {
       try {
         const recentWorkspacePaths = readWorkspaceHistory()
         const validationResults = await Promise.all(
-          recentWorkspacePaths.map((path) => isExistingDirectory(path)),
-        );
+          recentWorkspacePaths.map((path) => isExistingDirectory(path))
+        )
         const nextRecentWorkspacePaths = recentWorkspacePaths.filter(
-          (_, index) => validationResults[index],
-        );
+          (_, index) => validationResults[index]
+        )
 
         if (
           !areStringArraysEqual(recentWorkspacePaths, nextRecentWorkspacePaths)
@@ -297,12 +267,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           entries: [],
           isTreeLoading: Boolean(workspacePath),
           expandedDirectories: [],
-          currentCollectionPath: null,
-          lastCollectionPath: null,
           isMigrationsComplete: false,
           pinnedDirectories: [],
           lastFsOperationTime: null,
         })
+        useCollectionStore.getState().resetCollectionPath()
 
         if (workspacePath) {
           await bootstrapWorkspace(workspacePath, {
@@ -320,12 +289,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           entries: [],
           isTreeLoading: false,
           expandedDirectories: [],
-          currentCollectionPath: null,
-          lastCollectionPath: null,
           isMigrationsComplete: false,
           pinnedDirectories: [],
           lastFsOperationTime: null,
         })
+        useCollectionStore.getState().resetCollectionPath()
       }
     },
 
@@ -365,12 +333,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           entries: [],
           isTreeLoading: true,
           expandedDirectories: [],
-          currentCollectionPath: null,
-          lastCollectionPath: null,
           isMigrationsComplete: false,
           pinnedDirectories: [],
           lastFsOperationTime: null,
         })
+        useCollectionStore.getState().resetCollectionPath()
 
         await bootstrapWorkspace(path)
       } catch (error) {
@@ -532,9 +499,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
               state.expandedDirectories,
               [directoryPath, folderPath]
             ),
-            currentCollectionPath: folderPath,
           }
         })
+        useCollectionStore.getState().setCurrentCollectionPath(folderPath)
 
         const { setSelectedEntryPaths, setSelectionAnchorPath } =
           useFileExplorerSelectionStore.getState()
@@ -607,7 +574,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       }
 
       const { tab, openTab } = useTabStore.getState()
-      const { currentCollectionPath } = get()
+      const { currentCollectionPath } = useCollectionStore.getState()
       let targetDirectory = workspacePath
 
       // Priority: currentCollectionPath > tab directory > workspace root
@@ -645,21 +612,23 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       }
 
       // Update currentCollectionPath and lastCollectionPath if they're being deleted
-      const { currentCollectionPath, lastCollectionPath } = get()
+      const {
+        currentCollectionPath,
+        lastCollectionPath,
+        setCurrentCollectionPath,
+      } = useCollectionStore.getState()
       const shouldClearCurrentCollectionPath =
         currentCollectionPath && paths.includes(currentCollectionPath)
       const shouldClearLastCollectionPath =
         lastCollectionPath && paths.includes(lastCollectionPath)
 
       if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
-        set({
-          currentCollectionPath: shouldClearCurrentCollectionPath
-            ? null
-            : currentCollectionPath,
-          lastCollectionPath: shouldClearLastCollectionPath
-            ? null
-            : lastCollectionPath,
-        })
+        if (shouldClearCurrentCollectionPath) {
+          setCurrentCollectionPath(null)
+        }
+        if (shouldClearLastCollectionPath) {
+          useCollectionStore.setState({ lastCollectionPath: null })
+        }
       }
 
       // Remove deleted entries from state without full refresh
@@ -821,13 +790,18 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
             trimmedName
           ),
           expandedDirectories: updatedExpanded,
-          currentCollectionPath:
-            entry.isDirectory && state.currentCollectionPath === entry.path
-              ? nextPath
-              : state.currentCollectionPath,
           ...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
         }
       })
+
+      // Update currentCollectionPath if the renamed entry is a directory and matches the current collection path
+      if (entry.isDirectory) {
+        const { currentCollectionPath, setCurrentCollectionPath } =
+          useCollectionStore.getState()
+        if (currentCollectionPath === entry.path) {
+          setCurrentCollectionPath(nextPath)
+        }
+      }
 
       if (
         workspacePath &&
@@ -940,7 +914,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         })
         tabState.updateHistoryPath(sourcePath, newPath)
 
-        const { currentCollectionPath } = get()
+        const { currentCollectionPath } = useCollectionStore.getState()
 
         // Update currentCollectionPath if it's being moved
         const shouldUpdateCollectionPath = currentCollectionPath === sourcePath
@@ -1025,12 +999,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
           return {
             entries: updatedEntries,
             expandedDirectories: updatedExpanded,
-            currentCollectionPath: shouldUpdateCollectionPath
-              ? newPath
-              : state.currentCollectionPath,
             ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
           }
         })
+
+        // Update currentCollectionPath if it's being moved
+        if (shouldUpdateCollectionPath) {
+          useCollectionStore.getState().setCurrentCollectionPath(newPath)
+        }
 
         if (
           workspacePath &&
@@ -1296,13 +1272,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         entries: [],
         isTreeLoading: false,
         expandedDirectories: [],
-        currentCollectionPath: null,
-        lastCollectionPath: null,
         isMigrationsComplete: true,
         pinnedDirectories: [],
         lastFsOperationTime: null,
         recentWorkspacePaths: updatedHistory,
       })
+      useCollectionStore.getState().resetCollectionPath()
     },
   }
 })

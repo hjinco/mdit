@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
 import { useAISettingsStore } from '@/store/ai-settings-store'
+import { useCollectionStore } from '@/store/collection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
@@ -24,17 +25,17 @@ import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
 
 export function CollectionView() {
-  const {
-    currentCollectionPath,
-    entries,
-    workspacePath,
-    setCurrentCollectionPath,
-  } = useWorkspaceStore(
+  const { currentCollectionPath, setCurrentCollectionPath } =
+    useCollectionStore(
+      useShallow((state) => ({
+        currentCollectionPath: state.currentCollectionPath,
+        setCurrentCollectionPath: state.setCurrentCollectionPath,
+      }))
+    )
+  const { entries, workspacePath } = useWorkspaceStore(
     useShallow((state) => ({
-      currentCollectionPath: state.currentCollectionPath,
       entries: state.entries,
       workspacePath: state.workspacePath,
-      setCurrentCollectionPath: state.setCurrentCollectionPath,
     }))
   )
   const isCollectionViewOpen = currentCollectionPath !== null

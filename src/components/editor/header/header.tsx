@@ -1,5 +1,6 @@
 import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
+import { useCollectionStore } from '@/store/collection-store'
 import { useEditorStore } from '@/store/editor-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
@@ -10,7 +11,7 @@ import { Tab } from './tab'
 
 export function Header() {
   const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
-  const isCollectionViewOpen = useWorkspaceStore(
+  const isCollectionViewOpen = useCollectionStore(
     (s) => s.currentCollectionPath !== null
   )
   const workspacePath = useWorkspaceStore((s) => s.workspacePath)
