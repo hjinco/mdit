@@ -9,6 +9,7 @@ import { useComposedRef } from '@udecode/cn'
 import { KEYS } from 'platejs'
 import {
   useEditorId,
+  useEditorSelector,
   useEventEditorValue,
   usePluginOption,
 } from 'platejs/react'
@@ -27,13 +28,21 @@ export function FloatingToolbar({
 }) {
   const editorId = useEditorId()
   const focusedEditorId = useEventEditorValue('focus')
+  const hideInCodeBlock = useEditorSelector((editor) => {
+    if (!editor.selection) return false
+
+    return editor.api.some({
+      at: editor.selection,
+      match: { type: editor.getType(KEYS.codeBlock) },
+    })
+  }, [])
   const isFloatingLinkOpen = !!usePluginOption({ key: KEYS.link }, 'mode')
   const isAIChatOpen = usePluginOption({ key: KEYS.aiChat }, 'open')
 
   const floatingToolbarState = useFloatingToolbarState({
     editorId,
     focusedEditorId,
-    hideToolbar: isFloatingLinkOpen || isAIChatOpen,
+    hideToolbar: isFloatingLinkOpen || isAIChatOpen || hideInCodeBlock,
     ...state,
     floatingOptions: {
       middleware: [
