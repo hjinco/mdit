@@ -39,7 +39,6 @@ type TabStore = {
     force?: boolean,
     options?: { initialContent?: string }
   ) => Promise<void>
-  openNote: (path: string) => Promise<void>
   closeTab: (path: string) => void
   renameTab: (
     oldPath: string,
@@ -169,9 +168,6 @@ export const useTabStore = create<TabStore>((set, get) => ({
         }
       }
     }
-  },
-  openNote: async (path: string) => {
-    await get().openTab(path)
   },
   closeTab: (path) => {
     const tab = get().tab

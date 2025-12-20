@@ -148,7 +148,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
       ) {
         useTabStore
           .getState()
-          .openNote(absolutePath)
+          .openTab(absolutePath)
           .catch((error) => {
             console.debug('Failed to open last opened note:', error)
           })
@@ -742,7 +742,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
       const renamedPath = await get().renameEntry(entry, finalFileName)
 
-      const { tab, openNote } = useTabStore.getState()
+      const { tab, openTab } = useTabStore.getState()
 
       toast.success(`Renamed note to “${finalFileName}”`, {
         position: 'bottom-left',
@@ -752,7 +752,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
             : {
                 label: 'Open',
                 onClick: () => {
-                  openNote(renamedPath)
+                  openTab(renamedPath)
                 },
               },
       })
