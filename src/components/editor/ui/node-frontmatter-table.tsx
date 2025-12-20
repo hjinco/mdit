@@ -690,7 +690,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
     (event: React.KeyboardEvent) => {
       if (event.key !== 'Tab') return
       const target = event.target as HTMLElement | null
-      if (!target || shouldIgnoreArrowNavigation(target)) return
+      if (!target) return
 
       const rowId = target.dataset.rowId
       const columnId = target.dataset.colId as ColumnId | undefined
