@@ -50,10 +50,6 @@ type FocusRegistration = {
   register: (node: HTMLElement | null) => void
 }
 
-export type FrontmatterTableRef = {
-  focusAddButton: () => boolean
-}
-
 type FrontmatterTableProps = {
   data: KVRow[]
   onChange: (data: KVRow[]) => void
