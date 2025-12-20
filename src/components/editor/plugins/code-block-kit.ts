@@ -46,6 +46,20 @@ function getCodeLineEntry(editor: PlateEditor) {
   }) as [any, number[]] | undefined
 }
 
+// Helper function to get all code lines in the current selection (ordered)
+function getSelectedCodeLines(editor: PlateEditor) {
+  const selection = editor.selection
+  if (!selection) return null
+
+  return [
+    ...editor.api.nodes({
+      at: selection,
+      match: { type: editor.getType(KEYS.codeLine) },
+      mode: 'lowest',
+    }),
+  ] as [any, number[]][]
+}
+
 // Helper function to calculate indentation info from line text
 function getIndentInfo(lineText: string): {
   type: 'tab' | 'space'
@@ -247,6 +261,31 @@ export const CodeBlockKit = [
           const codeBlockEntry = getCodeBlockEntry(editor)
           if (!codeBlockEntry) return false
 
+          const selection = editor.selection
+          if (!selection) return false
+
+          const selectedLines = getSelectedCodeLines(editor)
+          if (!selectedLines) return false
+
+          const isMultiLineSelection = selectedLines.length > 1
+
+          if (isMultiLineSelection) {
+            editor.tf.withoutNormalizing(() => {
+              selectedLines.forEach(([, path]) => {
+                const lineStart = editor.api.start(path)
+                if (lineStart) {
+                  editor.tf.insertText('\t', { at: lineStart })
+                }
+              })
+            })
+
+            const range = editor.api.nodesRange(selectedLines)
+            if (range) editor.tf.select(range)
+            editor.tf.focus()
+
+            return true
+          }
+
           // Insert tab character in code block
           editor.tf.insertText('\t')
           return true
@@ -256,35 +295,50 @@ export const CodeBlockKit = [
         keys: 'shift+tab',
         priority: 100,
         handler: ({ editor }) => {
-          const codeLineEntry = getCodeLineEntry(editor)
-          if (!codeLineEntry) return false
+          const selection = editor.selection
+          if (!selection) return false
 
-          const [codeLineNode, codeLinePath] = codeLineEntry
-          const lineText = NodeApi.string(codeLineNode)
+          const selectedLines = getSelectedCodeLines(editor)
+          if (!selectedLines) return false
 
-          if (lineText.startsWith('\t')) {
-            // Check if line starts with tab character
-            const start = editor.api.start(codeLinePath)
-            if (start) {
-              // Delete the first tab character
-              const after = editor.api.after(start)
-              if (after) {
-                editor.tf.delete({
-                  at: {
-                    anchor: start,
-                    focus: after,
-                  },
-                })
-              } else {
-                // Fallback: delete one character from start
-                editor.tf.delete({
-                  at: start,
-                  unit: 'character',
-                  distance: 1,
-                })
+          let didOutdent = false
+
+          editor.tf.withoutNormalizing(() => {
+            selectedLines.forEach(([codeLineNode, codeLinePath]) => {
+              const lineText = NodeApi.string(codeLineNode)
+
+              if (lineText.startsWith('\t') || lineText.startsWith(' ')) {
+                const start = editor.api.start(codeLinePath)
+                if (start) {
+                  const after = editor.api.after(start)
+                  if (after) {
+                    editor.tf.delete({
+                      at: {
+                        anchor: start,
+                        focus: after,
+                      },
+                    })
+                    didOutdent = true
+                  } else {
+                    // Fallback: delete one character from start
+                    editor.tf.delete({
+                      at: start,
+                      unit: 'character',
+                      distance: 1,
+                    })
+                    didOutdent = true
+                  }
+                }
               }
-            }
+            })
+          })
+
+          if (selectedLines.length > 1 && didOutdent) {
+            const range = editor.api.nodesRange(selectedLines)
+            if (range) editor.tf.select(range)
+            editor.tf.focus()
           }
+
           return true
         },
       },
