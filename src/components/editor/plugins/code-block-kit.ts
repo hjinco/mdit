@@ -140,6 +140,80 @@ function insertCodeLine(
   }
 }
 
+function moveSelectedCodeLines(
+  editor: PlateEditor,
+  direction: 'up' | 'down'
+): boolean {
+  const selection = editor.selection
+  if (!selection) return false
+
+  const codeBlockEntry = getCodeBlockEntry(editor)
+  if (!codeBlockEntry) return false
+  const [codeBlockNode] = codeBlockEntry
+
+  const selectedLines = getSelectedCodeLines(editor)
+  if (!selectedLines?.length) return false
+
+  const firstLinePath = selectedLines[0][1]
+  const lastLinePath = selectedLines.at(-1)?.[1] ?? []
+  const startIndex = firstLinePath.at(-1) ?? 0
+  const endIndex = lastLinePath.at(-1) ?? 0
+  const linePathBase = firstLinePath.slice(0, -1)
+  const lineCount = codeBlockNode.children.length
+
+  if (direction === 'up' && startIndex === 0) return true
+  if (direction === 'down' && endIndex >= lineCount - 1) return true
+
+  const anchorLineEntry = editor.api.above({
+    at: selection.anchor,
+    match: { type: editor.getType(KEYS.codeLine) },
+    mode: 'lowest',
+  })
+  const focusLineEntry = editor.api.above({
+    at: selection.focus,
+    match: { type: editor.getType(KEYS.codeLine) },
+    mode: 'lowest',
+  })
+
+  if (!anchorLineEntry || !focusLineEntry) return false
+
+  const anchorLineIndexPosition = anchorLineEntry[1].length - 1
+  const focusLineIndexPosition = focusLineEntry[1].length - 1
+  const delta = direction === 'up' ? -1 : 1
+
+  editor.tf.withoutNormalizing(() => {
+    if (direction === 'up') {
+      for (let i = startIndex; i <= endIndex; i++) {
+        const path = [...linePathBase, i]
+        const targetPath = [...linePathBase, i - 1]
+
+        editor.tf.moveNodes({ at: path, to: targetPath })
+      }
+    } else {
+      for (let i = endIndex; i >= startIndex; i--) {
+        const path = [...linePathBase, i]
+        const targetPath = [...linePathBase, i + 1]
+
+        editor.tf.moveNodes({ at: path, to: targetPath })
+      }
+    }
+  })
+
+  const newAnchorPath = [...selection.anchor.path]
+  newAnchorPath[anchorLineIndexPosition] += delta
+
+  const newFocusPath = [...selection.focus.path]
+  newFocusPath[focusLineIndexPosition] += delta
+
+  editor.tf.select({
+    anchor: { ...selection.anchor, path: newAnchorPath },
+    focus: { ...selection.focus, path: newFocusPath },
+  })
+  editor.tf.focus()
+
+  return true
+}
+
 export const CodeBlockKit = [
   CodeBlockPlugin.configure({
     node: { component: CodeBlockElement },
@@ -253,6 +327,16 @@ export const CodeBlockKit = [
           }
           return true
         },
+      },
+      moveLineUp: {
+        keys: 'alt+arrowup',
+        priority: 200,
+        handler: ({ editor }) => moveSelectedCodeLines(editor, 'up'),
+      },
+      moveLineDown: {
+        keys: 'alt+arrowdown',
+        priority: 200,
+        handler: ({ editor }) => moveSelectedCodeLines(editor, 'down'),
       },
       tab: {
         keys: 'tab',
