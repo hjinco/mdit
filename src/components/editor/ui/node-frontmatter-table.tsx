@@ -13,7 +13,7 @@ import {
   TypeIcon,
   XIcon,
 } from 'lucide-react'
-import { useEditorRef } from 'platejs/react'
+import { useEditorRef, useSelected } from 'platejs/react'
 import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
@@ -48,6 +48,10 @@ type FocusRegistration = {
   rowId: string
   columnId: ColumnId
   register: (node: HTMLElement | null) => void
+}
+
+export type FrontmatterTableRef = {
+  focusAddButton: () => boolean
 }
 
 type FrontmatterTableProps = {
@@ -455,6 +459,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
   const keyboardNavFlagRef = useRef(false)
   const addButtonRef = useRef<HTMLButtonElement | null>(null)
   const editor = useEditorRef()
+  const selected = useSelected()
   const { shouldFrontmatterFocus, setShouldFrontmatterFocus } = useEditorStore(
     useShallow((s) => ({
       shouldFrontmatterFocus: s.shouldFrontmatterFocus,
@@ -916,6 +921,12 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
     }
     updateTableData((items) => [...items, newRow])
   }
+
+  useEffect(() => {
+    if (selected) {
+      focusAddButton()
+    }
+  }, [selected, focusAddButton])
 
   return (
     <div
