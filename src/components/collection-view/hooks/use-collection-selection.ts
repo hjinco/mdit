@@ -6,14 +6,14 @@ import { isImageFile } from '@/utils/file-icon'
 type Props = {
   entryOrderMap?: Map<string, number>
   sortedEntries?: WorkspaceEntry[]
-  openNote?: (path: string) => void
+  openTab: (path: string) => void
 }
 
 export function useCollectionSelection({
   entryOrderMap,
   sortedEntries,
-  openNote,
-}: Props = {}) {
+  openTab,
+}: Props) {
   const openImagePreview = useUIStore((state) => state.openImagePreview)
   const [selectedEntryPaths, setSelectedEntryPaths] = useState<Set<string>>(
     () => new Set()
@@ -29,7 +29,7 @@ export function useCollectionSelection({
 
   const handleEntryPrimaryAction = useCallback(
     (entry: WorkspaceEntry, event: MouseEvent<HTMLLIElement>) => {
-      if (!entryOrderMap || !sortedEntries || !openNote) {
+      if (!entryOrderMap || !sortedEntries) {
         return
       }
 
@@ -104,7 +104,7 @@ export function useCollectionSelection({
 
       if (!isRange && !isMulti) {
         if (entry.name.endsWith('.md')) {
-          openNote(entry.path)
+          openTab(entry.path)
         } else if (
           isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
         ) {
@@ -114,7 +114,7 @@ export function useCollectionSelection({
     },
     [
       entryOrderMap,
-      openNote,
+      openTab,
       openImagePreview,
       selectedEntryPaths,
       selectionAnchorPath,

@@ -61,10 +61,10 @@ export function FileExplorer() {
     unpinDirectory,
   } = useWorkspaceStore()
   const { setCurrentCollectionPath } = useCollectionStore()
-  const { tab, openNote, clearLinkedTab } = useTabStore(
+  const { tab, openTab, clearLinkedTab } = useTabStore(
     useShallow((s) => ({
       tab: s.tab,
-      openNote: s.openNote,
+      openTab: s.openTab,
       clearLinkedTab: s.clearLinkedTab,
     }))
   )
@@ -255,7 +255,7 @@ export function FileExplorer() {
       beginNewFolder,
       handleDeleteEntries,
       createNote: createNoteAndScroll,
-      openNote,
+      openTab,
       workspacePath,
       selectedEntryPaths,
       setSelectedEntryPaths,
@@ -350,7 +350,7 @@ export function FileExplorer() {
         if (entry.isDirectory) {
           toggleDirectory(entry.path)
         } else if (entry.name.endsWith('.md')) {
-          openNote(entry.path)
+          openTab(entry.path)
         } else if (
           isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
         ) {
@@ -360,7 +360,7 @@ export function FileExplorer() {
     },
     [
       entryOrderMap,
-      openNote,
+      openTab,
       selectedEntryPaths,
       selectionAnchorPath,
       setSelectedEntryPaths,

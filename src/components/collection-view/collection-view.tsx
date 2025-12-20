@@ -48,11 +48,11 @@ export function CollectionView() {
       setCurrentCollectionPath((prev) => (open ? prev : null))
     },
   })
-  const { tab, linkedTab, openNote, isSaved, clearLinkedTab } = useTabStore(
+  const { tab, linkedTab, openTab, isSaved, clearLinkedTab } = useTabStore(
     useShallow((state) => ({
       tab: state.tab,
       linkedTab: state.linkedTab,
-      openNote: state.openNote,
+      openTab: state.openTab,
       isSaved: state.isSaved,
       clearLinkedTab: state.clearLinkedTab,
     }))
@@ -135,7 +135,7 @@ export function CollectionView() {
   } = useCollectionSelection({
     entryOrderMap,
     sortedEntries,
-    openNote,
+    openTab,
   })
 
   const {

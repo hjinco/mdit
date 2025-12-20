@@ -28,7 +28,7 @@ import { highlightQuery } from './utils/highlight-query'
 export function CommandMenu() {
   const entries = useWorkspaceStore((state) => state.entries)
   const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const openNote = useTabStore((state) => state.openNote)
+  const openTab = useTabStore((state) => state.openTab)
 
   const {
     isCommandMenuOpen,
@@ -87,9 +87,9 @@ export function CommandMenu() {
   const handleSelectNote = useCallback(
     (notePath: string) => {
       closeCommandMenu()
-      openNote(notePath)
+      openTab(notePath)
     },
-    [closeCommandMenu, openNote]
+    [closeCommandMenu, openTab]
   )
 
   const [listRef, listBounds] = useMeasure({

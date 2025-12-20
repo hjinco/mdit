@@ -47,7 +47,7 @@ type UseFileExplorerMenusProps = {
     directoryPath: string,
     options?: { initialName?: string; initialContent?: string }
   ) => Promise<string>
-  openNote: (path: string) => void
+  openTab: (path: string) => void
   workspacePath: string | null
   selectedEntryPaths: Set<string>
   setSelectedEntryPaths: (paths: Set<string>) => void
@@ -67,7 +67,7 @@ export const useFileExplorerMenus = ({
   beginNewFolder,
   handleDeleteEntries,
   createNote,
-  openNote,
+  openTab,
   workspacePath,
   selectedEntryPaths,
   setSelectedEntryPaths,
@@ -265,7 +265,7 @@ export const useFileExplorerMenus = ({
             text: 'New Note',
             action: async () => {
               const filePath = await createNote(directoryPath)
-              openNote(filePath)
+              openTab(filePath)
             },
           }),
         ]
@@ -429,7 +429,7 @@ export const useFileExplorerMenus = ({
       beginNewFolder,
       createNote,
       handleDeleteEntries,
-      openNote,
+      openTab,
       workspacePath,
       pinnedDirectories,
       pinDirectory,
