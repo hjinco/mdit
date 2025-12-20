@@ -930,7 +930,6 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
           size="sm"
           className="data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
           ref={addButtonRef}
-          onKeyDown={handleAddButtonKeyDown}
           onKeyDownCapture={handleAddButtonKeyDown}
         >
           <PlusIcon />
