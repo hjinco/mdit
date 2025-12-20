@@ -652,9 +652,8 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
   const focusEditorSecondElement = useCallback(() => {
     if (!editor || editor.children.length < 2) return false
     keyboardNavFlagRef.current = true
-    editor.meta._forceFocus = true
-    editor.tf.focus({ at: [1], edge: 'start' })
-    editor.meta._forceFocus = undefined
+    editor.tf.select([1], { edge: 'start' })
+    editor.tf.focus()
     return true
   }, [editor])
 
