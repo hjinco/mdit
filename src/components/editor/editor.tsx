@@ -115,6 +115,17 @@ function EditorContent({
   }, [handleSave])
 
   useEffect(() => {
+    // Find the first non-void element, or use index 0 if all are void
+    let targetIndex = 0
+    for (let i = 0; i < editor.children.length; i++) {
+      const element = editor.children[i]
+      if (element && !editor.api.isVoid(element)) {
+        targetIndex = i
+        break
+      }
+    }
+
+    editor.tf.select([targetIndex], { edge: 'start' })
     editor.tf.focus()
   }, [editor])
 
