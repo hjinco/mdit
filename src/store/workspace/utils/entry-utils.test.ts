@@ -94,7 +94,9 @@ describe('removeEntriesFromState / removeEntryFromState', () => {
     ])
 
     expect(result).toHaveLength(2)
-    expect(result[0].children).toEqual([makeFile('/folder/file-2.md', 'file-2.md')])
+    expect(result[0].children).toEqual([
+      makeFile('/folder/file-2.md', 'file-2.md'),
+    ])
     expect(result[1].name).toBe('keep.md')
   })
 
@@ -114,11 +116,15 @@ describe('findEntryByPath', () => {
   it('finds nested entries and returns null when missing', () => {
     const entries: WorkspaceEntry[] = [
       makeDir('/folder', 'folder', [
-        makeDir('/folder/sub', 'sub', [makeFile('/folder/sub/file.md', 'file.md')]),
+        makeDir('/folder/sub', 'sub', [
+          makeFile('/folder/sub/file.md', 'file.md'),
+        ]),
       ]),
     ]
 
-    expect(findEntryByPath(entries, '/folder/sub/file.md')?.name).toBe('file.md')
+    expect(findEntryByPath(entries, '/folder/sub/file.md')?.name).toBe(
+      'file.md'
+    )
     expect(findEntryByPath(entries, '/not-found')).toBeNull()
   })
 })
@@ -137,7 +143,9 @@ describe('findParentDirectory', () => {
 describe('addEntryToState', () => {
   it('adds a new child and keeps entries sorted', () => {
     const entries: WorkspaceEntry[] = [
-      makeDir('/folder', 'folder', [makeFile('/folder/existing.md', 'existing.md')]),
+      makeDir('/folder', 'folder', [
+        makeFile('/folder/existing.md', 'existing.md'),
+      ]),
     ]
 
     const newEntry = makeFile('/folder/new.md', 'new.md')
@@ -160,6 +168,26 @@ describe('addEntryToState', () => {
 })
 
 describe('updateEntryInState', () => {
+  it('renames files', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/root', 'root', [makeFile('/root/note.md', 'note.md')]),
+      makeFile('/file.md', 'file.md'),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/file.md',
+      '/new-file.md',
+      'new-file.md'
+    )
+    const renamedFile = result.find((entry) => entry.name === 'new-file.md')
+    const oldFile = result.find((entry) => entry.name === 'file.md')
+
+    expect(renamedFile?.path).toBe('/new-file.md')
+    expect(oldFile).toBeUndefined()
+    expect(result.find((entry) => entry.name === 'root')).not.toBeUndefined()
+  })
+
   it('renames entries and updates descendant paths', () => {
     const entries: WorkspaceEntry[] = [
       makeDir('/root/old', 'old', [makeFile('/root/old/note.md', 'note.md')]),
@@ -191,6 +219,23 @@ describe('updateChildPathsForMove', () => {
 })
 
 describe('moveEntryInState', () => {
+  it('moves files', () => {
+    const entries: WorkspaceEntry[] = [
+      makeFile('/source.md', 'source.md'),
+      makeDir('/destination', 'destination', []),
+    ]
+
+    const result = moveEntryInState(entries, '/source.md', '/destination')
+    const destination = result.find((entry) => entry.path === '/destination')
+    const moved = destination?.children?.find(
+      (entry) => entry.name === 'source.md'
+    )
+
+    expect(findEntryByPath(result, '/source.md')).toBeNull()
+    expect(moved?.path).toBe('/destination/source.md')
+    expect(moved?.children).toBeUndefined()
+  })
+
   it('moves directories and rewrites child paths', () => {
     const entries: WorkspaceEntry[] = [
       makeDir('/source', 'source', [makeFile('/source/note.md', 'note.md')]),
@@ -199,7 +244,9 @@ describe('moveEntryInState', () => {
 
     const result = moveEntryInState(entries, '/source', '/destination')
     const destination = result.find((entry) => entry.path === '/destination')
-    const moved = destination?.children?.find((entry) => entry.name === 'source')
+    const moved = destination?.children?.find(
+      (entry) => entry.name === 'source'
+    )
 
     expect(findEntryByPath(result, '/source')).toBeNull()
     expect(moved?.path).toBe('/destination/source')
