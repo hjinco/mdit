@@ -16,7 +16,9 @@ import {
 import { useEditorRef } from 'platejs/react'
 import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
+import { useEditorStore } from '@/store/editor-store'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
 import {
@@ -453,6 +455,12 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
   const keyboardNavFlagRef = useRef(false)
   const addButtonRef = useRef<HTMLButtonElement | null>(null)
   const editor = useEditorRef()
+  const { shouldFrontmatterFocus, setShouldFrontmatterFocus } = useEditorStore(
+    useShallow((s) => ({
+      shouldFrontmatterFocus: s.shouldFrontmatterFocus,
+      setShouldFrontmatterFocus: s.setShouldFrontmatterFocus,
+    }))
+  )
 
   const [tableData, setTableData] = useState(data)
 
@@ -630,6 +638,25 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
       })
     }
   }, [])
+
+  useEffect(() => {
+    if (!shouldFrontmatterFocus) return
+    const firstRowId = rowOrderRef.current[0]
+    if (!firstRowId) {
+      setShouldFrontmatterFocus(false)
+      return
+    }
+    keyboardNavFlagRef.current = true
+    const preferred: ColumnId[] = ['key', 'value', 'type', 'actions']
+    for (const col of preferred) {
+      if (cellRefs.current[firstRowId]?.[col]) {
+        focusCell(firstRowId, col)
+        requestAnimationFrame(() => setShouldFrontmatterFocus(false))
+        return
+      }
+    }
+    setShouldFrontmatterFocus(false)
+  }, [focusCell, setShouldFrontmatterFocus, shouldFrontmatterFocus])
 
   const focusAddButton = useCallback(() => {
     const target = addButtonRef.current

@@ -25,6 +25,7 @@ import { KEYS, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
+import { useEditorStore } from '@/store/editor-store'
 import { useMDXSettingsStore } from '@/store/mdx-settings-store'
 import { useTabStore } from '@/store/tab-store'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
@@ -239,6 +240,7 @@ const groups: Group[] = [
           if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
 
           const defaults = await collectFrontmatterDefaults()
+          useEditorStore.getState().setShouldFrontmatterFocus(true)
           editor.tf.replaceNodes(
             {
               type: FRONTMATTER_KEY,
