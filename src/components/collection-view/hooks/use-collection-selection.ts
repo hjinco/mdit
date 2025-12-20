@@ -29,7 +29,7 @@ export function useCollectionSelection({
 
   const handleEntryPrimaryAction = useCallback(
     (entry: WorkspaceEntry, event: MouseEvent<HTMLLIElement>) => {
-      if (!entryOrderMap || !sortedEntries || !openTab) {
+      if (!entryOrderMap || !sortedEntries) {
         return
       }
 
