@@ -388,30 +388,25 @@ export const CodeBlockKit = [
           let didOutdent = false
 
           editor.tf.withoutNormalizing(() => {
+            const tabWidth = 2 // Based on CSS `tab-size: 2`. Consider making this configurable.
             selectedLines.forEach(([codeLineNode, codeLinePath]) => {
               const lineText = NodeApi.string(codeLineNode)
+              const indentInfo = getIndentInfo(lineText)
 
-              if (lineText.startsWith('\t') || lineText.startsWith(' ')) {
+              if (indentInfo.count > 0) {
                 const start = editor.api.start(codeLinePath)
                 if (start) {
-                  const after = editor.api.after(start)
-                  if (after) {
-                    editor.tf.delete({
-                      at: {
-                        anchor: start,
-                        focus: after,
-                      },
-                    })
-                    didOutdent = true
-                  } else {
-                    // Fallback: delete one character from start
-                    editor.tf.delete({
-                      at: start,
-                      unit: 'character',
-                      distance: 1,
-                    })
-                    didOutdent = true
-                  }
+                  const distance =
+                    indentInfo.type === 'tab'
+                      ? 1
+                      : Math.min(indentInfo.count, tabWidth)
+
+                  editor.tf.delete({
+                    at: start,
+                    distance,
+                    unit: 'character',
+                  })
+                  didOutdent = true
                 }
               }
             })
