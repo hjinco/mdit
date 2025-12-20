@@ -115,6 +115,16 @@ function EditorContent({
   }, [handleSave])
 
   useEffect(() => {
+    const targetIndex = editor.children.findIndex(
+      (element) => element && !editor.api.isVoid(element)
+    )
+
+    // Default to index 0 if no non-void element is found.
+    const finalIndex = targetIndex === -1 ? 0 : targetIndex
+
+    if (editor.children.length > 0) {
+      editor.tf.select([finalIndex], { edge: 'start' })
+    }
     editor.tf.focus()
   }, [editor])
 
