@@ -1,5 +1,6 @@
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, useEditorRef } from 'platejs/react'
+import { useCallback } from 'react'
 import { FrontmatterTable, type KVRow } from './node-frontmatter-table'
 
 export type TFrontmatterElement = {
@@ -14,17 +15,20 @@ export function FrontmatterElement(
   const editor = useEditorRef()
   const element = props.element as TFrontmatterElement
 
-  const handleDataChange = (nextRows: KVRow[]) => {
-    if (nextRows.length === 0) {
-      editor.tf.removeNodes({ at: [0] })
-      return
-    }
-    const path = props.api.findPath(element)
+  const handleDataChange = useCallback(
+    (nextRows: KVRow[]) => {
+      if (nextRows.length === 0) {
+        editor.tf.removeNodes({ at: [0] })
+        return
+      }
+      const path = props.api.findPath(element)
 
-    if (path) {
-      editor.tf.setNodes({ data: nextRows }, { at: path })
-    }
-  }
+      if (path) {
+        editor.tf.setNodes({ data: nextRows }, { at: path })
+      }
+    },
+    [editor, element, props.api]
+  )
 
   return (
     <PlateElement {...props} className="mb-4">
