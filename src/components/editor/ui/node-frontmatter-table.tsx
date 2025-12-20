@@ -14,7 +14,7 @@ import {
   XIcon,
 } from 'lucide-react'
 import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
@@ -118,10 +118,6 @@ export function convertValueToType(
       return strValue
     }
   }
-}
-
-function uid() {
-  return Math.random().toString(36).slice(2, 9)
 }
 
 const typeIcons: Record<
@@ -358,22 +354,40 @@ function ValueEditor({
 }
 
 export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
+  const [tableData, setTableData] = useState(data)
+
+  useEffect(() => {
+    setTableData(data)
+  }, [data])
+
+  const updateTableData = useCallback(
+    (updater: (rows: KVRow[]) => KVRow[]) => {
+      setTableData((prev) => {
+        const next = updater(prev)
+        onChange(next)
+        return next
+      })
+    },
+    [onChange]
+  )
+
   const columns = useMemo<ColumnDef<KVRow>[]>(
     () => [
       {
         accessorKey: 'type',
         cell: ({ row }) => {
           const updateType = (newType: ValueType) => {
-            const updatedData = data.map((item) =>
-              item.id === row.original.id
-                ? {
-                    ...item,
-                    type: newType,
-                    value: convertValueToType(item.value, newType),
-                  }
-                : item
+            updateTableData((items) =>
+              items.map((item) =>
+                item.id === row.original.id
+                  ? {
+                      ...item,
+                      type: newType,
+                      value: convertValueToType(item.value, newType),
+                    }
+                  : item
+              )
             )
-            onChange(updatedData)
           }
 
           return (
@@ -385,10 +399,11 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
         accessorKey: 'key',
         cell: ({ row }) => {
           const updateKey = (newKey: string) => {
-            const updatedData = data.map((item) =>
-              item.id === row.original.id ? { ...item, key: newKey } : item
+            updateTableData((items) =>
+              items.map((item) =>
+                item.id === row.original.id ? { ...item, key: newKey } : item
+              )
             )
-            onChange(updatedData)
           }
 
           return (
@@ -404,15 +419,16 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
         accessorKey: 'value',
         cell: ({ row }) => {
           const updateValue = (newValue: unknown) => {
-            const updatedData = data.map((item) =>
-              item.id === row.original.id
-                ? {
-                    ...item,
-                    value: convertValueToType(newValue, row.original.type),
-                  }
-                : item
+            updateTableData((items) =>
+              items.map((item) =>
+                item.id === row.original.id
+                  ? {
+                      ...item,
+                      value: convertValueToType(newValue, row.original.type),
+                    }
+                  : item
+              )
             )
-            onChange(updatedData)
           }
 
           return (
@@ -428,10 +444,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
         id: 'actions',
         cell: ({ row }) => {
           const removeRow = () => {
-            const updatedData = data.filter(
-              (item) => item.id !== row.original.id
+            updateTableData((items) =>
+              items.filter((item) => item.id !== row.original.id)
             )
-            onChange(updatedData)
           }
 
           return (
@@ -447,17 +462,17 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
         },
       },
     ],
-    [data, onChange]
+    [updateTableData]
   )
 
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
 
   const addRow = () => {
-    const existing = new Set(data.map((d) => d.key).filter(Boolean))
+    const existing = new Set(tableData.map((d) => d.key).filter(Boolean))
     const base = 'property'
     let candidate = base
     let i = 1
@@ -466,12 +481,12 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
     }
 
     const newRow: KVRow = {
-      id: uid(),
+      id: crypto.randomUUID(),
       key: candidate,
       value: '',
       type: 'string',
     }
-    onChange([...data, newRow])
+    updateTableData((items) => [...items, newRow])
   }
 
   return (
