@@ -10,6 +10,8 @@ type EditorStore = {
   typingBurstCount: number
   handleTypingProgress: () => void
   resetFocusMode: () => void
+  shouldFrontmatterFocus: boolean
+  setShouldFrontmatterFocus: (shouldFrontmatterFocus: boolean) => void
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -37,6 +39,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({
       typingBurstCount: 0,
       isFocusMode: false,
+    })
+  },
+  shouldFrontmatterFocus: false,
+  setShouldFrontmatterFocus: (shouldFrontmatterFocus: boolean) => {
+    set({
+      shouldFrontmatterFocus,
     })
   },
 }))
