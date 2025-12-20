@@ -33,7 +33,7 @@ export function FrontmatterElement(
   return (
     <PlateElement {...props} className="mb-4">
       <div
-        className="flex flex-col select-none text-muted-foreground overflow-x-auto py-0.5"
+        className="flex flex-col select-none text-muted-foreground overflow-x-auto p-0.5"
         contentEditable={false}
         onContextMenu={(e) => e.stopPropagation()}
       >
