@@ -272,7 +272,7 @@ function ValueEditor({
   switch (type) {
     case 'boolean':
       return (
-        <div className="flex items-center justify-start ml-2">
+        <div className="h-8 flex items-center justify-start ml-2">
           <Switch checked={Boolean(value)} onCheckedChange={onValueChange} />
         </div>
       )
@@ -291,6 +291,7 @@ function ValueEditor({
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
+              size="sm"
               className={cn(!dateValue && 'text-muted-foreground')}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -494,7 +495,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
       <table className="w-full">
         <tbody className="flex flex-col gap-2">
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="group flex items-center gap-1">
+            <tr key={row.id} className="group flex items-start gap-1">
               {row.getVisibleCells().map((cell) => (
                 <td
                   key={cell.id}
