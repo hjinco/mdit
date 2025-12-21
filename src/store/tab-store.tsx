@@ -363,7 +363,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
     const isCurrentTabDeleted = state.tab?.path === path
 
     if (isCurrentTabDeleted) {
-      if (history.length > 0 && historyIndex >= 0) {
+      if (history.length > 0) {
         set({
           history,
           historyIndex,
