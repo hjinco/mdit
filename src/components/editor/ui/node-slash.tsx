@@ -240,7 +240,7 @@ const groups: Group[] = [
           if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
 
           const defaults = await collectFrontmatterDefaults()
-          useEditorStore.getState().setShouldFrontmatterFocus(true)
+          useEditorStore.getState().setFrontmatterFocusTarget('firstCell')
           editor.tf.replaceNodes(
             {
               type: FRONTMATTER_KEY,

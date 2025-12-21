@@ -10,8 +10,10 @@ type EditorStore = {
   typingBurstCount: number
   handleTypingProgress: () => void
   resetFocusMode: () => void
-  shouldFrontmatterFocus: boolean
-  setShouldFrontmatterFocus: (shouldFrontmatterFocus: boolean) => void
+  frontmatterFocusTarget: 'none' | 'firstCell' | 'addButton'
+  setFrontmatterFocusTarget: (
+    frontmatterFocusTarget: EditorStore['frontmatterFocusTarget']
+  ) => void
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -41,10 +43,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       isFocusMode: false,
     })
   },
-  shouldFrontmatterFocus: false,
-  setShouldFrontmatterFocus: (shouldFrontmatterFocus: boolean) => {
+  frontmatterFocusTarget: 'none',
+  setFrontmatterFocusTarget: (
+    frontmatterFocusTarget: EditorStore['frontmatterFocusTarget']
+  ) => {
     set({
-      shouldFrontmatterFocus,
+      frontmatterFocusTarget,
     })
   },
 }))
