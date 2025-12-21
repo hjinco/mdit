@@ -15,8 +15,6 @@ export function removePathFromHistory(
     nextIndex = -1
   } else if (nextIndex < 0) {
     nextIndex = 0
-  } else if (nextIndex >= filteredHistory.length) {
-    nextIndex = filteredHistory.length - 1
   }
 
   return {
