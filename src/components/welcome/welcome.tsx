@@ -21,10 +21,10 @@ export function Welcome() {
             </p>
           </div>
 
-          <div className="flex flex-col items-center mt-8">
+          <div className="flex flex-col items-center mt-6">
             <Button
               variant="secondary"
-              size="lg"
+              size="sm"
               className="w-fit"
               onClick={openFolderPicker}
             >
