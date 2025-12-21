@@ -3,6 +3,7 @@ import { relative } from 'pathe'
 import { create } from 'zustand'
 import { saveSettings } from '@/lib/settings-utils'
 import { getFileNameWithoutExtension } from '@/utils/path-utils'
+import { removePathFromHistory } from './tab/utils/history-utils'
 import { useWorkspaceStore } from './workspace-store'
 
 let tabIdCounter = 0
@@ -354,55 +355,38 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
   removePathFromHistory: (path: string) => {
     const state = get()
-
-    // Check if current tab is being deleted
+    const { history, historyIndex } = removePathFromHistory(
+      state.history,
+      state.historyIndex,
+      path
+    )
     const isCurrentTabDeleted = state.tab?.path === path
 
-    // Filter out the deleted path
-    const filteredHistory = state.history.filter((p) => p !== path)
-
-    // Adjust historyIndex
-    let newIndex = state.historyIndex
-
-    // Count how many instances before current index were removed
-    const removedBeforeIndex = state.history
-      .slice(0, state.historyIndex + 1)
-      .filter((p) => p === path).length
-
-    newIndex -= removedBeforeIndex
-
-    // Ensure index is within bounds
-    if (newIndex >= filteredHistory.length) {
-      newIndex = filteredHistory.length - 1
-    }
-
-    // If current tab was deleted, try to go back to previous valid tab
-    if (isCurrentTabDeleted && filteredHistory.length > 0 && newIndex >= 0) {
-      set({
-        history: filteredHistory,
-        historyIndex: newIndex,
-      })
-
-      // Automatically go back to the previous valid tab
-      const targetPath = filteredHistory[newIndex]
-      get()
-        .openTab(targetPath, true)
-        .catch((error) => {
-          console.error('Failed to navigate after deletion:', error)
-          set({ tab: null })
+    if (isCurrentTabDeleted) {
+      if (history.length > 0 && historyIndex >= 0) {
+        set({
+          history,
+          historyIndex,
         })
-    } else if (isCurrentTabDeleted) {
-      // No valid history remains
-      set({
-        tab: null,
-        history: filteredHistory,
-        historyIndex: -1,
-      })
+
+        const targetPath = history[historyIndex]
+        get()
+          .openTab(targetPath, true)
+          .catch((error) => {
+            console.error('Failed to navigate after deletion:', error)
+            set({ tab: null })
+          })
+      } else {
+        set({
+          tab: null,
+          history,
+          historyIndex: -1,
+        })
+      }
     } else {
-      // Just update history without changing tab
       set({
-        history: filteredHistory,
-        historyIndex: newIndex,
+        history,
+        historyIndex,
       })
     }
   },
