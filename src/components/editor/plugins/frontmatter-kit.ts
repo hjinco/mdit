@@ -37,7 +37,7 @@ export const frontmatterPlugin = createPlatePlugin({
         return
 
       const firstNode = editor.children[0]
-      if (!firstNode || !('type' in firstNode) || firstNode.type !== FRONTMATTER_KEY) return
+      if (!firstNode || firstNode.type !== FRONTMATTER_KEY) return
 
       event.preventDefault()
       event.stopPropagation()
