@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { useTabStore } from '@/store/tab-store'
+import { useWorkspaceStore } from '@/store/workspace-store'
 import { isMac } from '@/utils/platform'
 import { Header } from './header/header'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
@@ -77,6 +78,7 @@ function EditorContent({
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
+  const recordFsOperation = useWorkspaceStore((s) => s.recordFsOperation)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -91,13 +93,14 @@ function EditorContent({
       .then(() => {
         isSaved.current = true
         setTabSaved(true)
+        recordFsOperation()
         handleRenameAfterSave()
       })
       .catch(() => {
         isSaved.current = false
         setTabSaved(false)
       })
-  }, [editor, path, setTabSaved, handleRenameAfterSave])
+  }, [editor, path, setTabSaved, handleRenameAfterSave, recordFsOperation])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
