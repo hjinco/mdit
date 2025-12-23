@@ -82,14 +82,14 @@ export function FrontmatterArray({
       {items.map((item, index) => (
         <span
           key={item}
-          className="group inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-sm text-foreground cursor-default"
+          className="group inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-1 text-sm text-foreground cursor-default"
         >
           <span className="max-w-[12rem] truncate" title={item}>
             {item}
           </span>
           <button
             type="button"
-            className="rounded-full py-0.5 text-muted-foreground transition-colors hover:text-destructive cursor-pointer"
+            className="rounded-sm py-0.5 text-muted-foreground transition-colors hover:text-destructive cursor-pointer"
             onClick={(event) => {
               event.stopPropagation()
               removeItem(index)
@@ -115,7 +115,7 @@ export function FrontmatterArray({
         placeholder={items.length ? '' : placeholder}
         className={cn(
           'flex-1 min-w-[120px] border-none px-2 shadow-none focus-visible:ring-0 focus-visible:border-0 bg-transparent dark:bg-transparent focus-visible:outline-none',
-          'data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]'
+          'rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]'
         )}
       />
     </div>

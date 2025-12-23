@@ -169,7 +169,7 @@ function TypeSelect({
         <Button
           variant="ghost"
           size="icon"
-          className="data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
+          className="rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
           {...focusAttrs}
         >
           <TypeIcon />
@@ -304,7 +304,7 @@ function InlineEditableField({
               cancelEditing(true)
             }
           }}
-          className="bg-background dark:bg-background text-foreground absolute left-0 w-full h-8 -top-[0.5px] border-0"
+          className="rounded-sm bg-background dark:bg-background text-foreground absolute left-0 w-full h-8 -top-[0.5px] border-0"
           autoFocus
           data-row-id={focusAttrs?.['data-row-id']}
           data-col-id={focusAttrs?.['data-col-id']}
@@ -316,7 +316,7 @@ function InlineEditableField({
           variant="ghost"
           size="sm"
           className={cn(
-            'w-full justify-start border border-transparent px-3 text-left truncate data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] border-none',
+            'rounded-sm w-full justify-start px-3 text-left truncate data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] border-none',
             !value && 'text-muted-foreground italic'
           )}
           onClick={() => {
@@ -377,7 +377,7 @@ function ValueEditor({
               variant="ghost"
               size="sm"
               className={cn(
-                'data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]',
+                'rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]',
                 !dateValue && 'text-muted-foreground'
               )}
               ref={focusRegistration?.register}
@@ -588,7 +588,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
               variant="ghost"
               size="icon"
               onClick={removeRow}
-              className="text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:opacity-100 data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] transition-opacity"
+              className="rounded-sm text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:opacity-100 data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] transition-opacity"
               ref={(node) => {
                 if (!cellRefs.current[row.original.id]) {
                   cellRefs.current[row.original.id] = {}
@@ -964,7 +964,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
           onClick={addRow}
           variant="ghost"
           size="sm"
-          className="data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
+          className="rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
           ref={addButtonRef}
           onKeyDownCapture={handleAddButtonKeyDown}
         >
