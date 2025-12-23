@@ -38,7 +38,13 @@ export function App() {
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
-    const closeListener = appWindow.listen('tauri://close-requested', () => {
+    const closeListener = appWindow.listen('tauri://close-requested', async () => {
+      const isFullscreen = await appWindow.isFullscreen()
+      console.log('isFullscreen', isFullscreen)
+      if (isFullscreen) {
+        await appWindow.setFullscreen(false)
+        await new Promise((resolve) => setTimeout(resolve, 700))
+      }
       appWindow.hide()
     })
 
