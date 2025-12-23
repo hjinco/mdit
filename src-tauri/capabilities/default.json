@@ -11,6 +11,7 @@
     "core:app:allow-default-window-icon",
     "core:window:allow-hide",
     "core:window:allow-show",
+    "core:window:allow-set-fullscreen",
     "process:default",
     "opener:default",
     "dialog:default",
