@@ -115,7 +115,7 @@ export function FrontmatterArray({
         placeholder={items.length ? '' : placeholder}
         className={cn(
           'flex-1 min-w-[120px] border-none px-2 shadow-none focus-visible:ring-0 focus-visible:border-0 bg-transparent dark:bg-transparent focus-visible:outline-none',
-          'data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]'
+          'rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]'
         )}
       />
     </div>

@@ -316,7 +316,7 @@ function InlineEditableField({
           variant="ghost"
           size="sm"
           className={cn(
-            'rounded-sm w-full justify-start border border-transparent px-3 text-left truncate data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] border-none',
+            'rounded-sm w-full justify-start px-3 text-left truncate data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] border-none',
             !value && 'text-muted-foreground italic'
           )}
           onClick={() => {
