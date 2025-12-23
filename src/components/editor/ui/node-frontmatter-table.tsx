@@ -411,7 +411,7 @@ function ValueEditor({
       return (
         <FrontmatterArray
           value={value}
-          onChange={(items) => onValueChange(items)}
+          onChange={onValueChange}
           focusRegistration={focusRegistration}
         />
       )
