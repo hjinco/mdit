@@ -30,6 +30,7 @@ import {
 import { Input } from '@/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Switch } from '@/ui/switch'
+import { FrontmatterArray } from './node-frontmatter-array'
 
 export type ValueType = 'string' | 'number' | 'boolean' | 'date' | 'array'
 
@@ -408,17 +409,9 @@ function ValueEditor({
     }
     case 'array':
       return (
-        <InlineEditableField
-          value={Array.isArray(value) ? value.join(', ') : stringValue}
-          placeholder="Item 1, Item 2, Item 3"
-          onCommit={(newValue) =>
-            onValueChange(
-              newValue
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean)
-            )
-          }
+        <FrontmatterArray
+          value={value}
+          onChange={onValueChange}
           focusRegistration={focusRegistration}
         />
       )
