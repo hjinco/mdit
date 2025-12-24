@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { motion } from 'motion/react'
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
@@ -12,10 +12,10 @@ import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
-import { isImageFile } from '@/utils/file-icon'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
+import { useEntryPrimaryAction } from './hooks/use-entry-primary-action'
 import { useFolderDropZone } from './hooks/use-folder-drop-zone'
 import { FeedbackButton } from './ui/feedback-button'
 import { GitSyncStatus } from './ui/git-sync-status'
@@ -267,109 +267,17 @@ export function FileExplorer() {
       unpinDirectory,
     })
 
-  const handleEntryPrimaryAction = useCallback(
-    (entry: WorkspaceEntry, event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation()
-      const path = entry.path
-      const isMulti = event.metaKey || event.ctrlKey
-      const isRange = event.shiftKey
-
-      let nextSelection = new Set(selectedEntryPaths)
-
-      if (isRange) {
-        if (
-          selectionAnchorPath &&
-          entryOrderMap.has(selectionAnchorPath) &&
-          entryOrderMap.has(path)
-        ) {
-          nextSelection = new Set()
-          const anchorIndex = entryOrderMap.get(selectionAnchorPath)!
-          const currentIndex = entryOrderMap.get(path)!
-          const start = Math.min(anchorIndex, currentIndex)
-          const end = Math.max(anchorIndex, currentIndex)
-          for (let index = start; index <= end; index += 1) {
-            const targetPath = visibleEntryPaths[index]
-            if (targetPath) {
-              nextSelection.add(targetPath)
-            }
-          }
-        } else {
-          nextSelection = new Set([path])
-        }
-      } else if (isMulti) {
-        if (nextSelection.has(path)) {
-          nextSelection.delete(path)
-        } else {
-          nextSelection.add(path)
-        }
-      } else {
-        nextSelection = new Set([path])
-      }
-
-      setSelectedEntryPaths(nextSelection)
-
-      let nextAnchor: string | null = selectionAnchorPath
-
-      if (isRange) {
-        if (
-          selectionAnchorPath &&
-          entryOrderMap.has(selectionAnchorPath) &&
-          nextSelection.has(selectionAnchorPath)
-        ) {
-          nextAnchor = selectionAnchorPath
-        } else {
-          nextAnchor = path
-        }
-      } else if (isMulti) {
-        if (nextSelection.has(path)) {
-          nextAnchor = path
-        } else if (
-          selectionAnchorPath &&
-          nextSelection.has(selectionAnchorPath)
-        ) {
-          nextAnchor = selectionAnchorPath
-        } else {
-          const firstSelected = nextSelection.values().next().value ?? null
-          nextAnchor = firstSelected ?? null
-        }
-      } else if (!entry.isDirectory) {
-        nextAnchor = path
-      } else if (
-        selectionAnchorPath &&
-        nextSelection.has(selectionAnchorPath)
-      ) {
-        nextAnchor = selectionAnchorPath
-      } else {
-        const firstSelected = nextSelection.values().next().value ?? null
-        nextAnchor = firstSelected ?? null
-      }
-
-      setSelectionAnchorPath(nextSelection.size > 0 ? nextAnchor : null)
-
-      if (!isRange && !isMulti) {
-        if (entry.isDirectory) {
-          toggleDirectory(entry.path)
-        } else if (entry.name.endsWith('.md')) {
-          openTab(entry.path)
-        } else if (
-          isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
-        ) {
-          openImagePreview(entry.path)
-        }
-      }
-    },
-    [
-      entryOrderMap,
-      openTab,
-      selectedEntryPaths,
-      selectionAnchorPath,
-      setSelectedEntryPaths,
-      setSelectionAnchorPath,
-      visibleEntryPaths,
-      openImagePreview,
-      toggleDirectory,
-    ]
-  )
+  const handleEntryPrimaryAction = useEntryPrimaryAction({
+    entryOrderMap,
+    openTab,
+    selectedEntryPaths,
+    selectionAnchorPath,
+    setSelectedEntryPaths,
+    setSelectionAnchorPath,
+    visibleEntryPaths,
+    openImagePreview,
+    toggleDirectory,
+  })
 
   const handleCollectionViewOpen = useCallback(
     (entry: WorkspaceEntry) => {
