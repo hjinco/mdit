@@ -42,7 +42,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
 
   const handleTurnInto = useCallback(
     (type: string) => {
-      const isListType = [KEYS.ul, KEYS.ol, KEYS.listTodo].includes(type)
+      const isListType = [KEYS.ul, KEYS.ol, KEYS.listTodo].includes(type as any)
 
       editor.tf.withoutNormalizing(() => {
         for (const [node, path] of editor
@@ -71,6 +71,17 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
     },
     [editor]
   )
+
+  const turnIntoItems = [
+    { key: KEYS.p, icon: TypeIcon, label: 'Paragraph' },
+    { key: KEYS.h1, icon: Heading1Icon, label: 'Heading 1' },
+    { key: KEYS.h2, icon: Heading2Icon, label: 'Heading 2' },
+    { key: KEYS.h3, icon: Heading3Icon, label: 'Heading 3' },
+    { key: KEYS.blockquote, icon: Quote, label: 'Blockquote' },
+    { key: KEYS.ul, icon: ListIcon, label: 'Bulleted list' },
+    { key: KEYS.ol, icon: ListOrdered, label: 'Numbered list' },
+    { key: KEYS.listTodo, icon: Square, label: 'Todo list' },
+  ]
 
   if (isTouch) {
     return children
@@ -151,31 +162,11 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
           <ContextMenuSub>
             <ContextMenuSubTrigger>Turn into</ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-48">
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.p)}>
-                <TypeIcon /> Paragraph
-              </ContextMenuItem>
-
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h1)}>
-                <Heading1Icon /> Heading 1
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h2)}>
-                <Heading2Icon /> Heading 2
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h3)}>
-                <Heading3Icon /> Heading 3
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.blockquote)}>
-                <Quote /> Blockquote
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.ul)}>
-                <ListIcon /> Bulleted list
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.ol)}>
-                <ListOrdered /> Numbered list
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.listTodo)}>
-                <Square /> Todo list
-              </ContextMenuItem>
+              {turnIntoItems.map(({ key, icon: Icon, label }) => (
+                <ContextMenuItem key={key} onClick={() => handleTurnInto(key)}>
+                  <Icon /> {label}
+                </ContextMenuItem>
+              ))}
             </ContextMenuSubContent>
           </ContextMenuSub>
         </ContextMenuGroup>
