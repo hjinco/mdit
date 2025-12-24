@@ -69,37 +69,27 @@ export const useEntryPrimaryAction = ({
       let nextAnchor: string | null = selectionAnchorPath
 
       if (isRange) {
+        // For range selection, if the original anchor is no longer valid,
+        // the newly clicked item becomes the anchor. Otherwise, it's preserved.
         if (
-          selectionAnchorPath &&
-          entryOrderMap.has(selectionAnchorPath) &&
-          nextSelection.has(selectionAnchorPath)
+          !selectionAnchorPath ||
+          !entryOrderMap.has(selectionAnchorPath) ||
+          !nextSelection.has(selectionAnchorPath)
         ) {
-          nextAnchor = selectionAnchorPath
-        } else {
           nextAnchor = path
         }
       } else if (isMulti) {
         if (nextSelection.has(path)) {
+          // When adding an item with multi-select, it becomes the new anchor.
           nextAnchor = path
-        } else if (
-          selectionAnchorPath &&
-          nextSelection.has(selectionAnchorPath)
-        ) {
-          nextAnchor = selectionAnchorPath
-        } else {
-          const firstSelected = nextSelection.values().next().value ?? null
-          nextAnchor = firstSelected ?? null
+        } else if (!selectionAnchorPath || !nextSelection.has(selectionAnchorPath)) {
+          // When removing an item, if the anchor is removed, pick the first
+          // available selected item as the new anchor.
+          nextAnchor = nextSelection.values().next().value ?? null
         }
-      } else if (!entry.isDirectory) {
-        nextAnchor = path
-      } else if (
-        selectionAnchorPath &&
-        nextSelection.has(selectionAnchorPath)
-      ) {
-        nextAnchor = selectionAnchorPath
       } else {
-        const firstSelected = nextSelection.values().next().value ?? null
-        nextAnchor = firstSelected ?? null
+        // For a single click, the clicked item always becomes the new anchor.
+        nextAnchor = path
       }
 
       setSelectionAnchorPath(nextSelection.size > 0 ? nextAnchor : null)
