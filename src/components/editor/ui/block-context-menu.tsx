@@ -42,8 +42,7 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
 
   const handleTurnInto = useCallback(
     (type: string) => {
-      const isListType =
-        type === KEYS.ul || type === KEYS.ol || type === KEYS.listTodo
+      const isListType = [KEYS.ul, KEYS.ol, KEYS.listTodo].includes(type)
 
       editor.tf.withoutNormalizing(() => {
         for (const [node, path] of editor
