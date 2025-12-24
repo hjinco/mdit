@@ -4,7 +4,19 @@ import {
   BlockMenuPlugin,
   BlockSelectionPlugin,
 } from '@platejs/selection/react'
-import { CopyIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import {
+  CopyIcon,
+  Heading1Icon,
+  Heading2Icon,
+  Heading3Icon,
+  ListIcon,
+  ListOrdered,
+  Quote,
+  SparklesIcon,
+  Square,
+  Trash2Icon,
+  TypeIcon,
+} from 'lucide-react'
 import { KEYS } from 'platejs'
 import { useEditorPlugin, usePlateState } from 'platejs/react'
 import { useCallback, useState } from 'react'
@@ -30,20 +42,46 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
 
   const handleTurnInto = useCallback(
     (type: string) => {
-      for (const [node, path] of editor
-        .getApi(BlockSelectionPlugin)
-        .blockSelection.getNodes()) {
-        if (node[KEYS.listType]) {
-          editor.tf.unsetNodes([KEYS.listType, 'indent'], {
-            at: path,
-          })
-        }
+      const isListType = [KEYS.ul, KEYS.ol, KEYS.listTodo].includes(type as any)
 
-        editor.tf.toggleBlock(type, { at: path })
-      }
+      editor.tf.withoutNormalizing(() => {
+        for (const [node, path] of editor
+          .getApi(BlockSelectionPlugin)
+          .blockSelection.getNodes()) {
+          if (node[KEYS.listType]) {
+            editor.tf.unsetNodes([KEYS.listType, 'indent'], {
+              at: path,
+            })
+          }
+
+          if (isListType) {
+            editor.tf.setNodes(
+              {
+                indent: 1,
+                listStyleType: type,
+                ...(type === KEYS.listTodo && { checked: false }),
+              },
+              { at: path }
+            )
+          } else {
+            editor.tf.toggleBlock(type, { at: path })
+          }
+        }
+      })
     },
     [editor]
   )
+
+  const turnIntoItems = [
+    { key: KEYS.p, icon: TypeIcon, label: 'Paragraph' },
+    { key: KEYS.h1, icon: Heading1Icon, label: 'Heading 1' },
+    { key: KEYS.h2, icon: Heading2Icon, label: 'Heading 2' },
+    { key: KEYS.h3, icon: Heading3Icon, label: 'Heading 3' },
+    { key: KEYS.blockquote, icon: Quote, label: 'Blockquote' },
+    { key: KEYS.ul, icon: ListIcon, label: 'Bulleted list' },
+    { key: KEYS.ol, icon: ListOrdered, label: 'Numbered list' },
+    { key: KEYS.listTodo, icon: Square, label: 'Todo list' },
+  ]
 
   if (isTouch) {
     return children
@@ -124,22 +162,11 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
           <ContextMenuSub>
             <ContextMenuSubTrigger>Turn into</ContextMenuSubTrigger>
             <ContextMenuSubContent className="w-48">
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.p)}>
-                Paragraph
-              </ContextMenuItem>
-
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h1)}>
-                Heading 1
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h2)}>
-                Heading 2
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.h3)}>
-                Heading 3
-              </ContextMenuItem>
-              <ContextMenuItem onClick={() => handleTurnInto(KEYS.blockquote)}>
-                Blockquote
-              </ContextMenuItem>
+              {turnIntoItems.map(({ key, icon: Icon, label }) => (
+                <ContextMenuItem key={key} onClick={() => handleTurnInto(key)}>
+                  <Icon /> {label}
+                </ContextMenuItem>
+              ))}
             </ContextMenuSubContent>
           </ContextMenuSub>
         </ContextMenuGroup>
