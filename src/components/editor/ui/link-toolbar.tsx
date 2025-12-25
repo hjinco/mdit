@@ -424,6 +424,15 @@ function LinkUrlInput() {
         return
       }
 
+      if (key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        event.nativeEvent.stopImmediatePropagation()
+        api.floatingLink.hide()
+        editor.tf.focus()
+        return
+      }
+
       if (!filteredSuggestions.length) {
         return
       }
@@ -450,12 +459,15 @@ function LinkUrlInput() {
         })
         return
       }
-
-      if (key === 'Escape' && highlightedIndex >= 0) {
-        setHighlightedIndex(-1)
-      }
     },
-    [confirmLink, filteredSuggestions, handleSelectSuggestion, highlightedIndex]
+    [
+      confirmLink,
+      filteredSuggestions,
+      handleSelectSuggestion,
+      highlightedIndex,
+      api,
+      editor,
+    ]
   )
 
   const handleConfirm = useCallback(
