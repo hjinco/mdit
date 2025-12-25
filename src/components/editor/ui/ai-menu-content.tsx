@@ -24,6 +24,7 @@ interface AIMenuContentProps {
   input: string
   value: string
   menuState: EditorChatState
+  isLicenseValid: boolean
   onModelPopoverOpenChange: (open: boolean) => void
   onValueChange: (value: string) => void
   onInputChange: (value: string) => void
@@ -43,6 +44,7 @@ export function AIMenuContent({
   input,
   value,
   menuState,
+  isLicenseValid,
   onModelPopoverOpenChange,
   onValueChange,
   onInputChange,
@@ -184,7 +186,9 @@ export function AIMenuContent({
     }
   }, [input, isLoading, adjustTextareaHeight])
 
-  const canSubmit = Boolean(chatConfig && !isLoading && !value)
+  const canSubmit = Boolean(
+    chatConfig && !isLoading && !value && isLicenseValid
+  )
   const isSingleLine = textareaLineCount <= 1
 
   return (
@@ -222,20 +226,24 @@ export function AIMenuContent({
             }}
             onValueChange={onInputChange}
             placeholder={
-              chatConfig
-                ? 'Ask AI anything...'
-                : 'Select a model to get started...'
+              isLicenseValid
+                ? chatConfig
+                  ? 'Ask AI anything...'
+                  : 'Select a model to get started...'
+                : 'License key required'
             }
             value={input}
           >
             <textarea
               ref={textareaRef}
+              disabled={!isLicenseValid}
               className={cn(
                 'w-full h-auto overflow-visible min-w-0 resize-none px-3 py-2 text-sm outline-none transition-[color,box-shadow,height] placeholder:text-muted-foreground',
                 'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
                 'focus-visible:ring-transparent leading-relaxed box-border',
                 !chatConfig && 'cursor-pointer',
-                isSingleLine && 'flex-1'
+                isSingleLine && 'flex-1',
+                !isLicenseValid && 'cursor-not-allowed opacity-50'
               )}
               rows={1}
               data-plate-focus
@@ -285,7 +293,7 @@ export function AIMenuContent({
             input={input}
             setInput={onInputChange}
             setValue={onValueChange}
-            disabled={!chatConfig}
+            disabled={!chatConfig || !isLicenseValid}
             menuState={menuState}
             onAddCommandOpen={onAddCommandOpen}
             onCommandRemove={onCommandRemove}

@@ -9,6 +9,7 @@ import {
 } from 'platejs/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAISettingsStore } from '@/store/ai-settings-store'
+import { useLicenseStore } from '@/store/license-store'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { useAICommands } from '../hooks/use-ai-commands'
 import { useChat } from '../hooks/use-chat'
@@ -36,6 +37,8 @@ export function AIMenu() {
 
   const [addCommandOpen, setAddCommandOpen] = useState(false)
   const { commands, addCommand, removeCommand } = useAICommands()
+
+  const licenseStatus = useLicenseStore((s) => s.status)
 
   const isSelecting = useIsSelecting()
 
@@ -65,12 +68,15 @@ export function AIMenu() {
       setModelPopoverOpen(true)
       return
     }
+    if (licenseStatus !== 'valid') {
+      return
+    }
     if (value) {
       return
     }
     api.aiChat.submit(input, { mode: submitMode, toolName: 'edit' })
     setInput('')
-  }, [api.aiChat, chatConfig, input, submitMode, value])
+  }, [api.aiChat, chatConfig, input, licenseStatus, submitMode, value])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
@@ -215,6 +221,7 @@ export function AIMenu() {
             input={input}
             value={value}
             menuState={menuState}
+            isLicenseValid={licenseStatus === 'valid'}
             onModelPopoverOpenChange={setModelPopoverOpen}
             onValueChange={setValue}
             onInputChange={setInput}
