@@ -1,12 +1,5 @@
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  Send,
-} from 'lucide-react'
+import { AlertCircle, RotateCcw, Send } from 'lucide-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/ui/button'
 
 interface ErrorBoundaryProps {
@@ -17,7 +10,6 @@ interface ErrorBoundaryState {
   hasError: boolean
   error: Error | null
   errorInfo: ErrorInfo | null
-  isDetailsExpanded: boolean
   isSending: boolean
   isSent: boolean
   sendError: string | null
@@ -33,7 +25,6 @@ export class ErrorBoundary extends Component<
       hasError: false,
       error: null,
       errorInfo: null,
-      isDetailsExpanded: false,
       isSending: false,
       isSent: false,
       sendError: null,
@@ -126,22 +117,9 @@ ${componentStack}`
     window.location.reload()
   }
 
-  toggleDetails = () => {
-    this.setState((prev) => ({
-      isDetailsExpanded: !prev.isDetailsExpanded,
-    }))
-  }
-
   render() {
     if (this.state.hasError) {
-      const {
-        error,
-        errorInfo,
-        isDetailsExpanded,
-        isSending,
-        isSent,
-        sendError,
-      } = this.state
+      const { isSending, isSent, sendError } = this.state
 
       return (
         <div className="h-screen w-full flex items-center justify-center bg-background p-12 overflow-auto">
@@ -159,8 +137,8 @@ ${componentStack}`
                   </h1>
                   <p className="text-muted-foreground text-sm leading-relaxed">
                     We're sorry for the inconvenience. An unexpected error
-                    occurred. You can send the error report to help us fix this
-                    issue.
+                    occurred. Would you like to send an error report so we can
+                    fix this?
                   </p>
                 </div>
               </div>
@@ -203,63 +181,6 @@ ${componentStack}`
                   </p>
                 </div>
               )}
-
-              <div className="border border-border rounded-md overflow-hidden">
-                <button
-                  type="button"
-                  onClick={this.toggleDetails}
-                  className="w-full px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors flex items-center justify-between text-sm font-medium text-foreground"
-                >
-                  <span>View Technical Details</span>
-                  {isDetailsExpanded ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </button>
-
-                <div
-                  className={cn(
-                    'overflow-hidden transition-all duration-200',
-                    isDetailsExpanded ? 'max-h-[600px]' : 'max-h-0'
-                  )}
-                >
-                  <div className="p-4 bg-background/50 space-y-4">
-                    <div>
-                      <p className="text-xs font-semibold text-foreground/70 mb-2">
-                        Error Message
-                      </p>
-                      <p className="text-xs text-muted-foreground font-mono break-words bg-muted/50 p-3 rounded">
-                        {error?.message || 'Unknown error occurred'}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold text-foreground/70 mb-2">
-                        Stack Trace
-                      </p>
-                      <div className="overflow-auto max-h-60 bg-muted/50 p-3 rounded">
-                        <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-words">
-                          {error?.stack || 'No stack trace available'}
-                        </pre>
-                      </div>
-                    </div>
-
-                    {errorInfo?.componentStack && (
-                      <div>
-                        <p className="text-xs font-semibold text-foreground/70 mb-2">
-                          Component Stack
-                        </p>
-                        <div className="overflow-auto max-h-40 bg-muted/50 p-3 rounded">
-                          <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-words">
-                            {errorInfo.componentStack}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
 
               <div className="pt-2 border-t border-border">
                 <p className="text-xs text-muted-foreground text-center">
