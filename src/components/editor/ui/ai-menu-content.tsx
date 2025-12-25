@@ -226,11 +226,11 @@ export function AIMenuContent({
             }}
             onValueChange={onInputChange}
             placeholder={
-              !isLicenseValid && chatConfig
-                ? 'License key required'
-                : chatConfig
+              isLicenseValid
+                ? chatConfig
                   ? 'Ask AI anything...'
                   : 'Select a model to get started...'
+                : 'License key required'
             }
             value={input}
           >

@@ -242,9 +242,6 @@ export function AIMenu() {
               }
               if (isHotkey('enter')(e) && !e.shiftKey && !value) {
                 e.preventDefault()
-                if (licenseStatus !== 'valid') {
-                  return
-                }
                 handleSubmit()
               }
             }}
