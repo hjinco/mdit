@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
 } from '@/ui/dropdown-menu'
 import { Separator } from '@/ui/separator'
-import { Tooltip, TooltipTrigger } from '@/ui/tooltip'
+import { TooltipTrigger } from '@/ui/tooltip'
 
 export function Toolbar({
   className,
@@ -285,7 +285,7 @@ type TooltipProps<T extends React.ElementType> = {
     'children'
   >
   tooltipProps?: Omit<
-    React.ComponentPropsWithoutRef<typeof Tooltip>,
+    React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>,
     'children'
   >
   tooltipTriggerProps?: React.ComponentPropsWithoutRef<typeof TooltipTrigger>
@@ -309,13 +309,13 @@ function withTooltip<T extends React.ElementType>(Component: T) {
 
     if (tooltip && mounted) {
       return (
-        <Tooltip {...tooltipProps}>
+        <TooltipPrimitive.Root data-slot="tooltip" {...tooltipProps}>
           <TooltipTrigger asChild {...tooltipTriggerProps}>
             {component}
           </TooltipTrigger>
 
           <TooltipContent {...tooltipContentProps}>{tooltip}</TooltipContent>
-        </Tooltip>
+        </TooltipPrimitive.Root>
       )
     }
 

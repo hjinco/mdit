@@ -4,6 +4,7 @@ import {
   useLinkToolbarButtonState,
 } from '@platejs/link/react'
 import { insertInlineEquation } from '@platejs/math'
+import { TooltipProvider } from '@radix-ui/react-tooltip'
 import {
   BoldIcon,
   Code2Icon,
@@ -46,7 +47,7 @@ export function FloatingToolbarButtons() {
   const { props: buttonProps } = useLinkToolbarButton(state)
 
   return (
-    <>
+    <TooltipProvider>
       {!readOnly && (
         <>
           <ToolbarGroup>
@@ -129,7 +130,7 @@ export function FloatingToolbarButtons() {
       )}
 
       <ToolbarGroup>{!readOnly && <MoreToolbarButton />}</ToolbarGroup>
-    </>
+    </TooltipProvider>
   )
 }
 
