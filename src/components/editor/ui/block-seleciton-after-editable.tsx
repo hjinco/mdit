@@ -1,3 +1,4 @@
+import { AIChatPlugin } from '@platejs/ai/react'
 import { MarkdownPlugin } from '@platejs/markdown'
 import {
   type BlockSelectionConfig,
@@ -210,6 +211,13 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
       if (isHotkey('mod+d')(e)) {
         e.preventDefault()
         editor.getTransforms(BlockSelectionPlugin).blockSelection.duplicate()
+        return
+      }
+      // Mod+J => open AI menu
+      if (isHotkey('mod+j')(e)) {
+        e.preventDefault()
+        e.stopPropagation()
+        editor.getApi(AIChatPlugin).aiChat.show()
         return
       }
       // Only continue if we have "some" selection
