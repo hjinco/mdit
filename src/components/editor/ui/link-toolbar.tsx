@@ -426,8 +426,6 @@ function LinkUrlInput() {
 
       if (key === 'Escape') {
         event.preventDefault()
-        event.stopPropagation()
-        event.nativeEvent.stopImmediatePropagation()
         api.floatingLink.hide()
         editor.tf.focus()
         return
