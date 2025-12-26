@@ -26,7 +26,7 @@ export function useDeleteShortcut({
       }
 
       // Don't trigger if other modifiers are pressed
-      if (event.altKey || event.shiftKey) {
+      if (event.altKey || event.shiftKey || (isMac() ? event.ctrlKey : event.metaKey)) {
         return
       }
 
