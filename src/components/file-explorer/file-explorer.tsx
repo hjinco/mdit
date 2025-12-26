@@ -13,6 +13,7 @@ import { useUIStore } from '@/store/ui-store'
 import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
+import { useDeleteShortcut } from './hooks/use-delete-shortcut'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
 import { useEntryMap } from './hooks/use-entry-map'
 import { useEntryPrimaryAction } from './hooks/use-entry-primary-action'
@@ -216,6 +217,12 @@ export function FileExplorer() {
     },
     [deleteEntries, resetSelection]
   )
+
+  useDeleteShortcut({
+    containerRef: fileExplorerRef,
+    selectedEntryPaths,
+    handleDeleteEntries,
+  })
 
   const ensureDirectoryExpanded = useCallback(
     (directoryPath: string | null) => {
