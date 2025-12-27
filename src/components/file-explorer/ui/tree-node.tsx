@@ -16,6 +16,8 @@ import { useFolderDropZone } from '../hooks/use-folder-drop-zone'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
 import { TreeNodeRenameInput } from './tree-node-rename-input'
 
+const INDENTATION_WIDTH = 12
+
 type TreeNodeProps = {
   entry: WorkspaceEntry
   tab: Tab | null
@@ -347,7 +349,7 @@ export function TreeNode({
                   widthClass: 'flex-1',
                 })
               )}
-              style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
+              style={{ paddingLeft: `${depth * INDENTATION_WIDTH}px` }}
               disabled={isBusy}
               {...attributes}
               {...listeners}
@@ -407,7 +409,7 @@ export function TreeNode({
             <div
               className="flex-1 flex items-center px-2 py-0.5 mt-0.5 ring-1 ring-ring/50 rounded-sm"
               style={{
-                paddingLeft: `${4 + (depth + 1) * 8}px`,
+                paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px`,
               }}
             >
               <div className="shrink-0 px-1.5 py-1" aria-hidden="true">
@@ -465,7 +467,7 @@ export function TreeNode({
             isAiRenaming,
             widthClass: 'w-full',
           })}
-          style={{ paddingLeft: `${depth === 0 ? 0 : 4 + depth * 8}px` }}
+          style={{ paddingLeft: `${depth * INDENTATION_WIDTH}px` }}
           disabled={isBusy}
           {...attributes}
           {...listeners}
