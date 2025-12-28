@@ -1,0 +1,280 @@
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+
+const BOM: char = '\u{FEFF}';
+const ZERO_WIDTH_SPACE: char = '\u{200B}';
+
+pub fn format_preview_text(raw: &str) -> String {
+    if raw.is_empty() {
+        return String::new();
+    }
+
+    let cleaned = strip_hidden_chars(raw);
+    let cleaned = strip_html_block_lines(&cleaned);
+    let cleaned = strip_markdown_tables(&cleaned);
+    if cleaned.trim().is_empty() {
+        return String::new();
+    }
+
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+
+    let parser = Parser::new_ext(&cleaned, options);
+    let mut output = String::new();
+    let mut skip_depth = 0usize;
+    let mut list_stack: Vec<ListState> = Vec::new();
+
+    for event in parser {
+        match event {
+            Event::Start(tag) => match tag {
+                Tag::CodeBlock(_) | Tag::BlockQuote(_) => {
+                    skip_depth = skip_depth.saturating_add(1);
+                }
+                Tag::Table(_) => {
+                    skip_depth = skip_depth.saturating_add(1);
+                }
+                Tag::Image { .. } => {
+                    skip_depth = skip_depth.saturating_add(1);
+                }
+                Tag::List(start) => {
+                    let ordered = start.is_some();
+                    let next_index = start.unwrap_or(1);
+                    list_stack.push(ListState {
+                        ordered,
+                        next_index,
+                    });
+                }
+                Tag::Item => {
+                    if skip_depth == 0 {
+                        if let Some(list_state) = list_stack.last_mut() {
+                            if list_state.ordered {
+                                ensure_space(&mut output);
+                                output.push_str(&format!("{}.", list_state.next_index));
+                                output.push(' ');
+                                list_state.next_index += 1;
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            },
+            Event::End(tag_end) => match tag_end {
+                TagEnd::CodeBlock | TagEnd::BlockQuote(_) | TagEnd::Table | TagEnd::Image => {
+                    if skip_depth > 0 {
+                        skip_depth -= 1;
+                    }
+                }
+                TagEnd::List(_) => {
+                    list_stack.pop();
+                }
+                TagEnd::Paragraph | TagEnd::Heading(_) | TagEnd::Item => {
+                    if skip_depth == 0 {
+                        ensure_space(&mut output);
+                    }
+                }
+                _ => {}
+            },
+            Event::Text(text) | Event::Code(text) => {
+                if skip_depth == 0 {
+                    output.push_str(&text);
+                }
+            }
+            Event::SoftBreak | Event::HardBreak => {
+                if skip_depth == 0 {
+                    ensure_space(&mut output);
+                }
+            }
+            Event::Html(_) | Event::InlineHtml(_) => {}
+            Event::InlineMath(_) | Event::DisplayMath(_) => {}
+            Event::FootnoteReference(_) => {}
+            Event::Rule => {}
+            Event::TaskListMarker(_) => {}
+        }
+    }
+
+    let collapsed = collapse_whitespace(&output);
+    strip_reference_links(&collapsed)
+}
+
+fn strip_hidden_chars(raw: &str) -> String {
+    raw.chars()
+        .filter(|ch| *ch != BOM && *ch != ZERO_WIDTH_SPACE)
+        .collect()
+}
+
+fn strip_html_block_lines(raw: &str) -> String {
+    raw.lines()
+        .filter(|line| !line.trim_start().starts_with('<'))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn strip_markdown_tables(raw: &str) -> String {
+    let lines: Vec<&str> = raw.lines().collect();
+    let mut kept: Vec<&str> = Vec::with_capacity(lines.len());
+    let mut i = 0usize;
+
+    while i < lines.len() {
+        if i + 1 < lines.len() && is_table_header(lines[i], lines[i + 1]) {
+            i += 2;
+            while i < lines.len() {
+                let line = lines[i];
+                if line.trim().is_empty() {
+                    kept.push(line);
+                    i += 1;
+                    break;
+                }
+                if line.contains('|') {
+                    i += 1;
+                    continue;
+                }
+                break;
+            }
+            continue;
+        }
+
+        kept.push(lines[i]);
+        i += 1;
+    }
+
+    kept.join("\n")
+}
+
+fn is_table_header(line: &str, next_line: &str) -> bool {
+    line.contains('|') && is_table_separator(next_line)
+}
+
+fn is_table_separator(line: &str) -> bool {
+    let trimmed = line.trim();
+    if !trimmed.contains('|') || !trimmed.contains('-') {
+        return false;
+    }
+
+    trimmed
+        .chars()
+        .all(|ch| ch == '|' || ch == '-' || ch == ':' || ch == ' ' || ch == '\t')
+}
+
+fn ensure_space(output: &mut String) {
+    if output
+        .chars()
+        .last()
+        .map_or(false, |ch| !ch.is_whitespace())
+    {
+        output.push(' ');
+    }
+}
+
+fn collapse_whitespace(input: &str) -> String {
+    input.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn strip_reference_links(input: &str) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut cursor = 0;
+
+    while let Some(open_rel) = input[cursor..].find('[') {
+        let open = cursor + open_rel;
+        result.push_str(&input[cursor..open]);
+
+        if let Some(close1_rel) = input[open + 1..].find(']') {
+            let close1 = open + 1 + close1_rel;
+            let next = close1 + 1;
+            if input[next..].starts_with('[') {
+                if let Some(close2_rel) = input[next + 1..].find(']') {
+                    let close2 = next + 1 + close2_rel;
+                    result.push_str(&input[open + 1..close1]);
+                    cursor = close2 + 1;
+                    continue;
+                }
+            }
+        }
+
+        result.push('[');
+        cursor = open + 1;
+    }
+
+    if cursor < input.len() {
+        result.push_str(&input[cursor..]);
+    }
+
+    result
+}
+
+struct ListState {
+    ordered: bool,
+    next_index: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_preview_text;
+
+    #[test]
+    fn strips_heading_hashes_and_appends_next_line_as_body() {
+        let raw = "#   Hello World  \nBody text";
+        assert_eq!(format_preview_text(raw), "Hello World Body text");
+    }
+
+    #[test]
+    fn uses_first_meaningful_line_and_appends_following_heading() {
+        let raw = "   Plain title with leading spaces   \n# Another heading";
+        assert_eq!(
+            format_preview_text(raw),
+            "Plain title with leading spaces Another heading"
+        );
+    }
+
+    #[test]
+    fn removes_inline_markdown_while_keeping_text() {
+        let raw = "**bold** _italic_ ~~strike~~ `code`";
+        assert_eq!(format_preview_text(raw), "bold italic strike code");
+    }
+
+    #[test]
+    fn keeps_inline_emphasis_at_start_instead_of_treating_it_like_a_bullet() {
+        let raw = "*italic* text";
+        assert_eq!(format_preview_text(raw), "italic text");
+    }
+
+    #[test]
+    fn keeps_link_text_and_drops_wrappers() {
+        let raw = "[Click here](https://example.com) plus [Ref][id]";
+        assert_eq!(format_preview_text(raw), "Click here plus Ref");
+    }
+
+    #[test]
+    fn skips_blocks_and_cleans_inline() {
+        let raw = [
+            "![img](img.png)",
+            "> quoted",
+            "```",
+            "code line",
+            "```",
+            "<table>",
+            "<tr><td>cell</td></tr>",
+            "</table>",
+            "| h | h |",
+            "| --- | --- |",
+            "Final line with [link](https://example.com) and ~~strike~~",
+        ]
+        .join("\n");
+
+        assert_eq!(
+            format_preview_text(&raw),
+            "Final line with link and strike"
+        );
+    }
+
+    #[test]
+    fn handles_setext_underline_by_keeping_title_line() {
+        let raw = ["Title Line", "=====", "Body"].join("\n");
+        assert_eq!(format_preview_text(&raw), "Title Line Body");
+    }
+
+    #[test]
+    fn unescapes_escaped_punctuation_like_numbered_lists() {
+        let raw = ["---", "1. abc", "---", "1\\."].join("\n");
+        assert_eq!(format_preview_text(&raw), "1. abc 1.");
+    }
+}
