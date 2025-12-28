@@ -170,12 +170,12 @@ fn frontmatter_rest_index(input: &str) -> Option<usize> {
                     return None;
                 }
             } else {
-                if line_trimmed.contains(':') {
+                if line_trimmed.contains(':') || line_trimmed.trim_start().starts_with("- ") {
                     has_yaml_hint = true;
                 }
-                if is_frontmatter_delimiter(line_trimmed) && has_yaml_hint {
-                let rest_start = if i < bytes.len() { i + 1 } else { i };
-                return Some(rest_start);
+                if is_frontmatter_delimiter(line_trimmed) && (has_yaml_hint || line_no == 1) {
+                    let rest_start = if i < bytes.len() { i + 1 } else { i };
+                    return Some(rest_start);
                 }
             }
 
