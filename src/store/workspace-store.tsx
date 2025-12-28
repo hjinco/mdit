@@ -75,6 +75,19 @@ import {
 
 const MAX_HISTORY_LENGTH = 5
 
+const buildWorkspaceState = (overrides?: Partial<WorkspaceStore>) => ({
+  isLoading: false,
+  workspacePath: null,
+  recentWorkspacePaths: [],
+  entries: [],
+  isTreeLoading: false,
+  expandedDirectories: [],
+  isMigrationsComplete: false,
+  pinnedDirectories: [],
+  lastFsOperationTime: null,
+  ...overrides,
+})
+
 export type WorkspaceEntry = {
   path: string
   name: string
@@ -238,15 +251,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
   }
 
   return {
-    isLoading: true,
-    workspacePath: null,
-    recentWorkspacePaths: [],
-    isTreeLoading: false,
-    entries: [],
-    expandedDirectories: [],
-    isMigrationsComplete: false,
-    pinnedDirectories: [],
-    lastFsOperationTime: null,
+    ...buildWorkspaceState({ isLoading: true }),
 
     recordFsOperation: () => {
       set({ lastFsOperationTime: Date.now() })
@@ -286,17 +291,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
         const workspacePath = nextRecentWorkspacePaths[0] ?? null
 
-        set({
-          isLoading: false,
-          workspacePath,
-          recentWorkspacePaths: nextRecentWorkspacePaths,
-          entries: [],
-          isTreeLoading: Boolean(workspacePath),
-          expandedDirectories: [],
-          isMigrationsComplete: false,
-          pinnedDirectories: [],
-          lastFsOperationTime: null,
-        })
+        set(
+          buildWorkspaceState({
+            workspacePath,
+            recentWorkspacePaths: nextRecentWorkspacePaths,
+            isTreeLoading: Boolean(workspacePath),
+          })
+        )
         useCollectionStore.getState().resetCollectionPath()
 
         if (workspacePath) {
@@ -308,17 +309,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
         }
       } catch (error) {
         console.error('Failed to initialize workspace:', error)
-        set({
-          isLoading: false,
-          workspacePath: null,
-          recentWorkspacePaths: [],
-          entries: [],
-          isTreeLoading: false,
-          expandedDirectories: [],
-          isMigrationsComplete: false,
-          pinnedDirectories: [],
-          lastFsOperationTime: null,
-        })
+        set(buildWorkspaceState())
         useCollectionStore.getState().resetCollectionPath()
       }
     },
@@ -352,17 +343,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
         writeWorkspaceHistory(updatedHistory)
 
-        set({
-          isLoading: false,
-          workspacePath: path,
-          recentWorkspacePaths: updatedHistory,
-          entries: [],
-          isTreeLoading: true,
-          expandedDirectories: [],
-          isMigrationsComplete: false,
-          pinnedDirectories: [],
-          lastFsOperationTime: null,
-        })
+        set(
+          buildWorkspaceState({
+            workspacePath: path,
+            recentWorkspacePaths: updatedHistory,
+            isTreeLoading: true,
+          })
+        )
         useCollectionStore.getState().resetCollectionPath()
 
         await bootstrapWorkspace(path)
@@ -386,10 +373,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
     refreshWorkspaceEntries: async () => {
       const workspacePath = get().workspacePath
 
-      if (!workspacePath) {
-        set({ entries: [], isTreeLoading: false, pinnedDirectories: [] })
-        return
-      }
+      if (!workspacePath) throw new Error('Workspace path is not set')
 
       set({ isTreeLoading: true })
 
@@ -1271,17 +1255,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => {
 
       writeWorkspaceHistory(updatedHistory)
 
-      set({
-        isLoading: false,
-        workspacePath: null,
-        entries: [],
-        isTreeLoading: false,
-        expandedDirectories: [],
-        isMigrationsComplete: true,
-        pinnedDirectories: [],
-        lastFsOperationTime: null,
-        recentWorkspacePaths: updatedHistory,
-      })
+      set(
+        buildWorkspaceState({
+          recentWorkspacePaths: updatedHistory,
+          isMigrationsComplete: true,
+        })
+      )
       useCollectionStore.getState().resetCollectionPath()
     },
   }
