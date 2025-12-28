@@ -9,6 +9,7 @@ pub fn format_preview_text(raw: &str) -> String {
     }
 
     let cleaned = strip_hidden_chars(raw);
+    let cleaned = strip_frontmatter(&cleaned);
     let cleaned = strip_html_block_lines(&cleaned);
     let cleaned = strip_markdown_tables(&cleaned);
     if cleaned.trim().is_empty() {
@@ -138,6 +139,60 @@ fn strip_markdown_tables(raw: &str) -> String {
     }
 
     kept.join("\n")
+}
+
+fn strip_frontmatter(raw: &str) -> String {
+    let trimmed = raw.trim_start();
+    if !trimmed.starts_with("---") {
+        return raw.to_string();
+    }
+
+    if let Some(rest_index) = frontmatter_rest_index(trimmed) {
+        return trimmed[rest_index..].to_string();
+    }
+
+    raw.to_string()
+}
+
+fn frontmatter_rest_index(input: &str) -> Option<usize> {
+    let bytes = input.as_bytes();
+    let mut line_start = 0usize;
+    let mut i = 0usize;
+    let mut line_no = 0usize;
+    let mut has_yaml_hint = false;
+
+    loop {
+        if i == bytes.len() || bytes[i] == b'\n' {
+            let line = &input[line_start..i];
+            let line_trimmed = line.trim_end_matches('\r');
+            if line_no == 0 {
+                if !is_frontmatter_delimiter(line_trimmed) {
+                    return None;
+                }
+            } else {
+                if line_trimmed.contains(':') {
+                    has_yaml_hint = true;
+                }
+                if is_frontmatter_delimiter(line_trimmed) && has_yaml_hint {
+                let rest_start = if i < bytes.len() { i + 1 } else { i };
+                return Some(rest_start);
+                }
+            }
+
+            line_no += 1;
+            if i == bytes.len() {
+                break;
+            }
+            line_start = i + 1;
+        }
+        i += 1;
+    }
+
+    None
+}
+
+fn is_frontmatter_delimiter(line: &str) -> bool {
+    line.trim() == "---"
 }
 
 fn is_table_header(line: &str, next_line: &str) -> bool {
@@ -276,5 +331,23 @@ mod tests {
     fn unescapes_escaped_punctuation_like_numbered_lists() {
         let raw = ["---", "1. abc", "---", "1\\."].join("\n");
         assert_eq!(format_preview_text(&raw), "1. abc 1.");
+    }
+
+    #[test]
+    fn skips_yaml_frontmatter_at_start() {
+        let raw = ["---", "title: Hello", "tags: [one, two]", "---", "# Heading", "Body"].join("\n");
+        assert_eq!(format_preview_text(&raw), "Heading Body");
+    }
+
+    #[test]
+    fn keeps_delimiters_when_frontmatter_is_not_closed() {
+        let raw = ["---", "title: Hello", "# Heading"].join("\n");
+        assert_eq!(format_preview_text(&raw), "title: Hello Heading");
+    }
+
+    #[test]
+    fn keeps_frontmatter_like_block_when_not_at_start() {
+        let raw = ["# Title", "---", "key: value", "---", "Body"].join("\n");
+        assert_eq!(format_preview_text(&raw), "Title key: value Body");
     }
 }
