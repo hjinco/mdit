@@ -148,7 +148,8 @@ fn strip_frontmatter(raw: &str) -> String {
     }
 
     if let Some(rest_index) = frontmatter_rest_index(trimmed) {
-        return trimmed[rest_index..].to_string();
+        let leading_ws_len = raw.len() - trimmed.len();
+        return raw[leading_ws_len + rest_index..].to_string();
     }
 
     raw.to_string()
