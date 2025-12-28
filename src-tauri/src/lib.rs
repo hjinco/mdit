@@ -3,6 +3,7 @@ mod file_opener;
 mod image_processing;
 mod indexing;
 mod migrations;
+mod preview;
 
 use std::fs::File;
 use std::io::Read;
@@ -26,7 +27,7 @@ fn move_many_to_trash(paths: Vec<String>) -> Result<(), String> {
 
 #[tauri::command]
 fn get_note_preview(path: String) -> Result<String, String> {
-    const PREVIEW_BYTES: usize = 300;
+    const PREVIEW_BYTES: usize = 500;
 
     let mut file = File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
     let mut buffer = vec![0u8; PREVIEW_BYTES];
@@ -37,7 +38,8 @@ fn get_note_preview(path: String) -> Result<String, String> {
                 return Ok(String::new());
             }
             buffer.truncate(bytes_read);
-            Ok(String::from_utf8_lossy(&buffer).to_string())
+            let preview = String::from_utf8_lossy(&buffer);
+            Ok(preview::format_preview_text(preview.as_ref()))
         }
         Err(e) => Err(format!("Failed to read file: {}", e)),
     }
