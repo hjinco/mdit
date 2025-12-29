@@ -91,6 +91,8 @@ export function TreeNode({
     [entry.isDirectory, extension]
   )
 
+  const showExtension = !isMarkdown && extension
+
   // Setup draggable
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: entry.path,
@@ -452,13 +454,16 @@ export function TreeNode({
           id={entry.path}
           onClick={handlePrimaryAction}
           onContextMenu={handleContextMenu}
-          className={getEntryButtonClassName({
-            isSelected,
-            isDragging,
-            isRenaming,
-            isAiRenaming,
-            widthClass: 'w-full',
-          })}
+          className={cn(
+            getEntryButtonClassName({
+              isSelected,
+              isDragging,
+              isRenaming,
+              isAiRenaming,
+              widthClass: 'w-full',
+            }),
+            showExtension && 'pr-1'
+          )}
           style={{ paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px` }}
           disabled={isBusy}
           {...attributes}
@@ -484,16 +489,16 @@ export function TreeNode({
               />
             )}
           </div>
-          {!isMarkdown && extension && (
+          {showExtension && (
             <span
               className={cn(
-                'ml-auto shrink-0 px-1.5 py-0.5 text-xs rounded',
+                'ml-auto shrink-0 px-1 py-0.5 text-xs rounded',
                 'bg-muted/50 text-muted-foreground/60',
                 'font-mono',
                 isRenaming && 'opacity-0'
               )}
             >
-              {extension}
+              {extension.slice(1)}
             </span>
           )}
         </button>
