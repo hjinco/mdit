@@ -236,6 +236,7 @@ export const useChat = (config: ChatConfig | null) => {
 
         const body = JSON.parse(init?.body?.toString() || '{}')
         const { ctx, messages: messagesRaw } = body
+        const abortSignal = init?.signal as AbortSignal | undefined
 
         if (!ctx || !messagesRaw) {
           throw new Error('Missing context or messages')
@@ -254,6 +255,12 @@ export const useChat = (config: ChatConfig | null) => {
 
         const stream = createUIMessageStream<ChatMessage>({
           execute: async ({ writer }) => {
+            if (abortSignal?.aborted) {
+              const error = new Error('Aborted')
+              error.name = 'AbortError'
+              throw error
+            }
+
             const lastIndex = messagesRaw.findIndex(
               (message: ChatMessage) => message.role === 'user'
             )
@@ -282,6 +289,7 @@ export const useChat = (config: ChatConfig | null) => {
                 prompt: `User message:
           ${JSON.stringify(lastUserMessage)}`,
                 system: chooseToolSystem,
+                abortSignal,
               })
 
               writer.write({
@@ -304,6 +312,7 @@ export const useChat = (config: ChatConfig | null) => {
                 model: llmRef.current,
                 system: generateSystem,
                 experimental_transform: markdownJoinerTransform(),
+                abortSignal,
               })
 
               writer.merge(gen.toUIMessageStream({ sendFinish: false }))
@@ -324,6 +333,7 @@ export const useChat = (config: ChatConfig | null) => {
                 model: llmRef.current,
                 system: editSystem,
                 experimental_transform: markdownJoinerTransform(),
+                abortSignal,
               })
 
               writer.merge(edit.toUIMessageStream({ sendFinish: false }))
