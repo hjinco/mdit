@@ -255,11 +255,7 @@ export const useChat = (config: ChatConfig | null) => {
 
         const stream = createUIMessageStream<ChatMessage>({
           execute: async ({ writer }) => {
-            if (abortSignal?.aborted) {
-              const error = new Error('Aborted')
-              error.name = 'AbortError'
-              throw error
-            }
+            abortSignal?.throwIfAborted()
 
             const lastIndex = messagesRaw.findIndex(
               (message: ChatMessage) => message.role === 'user'
