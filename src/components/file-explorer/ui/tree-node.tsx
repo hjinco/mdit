@@ -1,17 +1,10 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import {
-  ChevronDown,
-  ChevronRight,
-  FileTextIcon,
-  ImageIcon,
-  PanelLeftIcon,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, PanelLeftIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
 import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
-import { isImageFile } from '@/utils/file-icon'
 import { useFolderDropZone } from '../hooks/use-folder-drop-zone'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
 import { TreeNodeRenameInput } from './tree-node-rename-input'
@@ -96,7 +89,10 @@ export function TreeNode({
     return entry.name.slice(0, entry.name.length - extension.length)
   }, [entry.isDirectory, entry.name, extension])
 
-  const isImage = useMemo(() => isImageFile(extension), [extension])
+  const isMarkdown = useMemo(
+    () => !entry.isDirectory && extension.toLowerCase() === '.md',
+    [entry.isDirectory, extension]
+  )
 
   // Setup draggable
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -356,7 +352,7 @@ export function TreeNode({
             >
               <div
                 className={cn(
-                  'shrink-0 px-1.5 py-1',
+                  'shrink-0 pl-1.5 py-1',
                   'text-foreground/70',
                   'pointer-events-none'
                 )}
@@ -467,16 +463,11 @@ export function TreeNode({
             isAiRenaming,
             widthClass: 'w-full',
           })}
-          style={{ paddingLeft: `${depth * INDENTATION_WIDTH}px` }}
+          style={{ paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px` }}
           disabled={isBusy}
           {...attributes}
           {...listeners}
         >
-          {isImage ? (
-            <ImageIcon className="size-4 mx-1.5 shrink-0" />
-          ) : (
-            <FileTextIcon className="size-4 mx-1.5 shrink-0" />
-          )}
           <div
             className={cn(
               'relative flex-1 overflow-hidden whitespace-nowrap',
@@ -497,6 +488,18 @@ export function TreeNode({
               />
             )}
           </div>
+          {!isMarkdown && extension && (
+            <span
+              className={cn(
+                'ml-auto shrink-0 px-1.5 py-0.5 text-xs rounded',
+                'bg-muted/50 text-muted-foreground/60',
+                'font-mono',
+                isRenaming && 'opacity-0'
+              )}
+            >
+              {extension}
+            </span>
+          )}
         </button>
       )}
     </li>
