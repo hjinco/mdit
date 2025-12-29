@@ -105,7 +105,7 @@ export const useEntryPrimaryAction = ({
         ) {
           openImagePreview(entry.path)
         } else {
-          revealInFileManager(entry.path, false)
+          revealInFileManager(entry.path, entry.isDirectory)
         }
       }
     },
