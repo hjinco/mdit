@@ -1,6 +1,6 @@
 import { type MouseEvent, useCallback } from 'react'
-import type { WorkspaceEntry } from '@/store/workspace-store'
 import { revealInFileManager } from '@/components/file-explorer/utils/file-manager'
+import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 
 type UseEntryPrimaryActionParams = {
@@ -83,7 +83,10 @@ export const useEntryPrimaryAction = ({
         if (nextSelection.has(path)) {
           // When adding an item with multi-select, it becomes the new anchor.
           nextAnchor = path
-        } else if (!selectionAnchorPath || !nextSelection.has(selectionAnchorPath)) {
+        } else if (
+          !selectionAnchorPath ||
+          !nextSelection.has(selectionAnchorPath)
+        ) {
           // When removing an item, if the anchor is removed, pick the first
           // available selected item as the new anchor.
           nextAnchor = nextSelection.values().next().value ?? null
@@ -100,9 +103,7 @@ export const useEntryPrimaryAction = ({
           toggleDirectory(entry.path)
         } else if (entry.name.endsWith('.md')) {
           openTab(entry.path)
-        } else if (
-          isImageFile(entry.name)
-        ) {
+        } else if (isImageFile(entry.name)) {
           openImagePreview(entry.path)
         } else {
           revealInFileManager(entry.path, entry.isDirectory)
