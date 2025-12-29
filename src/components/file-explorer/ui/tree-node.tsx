@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight, PanelLeftIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
-import type { Tab } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
 import { useFolderDropZone } from '../hooks/use-folder-drop-zone'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
@@ -13,7 +12,6 @@ const INDENTATION_WIDTH = 12
 
 type TreeNodeProps = {
   entry: WorkspaceEntry
-  tab: Tab | null
   depth: number
   expandedDirectories: string[]
   onDirectoryClick: (path: string) => void
@@ -38,7 +36,6 @@ type TreeNodeProps = {
 
 export function TreeNode({
   entry,
-  tab,
   depth,
   expandedDirectories,
   onDirectoryClick,
@@ -429,7 +426,6 @@ export function TreeNode({
                 <TreeNode
                   key={child.path}
                   entry={child}
-                  tab={tab}
                   depth={depth + 1}
                   expandedDirectories={expandedDirectories}
                   onDirectoryClick={onDirectoryClick}
