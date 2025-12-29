@@ -101,7 +101,7 @@ export const useEntryPrimaryAction = ({
         } else if (entry.name.endsWith('.md')) {
           openTab(entry.path)
         } else if (
-          isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
+          isImageFile(entry.name)
         ) {
           openImagePreview(entry.path)
         } else {
