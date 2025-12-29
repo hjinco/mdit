@@ -1,5 +1,6 @@
 import { type MouseEvent, useCallback } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import { revealInFileManager } from '@/components/file-explorer/utils/file-manager'
 import { isImageFile } from '@/utils/file-icon'
 
 type UseEntryPrimaryActionParams = {
@@ -103,6 +104,8 @@ export const useEntryPrimaryAction = ({
           isImageFile(entry.name.substring(entry.name.lastIndexOf('.')))
         ) {
           openImagePreview(entry.path)
+        } else {
+          revealInFileManager(entry.path, false)
         }
       }
     },
