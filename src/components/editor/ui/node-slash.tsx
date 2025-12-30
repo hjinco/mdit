@@ -1,4 +1,5 @@
 import { AIChatPlugin } from '@platejs/ai/react'
+import { EmojiInputPlugin } from '@platejs/emoji/react'
 import { insertImage } from '@platejs/media'
 import { open } from '@tauri-apps/plugin-dialog'
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs'
@@ -425,13 +426,17 @@ const groups: Group[] = [
     group: 'Inline',
     items: [
       {
-        focusEditor: true,
+        focusEditor: false,
         icon: <SmileIcon />,
         keywords: ['emoji', 'smile', '이모지'],
         label: 'Emoji',
         value: 'emoji',
         onSelect: (editor: PlateEditor, _value: string) => {
-          editor.tf.insertText(':')
+          const emojiInputType = editor.getType(EmojiInputPlugin.key)
+          editor.tf.insertNodes({
+            type: emojiInputType,
+            children: [{ text: '' }],
+          })
         },
       },
       {

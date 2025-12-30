@@ -38,7 +38,7 @@ export function EmojiInputElement(props: PlateElementProps) {
         filter={false}
         setValue={setValue}
         trigger=":"
-        hideWhenNoValue
+        hideWhenNoValue={false}
       >
         <InlineComboboxInput />
 
