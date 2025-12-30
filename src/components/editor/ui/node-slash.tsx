@@ -21,7 +21,7 @@ import {
   TypeIcon,
 } from 'lucide-react'
 import { dirname, isAbsolute, relative, resolve } from 'pathe'
-import { KEYS, type TComboboxInputElement } from 'platejs'
+import { KEYS, PointApi, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
@@ -451,6 +451,22 @@ export function SlashInputElement(
   const { editor, element } = props
   const isMDXEnabled = useMDXSettingsStore((state) => state.isMDXEnabled)
 
+  const elementPath = editor.api.findPath(element)
+  const beforePoint = elementPath ? editor.api.before(elementPath) : null
+  const isAtBlockStart = beforePoint
+    ? (() => {
+        const blockEntry = editor.api.above({
+          at: beforePoint,
+          match: editor.api.isBlock,
+          mode: 'highest',
+        })
+        if (!blockEntry) return false
+        const [, blockPath] = blockEntry
+        const blockStart = editor.api.start(blockPath)
+        return blockStart ? PointApi.equals(beforePoint, blockStart) : false
+      })()
+    : false
+
   return (
     <PlateElement {...props} as="span">
       <InlineCombobox element={element} trigger="/">
@@ -460,7 +476,13 @@ export function SlashInputElement(
           <InlineComboboxEmpty>No results</InlineComboboxEmpty>
 
           {groups
-            .filter(({ shouldHide }) => !shouldHide?.(editor))
+            .filter(({ shouldHide, group }) => {
+              // If in the middle of a block, only show Inline group
+              if (!isAtBlockStart && group !== 'Inline') {
+                return false
+              }
+              return !shouldHide?.(editor)
+            })
             .map(({ group, items }) => {
               const filteredItems = items.filter((item) => {
                 if (isMDXEnabled) {

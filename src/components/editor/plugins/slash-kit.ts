@@ -16,11 +16,6 @@ export const SlashKit = [
           return false
         }
 
-        // Check if cursor is at the start of the block
-        if (!editor.api.isAt({ start: true })) {
-          return false
-        }
-
         // Get current block node
         const entry = editor.api.above({
           match: editor.api.isBlock,
