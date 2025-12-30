@@ -220,12 +220,13 @@ const InlineComboboxInput = ({
       const isBackspaceAtStart =
         event.key === 'Backspace' && contextRef.current?.selectionStart === 0
 
-      inputProps.onKeyDown?.(event)
-
       if (isBackspaceAtStart) {
         event.preventDefault()
         event.stopPropagation()
+        return
       }
+
+      inputProps.onKeyDown?.(event)
     },
     [contextRef, inputProps]
   )
