@@ -14,6 +14,7 @@ import {
   ListOrdered,
   Quote,
   RadicalIcon,
+  SmileIcon,
   SparklesIcon,
   Square,
   Table,
@@ -425,6 +426,16 @@ const groups: Group[] = [
     items: [
       {
         focusEditor: true,
+        icon: <SmileIcon />,
+        keywords: ['emoji', 'smile', '이모지'],
+        label: 'Emoji',
+        value: 'emoji',
+        onSelect: (editor: PlateEditor, _value: string) => {
+          editor.tf.insertText(':')
+        },
+      },
+      {
+        focusEditor: true,
         icon: <CalendarIcon />,
         keywords: ['time'],
         label: 'Date',
@@ -436,12 +447,18 @@ const groups: Group[] = [
         label: 'Inline Equation',
         value: KEYS.inlineEquation,
       },
-    ].map((item) => ({
-      ...item,
-      onSelect: (editor, value) => {
-        insertInlineElement(editor, value)
-      },
-    })),
+    ].map((item) => {
+      // Skip mapping if onSelect is already defined (for emoji)
+      if (item.onSelect) {
+        return item
+      }
+      return {
+        ...item,
+        onSelect: (editor: PlateEditor, value: string) => {
+          insertInlineElement(editor, value)
+        },
+      }
+    }),
   },
 ]
 
