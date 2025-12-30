@@ -215,6 +215,20 @@ const InlineComboboxInput = ({
   const value = store.useState('value')
 
   const ref = useComposedRef(propRef, contextRef)
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      const isBackspaceAtStart =
+        event.key === 'Backspace' && contextRef.current?.selectionStart === 0
+
+      inputProps.onKeyDown?.(event)
+
+      if (isBackspaceAtStart) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    },
+    [contextRef, inputProps]
+  )
 
   /**
    * To create an auto-resizing input, we render a visually hidden span
@@ -245,6 +259,7 @@ const InlineComboboxInput = ({
           autoSelect
           {...inputProps}
           {...props}
+          onKeyDown={handleKeyDown}
         />
       </span>
     </>
