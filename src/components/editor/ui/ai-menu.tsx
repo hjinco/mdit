@@ -61,7 +61,10 @@ export function AIMenu() {
     return isSelecting ? 'selectionCommand' : 'cursorCommand'
   }, [hasAssistantSuggestion, isSelecting])
 
-  const submitMode = menuState === 'selectionCommand' ? 'chat' : 'insert'
+  const submitMode =
+    menuState === 'selectionCommand' || menuState === 'cursorSuggestion'
+      ? 'chat'
+      : 'insert'
 
   const handleSubmit = useCallback(() => {
     if (!chatConfig) {
@@ -74,7 +77,7 @@ export function AIMenu() {
     if (value) {
       return
     }
-    api.aiChat.submit(input, { mode: submitMode, toolName: 'edit' })
+    api.aiChat.submit(input, { mode: submitMode })
     setInput('')
   }, [api.aiChat, chatConfig, input, licenseStatus, submitMode, value])
 

@@ -202,7 +202,7 @@ export function AIMenuContent({
           <Loader2Icon className="size-4 animate-spin" />
           {messages.length > 1 ? 'Editing...' : 'Thinking...'}
         </div>
-      ) : menuState !== 'cursorSuggestion' ? (
+      ) : (
         <div
           className={cn(
             'flex rounded-lg border transition-shadow bg-popover/90 backdrop-blur-xs',
@@ -270,15 +270,6 @@ export function AIMenuContent({
             </Button>
           </div>
         </div>
-      ) : null}
-
-      {menuState === 'cursorSuggestion' && !isLoading && (
-        <CommandPrimitive.Input
-          autoFocus
-          className="sr-only"
-          value={input}
-          onValueChange={onInputChange}
-        />
       )}
 
       {!isLoading && (
