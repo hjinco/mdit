@@ -453,19 +453,16 @@ export function SlashInputElement(
 
   const elementPath = editor.api.findPath(element)
   const beforePoint = elementPath ? editor.api.before(elementPath) : null
-  const isAtBlockStart = beforePoint
-    ? (() => {
-        const blockEntry = editor.api.above({
-          at: beforePoint,
-          match: editor.api.isBlock,
-          mode: 'highest',
-        })
-        if (!blockEntry) return false
-        const [, blockPath] = blockEntry
-        const blockStart = editor.api.start(blockPath)
-        return blockStart ? PointApi.equals(beforePoint, blockStart) : false
-      })()
-    : false
+  const blockEntry =
+    beforePoint &&
+    editor.api.above({
+      at: beforePoint,
+      match: editor.api.isBlock,
+      mode: 'highest',
+    })
+  const blockStart = blockEntry && editor.api.start(blockEntry[1])
+  const isAtBlockStart =
+    !!beforePoint && !!blockStart && PointApi.equals(beforePoint, blockStart)
 
   return (
     <PlateElement {...props} as="span">
