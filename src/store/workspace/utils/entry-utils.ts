@@ -247,9 +247,11 @@ export function updateEntryInState(
       return updated
     }
     if (entry.children) {
+      const updatedChildren = entry.children.map(updatePaths)
+      // Sort children after updating (name may have changed, affecting sort order)
       return {
         ...entry,
-        children: entry.children.map(updatePaths),
+        children: sortWorkspaceEntries(updatedChildren),
       }
     }
     return entry
@@ -286,7 +288,9 @@ export function updateEntryInState(
     return updated
   }
 
-  return entries.map(updatePaths)
+  const updatedEntries = entries.map(updatePaths)
+  // Sort root entries after updating (name may have changed, affecting sort order)
+  return sortWorkspaceEntries(updatedEntries)
 }
 
 export function updateChildPathsForMove(
