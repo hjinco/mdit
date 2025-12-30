@@ -203,6 +203,124 @@ describe('updateEntryInState', () => {
       '/root/file.md'
     )
   })
+
+  it('sorts root entries after renaming', () => {
+    const entries: WorkspaceEntry[] = [
+      makeFile('/zebra.md', 'zebra.md'),
+      makeFile('/alpha.md', 'alpha.md'),
+      makeFile('/beta.md', 'beta.md'),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/zebra.md',
+      '/aardvark.md',
+      'aardvark.md'
+    )
+
+    expect(result.map((entry) => entry.name)).toEqual([
+      'aardvark.md',
+      'alpha.md',
+      'beta.md',
+    ])
+  })
+
+  it('sorts parent directory children after renaming a file', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/folder', 'folder', [
+        makeFile('/folder/zebra.md', 'zebra.md'),
+        makeFile('/folder/alpha.md', 'alpha.md'),
+        makeFile('/folder/beta.md', 'beta.md'),
+      ]),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/folder/zebra.md',
+      '/folder/aardvark.md',
+      'aardvark.md'
+    )
+
+    const folder = result.find((entry) => entry.name === 'folder')
+    expect(folder?.children?.map((entry) => entry.name)).toEqual([
+      'aardvark.md',
+      'alpha.md',
+      'beta.md',
+    ])
+  })
+
+  it('sorts parent directory children after renaming a directory', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/parent', 'parent', [
+        makeDir('/parent/zebra', 'zebra', []),
+        makeDir('/parent/alpha', 'alpha', []),
+        makeDir('/parent/beta', 'beta', []),
+      ]),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/parent/zebra',
+      '/parent/aardvark',
+      'aardvark'
+    )
+
+    const parent = result.find((entry) => entry.name === 'parent')
+    expect(parent?.children?.map((entry) => entry.name)).toEqual([
+      'aardvark',
+      'alpha',
+      'beta',
+    ])
+  })
+
+  it('sorts entries correctly when renaming maintains alphabetical order', () => {
+    const entries: WorkspaceEntry[] = [
+      makeFile('/alpha.md', 'alpha.md'),
+      makeFile('/beta.md', 'beta.md'),
+      makeFile('/gamma.md', 'gamma.md'),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/beta.md',
+      '/beta-renamed.md',
+      'beta-renamed.md'
+    )
+
+    expect(result.map((entry) => entry.name)).toEqual([
+      'alpha.md',
+      'beta-renamed.md',
+      'gamma.md',
+    ])
+  })
+
+  it('sorts nested directory children after renaming', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/root', 'root', [
+        makeDir('/root/parent', 'parent', [
+          makeFile('/root/parent/z.md', 'z.md'),
+          makeFile('/root/parent/a.md', 'a.md'),
+          makeFile('/root/parent/m.md', 'm.md'),
+        ]),
+      ]),
+    ]
+
+    const result = updateEntryInState(
+      entries,
+      '/root/parent/z.md',
+      '/root/parent/alpha.md',
+      'alpha.md'
+    )
+
+    const parent = result
+      .find((entry) => entry.name === 'root')
+      ?.children?.find((entry) => entry.name === 'parent')
+    expect(parent?.children?.map((entry) => entry.name)).toEqual([
+      'a.md',
+      'alpha.md',
+      'm.md',
+    ])
+  })
 })
 
 describe('updateChildPathsForMove', () => {

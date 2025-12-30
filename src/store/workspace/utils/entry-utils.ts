@@ -90,13 +90,17 @@ function isUntitledNote(name: string): boolean {
 }
 
 export function sortWorkspaceEntries(
-  entries: WorkspaceEntry[]
+  entries: WorkspaceEntry[],
+  options?: { recursive?: boolean }
 ): WorkspaceEntry[] {
+  const recursive = options?.recursive ?? true
   return entries
     .map((entry) => ({
       ...entry,
       children: entry.children
-        ? sortWorkspaceEntries(entry.children)
+        ? recursive
+          ? sortWorkspaceEntries(entry.children, options)
+          : entry.children
         : undefined,
     }))
     .sort((a, b) => {
@@ -247,9 +251,11 @@ export function updateEntryInState(
       return updated
     }
     if (entry.children) {
+      const updatedChildren = entry.children.map(updatePaths)
+      // Sort children after updating (name may have changed, affecting sort order)
       return {
         ...entry,
-        children: entry.children.map(updatePaths),
+        children: sortWorkspaceEntries(updatedChildren, { recursive: false }),
       }
     }
     return entry
@@ -286,7 +292,9 @@ export function updateEntryInState(
     return updated
   }
 
-  return entries.map(updatePaths)
+  const updatedEntries = entries.map(updatePaths)
+  // Sort root entries after updating (name may have changed, affecting sort order)
+  return sortWorkspaceEntries(updatedEntries, { recursive: false })
 }
 
 export function updateChildPathsForMove(
