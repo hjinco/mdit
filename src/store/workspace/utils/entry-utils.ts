@@ -1,6 +1,6 @@
 import { join } from '@tauri-apps/api/path'
-import { readDir, stat } from '@tauri-apps/plugin-fs'
 
+import type { DirEntry, FileInfo } from '@tauri-apps/plugin-fs'
 import {
   getFileNameFromPath,
   normalizePathSeparators,
@@ -8,10 +8,16 @@ import {
 
 import type { WorkspaceEntry } from '../../workspace-store'
 
+type WorkspaceEntryFileSystem = {
+  readDir: (path: string) => Promise<DirEntry[]>
+  stat: (path: string) => Promise<FileInfo>
+}
+
 const EMPTY_CHILDREN: WorkspaceEntry[] = []
 
 export async function buildWorkspaceEntries(
   path: string,
+  fileSystemRepository: WorkspaceEntryFileSystem,
   visited: Set<string> = new Set<string>()
 ): Promise<WorkspaceEntry[]> {
   if (visited.has(path)) {
@@ -21,7 +27,7 @@ export async function buildWorkspaceEntries(
   visited.add(path)
 
   try {
-    const rawEntries = await readDir(path)
+    const rawEntries = await fileSystemRepository.readDir(path)
     const visibleEntries = rawEntries.filter(
       (entry) => Boolean(entry.name) && !entry.name.startsWith('.')
     )
@@ -48,7 +54,11 @@ export async function buildWorkspaceEntries(
               )
               workspaceEntry.children = EMPTY_CHILDREN
             } else {
-              const children = await buildWorkspaceEntries(fullPath, visited)
+              const children = await buildWorkspaceEntries(
+                fullPath,
+                fileSystemRepository,
+                visited
+              )
               workspaceEntry.children = children
             }
           } catch (error) {
@@ -57,7 +67,7 @@ export async function buildWorkspaceEntries(
           }
         } else {
           try {
-            const fileMetadata = await stat(fullPath)
+            const fileMetadata = await fileSystemRepository.stat(fullPath)
             if (fileMetadata.birthtime) {
               workspaceEntry.createdAt = new Date(fileMetadata.birthtime)
             }
