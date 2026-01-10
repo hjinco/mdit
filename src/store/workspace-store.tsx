@@ -15,10 +15,6 @@ import {
   isPathEqualOrDescendant,
   normalizePathSeparators,
 } from '@/utils/path-utils'
-import { useAISettingsStore } from './ai-settings-store'
-import { useCollectionStore } from './collection-store'
-import { useFileExplorerSelectionStore } from './file-explorer-selection-store'
-import { useTabStore } from './tab-store'
 import {
   AI_RENAME_SYSTEM_PROMPT,
   buildRenamePrompt,
@@ -55,6 +51,18 @@ import {
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
 import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
+import type {
+  AISettingsAdapter,
+  CollectionStoreAdapter,
+  FileExplorerSelectionAdapter,
+  TabStoreAdapter,
+} from './workspace-store-adapters'
+import {
+  aiSettingsAdapter,
+  collectionStoreAdapter,
+  fileExplorerSelectionAdapter,
+  tabStoreAdapter,
+} from './workspace-store-adapters'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -75,6 +83,10 @@ type WorkspaceStoreDependencies = {
   openDialog: OpenDialog
   applyWorkspaceMigrations: ApplyWorkspaceMigrations
   generateText: GenerateText
+  tabStoreAdapter: TabStoreAdapter
+  collectionStoreAdapter: CollectionStoreAdapter
+  fileExplorerSelectionAdapter: FileExplorerSelectionAdapter
+  aiSettingsAdapter: AISettingsAdapter
 }
 
 const buildWorkspaceState = (overrides?: Partial<WorkspaceStore>) => ({
@@ -150,6 +162,10 @@ export const createWorkspaceStore = ({
   openDialog,
   applyWorkspaceMigrations,
   generateText,
+  tabStoreAdapter,
+  collectionStoreAdapter,
+  fileExplorerSelectionAdapter,
+  aiSettingsAdapter,
 }: WorkspaceStoreDependencies) =>
   create<WorkspaceStore>((set, get) => {
     const restoreLastOpenedNoteFromSettings = async (
@@ -169,12 +185,9 @@ export const createWorkspaceStore = ({
           (await fileSystemRepository.exists(absolutePath)) &&
           get().workspacePath === workspacePath
         ) {
-          useTabStore
-            .getState()
-            .openTab(absolutePath)
-            .catch((error) => {
-              console.debug('Failed to open last opened note:', error)
-            })
+          tabStoreAdapter.openTab(absolutePath).catch((error) => {
+            console.debug('Failed to open last opened note:', error)
+          })
         }
       } catch (error) {
         console.debug('Failed to restore last opened note:', error)
@@ -326,7 +339,7 @@ export const createWorkspaceStore = ({
               isTreeLoading: Boolean(workspacePath),
             })
           )
-          useCollectionStore.getState().resetCollectionPath()
+          collectionStoreAdapter.resetCollectionPath()
 
           if (workspacePath) {
             await bootstrapWorkspace(workspacePath, {
@@ -338,7 +351,7 @@ export const createWorkspaceStore = ({
         } catch (error) {
           console.error('Failed to initialize workspace:', error)
           set(buildWorkspaceState())
-          useCollectionStore.getState().resetCollectionPath()
+          collectionStoreAdapter.resetCollectionPath()
         }
       },
 
@@ -355,13 +368,13 @@ export const createWorkspaceStore = ({
             return
           }
 
-          const { tab, closeTab, clearHistory } = useTabStore.getState()
+          const { tab } = tabStoreAdapter.getSnapshot()
 
           if (tab) {
-            closeTab(tab.path)
+            tabStoreAdapter.closeTab(tab.path)
           }
 
-          clearHistory()
+          tabStoreAdapter.clearHistory()
 
           const recentWorkspacePaths = get().recentWorkspacePaths
 
@@ -379,7 +392,7 @@ export const createWorkspaceStore = ({
               isTreeLoading: true,
             })
           )
-          useCollectionStore.getState().resetCollectionPath()
+          collectionStoreAdapter.resetCollectionPath()
 
           await bootstrapWorkspace(path)
         } catch (error) {
@@ -579,12 +592,11 @@ export const createWorkspaceStore = ({
               console.error('Failed to persist expanded directories:', error)
             })
 
-          useCollectionStore.getState().setCurrentCollectionPath(folderPath)
-
-          const { setSelectedEntryPaths, setSelectionAnchorPath } =
-            useFileExplorerSelectionStore.getState()
-          setSelectedEntryPaths(new Set([folderPath]))
-          setSelectionAnchorPath(folderPath)
+          collectionStoreAdapter.setCurrentCollectionPath(folderPath)
+          fileExplorerSelectionAdapter.setSelectedEntryPaths(
+            new Set([folderPath])
+          )
+          fileExplorerSelectionAdapter.setSelectionAnchorPath(folderPath)
 
           return folderPath
         } catch (error) {
@@ -639,10 +651,8 @@ export const createWorkspaceStore = ({
           }
         })
 
-        const { setSelectedEntryPaths, setSelectionAnchorPath } =
-          useFileExplorerSelectionStore.getState()
-        setSelectedEntryPaths(new Set([filePath]))
-        setSelectionAnchorPath(filePath)
+        fileExplorerSelectionAdapter.setSelectedEntryPaths(new Set([filePath]))
+        fileExplorerSelectionAdapter.setSelectionAnchorPath(filePath)
 
         return filePath
       },
@@ -654,8 +664,8 @@ export const createWorkspaceStore = ({
           return
         }
 
-        const { tab, openTab } = useTabStore.getState()
-        const { currentCollectionPath } = useCollectionStore.getState()
+        const { tab } = tabStoreAdapter.getSnapshot()
+        const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
         let targetDirectory = workspacePath
 
         // Priority: currentCollectionPath > tab directory > workspace root
@@ -666,18 +676,19 @@ export const createWorkspaceStore = ({
         }
 
         const newNotePath = await get().createNote(targetDirectory)
-        await openTab(newNotePath)
+        await tabStoreAdapter.openTab(newNotePath)
       },
 
       deleteEntries: async (paths: string[]) => {
-        let tabState = useTabStore.getState()
-        const activeTabPath = tabState.tab?.path
+        const { tab } = tabStoreAdapter.getSnapshot()
+        const activeTabPath = tab?.path
 
         if (activeTabPath && paths.includes(activeTabPath)) {
-          tabState = await waitForUnsavedTabToSettle(activeTabPath, () =>
-            useTabStore.getState()
+          await waitForUnsavedTabToSettle(
+            activeTabPath,
+            tabStoreAdapter.getSnapshot
           )
-          tabState.closeTab(activeTabPath)
+          tabStoreAdapter.closeTab(activeTabPath)
         }
 
         if (paths.length === 1) {
@@ -689,15 +700,12 @@ export const createWorkspaceStore = ({
 
         // Remove deleted paths from history
         for (const path of paths) {
-          tabState.removePathFromHistory(path)
+          tabStoreAdapter.removePathFromHistory(path)
         }
 
         // Update currentCollectionPath and lastCollectionPath if they're being deleted
-        const {
-          currentCollectionPath,
-          lastCollectionPath,
-          setCurrentCollectionPath,
-        } = useCollectionStore.getState()
+        const { currentCollectionPath, lastCollectionPath } =
+          collectionStoreAdapter.getSnapshot()
         const shouldClearCurrentCollectionPath =
           currentCollectionPath && paths.includes(currentCollectionPath)
         const shouldClearLastCollectionPath =
@@ -705,10 +713,10 @@ export const createWorkspaceStore = ({
 
         if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
           if (shouldClearCurrentCollectionPath) {
-            setCurrentCollectionPath(null)
+            collectionStoreAdapter.setCurrentCollectionPath(null)
           }
           if (shouldClearLastCollectionPath) {
-            useCollectionStore.setState({ lastCollectionPath: null })
+            collectionStoreAdapter.clearLastCollectionPath()
           }
         }
 
@@ -752,7 +760,7 @@ export const createWorkspaceStore = ({
       },
 
       renameNoteWithAI: async (entry) => {
-        const renameConfig = useAISettingsStore.getState().renameConfig
+        const renameConfig = aiSettingsAdapter.getRenameConfig()
 
         if (!renameConfig) {
           return
@@ -796,7 +804,7 @@ export const createWorkspaceStore = ({
 
         const renamedPath = await get().renameEntry(entry, finalFileName)
 
-        const { tab, openTab } = useTabStore.getState()
+        const { tab } = tabStoreAdapter.getSnapshot()
 
         toast.success(`Renamed note to “${finalFileName}”`, {
           position: 'bottom-left',
@@ -806,7 +814,7 @@ export const createWorkspaceStore = ({
               : {
                   label: 'Open',
                   onClick: () => {
-                    openTab(renamedPath)
+                    tabStoreAdapter.openTab(renamedPath)
                   },
                 },
         })
@@ -820,9 +828,7 @@ export const createWorkspaceStore = ({
           return entry.path
         }
 
-        const tabState = await waitForUnsavedTabToSettle(entry.path, () =>
-          useTabStore.getState()
-        )
+        await waitForUnsavedTabToSettle(entry.path, tabStoreAdapter.getSnapshot)
 
         const directoryPath = await dirname(entry.path)
         const nextPath = await join(directoryPath, trimmedName)
@@ -838,8 +844,8 @@ export const createWorkspaceStore = ({
         await fileSystemRepository.rename(entry.path, nextPath)
         get().recordFsOperation()
 
-        await tabState.renameTab(entry.path, nextPath)
-        tabState.updateHistoryPath(entry.path, nextPath)
+        await tabStoreAdapter.renameTab(entry.path, nextPath)
+        tabStoreAdapter.updateHistoryPath(entry.path, nextPath)
 
         const {
           workspacePath,
@@ -880,10 +886,9 @@ export const createWorkspaceStore = ({
 
         // Update currentCollectionPath if the renamed entry is a directory and matches the current collection path
         if (entry.isDirectory) {
-          const { currentCollectionPath, setCurrentCollectionPath } =
-            useCollectionStore.getState()
+          const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
           if (currentCollectionPath === entry.path) {
-            setCurrentCollectionPath(nextPath)
+            collectionStoreAdapter.setCurrentCollectionPath(nextPath)
           }
         }
 
@@ -931,9 +936,9 @@ export const createWorkspaceStore = ({
         }
 
         try {
-          const tabState = await waitForUnsavedTabToSettle(
+          await waitForUnsavedTabToSettle(
             sourcePath,
-            useTabStore.getState
+            tabStoreAdapter.getSnapshot
           )
 
           // Find the entry to move before path operations to determine if it's a directory
@@ -1001,12 +1006,12 @@ export const createWorkspaceStore = ({
           }
 
           // Update tab path if the moved file is currently open
-          await tabState.renameTab(sourcePath, newPath, {
+          await tabStoreAdapter.renameTab(sourcePath, newPath, {
             refreshContent: shouldRefreshTab,
           })
-          tabState.updateHistoryPath(sourcePath, newPath)
+          tabStoreAdapter.updateHistoryPath(sourcePath, newPath)
 
-          const { currentCollectionPath } = useCollectionStore.getState()
+          const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
 
           // Update currentCollectionPath if it's being moved
           const shouldUpdateCollectionPath =
@@ -1093,7 +1098,7 @@ export const createWorkspaceStore = ({
 
           // Update currentCollectionPath if it's being moved
           if (shouldUpdateCollectionPath) {
-            useCollectionStore.getState().setCurrentCollectionPath(newPath)
+            collectionStoreAdapter.setCurrentCollectionPath(newPath)
           }
 
           await settingsRepository.persistExpandedDirectories(
@@ -1354,7 +1359,7 @@ export const createWorkspaceStore = ({
       },
 
       clearWorkspace: async () => {
-        const { tab, closeTab, clearHistory } = useTabStore.getState()
+        const { tab } = tabStoreAdapter.getSnapshot()
         const workspacePath = get().workspacePath
 
         if (!workspacePath) return
@@ -1362,8 +1367,8 @@ export const createWorkspaceStore = ({
         await fileSystemRepository.moveToTrash(workspacePath)
 
         if (tab) {
-          closeTab(tab.path)
-          clearHistory()
+          tabStoreAdapter.closeTab(tab.path)
+          tabStoreAdapter.clearHistory()
         }
 
         const recentWorkspacePaths = get().recentWorkspacePaths
@@ -1379,7 +1384,7 @@ export const createWorkspaceStore = ({
             isMigrationsComplete: true,
           })
         )
-        useCollectionStore.getState().resetCollectionPath()
+        collectionStoreAdapter.resetCollectionPath()
       },
     }
   })
@@ -1395,4 +1400,8 @@ export const useWorkspaceStore = createWorkspaceStore({
   applyWorkspaceMigrations: (workspacePath: string) =>
     invoke<void>('apply_workspace_migrations', { workspacePath }),
   generateText,
+  tabStoreAdapter,
+  collectionStoreAdapter,
+  fileExplorerSelectionAdapter,
+  aiSettingsAdapter,
 })
