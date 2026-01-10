@@ -1,5 +1,3 @@
-import type { WorkspaceSettings } from '@/lib/settings-utils'
-import { saveSettings } from '@/lib/settings-utils'
 import {
   isPathEqualOrDescendant,
   isPathInPaths,
@@ -7,10 +5,6 @@ import {
 } from '@/utils/path-utils'
 import type { WorkspaceEntry } from '../../workspace-store'
 import { collectDirectoryPaths } from './expanded-directories-utils'
-
-const DRIVE_LETTER_REGEX = /^[a-zA-Z]:\//
-const isAbsolutePath = (path: string) =>
-  path.startsWith('/') || DRIVE_LETTER_REGEX.test(path)
 
 export function normalizePinnedDirectoriesList(paths: unknown[]): string[] {
   const normalizedSet = new Set<string>()
@@ -26,91 +20,6 @@ export function normalizePinnedDirectoriesList(paths: unknown[]): string[] {
   }
 
   return Array.from(normalizedSet)
-}
-
-const toRelativePinPath = (
-  workspacePath: string,
-  pinnedPath: string
-): string => {
-  const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPinned = normalizePathSeparators(pinnedPath)
-
-  if (!normalizedWorkspace || !normalizedPinned) return normalizedPinned
-  if (normalizedPinned === normalizedWorkspace) return '.'
-
-  const workspacePrefix = `${normalizedWorkspace}/`
-  if (normalizedPinned.startsWith(workspacePrefix)) {
-    const relative = normalizedPinned.slice(workspacePrefix.length)
-    return relative.length > 0 ? relative : '.'
-  }
-
-  return normalizedPinned
-}
-
-const toAbsolutePinPath = (
-  workspacePath: string,
-  pinnedPath: string
-): string | null => {
-  const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPinned = normalizePathSeparators(pinnedPath)
-  if (!normalizedPinned) return null
-
-  const withoutDotPrefix = normalizedPinned.startsWith('./')
-    ? normalizedPinned.slice(2)
-    : normalizedPinned
-
-  if (withoutDotPrefix === '.' || withoutDotPrefix === '') {
-    return normalizedWorkspace
-  }
-
-  if (isAbsolutePath(withoutDotPrefix)) {
-    return withoutDotPrefix
-  }
-
-  if (!normalizedWorkspace) return null
-
-  return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
-}
-
-export function getPinnedDirectoriesFromSettings(
-  workspacePath: string | null,
-  settings: WorkspaceSettings | null | undefined
-): string[] {
-  if (!workspacePath) {
-    return []
-  }
-
-  const rawPins = settings?.pinnedDirectories ?? []
-  const normalizedPins = normalizePinnedDirectoriesList(rawPins)
-  const absolutePins: string[] = []
-
-  for (const pin of normalizedPins) {
-    const absolutePath = toAbsolutePinPath(workspacePath, pin)
-    if (absolutePath) {
-      absolutePins.push(absolutePath)
-    }
-  }
-
-  return Array.from(new Set(absolutePins))
-}
-
-export async function persistPinnedDirectories(
-  workspacePath: string | null,
-  pinnedDirectories: string[]
-): Promise<void> {
-  if (!workspacePath) {
-    return
-  }
-
-  try {
-    const normalizedPins = normalizePinnedDirectoriesList(pinnedDirectories)
-    const relativePins = normalizePinnedDirectoriesList(
-      normalizedPins.map((path) => toRelativePinPath(workspacePath, path))
-    )
-    await saveSettings(workspacePath, { pinnedDirectories: relativePins })
-  } catch (error) {
-    console.error('Failed to save pinned directories:', error)
-  }
 }
 
 export function filterPinsForWorkspace(

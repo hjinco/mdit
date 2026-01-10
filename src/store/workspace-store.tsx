@@ -6,8 +6,9 @@ import { resolve } from 'pathe'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import type { WorkspaceSettings } from '@/lib/settings-utils'
-import { loadSettings } from '@/lib/settings-utils'
 import { FileSystemRepository } from '@/repositories/file-system-repository'
+import { WorkspaceHistoryRepository } from '@/repositories/workspace-history-repository'
+import { WorkspaceSettingsRepository } from '@/repositories/workspace-settings-repository'
 import { areStringArraysEqual } from '@/utils/array-utils'
 import {
   getFileNameFromPath,
@@ -39,8 +40,6 @@ import {
 } from './workspace/utils/entry-utils'
 import {
   addExpandedDirectories,
-  getExpandedDirectoriesFromSettings,
-  persistExpandedDirectories,
   removeExpandedDirectories,
   renameExpandedDirectories,
   syncExpandedDirectoriesWithEntries,
@@ -50,24 +49,32 @@ import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-ut
 import {
   filterPinsForWorkspace,
   filterPinsWithEntries,
-  getPinnedDirectoriesFromSettings,
   normalizePinnedDirectoriesList,
-  persistPinnedDirectories,
   removePinsForPaths,
   renamePinnedDirectories,
 } from './workspace/utils/pinned-directories-utils'
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
 import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
-import {
-  readWorkspaceHistory,
-  removeFromWorkspaceHistory,
-  writeWorkspaceHistory,
-} from './workspace/utils/workspace-history-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
-type WorkspaceStoreRepositories = {
+type OpenDialog = (options: {
+  multiple?: boolean
+  directory?: boolean
+  title?: string
+}) => Promise<string | null>
+
+type ApplyWorkspaceMigrations = (workspacePath: string) => Promise<void>
+
+type GenerateText = typeof generateText
+
+type WorkspaceStoreDependencies = {
   fileSystemRepository: FileSystemRepository
+  settingsRepository: WorkspaceSettingsRepository
+  historyRepository: WorkspaceHistoryRepository
+  openDialog: OpenDialog
+  applyWorkspaceMigrations: ApplyWorkspaceMigrations
+  generateText: GenerateText
 }
 
 const buildWorkspaceState = (overrides?: Partial<WorkspaceStore>) => ({
@@ -138,7 +145,12 @@ type WorkspaceStore = {
 
 export const createWorkspaceStore = ({
   fileSystemRepository,
-}: WorkspaceStoreRepositories) =>
+  settingsRepository,
+  historyRepository,
+  openDialog,
+  applyWorkspaceMigrations,
+  generateText,
+}: WorkspaceStoreDependencies) =>
   create<WorkspaceStore>((set, get) => {
     const restoreLastOpenedNoteFromSettings = async (
       workspacePath: string,
@@ -176,7 +188,7 @@ export const createWorkspaceStore = ({
       let migrationsComplete = false
 
       try {
-        await invoke('apply_workspace_migrations', { workspacePath })
+        await applyWorkspaceMigrations(workspacePath)
         migrationsComplete = true
       } catch (error) {
         console.error('Failed to apply workspace migrations:', error)
@@ -190,7 +202,7 @@ export const createWorkspaceStore = ({
 
       try {
         const [settings, entries] = await Promise.all([
-          loadSettings(workspacePath),
+          settingsRepository.loadSettings(workspacePath),
           buildWorkspaceEntries(workspacePath, fileSystemRepository),
         ])
 
@@ -199,7 +211,10 @@ export const createWorkspaceStore = ({
         }
 
         const pinsFromSettings = filterPinsForWorkspace(
-          getPinnedDirectoriesFromSettings(workspacePath, settings),
+          settingsRepository.getPinnedDirectoriesFromSettings(
+            workspacePath,
+            settings
+          ),
           workspacePath
         )
         const nextPinned = filterPinsWithEntries(
@@ -208,10 +223,11 @@ export const createWorkspaceStore = ({
           workspacePath
         )
         const pinsChanged = !areStringArraysEqual(pinsFromSettings, nextPinned)
-        const expandedFromSettings = getExpandedDirectoriesFromSettings(
-          workspacePath,
-          settings
-        )
+        const expandedFromSettings =
+          settingsRepository.getExpandedDirectoriesFromSettings(
+            workspacePath,
+            settings
+          )
         const syncedExpandedDirectories = syncExpandedDirectoriesWithEntries(
           expandedFromSettings,
           entries
@@ -225,7 +241,10 @@ export const createWorkspaceStore = ({
         })
 
         if (pinsChanged) {
-          await persistPinnedDirectories(workspacePath, nextPinned)
+          await settingsRepository.persistPinnedDirectories(
+            workspacePath,
+            nextPinned
+          )
         }
 
         const expandedChanged = !areStringArraysEqual(
@@ -234,7 +253,10 @@ export const createWorkspaceStore = ({
         )
 
         if (expandedChanged) {
-          persistExpandedDirectories(workspacePath, syncedExpandedDirectories)
+          settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            syncedExpandedDirectories
+          )
         }
 
         if (options?.restoreLastOpenedNote) {
@@ -267,13 +289,16 @@ export const createWorkspaceStore = ({
         })
 
         if (!areStringArraysEqual(previousExpanded, updatedExpanded)) {
-          await persistExpandedDirectories(workspacePath, updatedExpanded)
+          await settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            updatedExpanded
+          )
         }
       },
 
       initializeWorkspace: async () => {
         try {
-          const recentWorkspacePaths = readWorkspaceHistory()
+          const recentWorkspacePaths = historyRepository.readWorkspaceHistory()
           const validationResults = await Promise.all(
             recentWorkspacePaths.map((path) =>
               fileSystemRepository.isExistingDirectory(path)
@@ -289,7 +314,7 @@ export const createWorkspaceStore = ({
               nextRecentWorkspacePaths
             )
           ) {
-            writeWorkspaceHistory(nextRecentWorkspacePaths)
+            historyRepository.writeWorkspaceHistory(nextRecentWorkspacePaths)
           }
 
           const workspacePath = nextRecentWorkspacePaths[0] ?? null
@@ -320,7 +345,8 @@ export const createWorkspaceStore = ({
       setWorkspace: async (path: string) => {
         try {
           if (!(await fileSystemRepository.isExistingDirectory(path))) {
-            const updatedHistory = removeFromWorkspaceHistory(path)
+            const updatedHistory =
+              historyRepository.removeFromWorkspaceHistory(path)
             set({ recentWorkspacePaths: updatedHistory })
             toast.error('Folder does not exist.', {
               description: path,
@@ -344,7 +370,7 @@ export const createWorkspaceStore = ({
             ...recentWorkspacePaths.filter((entry) => entry !== path),
           ].slice(0, MAX_HISTORY_LENGTH)
 
-          writeWorkspaceHistory(updatedHistory)
+          historyRepository.writeWorkspaceHistory(updatedHistory)
 
           set(
             buildWorkspaceState({
@@ -362,7 +388,7 @@ export const createWorkspaceStore = ({
       },
 
       openFolderPicker: async () => {
-        const path = await open({
+        const path = await openDialog({
           multiple: false,
           directory: true,
           title: 'Select a folder',
@@ -411,10 +437,16 @@ export const createWorkspaceStore = ({
             ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
           })
 
-          await persistExpandedDirectories(workspacePath, nextExpanded)
+          await settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            nextExpanded
+          )
 
           if (pinsChanged) {
-            await persistPinnedDirectories(workspacePath, nextPinned)
+            await settingsRepository.persistPinnedDirectories(
+              workspacePath,
+              nextPinned
+            )
           }
         } catch (e) {
           set({ isTreeLoading: false })
@@ -447,7 +479,10 @@ export const createWorkspaceStore = ({
           return
         }
         set({ pinnedDirectories: nextPinned })
-        await persistPinnedDirectories(workspacePath, nextPinned)
+        await settingsRepository.persistPinnedDirectories(
+          workspacePath,
+          nextPinned
+        )
       },
 
       unpinDirectory: async (path: string) => {
@@ -465,7 +500,10 @@ export const createWorkspaceStore = ({
           return
         }
         set({ pinnedDirectories: nextPinned })
-        await persistPinnedDirectories(workspacePath, nextPinned)
+        await settingsRepository.persistPinnedDirectories(
+          workspacePath,
+          nextPinned
+        )
       },
 
       toggleDirectory: async (path: string) => {
@@ -478,7 +516,10 @@ export const createWorkspaceStore = ({
         )
         set({ expandedDirectories: updatedExpanded })
 
-        await persistExpandedDirectories(workspacePath, updatedExpanded)
+        await settingsRepository.persistExpandedDirectories(
+          workspacePath,
+          updatedExpanded
+        )
       },
 
       createFolder: async (directoryPath: string, folderName: string) => {
@@ -532,12 +573,11 @@ export const createWorkspaceStore = ({
           ])
           set({ entries: updatedEntries, expandedDirectories: updatedExpanded })
 
-          await persistExpandedDirectories(
-            workspacePath,
-            updatedExpanded
-          ).catch((error) => {
-            console.error('Failed to persist expanded directories:', error)
-          })
+          await settingsRepository
+            .persistExpandedDirectories(workspacePath, updatedExpanded)
+            .catch((error) => {
+              console.error('Failed to persist expanded directories:', error)
+            })
 
           useCollectionStore.getState().setCurrentCollectionPath(folderPath)
 
@@ -694,10 +734,16 @@ export const createWorkspaceStore = ({
           ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
         })
 
-        await persistExpandedDirectories(workspacePath, updatedExpanded)
+        await settingsRepository.persistExpandedDirectories(
+          workspacePath,
+          updatedExpanded
+        )
 
         if (pinsChanged) {
-          await persistPinnedDirectories(workspacePath, filteredPins)
+          await settingsRepository.persistPinnedDirectories(
+            workspacePath,
+            filteredPins
+          )
         }
       },
 
@@ -841,10 +887,16 @@ export const createWorkspaceStore = ({
           }
         }
 
-        await persistExpandedDirectories(workspacePath, updatedExpanded)
+        await settingsRepository.persistExpandedDirectories(
+          workspacePath,
+          updatedExpanded
+        )
 
         if (nextPinned) {
-          await persistPinnedDirectories(workspacePath, nextPinned)
+          await settingsRepository.persistPinnedDirectories(
+            workspacePath,
+            nextPinned
+          )
         }
 
         return nextPath
@@ -1044,10 +1096,16 @@ export const createWorkspaceStore = ({
             useCollectionStore.getState().setCurrentCollectionPath(newPath)
           }
 
-          await persistExpandedDirectories(workspacePath, nextExpanded)
+          await settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            nextExpanded
+          )
 
           if (nextPinned) {
-            await persistPinnedDirectories(workspacePath, nextPinned)
+            await settingsRepository.persistPinnedDirectories(
+              workspacePath,
+              nextPinned
+            )
           }
 
           return true
@@ -1166,7 +1224,10 @@ export const createWorkspaceStore = ({
           set({
             expandedDirectories: nextExpanded,
           })
-          persistExpandedDirectories(workspacePath, nextExpanded)
+          settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            nextExpanded
+          )
         }
 
         return true
@@ -1262,7 +1323,10 @@ export const createWorkspaceStore = ({
           set({
             expandedDirectories: updatedExpanded,
           })
-          await persistExpandedDirectories(workspacePath, updatedExpanded)
+          await settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            updatedExpanded
+          )
         }
 
         return true
@@ -1307,7 +1371,7 @@ export const createWorkspaceStore = ({
           (path) => path !== workspacePath
         )
 
-        writeWorkspaceHistory(updatedHistory)
+        historyRepository.writeWorkspaceHistory(updatedHistory)
 
         set(
           buildWorkspaceState({
@@ -1322,4 +1386,13 @@ export const createWorkspaceStore = ({
 
 export const useWorkspaceStore = createWorkspaceStore({
   fileSystemRepository: new FileSystemRepository(),
+  settingsRepository: new WorkspaceSettingsRepository(),
+  historyRepository: new WorkspaceHistoryRepository(),
+  openDialog: async (options) => {
+    const result = await open(options)
+    return typeof result === 'string' ? result : null
+  },
+  applyWorkspaceMigrations: (workspacePath: string) =>
+    invoke<void>('apply_workspace_migrations', { workspacePath }),
+  generateText,
 })

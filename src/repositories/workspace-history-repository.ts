@@ -1,6 +1,6 @@
-export const WORKSPACE_HISTORY_KEY = 'workspace-history'
+const WORKSPACE_HISTORY_KEY = 'workspace-history'
 
-export function readWorkspaceHistory(): string[] {
+const readWorkspaceHistory = (): string[] => {
   try {
     const rawHistory = localStorage.getItem(WORKSPACE_HISTORY_KEY)
     if (!rawHistory) {
@@ -22,12 +22,26 @@ export function readWorkspaceHistory(): string[] {
   }
 }
 
-export function writeWorkspaceHistory(paths: string[]) {
+const writeWorkspaceHistory = (paths: string[]): void => {
   localStorage.setItem(WORKSPACE_HISTORY_KEY, JSON.stringify(paths))
 }
 
-export function removeFromWorkspaceHistory(path: string) {
+const removeFromWorkspaceHistory = (path: string): string[] => {
   const nextHistory = readWorkspaceHistory().filter((entry) => entry !== path)
   writeWorkspaceHistory(nextHistory)
   return nextHistory
+}
+
+export class WorkspaceHistoryRepository {
+  readWorkspaceHistory(): string[] {
+    return readWorkspaceHistory()
+  }
+
+  writeWorkspaceHistory(paths: string[]): void {
+    writeWorkspaceHistory(paths)
+  }
+
+  removeFromWorkspaceHistory(path: string): string[] {
+    return removeFromWorkspaceHistory(path)
+  }
 }
