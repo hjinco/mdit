@@ -737,11 +737,13 @@ export const createWorkspaceFsStore = ({
           modifiedAt: fileMetadata.modifiedAt,
         }
 
-        workspaceStoreAdapter.updateEntries((entries) =>
-          destinationPath === workspacePath
-            ? sortWorkspaceEntries([...entries, newFileEntry])
-            : addEntryToState(entries, destinationPath, newFileEntry)
-        )
+        if (!isDirectory) {
+          workspaceStoreAdapter.updateEntries((entries) =>
+            destinationPath === workspacePath
+              ? sortWorkspaceEntries([...entries, newFileEntry])
+              : addEntryToState(entries, destinationPath, newFileEntry)
+          )
+        }
 
         if (isDirectory) {
           await workspaceStoreAdapter.refreshWorkspaceEntries()
