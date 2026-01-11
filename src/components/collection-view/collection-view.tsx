@@ -9,11 +9,9 @@ import { useCollectionStore } from '@/store/collection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import { getFolderNameFromPath } from '@/utils/path-utils'
 import { isMac } from '@/utils/platform'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
-import { useCollectionEntries } from './hooks/use-collection-entries'
 import { useCollectionRename } from './hooks/use-collection-rename'
 import { useCollectionSelection } from './hooks/use-collection-selection'
 import { useCollectionSort } from './hooks/use-collection-sort'
@@ -26,19 +24,14 @@ import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
 
 export function CollectionView() {
-  const { currentCollectionPath, setCurrentCollectionPath } =
+  const { currentCollectionPath, setCurrentCollectionPath, collectionEntries } =
     useCollectionStore(
       useShallow((state) => ({
         currentCollectionPath: state.currentCollectionPath,
         setCurrentCollectionPath: state.setCurrentCollectionPath,
+        collectionEntries: state.collectionEntries,
       }))
     )
-  const { entries, workspacePath } = useWorkspaceStore(
-    useShallow((state) => ({
-      entries: state.entries,
-      workspacePath: state.workspacePath,
-    }))
-  )
   const isCollectionViewOpen = currentCollectionPath !== null
   const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
@@ -78,12 +71,6 @@ export function CollectionView() {
   const displayName = currentCollectionPath
     ? getFolderNameFromPath(currentCollectionPath)
     : undefined
-
-  const collectionEntries = useCollectionEntries(
-    currentCollectionPath,
-    entries,
-    workspacePath
-  )
 
   const {
     sortedEntries,
