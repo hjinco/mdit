@@ -87,6 +87,14 @@ type WorkspaceStore = {
   setExpandedDirectories: (
     action: (expandedDirectories: string[]) => string[]
   ) => Promise<void>
+  updateEntries: (
+    action: (entries: WorkspaceEntry[]) => WorkspaceEntry[]
+  ) => void
+  applyWorkspaceUpdate: (update: {
+    entries?: WorkspaceEntry[]
+    expandedDirectories?: string[]
+    pinnedDirectories?: string[]
+  }) => Promise<void>
   initializeWorkspace: () => Promise<void>
   setWorkspace: (path: string) => Promise<void>
   openFolderPicker: () => Promise<void>
@@ -240,6 +248,52 @@ export const createWorkspaceStore = ({
           await settingsRepository.persistExpandedDirectories(
             workspacePath,
             updatedExpanded
+          )
+        }
+      },
+
+      updateEntries: (action) => {
+        set((state) => ({
+          entries: action(state.entries),
+        }))
+      },
+
+      applyWorkspaceUpdate: async (update) => {
+        const { workspacePath, expandedDirectories, pinnedDirectories } = get()
+        if (!workspacePath) throw new Error('Workspace path is not set')
+
+        const shouldUpdate =
+          update.entries ||
+          update.expandedDirectories ||
+          update.pinnedDirectories
+
+        if (shouldUpdate) {
+          set((state) => ({
+            entries: update.entries ?? state.entries,
+            expandedDirectories:
+              update.expandedDirectories ?? state.expandedDirectories,
+            pinnedDirectories:
+              update.pinnedDirectories ?? state.pinnedDirectories,
+          }))
+        }
+
+        if (
+          update.expandedDirectories &&
+          !areStringArraysEqual(expandedDirectories, update.expandedDirectories)
+        ) {
+          await settingsRepository.persistExpandedDirectories(
+            workspacePath,
+            update.expandedDirectories
+          )
+        }
+
+        if (
+          update.pinnedDirectories &&
+          !areStringArraysEqual(pinnedDirectories, update.pinnedDirectories)
+        ) {
+          await settingsRepository.persistPinnedDirectories(
+            workspacePath,
+            update.pinnedDirectories
           )
         }
       },
