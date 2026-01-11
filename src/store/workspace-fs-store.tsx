@@ -3,7 +3,6 @@ import { generateText } from 'ai'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { FileSystemRepository } from '@/repositories/file-system-repository'
-import { WorkspaceSettingsRepository } from '@/repositories/workspace-settings-repository'
 import {
   getFileNameFromPath,
   isPathEqualOrDescendant,
@@ -40,7 +39,8 @@ import {
 import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
 import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
 import type { WorkspaceEntry } from './workspace-store'
-import { useWorkspaceStore } from './workspace-store'
+import type { WorkspaceStoreAdapter } from './workspace-store-adapter'
+import { workspaceStoreAdapter } from './workspace-store-adapter'
 import type {
   AISettingsAdapter,
   CollectionStoreAdapter,
@@ -58,12 +58,12 @@ type GenerateText = typeof generateText
 
 type WorkspaceFsStoreDependencies = {
   fileSystemRepository: FileSystemRepository
-  settingsRepository: WorkspaceSettingsRepository
   generateText: GenerateText
   tabStoreAdapter: TabStoreAdapter
   collectionStoreAdapter: CollectionStoreAdapter
   fileExplorerSelectionAdapter: FileExplorerSelectionAdapter
   aiSettingsAdapter: AISettingsAdapter
+  workspaceStoreAdapter: WorkspaceStoreAdapter
 }
 
 type WorkspaceFsStore = {
@@ -94,16 +94,15 @@ type WorkspaceFsStore = {
 
 export const createWorkspaceFsStore = ({
   fileSystemRepository,
-  settingsRepository,
   generateText,
   tabStoreAdapter,
   collectionStoreAdapter,
   fileExplorerSelectionAdapter,
   aiSettingsAdapter,
+  workspaceStoreAdapter,
 }: WorkspaceFsStoreDependencies) =>
   create<WorkspaceFsStore>((set, get) => {
-    const getWorkspaceState = () => useWorkspaceStore.getState()
-    const setWorkspaceState = useWorkspaceStore.setState
+    const getWorkspaceSnapshot = () => workspaceStoreAdapter.getSnapshot()
 
     return {
       lastFsOperationTime: null,
@@ -118,7 +117,8 @@ export const createWorkspaceFsStore = ({
       },
 
       createFolder: async (directoryPath: string, folderName: string) => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath, entries, expandedDirectories } =
+          getWorkspaceSnapshot()
 
         if (!workspacePath) {
           return null
@@ -155,8 +155,6 @@ export const createWorkspaceFsStore = ({
             modifiedAt: undefined,
           }
 
-          const { entries, expandedDirectories } = getWorkspaceState()
-
           const updatedEntries =
             directoryPath === workspacePath
               ? sortWorkspaceEntries([...entries, newFolderEntry])
@@ -166,13 +164,11 @@ export const createWorkspaceFsStore = ({
             directoryPath,
             folderPath,
           ])
-          setWorkspaceState({
-            entries: updatedEntries,
-            expandedDirectories: updatedExpanded,
-          })
-
-          await settingsRepository
-            .persistExpandedDirectories(workspacePath, updatedExpanded)
+          await workspaceStoreAdapter
+            .applyWorkspaceUpdate({
+              entries: updatedEntries,
+              expandedDirectories: updatedExpanded,
+            })
             .catch((error) => {
               console.error('Failed to persist expanded directories:', error)
             })
@@ -194,7 +190,7 @@ export const createWorkspaceFsStore = ({
         directoryPath: string,
         options?: { initialName?: string; initialContent?: string }
       ) => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath } = getWorkspaceSnapshot()
 
         if (!workspacePath) {
           throw new Error('Workspace path is not set')
@@ -225,16 +221,11 @@ export const createWorkspaceFsStore = ({
           modifiedAt: now,
         }
 
-        setWorkspaceState((state) => {
-          const updatedEntries =
-            directoryPath === workspacePath
-              ? sortWorkspaceEntries([...state.entries, newFileEntry])
-              : addEntryToState(state.entries, directoryPath, newFileEntry)
-
-          return {
-            entries: updatedEntries,
-          }
-        })
+        workspaceStoreAdapter.updateEntries((entries) =>
+          directoryPath === workspacePath
+            ? sortWorkspaceEntries([...entries, newFileEntry])
+            : addEntryToState(entries, directoryPath, newFileEntry)
+        )
 
         fileExplorerSelectionAdapter.setSelectedEntryPaths(new Set([filePath]))
         fileExplorerSelectionAdapter.setSelectionAnchorPath(filePath)
@@ -243,7 +234,7 @@ export const createWorkspaceFsStore = ({
       },
 
       createAndOpenNote: async () => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath } = getWorkspaceSnapshot()
 
         if (!workspacePath) {
           return
@@ -311,7 +302,7 @@ export const createWorkspaceFsStore = ({
           pinnedDirectories,
           expandedDirectories,
           entries,
-        } = getWorkspaceState()
+        } = getWorkspaceSnapshot()
         if (!workspacePath) throw new Error('Workspace path is not set')
 
         const filteredPins = removePinsForPaths(pinnedDirectories, paths)
@@ -321,23 +312,11 @@ export const createWorkspaceFsStore = ({
           expandedDirectories,
           paths
         )
-        setWorkspaceState({
+        await workspaceStoreAdapter.applyWorkspaceUpdate({
           entries: removeEntriesFromState(entries, paths),
           expandedDirectories: updatedExpanded,
           ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
         })
-
-        await settingsRepository.persistExpandedDirectories(
-          workspacePath,
-          updatedExpanded
-        )
-
-        if (pinsChanged) {
-          await settingsRepository.persistPinnedDirectories(
-            workspacePath,
-            filteredPins
-          )
-        }
       },
 
       deleteEntry: async (path: string) => {
@@ -437,11 +416,9 @@ export const createWorkspaceFsStore = ({
           pinnedDirectories,
           expandedDirectories,
           entries,
-        } = getWorkspaceState()
+        } = getWorkspaceSnapshot()
 
         if (!workspacePath) throw new Error('Workspace path is not set')
-
-        let nextPinned: string[] | null = null
 
         const updatedPins = entry.isDirectory
           ? renamePinnedDirectories(pinnedDirectories, entry.path, nextPath)
@@ -450,15 +427,11 @@ export const createWorkspaceFsStore = ({
           updatedPins.length !== pinnedDirectories.length ||
           updatedPins.some((path, index) => path !== pinnedDirectories[index])
 
-        if (pinsChanged) {
-          nextPinned = updatedPins
-        }
-
         const updatedExpanded = entry.isDirectory
           ? renameExpandedDirectories(expandedDirectories, entry.path, nextPath)
           : expandedDirectories
 
-        setWorkspaceState({
+        await workspaceStoreAdapter.applyWorkspaceUpdate({
           entries: updateEntryInState(
             entries,
             entry.path,
@@ -477,23 +450,11 @@ export const createWorkspaceFsStore = ({
           }
         }
 
-        await settingsRepository.persistExpandedDirectories(
-          workspacePath,
-          updatedExpanded
-        )
-
-        if (nextPinned) {
-          await settingsRepository.persistPinnedDirectories(
-            workspacePath,
-            nextPinned
-          )
-        }
-
         return nextPath
       },
 
       moveEntry: async (sourcePath: string, destinationPath: string) => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath } = getWorkspaceSnapshot()
 
         if (!workspacePath) throw new Error('Workspace path is not set')
 
@@ -528,7 +489,7 @@ export const createWorkspaceFsStore = ({
 
           // Find the entry to move before path operations to determine if it's a directory
           const entryToMove = findEntryByPath(
-            getWorkspaceState().entries,
+            getWorkspaceSnapshot().entries,
             sourcePath
           )
 
@@ -606,10 +567,7 @@ export const createWorkspaceFsStore = ({
             currentCollectionPath === sourcePath
 
           const { entries, expandedDirectories, pinnedDirectories } =
-            getWorkspaceState()
-
-          let nextPinned: string[] | null = null
-          let nextExpanded: string[] | null = null
+            getWorkspaceSnapshot()
 
           let updatedEntries: WorkspaceEntry[]
 
@@ -664,7 +622,6 @@ export const createWorkspaceFsStore = ({
                 newPath
               )
             : expandedDirectories
-          nextExpanded = updatedExpanded
 
           const updatedPinned = isDirectory
             ? renamePinnedDirectories(pinnedDirectories, sourcePath, newPath)
@@ -675,11 +632,7 @@ export const createWorkspaceFsStore = ({
               (path, index) => path !== pinnedDirectories[index]
             )
 
-          if (pinsChanged) {
-            nextPinned = updatedPinned
-          }
-
-          setWorkspaceState({
+          await workspaceStoreAdapter.applyWorkspaceUpdate({
             entries: updatedEntries,
             expandedDirectories: updatedExpanded,
             ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
@@ -688,18 +641,6 @@ export const createWorkspaceFsStore = ({
           // Update currentCollectionPath if it's being moved
           if (shouldUpdateCollectionPath) {
             collectionStoreAdapter.setCurrentCollectionPath(newPath)
-          }
-
-          await settingsRepository.persistExpandedDirectories(
-            workspacePath,
-            nextExpanded
-          )
-
-          if (nextPinned) {
-            await settingsRepository.persistPinnedDirectories(
-              workspacePath,
-              nextPinned
-            )
           }
 
           return true
@@ -715,7 +656,7 @@ export const createWorkspaceFsStore = ({
       },
 
       copyEntry: async (sourcePath: string, destinationPath: string) => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath } = getWorkspaceSnapshot()
 
         // Validation 1: Check if workspace is set
         if (!workspacePath) {
@@ -796,32 +737,23 @@ export const createWorkspaceFsStore = ({
           modifiedAt: fileMetadata.modifiedAt,
         }
 
-        setWorkspaceState((state) => {
-          const updatedEntries =
-            destinationPath === workspacePath
-              ? sortWorkspaceEntries([...state.entries, newFileEntry])
-              : addEntryToState(state.entries, destinationPath, newFileEntry)
-
-          return {
-            entries: updatedEntries,
-          }
-        })
+        workspaceStoreAdapter.updateEntries((entries) =>
+          destinationPath === workspacePath
+            ? sortWorkspaceEntries([...entries, newFileEntry])
+            : addEntryToState(entries, destinationPath, newFileEntry)
+        )
 
         if (isDirectory) {
-          await getWorkspaceState().refreshWorkspaceEntries()
+          await workspaceStoreAdapter.refreshWorkspaceEntries()
           // Expand destination directory and the newly copied folder (if it's a directory)
-          const expandedDirectories = getWorkspaceState().expandedDirectories
+          const { expandedDirectories } = getWorkspaceSnapshot()
           const nextExpanded = addExpandedDirectories(expandedDirectories, [
             destinationPath,
             newPath,
           ])
-          setWorkspaceState({
+          await workspaceStoreAdapter.applyWorkspaceUpdate({
             expandedDirectories: nextExpanded,
           })
-          settingsRepository.persistExpandedDirectories(
-            workspacePath,
-            nextExpanded
-          )
         }
 
         return true
@@ -831,7 +763,7 @@ export const createWorkspaceFsStore = ({
         sourcePath: string,
         destinationPath: string
       ) => {
-        const workspacePath = getWorkspaceState().workspacePath
+        const { workspacePath } = getWorkspaceSnapshot()
 
         // Validation 1: Check if workspace is set
         if (!workspacePath) {
@@ -898,14 +830,14 @@ export const createWorkspaceFsStore = ({
           modifiedAt: fileMetadata.modifiedAt,
         }
 
-        const { entries, expandedDirectories } = getWorkspaceState()
+        const { entries, expandedDirectories } = getWorkspaceSnapshot()
 
         const updatedEntries =
           destinationPath === workspacePath
             ? sortWorkspaceEntries([...entries, newFileEntry])
             : addEntryToState(entries, destinationPath, newFileEntry)
 
-        setWorkspaceState({
+        await workspaceStoreAdapter.applyWorkspaceUpdate({
           entries: updatedEntries,
         })
 
@@ -914,13 +846,9 @@ export const createWorkspaceFsStore = ({
             destinationPath,
             newPath,
           ])
-          setWorkspaceState({
+          await workspaceStoreAdapter.applyWorkspaceUpdate({
             expandedDirectories: updatedExpanded,
           })
-          await settingsRepository.persistExpandedDirectories(
-            workspacePath,
-            updatedExpanded
-          )
         }
 
         return true
@@ -938,9 +866,9 @@ export const createWorkspaceFsStore = ({
             metadata.createdAt = new Date(fileMetadata.birthtime)
           }
 
-          setWorkspaceState((state) => ({
-            entries: updateEntryMetadata(state.entries, path, metadata),
-          }))
+          workspaceStoreAdapter.updateEntries((entries) =>
+            updateEntryMetadata(entries, path, metadata)
+          )
         } catch (error) {
           // Silently fail if metadata cannot be retrieved
           console.debug('Failed to update entry modified date:', path, error)
@@ -951,10 +879,10 @@ export const createWorkspaceFsStore = ({
 
 export const useWorkspaceFsStore = createWorkspaceFsStore({
   fileSystemRepository: new FileSystemRepository(),
-  settingsRepository: new WorkspaceSettingsRepository(),
   generateText,
   tabStoreAdapter,
   collectionStoreAdapter,
   fileExplorerSelectionAdapter,
   aiSettingsAdapter,
+  workspaceStoreAdapter,
 })
