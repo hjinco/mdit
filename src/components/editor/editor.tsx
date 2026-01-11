@@ -13,6 +13,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { useTabStore } from '@/store/tab-store'
@@ -97,6 +98,7 @@ function EditorContent({
       .catch(() => {
         isSaved.current = false
         setTabSaved(false)
+        toast.error('Failed to save note')
       })
   }, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent])
 
