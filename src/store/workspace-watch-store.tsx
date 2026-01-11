@@ -1,6 +1,7 @@
 import { type UnwatchFn, watch } from '@tauri-apps/plugin-fs'
 import { create } from 'zustand'
 import { hasHiddenEntryInPaths } from '@/utils/path-utils'
+import { useWorkspaceFsStore } from './workspace-fs-store'
 import { useWorkspaceStore } from './workspace-store'
 
 type WorkspaceWatchStore = {
@@ -35,7 +36,8 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
           }
 
           // Skip events that occurred within 2 seconds of an internal FS operation
-          const lastFsOpTime = useWorkspaceStore.getState().lastFsOperationTime
+          const lastFsOpTime =
+            useWorkspaceFsStore.getState().lastFsOperationTime
           if (lastFsOpTime !== null && Date.now() - lastFsOpTime < 5000) {
             return
           }

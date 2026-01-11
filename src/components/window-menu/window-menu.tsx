@@ -4,13 +4,16 @@ import { useCollectionStore } from '@/store/collection-store'
 import { useFontScaleStore } from '@/store/font-scale-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
-  const { createAndOpenNote, openFolderPicker } = useWorkspaceStore(
+  const createAndOpenNote = useWorkspaceFsStore(
+    (s) => s.createAndOpenNote
+  )
+  const { openFolderPicker } = useWorkspaceStore(
     useShallow((s) => ({
-      createAndOpenNote: s.createAndOpenNote,
       openFolderPicker: s.openFolderPicker,
     }))
   )

@@ -11,6 +11,7 @@ import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-s
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useDeleteShortcut } from './hooks/use-delete-shortcut'
@@ -49,11 +50,6 @@ export function FileExplorer() {
     expandedDirectories,
     setExpandedDirectories,
     recentWorkspacePaths,
-    createNote,
-    createFolder,
-    deleteEntries,
-    renameNoteWithAI,
-    renameEntry,
     toggleDirectory,
     setWorkspace,
     openFolderPicker,
@@ -61,6 +57,13 @@ export function FileExplorer() {
     pinDirectory,
     unpinDirectory,
   } = useWorkspaceStore()
+  const {
+    createNote,
+    createFolder,
+    deleteEntries,
+    renameNoteWithAI,
+    renameEntry,
+  } = useWorkspaceFsStore()
   const { setCurrentCollectionPath } = useCollectionStore()
   const { tab, openTab, clearLinkedTab } = useTabStore(
     useShallow((s) => ({

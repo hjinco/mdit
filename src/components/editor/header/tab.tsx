@@ -13,7 +13,8 @@ import { useShallow } from 'zustand/shallow'
 
 import { cn } from '@/lib/utils'
 import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
+import type { WorkspaceEntry } from '@/store/workspace-store'
 import {
   getFileNameFromPath,
   getFileNameWithoutExtension,
@@ -27,7 +28,7 @@ export function Tab() {
       clearLinkedTab: s.clearLinkedTab,
     }))
   )
-  const renameEntry = useWorkspaceStore((state) => state.renameEntry)
+  const renameEntry = useWorkspaceFsStore((state) => state.renameEntry)
   const [isEditing, setIsEditing] = useState(false)
   const displayName = linkedTab?.name ?? tab?.name ?? ''
   const [draftName, setDraftName] = useState(displayName)

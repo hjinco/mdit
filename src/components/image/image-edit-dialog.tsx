@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useImageEditStore } from '@/store/image-edit-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { Button } from '@/ui/button'
 import { Checkbox } from '@/ui/checkbox'
@@ -42,11 +43,13 @@ export function ImageEditDialog() {
       closeImageEdit: state.closeImageEdit,
     }))
   )
-  const { refreshWorkspaceEntries, recordFsOperation } = useWorkspaceStore(
+  const { refreshWorkspaceEntries } = useWorkspaceStore(
     useShallow((state) => ({
       refreshWorkspaceEntries: state.refreshWorkspaceEntries,
-      recordFsOperation: state.recordFsOperation,
     }))
+  )
+  const recordFsOperation = useWorkspaceFsStore(
+    (state) => state.recordFsOperation
   )
 
   const [filename, setFilename] = useState('')
