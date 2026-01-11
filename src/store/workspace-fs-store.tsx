@@ -69,6 +69,7 @@ type WorkspaceFsStoreDependencies = {
 type WorkspaceFsStore = {
   lastFsOperationTime: number | null
   recordFsOperation: () => void
+  saveNoteContent: (path: string, contents: string) => Promise<void>
   createFolder: (
     directoryPath: string,
     folderName: string
@@ -109,6 +110,11 @@ export const createWorkspaceFsStore = ({
 
       recordFsOperation: () => {
         set({ lastFsOperationTime: Date.now() })
+      },
+
+      saveNoteContent: async (path: string, contents: string) => {
+        await fileSystemRepository.writeTextFile(path, contents)
+        get().recordFsOperation()
       },
 
       createFolder: async (directoryPath: string, folderName: string) => {

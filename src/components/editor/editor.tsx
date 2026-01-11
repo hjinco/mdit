@@ -1,5 +1,4 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { createSlateEditor, type Value } from 'platejs'
 import {
   Plate,
@@ -14,6 +13,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
 import { useTabStore } from '@/store/tab-store'
@@ -78,7 +78,7 @@ function EditorContent({
   const isInitializing = useRef(true)
   const setTabSaved = useTabStore((s) => s.setTabSaved)
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
-  const recordFsOperation = useWorkspaceFsStore((s) => s.recordFsOperation)
+  const saveNoteContent = useWorkspaceFsStore((s) => s.saveNoteContent)
 
   const editor = usePlateEditor({
     plugins: EditorKit,
@@ -89,18 +89,18 @@ function EditorContent({
 
   const handleSave = useCallback(() => {
     if (isSaved.current) return
-    writeTextFile(path, editor.api.markdown.serialize())
+    saveNoteContent(path, editor.api.markdown.serialize())
       .then(() => {
         isSaved.current = true
         setTabSaved(true)
-        recordFsOperation()
         handleRenameAfterSave()
       })
       .catch(() => {
         isSaved.current = false
         setTabSaved(false)
+        toast.error('Failed to save note')
       })
-  }, [editor, path, setTabSaved, handleRenameAfterSave, recordFsOperation])
+  }, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
