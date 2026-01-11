@@ -9,7 +9,7 @@ const DRIVE_LETTER_REGEX = /^[a-zA-Z]:\//
 const isAbsolutePath = (path: string) =>
   path.startsWith('/') || DRIVE_LETTER_REGEX.test(path)
 
-const normalizePinnedDirectoriesList = (paths: unknown[]): string[] => {
+const normalizeDirectoryList = (paths: unknown[]): string[] => {
   const normalizedSet = new Set<string>()
 
   for (const path of paths) {
@@ -25,90 +25,25 @@ const normalizePinnedDirectoriesList = (paths: unknown[]): string[] => {
   return Array.from(normalizedSet)
 }
 
-const normalizeExpandedDirectoriesList = (paths: unknown[]): string[] => {
-  const normalizedSet = new Set<string>()
-
-  for (const path of paths) {
-    if (typeof path !== 'string') continue
-    const normalized = normalizePathSeparators(path.trim())
-    if (normalized) {
-      normalizedSet.add(normalized)
-    }
-  }
-
-  return Array.from(normalizedSet)
-}
-
-const toRelativePinPath = (
-  workspacePath: string,
-  pinnedPath: string
-): string => {
+const toRelativePath = (workspacePath: string, path: string): string => {
   const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPinned = normalizePathSeparators(pinnedPath)
-
-  if (!normalizedWorkspace || !normalizedPinned) return normalizedPinned
-  if (normalizedPinned === normalizedWorkspace) return '.'
-
-  const workspacePrefix = `${normalizedWorkspace}/`
-  if (normalizedPinned.startsWith(workspacePrefix)) {
-    const relative = normalizedPinned.slice(workspacePrefix.length)
-    return relative.length > 0 ? relative : '.'
-  }
-
-  return normalizedPinned
-}
-
-const toAbsolutePinPath = (
-  workspacePath: string,
-  pinnedPath: string
-): string | null => {
-  const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPinned = normalizePathSeparators(pinnedPath)
-  if (!normalizedPinned) return null
-
-  const withoutDotPrefix = normalizedPinned.startsWith('./')
-    ? normalizedPinned.slice(2)
-    : normalizedPinned
-
-  if (withoutDotPrefix === '.' || withoutDotPrefix === '') {
-    return normalizedWorkspace
-  }
-
-  if (isAbsolutePath(withoutDotPrefix)) {
-    return withoutDotPrefix
-  }
-
-  if (!normalizedWorkspace) return null
-
-  return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
-}
-
-const toRelativeExpandedPath = (
-  workspacePath: string,
-  directoryPath: string
-): string => {
-  const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPath = normalizePathSeparators(directoryPath)
+  const normalizedPath = normalizePathSeparators(path)
 
   if (!normalizedWorkspace || !normalizedPath) return normalizedPath
+  if (normalizedPath === normalizedWorkspace) return '.'
 
-  if (normalizedPath === normalizedWorkspace) {
-    return '.'
-  }
-
-  if (normalizedPath.startsWith(`${normalizedWorkspace}/`)) {
-    return normalizedPath.slice(normalizedWorkspace.length + 1)
+  const workspacePrefix = `${normalizedWorkspace}/`
+  if (normalizedPath.startsWith(workspacePrefix)) {
+    const relative = normalizedPath.slice(workspacePrefix.length)
+    return relative.length > 0 ? relative : '.'
   }
 
   return normalizedPath
 }
 
-const toAbsoluteExpandedPath = (
-  workspacePath: string,
-  directoryPath: string
-): string | null => {
+const toAbsolutePath = (workspacePath: string, path: string): string | null => {
   const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const normalizedPath = normalizePathSeparators(directoryPath)
+  const normalizedPath = normalizePathSeparators(path)
   if (!normalizedPath) return null
 
   const withoutDotPrefix = normalizedPath.startsWith('./')
@@ -137,11 +72,11 @@ const getPinnedDirectoriesFromSettings = (
   }
 
   const rawPins = settings?.pinnedDirectories ?? []
-  const normalizedPins = normalizePinnedDirectoriesList(rawPins)
+  const normalizedPins = normalizeDirectoryList(rawPins)
   const absolutePins: string[] = []
 
   for (const pin of normalizedPins) {
-    const absolutePath = toAbsolutePinPath(workspacePath, pin)
+    const absolutePath = toAbsolutePath(workspacePath, pin)
     if (absolutePath) {
       absolutePins.push(absolutePath)
     }
@@ -159,12 +94,12 @@ const getExpandedDirectoriesFromSettings = (
   }
 
   const normalizedWorkspace = normalizePathSeparators(workspacePath)
-  const storedExpanded = normalizeExpandedDirectoriesList(
+  const storedExpanded = normalizeDirectoryList(
     settings?.expandedDirectories ?? []
   )
 
   const absoluteExpanded = storedExpanded
-    .map((directory) => toAbsoluteExpandedPath(normalizedWorkspace, directory))
+    .map((directory) => toAbsolutePath(normalizedWorkspace, directory))
     .filter(
       (absolutePath): absolutePath is string =>
         absolutePath !== null &&
@@ -183,9 +118,9 @@ const persistPinnedDirectories = async (
   }
 
   try {
-    const normalizedPins = normalizePinnedDirectoriesList(pinnedDirectories)
-    const relativePins = normalizePinnedDirectoriesList(
-      normalizedPins.map((path) => toRelativePinPath(workspacePath, path))
+    const normalizedPins = normalizeDirectoryList(pinnedDirectories)
+    const relativePins = normalizeDirectoryList(
+      normalizedPins.map((path) => toRelativePath(workspacePath, path))
     )
     await saveSettings(workspacePath, { pinnedDirectories: relativePins })
   } catch (error) {
@@ -203,10 +138,10 @@ const persistExpandedDirectories = async (
 
   try {
     const normalizedWorkspace = normalizePathSeparators(workspacePath)
-    const relativeExpanded = normalizeExpandedDirectoriesList(
+    const relativeExpanded = normalizeDirectoryList(
       expandedDirectories
         .filter((path) => isPathEqualOrDescendant(path, normalizedWorkspace))
-        .map((path) => toRelativeExpandedPath(normalizedWorkspace, path))
+        .map((path) => toRelativePath(normalizedWorkspace, path))
     )
 
     await saveSettings(workspacePath, {
