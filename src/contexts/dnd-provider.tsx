@@ -17,7 +17,7 @@ import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
 import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { isImageFile } from '@/utils/file-icon'
 import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
@@ -48,7 +48,7 @@ const depthAwareCollision: CollisionDetection = (args) => {
 
 export function DndProvider({ children }: DndProviderProps) {
   const editor = useEditorRef()
-  const moveEntry = useWorkspaceStore((s) => s.moveEntry)
+  const moveEntry = useWorkspaceFsStore((s) => s.moveEntry)
   const { selectedEntryPaths, resetSelection } = useFileExplorerSelectionStore(
     useShallow((state) => ({
       selectedEntryPaths: state.selectedEntryPaths,

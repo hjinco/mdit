@@ -8,6 +8,7 @@ import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useCollectionStore } from '@/store/collection-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
 import { getFolderNameFromPath } from '@/utils/path-utils'
 import { isMac } from '@/utils/platform'
@@ -64,7 +65,7 @@ export function CollectionView() {
     renameNoteWithAI,
     renameEntry,
     updateEntryModifiedDate,
-  } = useWorkspaceStore(
+  } = useWorkspaceFsStore(
     useShallow((state) => ({
       deleteEntries: state.deleteEntries,
       renameNoteWithAI: state.renameNoteWithAI,

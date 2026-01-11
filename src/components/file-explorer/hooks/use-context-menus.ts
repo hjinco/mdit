@@ -25,7 +25,7 @@ import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
 import { useTabStore } from '@/store/tab-store'
 import type { WorkspaceEntry } from '@/store/workspace-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
@@ -79,7 +79,7 @@ export const useFileExplorerMenus = ({
   unpinDirectory,
 }: UseFileExplorerMenusProps) => {
   const openImageEdit = useImageEditStore((state) => state.openImageEdit)
-  const copyEntry = useWorkspaceStore((state) => state.copyEntry)
+  const copyEntry = useWorkspaceFsStore((state) => state.copyEntry)
 
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
