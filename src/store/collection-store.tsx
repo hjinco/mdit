@@ -16,6 +16,7 @@ type CollectionStore = {
   ) => void
   resetCollectionPath: () => void
   toggleCollectionView: () => void
+  refreshCollectionEntries: () => void
 }
 
 export const createCollectionStore = ({
@@ -68,6 +69,15 @@ export const createCollectionStore = ({
         })
       }
     },
+
+    refreshCollectionEntries: () => {
+      set((state) => ({
+        collectionEntries: computeCollectionEntries(
+          state.currentCollectionPath,
+          workspaceStoreAdapter.getSnapshot().entries
+        ),
+      }))
+    },
   }))
 
 export const useCollectionStore = createCollectionStore({
@@ -90,9 +100,7 @@ if (!workspacePathUnsub) {
     if (state.workspacePath !== prevState.workspacePath) {
       collectionState.resetCollectionPath()
     } else if (state.entries !== prevState.entries) {
-      collectionState.setCurrentCollectionPath(
-        collectionState.currentCollectionPath
-      )
+      collectionState.refreshCollectionEntries()
     }
   })
 }
