@@ -369,13 +369,8 @@ export const createWorkspaceFsStore = ({
         }
 
         // Remove deleted entries from state without full refresh
-        const {
-          workspacePath,
-          pinnedDirectories,
-          expandedDirectories,
-          entries,
-        } = getWorkspaceSnapshot()
-        if (!workspacePath) throw new Error('Workspace path is not set')
+        const { pinnedDirectories, expandedDirectories, entries } =
+          getWorkspaceSnapshot()
 
         const filteredPins = removePinsForPaths(pinnedDirectories, paths)
         const pinsChanged = filteredPins.length !== pinnedDirectories.length
