@@ -1,21 +1,17 @@
 import { useEffect } from 'react'
-import {
-  FONT_SCALE_STORAGE_KEY,
-  useFontScaleStore,
-} from '@/store/font-scale-store'
+import { useUIStore } from '@/store/ui-store'
 
 /**
- * Syncs the current font scale to the root CSS variable and local storage.
+ * Syncs the current font scale to the root CSS variable.
  */
 export function useFontScale() {
-  const fontScale = useFontScaleStore((s) => s.fontScale)
+  const fontScale = useUIStore((s) => s.fontScale)
 
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--font-scale',
       String(fontScale)
     )
-    localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(fontScale))
   }, [fontScale])
 
   return fontScale
