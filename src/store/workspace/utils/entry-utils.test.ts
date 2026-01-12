@@ -370,6 +370,47 @@ describe('moveEntryInState', () => {
     expect(moved?.path).toBe('/destination/source')
     expect(moved?.children?.[0].path).toBe('/destination/source/note.md')
   })
+
+  it('moves files to workspace root', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/subdir', 'subdir', [
+        makeFile('/subdir/source.md', 'source.md'),
+      ]),
+      makeFile('/root-file.md', 'root-file.md'),
+    ]
+
+    const result = moveEntryInState(entries, '/subdir/source.md', '/', '/')
+
+    expect(findEntryByPath(result, '/subdir/source.md')).toBeNull()
+    const moved = result.find((entry) => entry.path === '/source.md')
+    expect(moved).toBeDefined()
+    expect(moved?.path).toBe('/source.md')
+    expect(moved?.name).toBe('source.md')
+    expect(moved?.isDirectory).toBe(false)
+  })
+
+  it('moves directories to workspace root and rewrites child paths', () => {
+    const entries: WorkspaceEntry[] = [
+      makeDir('/subdir', 'subdir', [
+        makeDir('/subdir/source', 'source', [
+          makeFile('/subdir/source/note.md', 'note.md'),
+          makeFile('/subdir/source/other.md', 'other.md'),
+        ]),
+      ]),
+      makeFile('/root-file.md', 'root-file.md'),
+    ]
+
+    const result = moveEntryInState(entries, '/subdir/source', '/', '/')
+
+    expect(findEntryByPath(result, '/subdir/source')).toBeNull()
+    const moved = result.find((entry) => entry.path === '/source')
+    expect(moved).toBeDefined()
+    expect(moved?.path).toBe('/source')
+    expect(moved?.name).toBe('source')
+    expect(moved?.isDirectory).toBe(true)
+    expect(moved?.children?.[0].path).toBe('/source/note.md')
+    expect(moved?.children?.[1].path).toBe('/source/other.md')
+  })
 })
 
 describe('updateEntryMetadata', () => {
