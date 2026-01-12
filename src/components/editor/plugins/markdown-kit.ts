@@ -16,9 +16,10 @@ import YAML from 'yaml'
 import {
   convertValueToType,
   datePattern,
-  type KVRow,
   type ValueType,
-} from '../ui/node-frontmatter-table'
+} from '@/utils/frontmatter-value-utils'
+import type { KVRow } from '../ui/node-frontmatter-table'
+import { DATABASE_KEY } from './database-kit'
 import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const EQUATION_ENVIRONMENT_REGEX =
@@ -166,6 +167,39 @@ export const MarkdownKit = [
                 options
               ) as any,
               name: 'callout',
+              type: 'mdxJsxFlowElement',
+            }
+          },
+        },
+        database: {
+          deserialize: (mdastNode, deco, options) => {
+            const props = parseAttributes(mdastNode.attributes)
+            return {
+              children: convertChildrenDeserialize(
+                mdastNode.children || [],
+                deco,
+                options
+              ),
+              ...props,
+              folder: String(props.folder),
+              sortOption: props.sortOption,
+              sortDirection: props.sortDirection,
+              type: getPluginType(options.editor!, DATABASE_KEY),
+            }
+          },
+          serialize(slateNode, options): MdMdxJsxFlowElement {
+            const attributes = propsToAttributes({
+              folder: slateNode.folder ?? null,
+              sortOption: slateNode.sortOption ?? null,
+              sortDirection: slateNode.sortDirection ?? null,
+            }).filter((attribute) => attribute.value !== 'null')
+            return {
+              attributes,
+              children: convertNodesSerialize(
+                slateNode.children,
+                options
+              ) as any,
+              name: 'database',
               type: 'mdxJsxFlowElement',
             }
           },

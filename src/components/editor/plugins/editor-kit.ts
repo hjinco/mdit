@@ -7,6 +7,7 @@ import { CalloutKit } from './callout-kit'
 import { CodeBlockKit } from './code-block-kit'
 import { CommentKit } from './comment-kit'
 import { CursorOverlayKit } from './cursor-overlay-kit'
+import { DatabaseKit } from './database-kit'
 import { DateKit } from './date-kit'
 import { DndKit } from './dnd-kit'
 import { EmojiKit } from './emoji-kit'
@@ -38,6 +39,7 @@ export const EditorKit = [
   ...CodeBlockKit,
   // ...ColumnKit,
   ...CommentKit,
+  ...DatabaseKit,
   ...CursorOverlayKit,
   ...EmojiKit,
   ...FrontmatterKit,
