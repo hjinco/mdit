@@ -77,11 +77,10 @@ fn yaml_key_to_string(value: YamlValue) -> String {
         YamlValue::Bool(v) => v.to_string(),
         YamlValue::Number(v) => v.to_string(),
         YamlValue::Null => "null".to_string(),
-        other => serde_yaml::to_string(&other)
-            .unwrap_or_default()
-            .trim()
-            .to_string(),
-    }
+        other => match serde_yaml::to_string(&other) {
+            Ok(s) => s.trim().to_string(),
+            Err(_) => "<unserializable-key>".to_string(),
+        },
 }
 
 fn parse_frontmatter(source: &str) -> JsonValue {
