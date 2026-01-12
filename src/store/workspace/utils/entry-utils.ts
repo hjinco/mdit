@@ -340,7 +340,8 @@ export function updateChildPathsForMove(
 export function moveEntryInState(
   entries: WorkspaceEntry[],
   sourcePath: string,
-  destinationPath: string
+  destinationPath: string,
+  workspacePath?: string
 ): WorkspaceEntry[] {
   // Find the entry to move
   const entryToMove = findEntryByPath(entries, sourcePath)
@@ -354,7 +355,11 @@ export function moveEntryInState(
   // Update paths if it's a directory
   const fileName = getFileNameFromPath(sourcePath)
   const normalizedDestinationPath = normalizePathSeparators(destinationPath)
-  const newPath = `${normalizedDestinationPath}/${fileName}`
+  // Handle root path construction: avoid double slashes
+  const newPath =
+    normalizedDestinationPath === '/' || normalizedDestinationPath === ''
+      ? `/${fileName}`
+      : `${normalizedDestinationPath}/${fileName}`
 
   let updatedEntryToMove: WorkspaceEntry
   if (entryToMove.isDirectory) {
@@ -381,7 +386,19 @@ export function moveEntryInState(
     }
   }
 
-  // Add entry to destination
+  // Handle moves to workspace root
+  // Normalize both paths for comparison to handle platform differences
+  const normalizedWorkspacePath = workspacePath
+    ? normalizePathSeparators(workspacePath)
+    : null
+  if (
+    normalizedWorkspacePath &&
+    normalizedDestinationPath === normalizedWorkspacePath
+  ) {
+    return sortWorkspaceEntries([...filteredEntries, updatedEntryToMove])
+  }
+
+  // Add entry to destination subdirectory
   const addToDestination = (
     entryList: WorkspaceEntry[],
     targetPath: string

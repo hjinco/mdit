@@ -10,9 +10,7 @@ import {
   findEntryByPath,
   moveEntryInState,
   removeEntriesFromState,
-  removeEntryFromState,
   sortWorkspaceEntries,
-  updateChildPathsForMove,
   updateEntryInState,
   updateEntryMetadata,
 } from './workspace/utils/entry-utils'
@@ -641,51 +639,13 @@ export const createWorkspaceFsStore = ({
           const { entries, expandedDirectories, pinnedDirectories } =
             getWorkspaceSnapshot()
 
-          let updatedEntries: WorkspaceEntry[]
-
-          if (destinationPath === workspacePath) {
-            // Moving to workspace root - add directly to entries array
-            // First, remove from source location
-            const filteredEntries = removeEntryFromState(entries, sourcePath)
-
-            // Update paths if it's a directory
-            let updatedEntryToMove: WorkspaceEntry
-            if (entryToMove.isDirectory) {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: true,
-                children: entryToMove.children
-                  ? entryToMove.children.map((child: WorkspaceEntry) =>
-                      updateChildPathsForMove(child, sourcePath, newPath)
-                    )
-                  : undefined,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
-            } else {
-              updatedEntryToMove = {
-                path: newPath,
-                name: entryToMove.name,
-                isDirectory: false,
-                createdAt: entryToMove.createdAt,
-                modifiedAt: entryToMove.modifiedAt,
-              }
-            }
-
-            // Add directly to entries array
-            updatedEntries = sortWorkspaceEntries([
-              ...filteredEntries,
-              updatedEntryToMove,
-            ])
-          } else {
-            // Moving to a subdirectory - use existing logic
-            updatedEntries = moveEntryInState(
-              entries,
-              sourcePath,
-              destinationPath
-            )
-          }
+          // Use unified moveEntryInState for both root and subdirectory moves
+          const updatedEntries = moveEntryInState(
+            entries,
+            sourcePath,
+            destinationPath,
+            workspacePath
+          )
 
           const updatedExpanded = isDirectory
             ? renameExpandedDirectories(
