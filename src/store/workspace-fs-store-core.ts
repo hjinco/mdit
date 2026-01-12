@@ -240,14 +240,10 @@ export const createWorkspaceFsStore = ({
             directoryPath,
             folderPath,
           ])
-          await workspaceStoreAdapter
-            .applyWorkspaceUpdate({
-              entries: updatedEntries,
-              expandedDirectories: updatedExpanded,
-            })
-            .catch((error) => {
-              console.error('Failed to persist expanded directories:', error)
-            })
+          await workspaceStoreAdapter.applyWorkspaceUpdate({
+            entries: updatedEntries,
+            expandedDirectories: updatedExpanded,
+          })
 
           collectionStoreAdapter.setCurrentCollectionPath(folderPath)
           fileExplorerSelectionAdapter.setSelectedEntryPaths(

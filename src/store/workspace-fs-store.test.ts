@@ -223,7 +223,7 @@ describe('workspace-fs-store edge cases', () => {
     )
   })
 
-  it('createFolder strips separators and continues even if applyWorkspaceUpdate rejects', async () => {
+  it('createFolder strips separators and returns null if applyWorkspaceUpdate rejects', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const {
@@ -246,17 +246,17 @@ describe('workspace-fs-store edge cases', () => {
       .getState()
       .createFolder('/ws', ' foo/bar\\baz ')
 
-    expect(folderPath).toBe('/ws/foobarbaz')
+    expect(folderPath).toBeNull()
     expect(fileSystemRepository.mkdir).toHaveBeenCalledWith('/ws/foobarbaz', {
       recursive: true,
     })
 
     expect(
       collectionStoreAdapter.setCurrentCollectionPath
-    ).toHaveBeenCalledWith('/ws/foobarbaz')
+    ).not.toHaveBeenCalled()
     expect(
       fileExplorerSelectionAdapter.setSelectedEntryPaths
-    ).toHaveBeenCalledWith(new Set(['/ws/foobarbaz']))
+    ).not.toHaveBeenCalled()
 
     expect(consoleError).toHaveBeenCalled()
   })
