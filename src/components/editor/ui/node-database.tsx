@@ -12,7 +12,6 @@ import {
   CalendarIcon,
   FolderOpenIcon,
   type LucideIcon,
-  Maximize2Icon,
   PlusIcon,
   RefreshCcwIcon,
   Trash2Icon,
@@ -329,10 +328,10 @@ function buildColumnDefs(
 }
 
 function getGridTemplateColumns(columnCount: number) {
-  const base = 'minmax(200px, 1.4fr)'
+  const base = 'minmax(240px, 2fr)'
   if (columnCount === 0) return `${base} 40px`
   const extras = Array.from({ length: columnCount })
-    .map(() => 'minmax(140px, 1fr)')
+    .map(() => 'minmax(180px, 1fr)')
     .join(' ')
   return `${base} ${extras} 40px`
 }
@@ -379,41 +378,42 @@ function DatabaseRow({
 
   return (
     <div
-      className="absolute left-0 top-0 grid w-full items-stretch border-b border-muted/40 transition-colors hover:bg-muted/10 group/row"
+      className="absolute left-0 top-0 grid w-full items-stretch border-b border-border/50 text-sm transition-colors hover:bg-muted/30 group/row"
       style={{
         gridTemplateColumns,
         transform: `translateY(${offsetY}px)`,
-        height: '36px',
+        height: '34px',
       }}
     >
-      <div className="flex items-center border-r border-muted/40 px-0 last:border-r-0 relative group/name overflow-hidden">
+      <div className="relative flex items-center border-r border-border/50 px-0 last:border-r-0 group/name overflow-hidden">
         <InlineEditableField
           value={displayTitle}
           placeholder="Untitled"
           onCommit={(newTitle) => onRenameTitle(entry, newTitle)}
           buttonProps={{
             className:
-              'rounded-none w-full justify-start text-left truncate font-medium text-foreground/90 hover:bg-transparent',
+              'rounded-none w-full justify-start text-left truncate font-semibold text-foreground px-3 hover:bg-transparent h-full',
           }}
         />
         <Button
           variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 rounded-md opacity-0 group-hover/name:opacity-100 bg-background hover:bg-muted/80 transition-opacity z-20 shadow-sm border border-muted/50"
+          size="sm"
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 px-2 text-[10px] font-medium tracking-wide rounded border border-border/60 bg-background/80 opacity-0 shadow-sm backdrop-blur-[1px] transition-all hover:bg-background hover:text-foreground group-hover/name:opacity-100 z-20"
           onClick={(e) => {
             e.stopPropagation()
             openTab(entry.path)
           }}
         >
-          <Maximize2Icon className="h-3 w-3 text-muted-foreground" />
+          OPEN
         </Button>
       </div>
-      {columnDefs.map((column) => {
+      {columnDefs.map((column, index) => {
         const rawValue = rowFrontmatter[column.name]
+        const isLastColumn = index === columnDefs.length - 1
         return (
           <div
             key={column.name}
-            className="flex items-center border-r border-muted/40 px-0 truncate last:border-r-0"
+            className={`flex items-center px-0 truncate ${isLastColumn ? '' : 'border-r border-border/50'}`}
           >
             <ValueEditor
               type={column.type}
@@ -429,7 +429,7 @@ function DatabaseRow({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-transparent transition-colors"
           onClick={() => onDeleteEntry(entry.path)}
         >
           <Trash2Icon className="h-3.5 w-3.5" />
@@ -522,7 +522,7 @@ function DatabaseSortMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="text-foreground/70 hover:bg-background/40"
+          className="h-8 w-8 text-muted-foreground/70 hover:bg-muted/20 hover:text-foreground"
           aria-label="Sort database"
         >
           <ArrowUpDownIcon className="h-4 w-4" />
@@ -860,7 +860,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
   const virtualizer = useVirtualizer({
     count: sortedEntries.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 36,
+    estimateSize: () => 34,
     overscan: 10,
   })
 
@@ -924,21 +924,22 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
         <div ref={parentRef} className="flex-1 overflow-auto">
           <div className="min-w-fit inline-block align-middle w-full">
             <div
-              className="sticky z-20 top-0 grid items-center border-b border-muted/60 bg-background text-[11px] font-medium tracking-wide text-muted-foreground/70"
+              className="sticky z-20 top-0 grid items-center border-b border-border/50 bg-background text-[12px] font-normal text-muted-foreground"
               style={{ gridTemplateColumns }}
             >
-              <div className="flex h-9 items-center border-r border-muted/40 px-3 last:border-r-0 uppercase">
-                <TypeIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+              <div className="flex h-9 items-center border-r border-border/50 px-3 last:border-r-0">
+                <TypeIcon className="mr-2 h-3.5 w-3.5 shrink-0 opacity-70" />
                 Name
               </div>
-              {columnDefs.map((column) => {
+              {columnDefs.map((column, index) => {
                 const Icon = PROPERTY_ICONS[column.type]
+                const isLastColumn = index === columnDefs.length - 1
                 return (
                   <div
                     key={column.name}
-                    className="flex h-9 items-center border-r border-muted/40 px-3 truncate last:border-r-0 uppercase"
+                    className={`flex h-9 items-center px-3 truncate ${isLastColumn ? '' : 'border-r border-border/50'}`}
                   >
-                    <Icon className="mr-2 h-3.5 w-3.5 shrink-0" />
+                    <Icon className="mr-2 h-3.5 w-3.5 shrink-0 opacity-70" />
                     <span className="truncate">{column.name}</span>
                   </div>
                 )
@@ -974,13 +975,13 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
             </div>
           </div>
         </div>
-        <div className="sticky bottom-0 border-t border-muted/40 bg-background z-10">
+        <div className="sticky bottom-0 border-t border-border/50 bg-background/50 backdrop-blur-sm z-10">
           <button
             type="button"
-            className="flex h-9 w-full items-center px-3 text-sm text-muted-foreground/60 transition-colors hover:bg-muted/10 hover:text-muted-foreground/90"
+            className="flex h-9 w-full items-center px-3 text-sm text-muted-foreground/60 transition-colors hover:bg-muted/20 hover:text-muted-foreground group"
             onClick={handleNewEntry}
           >
-            <PlusIcon className="mr-2 h-4 w-4" />
+            <PlusIcon className="mr-2 h-4 w-4 opacity-50 group-hover:opacity-100" />
             New
           </button>
         </div>
@@ -997,11 +998,8 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
       >
         <div className="overflow-hidden rounded border bg-background">
           <div className="flex items-center justify-between border-b border-muted/40 bg-muted/5 px-3 py-2.5">
-            <div className="flex items-center gap-2.5 text-xs font-semibold text-foreground/70">
-              <FolderOpenIcon className="h-4 w-4 text-muted-foreground/80" />
-              <span className="tracking-tight">
-                {element.folder || 'Database'}
-              </span>
+            <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
+              {element.folder || 'Database'}
             </div>
             <div className="flex items-center gap-1">
               <DatabaseSortMenu

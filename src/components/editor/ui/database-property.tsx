@@ -81,7 +81,7 @@ export function InlineEditableField({
   }
 
   return (
-    <div className="group/cell relative flex h-full min-h-[36px] w-full items-center">
+    <div className="group/cell relative flex h-full min-h-[34px] w-full items-center">
       {isEditing ? (
         <div className="absolute inset-0 z-10 flex items-center bg-background ring-2 ring-primary/50">
           <Input
@@ -178,7 +178,7 @@ function DatabaseArrayEditor({
 
   return (
     <div
-      className="flex h-full min-h-[36px] w-full items-center gap-1.5 overflow-x-auto px-3 text-sm"
+      className="flex h-full min-h-[34px] w-full items-center gap-1.5 overflow-x-auto px-3 text-sm"
       onClick={() => inputRef.current?.focus()}
     >
       {items.map((item, index) => (
@@ -242,7 +242,7 @@ export function ValueEditor({
       return (
         <div
           className={cn(
-            'flex h-full min-h-[36px] items-center px-3',
+            'flex h-full min-h-[34px] items-center px-3',
             className
           )}
         >
@@ -270,7 +270,7 @@ export function ValueEditor({
               variant="ghost"
               size="sm"
               className={cn(
-                'h-full min-h-[36px] w-full justify-start rounded-none px-3 text-left text-sm font-normal text-foreground/90 hover:bg-muted/30',
+                'h-full min-h-[34px] w-full justify-start rounded-none px-3 text-left text-sm font-normal text-foreground/90 hover:bg-muted/30',
                 !dateValue && 'text-muted-foreground/60',
                 className
               )}
