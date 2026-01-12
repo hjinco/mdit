@@ -10,6 +10,14 @@ use include_dir::{include_dir, Dir};
 use rusqlite::Connection;
 use serde::Deserialize;
 
+#[tauri::command]
+pub fn apply_workspace_migrations_command(workspace_path: String) -> Result<(), String> {
+    let workspace_path = PathBuf::from(workspace_path);
+    apply_workspace_migrations(&workspace_path)
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
 static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/db/migrations");
 
 const WORKSPACE_STATE_DIR: &str = ".mdit";

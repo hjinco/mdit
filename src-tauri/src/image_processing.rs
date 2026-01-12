@@ -6,6 +6,22 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use webp::{Encoder, WebPMemory};
 
+#[tauri::command]
+pub fn get_image_properties_command(path: String) -> Result<ImageProperties, String> {
+    get_image_properties(&path)
+}
+
+#[tauri::command]
+pub async fn edit_image_command(
+    input_path: String,
+    options: ImageEditOptions,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || edit_image(&input_path, options))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
+}
+
 #[cfg(target_os = "macos")]
 mod macos_heic {
     use core_foundation::{
