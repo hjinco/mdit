@@ -81,6 +81,7 @@ fn yaml_key_to_string(value: YamlValue) -> String {
             Ok(s) => s.trim().to_string(),
             Err(_) => "<unserializable-key>".to_string(),
         },
+    }
 }
 
 fn parse_frontmatter(source: &str) -> JsonValue {
@@ -90,19 +91,14 @@ fn parse_frontmatter(source: &str) -> JsonValue {
 
     let parsed: YamlValue = match serde_yaml::from_str(&yaml_source) {
         Ok(value) => value,
-        Err(_) => return JsonValue::Object(Map::new()),
+        Err(e) => {
+            eprintln!("Failed to parse frontmatter YAML: {}", e);
+            return JsonValue::Object(Map::new());
+        }
     };
 
     match parsed {
-        YamlValue::Mapping(map) => {
-            let mut object = Map::new();
-            for (key, value) in map {
-                let key_string = yaml_key_to_string(key);
-                object.insert(key_string, yaml_to_json(value));
-            }
-            JsonValue::Object(object)
-        }
-        YamlValue::Null => JsonValue::Object(Map::new()),
+        YamlValue::Mapping(_) => yaml_to_json(parsed),
         _ => JsonValue::Object(Map::new()),
     }
 }
