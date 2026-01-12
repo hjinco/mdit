@@ -300,7 +300,6 @@ function collectColumnInfo(
   for (const entry of entries) {
     const frontmatter = frontmatterByPath.get(entry.path) ?? {}
     for (const [key, value] of Object.entries(frontmatter)) {
-      if (key === 'title') continue // Special handling for name/title column
       columns.add(key)
       if (value === null || value === undefined) continue
       const nextType = detectValueType(value)
