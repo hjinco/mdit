@@ -304,7 +304,7 @@ export const useChat = (config: ChatConfig | null) => {
 
               const gen = streamText({
                 maxOutputTokens: 2048,
-                messages: convertToModelMessages(messages),
+                messages: await convertToModelMessages(messages),
                 model: llmRef.current,
                 system: generateSystem,
                 experimental_transform: markdownJoinerTransform(),
@@ -325,7 +325,7 @@ export const useChat = (config: ChatConfig | null) => {
 
               const edit = streamText({
                 maxOutputTokens: 2048,
-                messages: convertToModelMessages(messages),
+                messages: await convertToModelMessages(messages),
                 model: llmRef.current,
                 system: editSystem,
                 experimental_transform: markdownJoinerTransform(),
