@@ -1,5 +1,5 @@
 import type { DirEntry } from '@tauri-apps/plugin-fs'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   collectSiblingNoteNames,
@@ -8,19 +8,6 @@ import {
   sanitizeFileName,
   stripExtension,
 } from './ai-rename-utils'
-
-const WINDOWS_DRIVE_LETTER_REGEX = /^[A-Za-z]:/
-
-vi.mock('@tauri-apps/api/path', () => ({
-  join: vi.fn(async (...parts: string[]) => {
-    // Detect if any part is a Windows path (starts with drive letter like C:, D:, etc.)
-    const isWindowsPath = parts.some((part) =>
-      WINDOWS_DRIVE_LETTER_REGEX.test(part)
-    )
-    const separator = isWindowsPath ? '\\' : '/'
-    return parts.join(separator)
-  }),
-}))
 
 const makeEntry = (name: string, overrides?: Partial<DirEntry>): DirEntry => ({
   name,

@@ -1,7 +1,7 @@
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { basename } from '@tauri-apps/api/path'
 import { stat } from '@tauri-apps/plugin-fs'
 import { ImageOff } from 'lucide-react'
+import { basename } from 'pathe'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useUIStore } from '@/store/ui-store'
@@ -44,7 +44,7 @@ export function ImagePreviewDialog() {
       setIsImageReady(false)
       setImageProperties(null)
       setFileSize(null)
-      basename(imagePreviewPath).then(setDisplayFilename).catch(console.error)
+      setDisplayFilename(basename(imagePreviewPath))
 
       // Fetch image properties and file size
       Promise.all([

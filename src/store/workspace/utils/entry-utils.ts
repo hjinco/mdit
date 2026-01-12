@@ -1,6 +1,5 @@
-import { join } from '@tauri-apps/api/path'
-
 import type { DirEntry, FileInfo } from '@tauri-apps/plugin-fs'
+import { join } from 'pathe'
 import {
   getFileNameFromPath,
   normalizePathSeparators,
@@ -34,7 +33,7 @@ export async function buildWorkspaceEntries(
 
     const entries = await Promise.all(
       visibleEntries.map(async (entry) => {
-        const fullPath = await join(path, entry.name)
+        const fullPath = join(path, entry.name)
         const workspaceEntry: WorkspaceEntry = {
           path: fullPath,
           name: entry.name,

@@ -1,10 +1,10 @@
-import { join } from '@tauri-apps/api/path'
 import {
   exists,
   mkdir,
   readTextFile,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
+import { join } from 'pathe'
 
 const WORKSPACE_STATE_DIR = '.mdit'
 const WORKSPACE_CONFIG_FILE = 'workspace.json'
@@ -25,18 +25,15 @@ export type WorkspaceSettings = {
   expandedDirectories?: string[]
 }
 
-const getWorkspaceConfigPath = async (
-  workspacePath: string
-): Promise<string> => {
-  const stateDir = await join(workspacePath, WORKSPACE_STATE_DIR)
-  return await join(stateDir, WORKSPACE_CONFIG_FILE)
+const getWorkspaceConfigPath = (workspacePath: string): string => {
+  return join(workspacePath, WORKSPACE_STATE_DIR, WORKSPACE_CONFIG_FILE)
 }
 
 export const loadSettings = async (
   workspacePath: string
 ): Promise<WorkspaceSettings> => {
   try {
-    const configPath = await getWorkspaceConfigPath(workspacePath)
+    const configPath = getWorkspaceConfigPath(workspacePath)
 
     if (!(await exists(configPath))) {
       return {}
@@ -57,7 +54,7 @@ export const saveSettings = async (
   settings: WorkspaceSettings
 ): Promise<void> => {
   try {
-    const stateDir = await join(workspacePath, WORKSPACE_STATE_DIR)
+    const stateDir = join(workspacePath, WORKSPACE_STATE_DIR)
 
     // Ensure the .mdit directory exists before writing
     if (!(await exists(stateDir))) {
@@ -71,7 +68,7 @@ export const saveSettings = async (
       ...settings,
     }
 
-    const configPath = await getWorkspaceConfigPath(workspacePath)
+    const configPath = getWorkspaceConfigPath(workspacePath)
     await writeTextFile(configPath, JSON.stringify(mergedConfig, null, 2))
   } catch (error) {
     console.error('Failed to save settings to file:', error)

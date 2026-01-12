@@ -1,10 +1,11 @@
 import { LogicalPosition } from '@tauri-apps/api/dpi'
 import { Image } from '@tauri-apps/api/image'
 import { Menu, PredefinedMenuItem } from '@tauri-apps/api/menu'
-import { join, resourceDir } from '@tauri-apps/api/path'
+import { resourceDir } from '@tauri-apps/api/path'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
+import { join } from 'pathe'
 import { useEffect } from 'react'
 
 const createQuickNoteWindow = () => {
@@ -24,7 +25,7 @@ const createQuickNoteWindow = () => {
 
 async function createSystemTray() {
   const resDir = await resourceDir()
-  const iconPath = await join(resDir, 'icons', 'trayTemplate.png')
+  const iconPath = join(resDir, 'icons', 'trayTemplate.png')
   const icon = await Image.fromPath(iconPath)
 
   const tray = await TrayIcon.getById('tray')

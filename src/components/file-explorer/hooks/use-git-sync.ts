@@ -1,4 +1,3 @@
-import { join } from '@tauri-apps/api/path'
 import {
   exists,
   mkdir,
@@ -6,6 +5,7 @@ import {
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
 import { Command } from '@tauri-apps/plugin-shell'
+import { join } from 'pathe'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGitSyncStore } from '@/store/git-sync-store'
 import { useWorkspaceStore } from '@/store/workspace-store'
@@ -504,8 +504,8 @@ async function executeGit(workspacePath: string, args: string[]) {
 }
 
 async function ensureGitignoreEntry(workspacePath: string) {
-  const mditDir = await join(workspacePath, '.mdit')
-  const gitignorePath = await join(mditDir, '.gitignore')
+  const mditDir = join(workspacePath, '.mdit')
+  const gitignorePath = join(mditDir, '.gitignore')
   const entries = ['db.sqlite', '.DS_Store', 'workspace.json']
 
   try {

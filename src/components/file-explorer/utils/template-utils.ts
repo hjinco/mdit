@@ -1,4 +1,3 @@
-import { join } from '@tauri-apps/api/path'
 import {
   exists,
   mkdir,
@@ -6,6 +5,7 @@ import {
   readTextFile,
   writeTextFile,
 } from '@tauri-apps/plugin-fs'
+import { join } from 'pathe'
 import { getFileNameFromPath } from '@/utils/path-utils'
 
 const TEMPLATES_DIR = 'templates'
@@ -19,21 +19,21 @@ export async function getTemplateFiles(
   }
 
   try {
-    const templatesDir = await join(workspacePath, '.mdit', TEMPLATES_DIR)
+    const templatesDir = join(workspacePath, '.mdit', TEMPLATES_DIR)
 
     if (!(await exists(templatesDir))) {
       return []
     }
 
     const entries = await readDir(templatesDir)
-    const templateFilesPromises = entries
-      .filter((entry) => !entry.isDirectory && MD_EXTENSION_REGEX.test(entry.name))
-      .map(async (entry) => ({
+    const templateFiles = entries
+      .filter(
+        (entry) => !entry.isDirectory && MD_EXTENSION_REGEX.test(entry.name)
+      )
+      .map((entry) => ({
         name: entry.name.replace(MD_EXTENSION_REGEX, ''),
-        path: await join(templatesDir, entry.name),
+        path: join(templatesDir, entry.name),
       }))
-
-    const templateFiles = await Promise.all(templateFilesPromises)
 
     return templateFiles.sort((a, b) => a.name.localeCompare(b.name))
   } catch (error) {
@@ -55,14 +55,14 @@ export async function saveNoteAsTemplate(
     const noteContent = await readTextFile(notePath)
 
     // Ensure templates directory exists
-    const templatesDir = await join(workspacePath, '.mdit', TEMPLATES_DIR)
+    const templatesDir = join(workspacePath, '.mdit', TEMPLATES_DIR)
     if (!(await exists(templatesDir))) {
       await mkdir(templatesDir, { recursive: true })
     }
 
     // Extract note filename (with .md extension)
     const templateFileName = getFileNameFromPath(notePath)
-    const templateFilePath = await join(templatesDir, templateFileName)
+    const templateFilePath = join(templatesDir, templateFileName)
 
     // Check if template file already exists
     if (await exists(templateFilePath)) {
