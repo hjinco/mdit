@@ -1,4 +1,5 @@
 mod copy;
+mod database;
 mod file_opener;
 mod image_processing;
 mod indexing;
@@ -151,6 +152,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             file_opener::get_opened_files,
             copy::copy,
+            database::get_file_frontmatter,
             move_to_trash,
             move_many_to_trash,
             get_note_preview,

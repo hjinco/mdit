@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { WorkspaceEntry } from '@/store/workspace-store'
+import {
+  applySortDirection,
+  type BaseSortOption,
+  compareEntryByBaseOption,
+  type SortDirection as SortDirectionType,
+} from '@/utils/sort-utils'
 
-export type SortOption = 'name' | 'createdAt' | 'modifiedAt'
-export type SortDirection = 'asc' | 'desc'
+export type SortOption = BaseSortOption
+export type SortDirection = SortDirectionType
 
 const COLLECTION_SORT_OPTION_KEY = 'collection-sort-option'
 const COLLECTION_SORT_DIRECTION_KEY = 'collection-sort-direction'
@@ -55,52 +61,8 @@ export function useCollectionSort(entries: WorkspaceEntry[]) {
 
   const sortedEntries = useMemo(() => {
     const sorted = [...entries].sort((a, b) => {
-      let comparison = 0
-
-      switch (sortOption) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name, undefined, {
-            numeric: true,
-            sensitivity: 'base',
-          })
-          break
-
-        case 'createdAt':
-          // Fallback to name if createdAt is not available
-          if (!a.createdAt && !b.createdAt) {
-            comparison = a.name.localeCompare(b.name, undefined, {
-              numeric: true,
-              sensitivity: 'base',
-            })
-          } else if (!a.createdAt) {
-            comparison = 1 // Items without createdAt go to the end
-          } else if (b.createdAt) {
-            comparison = a.createdAt.getTime() - b.createdAt.getTime()
-          } else {
-            comparison = -1
-          }
-          break
-
-        case 'modifiedAt':
-          // Fallback to name if modifiedAt is not available
-          if (!a.modifiedAt && !b.modifiedAt) {
-            comparison = a.name.localeCompare(b.name, undefined, {
-              numeric: true,
-              sensitivity: 'base',
-            })
-          } else if (!a.modifiedAt) {
-            comparison = 1 // Items without modifiedAt go to the end
-          } else if (b.modifiedAt) {
-            comparison = a.modifiedAt.getTime() - b.modifiedAt.getTime()
-          } else {
-            comparison = -1
-          }
-          break
-
-        default:
-      }
-
-      return sortDirection === 'asc' ? comparison : -comparison
+      const comparison = compareEntryByBaseOption(a, b, sortOption)
+      return applySortDirection(comparison, sortDirection)
     })
 
     return sorted

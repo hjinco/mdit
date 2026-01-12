@@ -8,6 +8,11 @@ import {
   isPathEqualOrDescendant,
 } from '@/utils/path-utils'
 import {
+  removeFileFrontmatterProperty,
+  renameFileFrontmatterProperty,
+  updateFileFrontmatter,
+} from '@/utils/frontmatter-utils'
+import {
   AI_RENAME_SYSTEM_PROMPT,
   buildRenamePrompt,
   collectSiblingNoteNames,
@@ -70,6 +75,16 @@ type WorkspaceFsStore = {
   lastFsOperationTime: number | null
   recordFsOperation: () => void
   saveNoteContent: (path: string, contents: string) => Promise<void>
+  updateFrontmatter: (
+    path: string,
+    updates: Record<string, unknown>
+  ) => Promise<void>
+  renameFrontmatterProperty: (
+    path: string,
+    oldKey: string,
+    newKey: string
+  ) => Promise<void>
+  removeFrontmatterProperty: (path: string, key: string) => Promise<void>
   createFolder: (
     directoryPath: string,
     folderName: string
@@ -114,6 +129,31 @@ export const createWorkspaceFsStore = ({
       saveNoteContent: async (path: string, contents: string) => {
         await fileSystemRepository.writeTextFile(path, contents)
         get().recordFsOperation()
+      },
+
+      updateFrontmatter: async (
+        path: string,
+        updates: Record<string, unknown>
+      ) => {
+        await updateFileFrontmatter(path, updates)
+        get().recordFsOperation()
+        await get().updateEntryModifiedDate(path)
+      },
+
+      renameFrontmatterProperty: async (
+        path: string,
+        oldKey: string,
+        newKey: string
+      ) => {
+        await renameFileFrontmatterProperty(path, oldKey, newKey)
+        get().recordFsOperation()
+        await get().updateEntryModifiedDate(path)
+      },
+
+      removeFrontmatterProperty: async (path: string, key: string) => {
+        await removeFileFrontmatterProperty(path, key)
+        get().recordFsOperation()
+        await get().updateEntryModifiedDate(path)
       },
 
       createFolder: async (directoryPath: string, folderName: string) => {

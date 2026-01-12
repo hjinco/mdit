@@ -2,12 +2,7 @@ import { XIcon } from 'lucide-react'
 import { type KeyboardEvent, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/ui/input'
-
-type FocusRegistration = {
-  rowId: string
-  columnId: string
-  register: (node: HTMLElement | null) => void
-}
+import type { FocusRegistration } from './node-frontmatter-table'
 
 type FrontmatterArrayProps = {
   value: unknown
@@ -33,9 +28,7 @@ export function FrontmatterArray({
 
   const items = useMemo(() => {
     if (Array.isArray(value)) {
-      return value
-        .map((item) => String(item ?? '').trim())
-        .filter(Boolean)
+      return value.map((item) => String(item ?? '').trim()).filter(Boolean)
     }
     if (typeof value === 'string') {
       return parseItems(value)

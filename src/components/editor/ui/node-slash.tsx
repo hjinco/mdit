@@ -6,6 +6,7 @@ import { readDir, readTextFile } from '@tauri-apps/plugin-fs'
 import {
   CalendarIcon,
   Code2,
+  Database,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -30,6 +31,8 @@ import YAML from 'yaml'
 import { useEditorStore } from '@/store/editor-store'
 import { useMDXSettingsStore } from '@/store/mdx-settings-store'
 import { useTabStore } from '@/store/tab-store'
+import { datePattern, type ValueType } from '@/utils/frontmatter-value-utils'
+import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
 import { insertBlock, insertInlineElement } from '../utils/transforms'
@@ -42,11 +45,7 @@ import {
   InlineComboboxInput,
   InlineComboboxItem,
 } from './inline-combobox'
-import {
-  datePattern,
-  type KVRow,
-  type ValueType,
-} from './node-frontmatter-table'
+import type { KVRow } from './node-frontmatter-table'
 
 const MAX_REFERENCED_NOTES = 5
 
@@ -414,6 +413,13 @@ const groups: Group[] = [
         icon: <RadicalIcon />,
         label: 'Equation',
         value: KEYS.equation,
+      },
+      {
+        focusEditor: false,
+        icon: <Database />,
+        keywords: ['database', 'db', '데이터베이스'],
+        label: 'Database',
+        value: DATABASE_KEY,
       },
     ].map((item) => ({
       ...item,

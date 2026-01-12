@@ -20,6 +20,7 @@ import {
   type TElement,
 } from 'platejs'
 import type { PlateEditor } from 'platejs/react'
+import { DATABASE_KEY } from '../plugins/database-kit'
 
 const ACTION_THREE_COLUMNS = 'action_three_columns'
 
@@ -74,6 +75,11 @@ const insertBlockMap: Record<
   },
   [KEYS.toc]: (editor) => insertToc(editor, { select: true }),
   [KEYS.video]: (editor) => insertVideoPlaceholder(editor, { select: true }),
+  [DATABASE_KEY]: (editor) => {
+    editor.tf.insertNodes(editor.api.create.block({ type: DATABASE_KEY }), {
+      select: true,
+    })
+  },
 }
 
 const insertInlineMap: Record<

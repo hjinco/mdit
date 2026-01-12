@@ -14,7 +14,11 @@ import {
   XIcon,
 } from 'lucide-react'
 import { useEditorRef } from 'platejs/react'
-import type { ComponentPropsWithoutRef, HTMLInputTypeAttribute } from 'react'
+import type {
+  ComponentPropsWithoutRef,
+  ComponentType,
+  HTMLInputTypeAttribute,
+} from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
@@ -30,9 +34,16 @@ import {
 import { Input } from '@/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { Switch } from '@/ui/switch'
+import {
+  convertValueToType,
+  datePattern,
+  formatLocalDate,
+  parseYMDToLocalDate,
+  type ValueType,
+} from '@/utils/frontmatter-value-utils'
 import { FrontmatterArray } from './node-frontmatter-array'
 
-export type ValueType = 'string' | 'number' | 'boolean' | 'date' | 'array'
+export const KB_NAV_ATTR = 'data-kb-nav'
 
 export type KVRow = {
   id: string
@@ -43,11 +54,10 @@ export type KVRow = {
 
 const columnsOrder = ['type', 'key', 'value', 'actions'] as const
 type ColumnId = (typeof columnsOrder)[number]
-const KB_NAV_ATTR = 'data-kb-nav'
 
-type FocusRegistration = {
+export type FocusRegistration = {
   rowId: string
-  columnId: ColumnId
+  columnId: string
   register: (node: HTMLElement | null) => void
 }
 
@@ -56,87 +66,9 @@ type FrontmatterTableProps = {
   onChange: (data: KVRow[]) => void
 }
 
-export const datePattern = /^\d{4}-\d{2}-\d{2}/
-
-function formatLocalDate(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function parseYMDToLocalDate(ymd: string) {
-  if (!datePattern.test(ymd)) return
-  const [y, m, d] = ymd
-    .slice(0, 10)
-    .split('-')
-    .map((n) => Number(n))
-  if (!y || !m || !d) return
-  return new Date(y, m - 1, d)
-}
-
-export function convertValueToType(
-  value: unknown,
-  targetType: ValueType
-): unknown {
-  const strValue = String(value ?? '')
-
-  switch (targetType) {
-    case 'boolean': {
-      return (
-        strValue === 'true' ||
-        strValue === '1' ||
-        strValue.toLowerCase() === 'yes'
-      )
-    }
-    case 'number': {
-      const num = Number(strValue)
-      return Number.isNaN(num) ? 0 : num
-    }
-    case 'date': {
-      // Normalize to YYYY-MM-DD (keep local date, avoid timezone shift)
-      if (value instanceof Date) {
-        return formatLocalDate(value)
-      }
-      const trimmed = strValue.trim()
-      if (!trimmed) {
-        return formatLocalDate(new Date())
-      }
-      // If already in YYYY-MM-DD or YYYY-MM-DDThh:mm..., take first 10
-      if (datePattern.test(trimmed)) {
-        return trimmed.slice(0, 10)
-      }
-      // Try parsing other date-like strings
-      const dt = new Date(trimmed)
-      if (!Number.isNaN(dt.getTime())) {
-        return formatLocalDate(dt)
-      }
-      // Fallback to today if invalid
-      return formatLocalDate(new Date())
-    }
-    case 'array': {
-      try {
-        return Array.isArray(value)
-          ? value
-          : strValue
-            ? strValue.split(',').map((s) => s.trim())
-            : []
-      } catch {
-        return []
-      }
-    }
-    case 'string': {
-      return strValue
-    }
-    default: {
-      return strValue
-    }
-  }
-}
-
-const typeIcons: Record<
+const PROPERTY_ICONS: Record<
   ValueType,
-  React.ComponentType<{ className?: string }>
+  ComponentType<{ className?: string }>
 > = {
   string: TypeIcon,
   number: HashIcon,
@@ -154,7 +86,7 @@ function TypeSelect({
   onValueChange: (newType: ValueType) => void
   focusRegistration?: FocusRegistration
 }) {
-  const TypeIcon = typeIcons[value]
+  const Icon = PROPERTY_ICONS[value]
   const focusAttrs = focusRegistration
     ? {
         ref: focusRegistration.register,
@@ -172,28 +104,28 @@ function TypeSelect({
           className="rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
           {...focusAttrs}
         >
-          <TypeIcon />
+          <Icon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem onSelect={() => onValueChange('string')}>
-          <TypeIcon />
+          <TypeIcon className="mr-2 h-4 w-4" />
           <span>Text</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onValueChange('number')}>
-          <HashIcon />
+          <HashIcon className="mr-2 h-4 w-4" />
           <span>Number</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onValueChange('boolean')}>
-          <ToggleLeftIcon />
+          <ToggleLeftIcon className="mr-2 h-4 w-4" />
           <span>Boolean</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onValueChange('date')}>
-          <CalendarIcon />
+          <CalendarIcon className="mr-2 h-4 w-4" />
           <span>Date</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onValueChange('array')}>
-          <ListIcon />
+          <ListIcon className="mr-2 h-4 w-4" />
           <span>Array</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -968,7 +900,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
           ref={addButtonRef}
           onKeyDownCapture={handleAddButtonKeyDown}
         >
-          <PlusIcon />
+          <PlusIcon className="h-4 w-4 mr-2" />
           Add property
         </Button>
       </div>
