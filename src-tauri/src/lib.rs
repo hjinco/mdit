@@ -5,125 +5,10 @@ mod image_processing;
 mod indexing;
 mod migrations;
 mod preview;
+mod trash;
 
-use std::fs::File;
-use std::io::Read;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
-use trash;
-
-#[tauri::command]
-fn move_to_trash(path: String) -> Result<(), String> {
-    trash::delete(path).map_err(|e| format!("Failed to delete file: {}", e))
-}
-
-#[tauri::command]
-fn move_many_to_trash(paths: Vec<String>) -> Result<(), String> {
-    if paths.is_empty() {
-        return Ok(());
-    }
-
-    trash::delete_all(paths).map_err(|e| format!("Failed to delete files: {}", e))
-}
-
-#[tauri::command]
-fn get_note_preview(path: String) -> Result<String, String> {
-    const PREVIEW_BYTES: usize = 500;
-
-    let mut file = File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
-    let mut buffer = vec![0u8; PREVIEW_BYTES];
-
-    match file.read(&mut buffer) {
-        Ok(bytes_read) => {
-            if bytes_read == 0 {
-                return Ok(String::new());
-            }
-            buffer.truncate(bytes_read);
-            let preview = String::from_utf8_lossy(&buffer);
-            Ok(preview::format_preview_text(preview.as_ref()))
-        }
-        Err(e) => Err(format!("Failed to read file: {}", e)),
-    }
-}
-
-#[tauri::command]
-fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
-    use std::path::PathBuf;
-
-    let workspace_path = PathBuf::from(workspace_path);
-    migrations::apply_workspace_migrations(&workspace_path)
-        .map(|_| ())
-        .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-async fn index_workspace(
-    workspace_path: String,
-    embedding_provider: Option<String>,
-    embedding_model: String,
-    force_reindex: bool,
-) -> Result<indexing::IndexSummary, String> {
-    use std::path::PathBuf;
-
-    let workspace_path = PathBuf::from(workspace_path);
-    let provider = embedding_provider.unwrap_or_else(|| "ollama".to_string());
-    let model = embedding_model;
-
-    tauri::async_runtime::spawn_blocking(move || {
-        indexing::index_workspace(&workspace_path, &provider, &model, force_reindex)
-    })
-    .await
-    .map_err(|error| error.to_string())?
-    .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-fn get_indexing_meta(workspace_path: String) -> Result<indexing::IndexingMeta, String> {
-    use std::path::PathBuf;
-
-    let workspace_path = PathBuf::from(workspace_path);
-    indexing::get_indexing_meta(&workspace_path).map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-async fn search_query_entries(
-    workspace_path: String,
-    query: String,
-    embedding_provider: String,
-    embedding_model: String,
-) -> Result<Vec<indexing::SemanticNoteEntry>, String> {
-    use std::path::PathBuf;
-
-    let workspace_path = PathBuf::from(workspace_path);
-
-    tauri::async_runtime::spawn_blocking(move || {
-        indexing::search_notes_for_query(
-            &workspace_path,
-            &query,
-            &embedding_provider,
-            &embedding_model,
-        )
-    })
-    .await
-    .map_err(|error| error.to_string())?
-    .map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-fn get_image_properties(path: String) -> Result<image_processing::ImageProperties, String> {
-    image_processing::get_image_properties(&path)
-}
-
-#[tauri::command]
-async fn edit_image(
-    input_path: String,
-    options: image_processing::ImageEditOptions,
-) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || image_processing::edit_image(&input_path, options))
-        .await
-        .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -153,15 +38,15 @@ pub fn run() {
             file_opener::get_opened_files,
             copy::copy,
             database::get_file_frontmatter,
-            move_to_trash,
-            move_many_to_trash,
-            get_note_preview,
-            apply_workspace_migrations,
-            index_workspace,
-            get_indexing_meta,
-            search_query_entries,
-            get_image_properties,
-            edit_image
+            trash::move_to_trash,
+            trash::move_many_to_trash,
+            preview::get_note_preview,
+            migrations::apply_workspace_migrations_command,
+            indexing::index_workspace_command,
+            indexing::get_indexing_meta_command,
+            indexing::search_query_entries_command,
+            image_processing::get_image_properties_command,
+            image_processing::edit_image_command
         ])
         .manage(app_state)
         .build(tauri::generate_context!())

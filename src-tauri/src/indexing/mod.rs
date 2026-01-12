@@ -8,7 +8,7 @@
 //! 3. Deleted documents and surplus segments are removed to keep the database
 //!    tidy while the `IndexSummary` keeps track of everything that happened.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use rusqlite::Connection;
@@ -163,4 +163,59 @@ fn count_indexed_docs(conn: &Connection) -> Result<usize> {
         .context("Failed to count indexed documents")?;
 
     Ok(count as usize)
+}
+
+/// Helper function to run a blocking operation in a separate thread and convert errors to String.
+async fn run_blocking<F, T>(f: F) -> Result<T, String>
+where
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn index_workspace_command(
+    workspace_path: String,
+    embedding_provider: Option<String>,
+    embedding_model: String,
+    force_reindex: bool,
+) -> Result<IndexSummary, String> {
+    let workspace_path = PathBuf::from(workspace_path);
+    let provider = embedding_provider.unwrap_or_else(|| "ollama".to_string());
+    let model = embedding_model;
+
+    run_blocking(move || {
+        index_workspace(&workspace_path, &provider, &model, force_reindex)
+    })
+    .await
+}
+
+#[tauri::command]
+pub fn get_indexing_meta_command(workspace_path: String) -> Result<IndexingMeta, String> {
+    let workspace_path = PathBuf::from(workspace_path);
+    get_indexing_meta(&workspace_path).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn search_query_entries_command(
+    workspace_path: String,
+    query: String,
+    embedding_provider: String,
+    embedding_model: String,
+) -> Result<Vec<SemanticNoteEntry>, String> {
+    let workspace_path = PathBuf::from(workspace_path);
+
+    run_blocking(move || {
+        search_notes_for_query(
+            &workspace_path,
+            &query,
+            &embedding_provider,
+            &embedding_model,
+        )
+    })
+    .await
 }
