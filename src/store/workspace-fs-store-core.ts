@@ -893,19 +893,17 @@ export const createWorkspaceFsStore = ({
             ? sortWorkspaceEntries([...entries, newFileEntry])
             : addEntryToState(entries, destinationPath, newFileEntry)
 
+        const updatedExpanded = isDirectory
+          ? addExpandedDirectories(expandedDirectories, [
+              destinationPath,
+              newPath,
+            ])
+          : undefined
+
         await workspaceStoreAdapter.applyWorkspaceUpdate({
           entries: updatedEntries,
+          ...(updatedExpanded && { expandedDirectories: updatedExpanded }),
         })
-
-        if (isDirectory) {
-          const updatedExpanded = addExpandedDirectories(expandedDirectories, [
-            destinationPath,
-            newPath,
-          ])
-          await workspaceStoreAdapter.applyWorkspaceUpdate({
-            expandedDirectories: updatedExpanded,
-          })
-        }
 
         return true
       },
