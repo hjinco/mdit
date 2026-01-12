@@ -42,7 +42,7 @@ export type GenerateText = (args: any) => Promise<{ text: string }>
 export type FileSystemRepositoryLike = {
   exists: (path: string) => Promise<boolean>
   mkdir: (path: string, options?: { recursive?: boolean }) => Promise<void>
-  readDir: (path: string) => Promise<any[]>
+  readDir: (path: string) => Promise<{ name: string; isDirectory: boolean }[]>
   readTextFile: (path: string) => Promise<string>
   rename: (sourcePath: string, destinationPath: string) => Promise<void>
   writeTextFile: (path: string, contents: string) => Promise<void>
@@ -51,8 +51,8 @@ export type FileSystemRepositoryLike = {
   copy: (sourcePath: string, destinationPath: string) => Promise<void>
   stat: (path: string) => Promise<{
     isDirectory: boolean
-    birthtime?: any
-    mtime?: any
+    birthtime?: Date | number | null
+    mtime?: Date | number | null
   }>
 }
 
