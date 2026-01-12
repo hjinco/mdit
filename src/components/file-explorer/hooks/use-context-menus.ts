@@ -24,8 +24,8 @@ import {
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
 import { useTabStore } from '@/store/tab-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
 import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
+import type { WorkspaceEntry } from '@/store/workspace-store'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
