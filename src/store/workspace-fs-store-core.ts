@@ -807,13 +807,30 @@ export const createWorkspaceFsStore = ({
           fileMetadata.modifiedAt = new Date(statResult.mtime)
         }
 
+        // Load directory children if it's a directory
+        let directoryChildren: WorkspaceEntry[] | undefined
+        if (isDirectory) {
+          try {
+            directoryChildren = await buildWorkspaceEntries(
+              newPath,
+              fileSystemRepository as any
+            )
+          } catch (error) {
+            console.error(
+              'Failed to load directory children after copy:',
+              error
+            )
+            directoryChildren = []
+          }
+        }
+
         // Update workspace entries state
         const newFileName = getFileNameFromPath(newPath) ?? fileName
         const newFileEntry: WorkspaceEntry = {
           path: newPath,
           name: newFileName,
           isDirectory,
-          children: isDirectory ? [] : undefined,
+          children: directoryChildren,
           createdAt: fileMetadata.createdAt,
           modifiedAt: fileMetadata.modifiedAt,
         }
@@ -827,15 +844,20 @@ export const createWorkspaceFsStore = ({
         }
 
         if (isDirectory) {
-          await workspaceStoreAdapter.refreshWorkspaceEntries()
-          // Expand destination directory and the newly copied folder (if it's a directory)
-          const { expandedDirectories } = getWorkspaceSnapshot()
-          const nextExpanded = addExpandedDirectories(expandedDirectories, [
+          const { entries, expandedDirectories } = getWorkspaceSnapshot()
+          const updatedEntries =
+            destinationPath === workspacePath
+              ? sortWorkspaceEntries([...entries, newFileEntry])
+              : addEntryToState(entries, destinationPath, newFileEntry)
+
+          const updatedExpanded = addExpandedDirectories(expandedDirectories, [
             destinationPath,
             newPath,
           ])
+
           await workspaceStoreAdapter.applyWorkspaceUpdate({
-            expandedDirectories: nextExpanded,
+            entries: updatedEntries,
+            expandedDirectories: updatedExpanded,
           })
         }
 
