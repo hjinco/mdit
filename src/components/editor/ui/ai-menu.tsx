@@ -65,6 +65,7 @@ export function AIMenu() {
     menuState === 'selectionCommand' || menuState === 'cursorSuggestion'
       ? 'chat'
       : 'insert'
+  const submitToolName = menuState === 'cursorCommand' ? 'generate' : 'edit'
 
   const handleSubmit = useCallback(() => {
     if (!chatConfig) {
@@ -77,9 +78,17 @@ export function AIMenu() {
     if (value) {
       return
     }
-    api.aiChat.submit(input, { mode: submitMode })
+    api.aiChat.submit(input, { mode: submitMode, toolName: submitToolName })
     setInput('')
-  }, [api.aiChat, chatConfig, input, licenseStatus, submitMode, value])
+  }, [
+    api.aiChat,
+    chatConfig,
+    input,
+    licenseStatus,
+    submitMode,
+    submitToolName,
+    value,
+  ])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
