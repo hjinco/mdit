@@ -93,7 +93,7 @@ pub fn index_workspace(
     // Embedder handles communication with the chosen vector backend.
     let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
 
-    let db_path = migrations::apply_workspace_migrations(workspace_root)?;
+    let db_path = migrations::run_workspace_migrations(workspace_root)?;
     let mut conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
 
@@ -134,7 +134,7 @@ pub fn get_indexing_meta(workspace_root: &Path) -> Result<IndexingMeta> {
         ));
     }
 
-    let db_path = migrations::apply_workspace_migrations(workspace_root)?;
+    let db_path = migrations::run_workspace_migrations(workspace_root)?;
     let conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
 

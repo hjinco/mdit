@@ -41,7 +41,7 @@ pub fn run() {
             trash::move_to_trash,
             trash::move_many_to_trash,
             preview::get_note_preview,
-            migrations::apply_workspace_migrations_command,
+            migrations::apply_workspace_migrations,
             indexing::index_workspace_command,
             indexing::get_indexing_meta_command,
             indexing::search_query_entries_command,

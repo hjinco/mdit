@@ -66,7 +66,7 @@ pub(crate) fn search_notes_for_query(
         return Ok(Vec::new());
     }
 
-    let db_path = migrations::apply_workspace_migrations(workspace_root)?;
+    let db_path = migrations::run_workspace_migrations(workspace_root)?;
     let conn = Connection::open(&db_path)
         .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
 

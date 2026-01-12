@@ -11,9 +11,9 @@ use rusqlite::Connection;
 use serde::Deserialize;
 
 #[tauri::command]
-pub fn apply_workspace_migrations_command(workspace_path: String) -> Result<(), String> {
+pub fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
     let workspace_path = PathBuf::from(workspace_path);
-    apply_workspace_migrations(&workspace_path)
+    run_workspace_migrations(&workspace_path)
         .map(|_| ())
         .map_err(|error| error.to_string())
 }
@@ -41,7 +41,7 @@ struct MigrationFile {
     sql: String,
 }
 
-pub fn apply_workspace_migrations(workspace_root: &Path) -> Result<PathBuf> {
+pub fn run_workspace_migrations(workspace_root: &Path) -> Result<PathBuf> {
     if !workspace_root.exists() {
         return Err(anyhow!(
             "Workspace path does not exist: {}",
