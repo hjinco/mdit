@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useCollectionStore } from '@/store/collection-store'
-import { useFontScaleStore } from '@/store/font-scale-store'
 import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
@@ -9,9 +8,7 @@ import { useWorkspaceStore } from '@/store/workspace-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
-  const createAndOpenNote = useWorkspaceFsStore(
-    (s) => s.createAndOpenNote
-  )
+  const createAndOpenNote = useWorkspaceFsStore((s) => s.createAndOpenNote)
   const { openFolderPicker } = useWorkspaceStore(
     useShallow((s) => ({
       openFolderPicker: s.openFolderPicker,
@@ -23,16 +20,18 @@ export function WindowMenu() {
     }))
   )
 
-  const { toggleFileExplorer, openCommandMenu, toggleSettingsDialogOpen } =
-    useUIStore(
-      useShallow((s) => ({
-        toggleFileExplorer: s.toggleFileExplorerOpen,
-        openCommandMenu: s.openCommandMenu,
-        toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
-      }))
-    )
-  const { zoomIn, zoomOut, resetZoom } = useFontScaleStore(
+  const {
+    toggleFileExplorer,
+    openCommandMenu,
+    toggleSettingsDialogOpen,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+  } = useUIStore(
     useShallow((s) => ({
+      toggleFileExplorer: s.toggleFileExplorerOpen,
+      openCommandMenu: s.openCommandMenu,
+      toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
       zoomIn: s.increaseFontScale,
       zoomOut: s.decreaseFontScale,
       resetZoom: s.resetFontScale,

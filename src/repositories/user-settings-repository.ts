@@ -1,0 +1,58 @@
+export const FONT_SCALE_STORAGE_KEY = 'font-scale'
+export const DEFAULT_FONT_SCALE = 1
+const MIN_FONT_SCALE = 0.8
+const MAX_FONT_SCALE = 1.6
+const FONT_SCALE_STEP = 0.1
+
+const clampFontScale = (value: number) =>
+  Math.min(MAX_FONT_SCALE, Math.max(MIN_FONT_SCALE, Number(value.toFixed(2))))
+
+const readFontScale = (): number => {
+  if (typeof window === 'undefined') return DEFAULT_FONT_SCALE
+
+  const storedValue = localStorage.getItem(FONT_SCALE_STORAGE_KEY)
+  if (!storedValue) return DEFAULT_FONT_SCALE
+
+  const parsed = Number.parseFloat(storedValue)
+  if (!Number.isFinite(parsed)) {
+    localStorage.removeItem(FONT_SCALE_STORAGE_KEY)
+    return DEFAULT_FONT_SCALE
+  }
+
+  return clampFontScale(parsed)
+}
+
+const saveFontScale = (value: number): void => {
+  if (typeof window === 'undefined') return
+  const clampedValue = clampFontScale(value)
+  localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(clampedValue))
+}
+
+export class UserSettingsRepository {
+  getFontScale(): number {
+    return readFontScale()
+  }
+
+  setFontScale(value: number): number {
+    const clampedValue = clampFontScale(value)
+    saveFontScale(clampedValue)
+    return clampedValue
+  }
+
+  increaseFontScale(currentValue: number): number {
+    const newValue = clampFontScale(currentValue + FONT_SCALE_STEP)
+    saveFontScale(newValue)
+    return newValue
+  }
+
+  decreaseFontScale(currentValue: number): number {
+    const newValue = clampFontScale(currentValue - FONT_SCALE_STEP)
+    saveFontScale(newValue)
+    return newValue
+  }
+
+  resetFontScale(): number {
+    saveFontScale(DEFAULT_FONT_SCALE)
+    return DEFAULT_FONT_SCALE
+  }
+}
