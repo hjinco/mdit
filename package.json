@@ -13,7 +13,7 @@
     "test": "vitest run",
     "lint:fix": "biome check --write",
     "lint:check": "biome check",
-    "ci": "pnpm lint:check && pnpm test && pnpm build"
+    "ci": "pnpm lint:check && pnpm ts:check && pnpm test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.39",
