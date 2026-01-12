@@ -19,7 +19,6 @@ pub async fn edit_image_command(
     tauri::async_runtime::spawn_blocking(move || edit_image(&input_path, options))
         .await
         .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())
 }
 
 #[cfg(target_os = "macos")]

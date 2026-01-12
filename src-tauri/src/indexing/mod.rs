@@ -165,6 +165,18 @@ fn count_indexed_docs(conn: &Connection) -> Result<usize> {
     Ok(count as usize)
 }
 
+/// Helper function to run a blocking operation in a separate thread and convert errors to String.
+async fn run_blocking<F, T>(f: F) -> Result<T, String>
+where
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+    T: Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn index_workspace_command(
     workspace_path: String,
@@ -176,12 +188,10 @@ pub async fn index_workspace_command(
     let provider = embedding_provider.unwrap_or_else(|| "ollama".to_string());
     let model = embedding_model;
 
-    tauri::async_runtime::spawn_blocking(move || {
+    run_blocking(move || {
         index_workspace(&workspace_path, &provider, &model, force_reindex)
     })
     .await
-    .map_err(|error| error.to_string())?
-    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -199,7 +209,7 @@ pub async fn search_query_entries_command(
 ) -> Result<Vec<SemanticNoteEntry>, String> {
     let workspace_path = PathBuf::from(workspace_path);
 
-    tauri::async_runtime::spawn_blocking(move || {
+    run_blocking(move || {
         search_notes_for_query(
             &workspace_path,
             &query,
@@ -208,6 +218,4 @@ pub async fn search_query_entries_command(
         )
     })
     .await
-    .map_err(|error| error.to_string())?
-    .map_err(|error| error.to_string())
 }
