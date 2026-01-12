@@ -26,8 +26,7 @@ export type WorkspaceSettings = {
 }
 
 const getWorkspaceConfigPath = (workspacePath: string): string => {
-  const stateDir = join(workspacePath, WORKSPACE_STATE_DIR)
-  return join(stateDir, WORKSPACE_CONFIG_FILE)
+  return join(workspacePath, WORKSPACE_STATE_DIR, WORKSPACE_CONFIG_FILE)
 }
 
 export const loadSettings = async (
