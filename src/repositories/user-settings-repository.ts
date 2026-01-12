@@ -5,7 +5,10 @@ const MAX_FONT_SCALE = 1.6
 const FONT_SCALE_STEP = 0.1
 
 const clampFontScale = (value: number) =>
-  Math.min(MAX_FONT_SCALE, Math.max(MIN_FONT_SCALE, Math.round(value * 100) / 100))
+  Math.min(
+    MAX_FONT_SCALE,
+    Math.max(MIN_FONT_SCALE, Math.round(value * 100) / 100)
+  )
 
 const readFontScale = (): number => {
   if (typeof window === 'undefined') return DEFAULT_FONT_SCALE
@@ -24,8 +27,7 @@ const readFontScale = (): number => {
 
 const saveFontScale = (value: number): void => {
   if (typeof window === 'undefined') return
-  const clampedValue = clampFontScale(value)
-  localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(clampedValue))
+  localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(value))
 }
 
 export class UserSettingsRepository {
