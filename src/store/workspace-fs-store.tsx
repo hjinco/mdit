@@ -1,17 +1,17 @@
-import { basename, dirname, join } from '@tauri-apps/api/path'
 import { generateText } from 'ai'
+import { basename, dirname, join } from 'pathe'
 import { toast } from 'sonner'
 import { create } from 'zustand'
 import { FileSystemRepository } from '@/repositories/file-system-repository'
-import {
-  getFileNameFromPath,
-  isPathEqualOrDescendant,
-} from '@/utils/path-utils'
 import {
   removeFileFrontmatterProperty,
   renameFileFrontmatterProperty,
   updateFileFrontmatter,
 } from '@/utils/frontmatter-utils'
+import {
+  getFileNameFromPath,
+  isPathEqualOrDescendant,
+} from '@/utils/path-utils'
 import {
   AI_RENAME_SYSTEM_PROMPT,
   buildRenamePrompt,
@@ -288,7 +288,7 @@ export const createWorkspaceFsStore = ({
         if (currentCollectionPath) {
           targetDirectory = currentCollectionPath
         } else if (tab) {
-          targetDirectory = await dirname(tab.path)
+          targetDirectory = dirname(tab.path)
         }
 
         const newNotePath = await get().createNote(targetDirectory)
@@ -434,8 +434,8 @@ export const createWorkspaceFsStore = ({
 
         await waitForUnsavedTabToSettle(entry.path, tabStoreAdapter.getSnapshot)
 
-        const directoryPath = await dirname(entry.path)
-        const nextPath = await join(directoryPath, trimmedName)
+        const directoryPath = dirname(entry.path)
+        const nextPath = join(directoryPath, trimmedName)
 
         if (nextPath === entry.path) {
           return entry.path
@@ -539,8 +539,8 @@ export const createWorkspaceFsStore = ({
 
           const isDirectory = entryToMove.isDirectory
 
-          const entryName = await basename(sourcePath)
-          const newPath = await join(destinationPath, entryName)
+          const entryName = basename(sourcePath)
+          const newPath = join(destinationPath, entryName)
 
           if (await fileSystemRepository.exists(newPath)) {
             return false
@@ -554,7 +554,7 @@ export const createWorkspaceFsStore = ({
 
           if (entryName.endsWith('.md')) {
             try {
-              const sourceDirectory = await dirname(sourcePath)
+              const sourceDirectory = dirname(sourcePath)
               if (sourceDirectory !== destinationPath) {
                 const noteContent =
                   await fileSystemRepository.readTextFile(sourcePath)
@@ -741,7 +741,7 @@ export const createWorkspaceFsStore = ({
 
         // Handle markdown link rewriting for markdown files
         if (fileName.endsWith('.md')) {
-          const sourceDirectory = await dirname(sourcePath)
+          const sourceDirectory = dirname(sourcePath)
           if (sourceDirectory !== destinationPath) {
             const content = await fileSystemRepository.readTextFile(newPath)
             const updatedContent = rewriteMarkdownRelativeLinks(

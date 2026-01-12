@@ -1,4 +1,4 @@
-import { join } from '@tauri-apps/api/path'
+import { join } from 'pathe'
 
 export type UniqueFileNamePattern = 'space' | 'parentheses'
 
@@ -68,7 +68,7 @@ export async function generateUniqueFileName(
 
     // Construct fileName with suffix and extension
     fileName = `${baseNameWithoutExt}${suffix}${extension}`
-    fullPath = await join(directoryPath, fileName)
+    fullPath = join(directoryPath, fileName)
 
     // Check if path exists
     if (!(await exists(fullPath))) {

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
-import { basename } from '@tauri-apps/api/path'
 import { stat } from '@tauri-apps/plugin-fs'
+import { basename } from 'pathe'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
@@ -72,7 +72,7 @@ export function ImageEditDialog() {
   useEffect(() => {
     if (imageEditPath) {
       setIsLoading(true)
-      basename(imageEditPath).then(setFilename).catch(console.error)
+      setFilename(basename(imageEditPath))
       // Reset form
       setResizeWidth('')
       setResizeHeight('')

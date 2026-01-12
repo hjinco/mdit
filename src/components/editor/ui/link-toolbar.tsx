@@ -9,7 +9,6 @@ import {
   useFloatingLinkInsertState,
   useFloatingLinkUrlInputState,
 } from '@platejs/link/react'
-import { join, dirname as tauriDirname } from '@tauri-apps/api/path'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { cva } from 'class-variance-authority'
 import {
@@ -20,7 +19,7 @@ import {
   Link,
   Unlink,
 } from 'lucide-react'
-import { dirname as pathDirname, relative } from 'pathe'
+import { join, dirname as pathDirname, relative } from 'pathe'
 import type { TLinkElement } from 'platejs'
 import { KEYS } from 'platejs'
 import {
@@ -652,15 +651,15 @@ function LinkOpenButton() {
 
           if (targetUrl.startsWith('/')) {
             const workspaceRelativePath = stripLeadingSlashes(targetUrl)
-            absolutePath = await join(workspacePath, workspaceRelativePath)
+            absolutePath = join(workspacePath, workspaceRelativePath)
           } else {
             const currentPath = currentTab?.path
             if (!currentPath) {
               return
             }
 
-            const currentDirectory = await tauriDirname(currentPath)
-            absolutePath = await join(currentDirectory, targetUrl)
+            const currentDirectory = pathDirname(currentPath)
+            absolutePath = join(currentDirectory, targetUrl)
           }
 
           if (!absolutePath) {
