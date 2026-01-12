@@ -55,6 +55,7 @@ const aiChatItems = {
 
       editor.getApi(AIChatPlugin).aiChat.submit(input, {
         mode: 'insert',
+        toolName: 'generate',
         prompt: isEmpty
           ? `<Document>
 {editor}

@@ -10,7 +10,6 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   DefaultChatTransport,
-  generateObject,
   streamText,
   type UIMessage,
 } from 'ai'
@@ -39,15 +38,6 @@ export type ChatMessage = UIMessage<{}, MessageDataPart>
 
 const SELECTION_START = '<Selection>'
 const SELECTION_END = '</Selection>'
-
-const chooseToolSystem = `You are a strict classifier. Classify the user's last request as "generate", "edit", or "comment".
-
-Priority rules:
-1. Default is "generate". Any open question, idea request, or creation request → "generate".
-2. Only return "edit" if the user provides original text (or a selection of text) AND asks to change, rephrase, translate, or shorten it.
-3. Only return "comment" if the user explicitly asks for comments, feedback, annotations, or review. Do not infer "comment" implicitly.
-
-Return only one enum value with no explanation.`
 
 const systemCommon = `\
 You are an advanced AI-powered note-taking assistant, designed to enhance productivity and creativity in note management.
@@ -271,30 +261,13 @@ export const useChat = (config: ChatConfig | null) => {
               }
             )
 
-            const lastUserMessage = messages[lastIndex]
+            const toolName: ToolName =
+              toolNameParam ?? (isSelecting ? 'edit' : 'generate')
 
-            let toolName = toolNameParam
-
-            if (!toolName) {
-              const { object: AIToolName } = await generateObject({
-                enum: isSelecting
-                  ? ['generate', 'edit', 'comment']
-                  : ['generate', 'comment'],
-                model: llmRef.current,
-                output: 'enum',
-                prompt: `User message:
-          ${JSON.stringify(lastUserMessage)}`,
-                system: chooseToolSystem,
-                abortSignal,
-              })
-
-              writer.write({
-                data: AIToolName as ToolName,
-                type: 'data-toolName',
-              })
-
-              toolName = AIToolName
-            }
+            writer.write({
+              data: toolName,
+              type: 'data-toolName',
+            })
 
             if (toolName === 'generate') {
               const generateSystem = replacePlaceholders(
