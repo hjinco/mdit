@@ -41,6 +41,7 @@ type InlineEditableFieldProps = {
   onCommit: (nextValue: string) => void
   inputType?: HTMLInputTypeAttribute
   className?: string
+  autoEdit?: boolean
   buttonProps?: Omit<
     ComponentPropsWithoutRef<typeof Button>,
     'onClick' | 'variant'
@@ -57,11 +58,24 @@ export function InlineEditableField({
   onCommit,
   inputType = 'text',
   className,
+  autoEdit = false,
   buttonProps,
   inputProps,
 }: InlineEditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const hasAutoEdited = useRef(false)
+
+  useEffect(() => {
+    if (autoEdit && !isEditing && !hasAutoEdited.current) {
+      hasAutoEdited.current = true
+      // Add a small delay to ensure scrolling completes before focusing
+      const timer = setTimeout(() => {
+        setIsEditing(true)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [autoEdit, isEditing])
 
   useEffect(() => {
     if (!isEditing) return

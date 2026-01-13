@@ -352,6 +352,7 @@ type DatabaseRowProps = {
   onRenameTitle: (entry: WorkspaceEntry, newTitle: string) => void
   onDeleteEntry: (path: string) => void
   loadFrontmatter: (path: string) => void
+  newlyCreatedPath: string | null
 }
 
 function DatabaseRow({
@@ -365,6 +366,7 @@ function DatabaseRow({
   onRenameTitle,
   onDeleteEntry,
   loadFrontmatter,
+  newlyCreatedPath,
 }: DatabaseRowProps) {
   useEffect(() => {
     if (frontmatter !== undefined) {
@@ -375,6 +377,7 @@ function DatabaseRow({
 
   const displayTitle = getDisplayTitle(entry)
   const rowFrontmatter = frontmatter ?? {}
+  const isNewlyCreated = entry.path === newlyCreatedPath
 
   return (
     <div
@@ -390,6 +393,7 @@ function DatabaseRow({
           value={displayTitle}
           placeholder="Untitled"
           onCommit={(newTitle) => onRenameTitle(entry, newTitle)}
+          autoEdit={isNewlyCreated}
           buttonProps={{
             className:
               'rounded-none w-full justify-start text-left truncate font-semibold text-foreground px-3 hover:bg-transparent h-full',
@@ -870,7 +874,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
     newlyCreatedPath,
     virtualizer,
     onScrollComplete: () => {
-      setNewlyCreatedPath(null)
+      // setNewlyCreatedPath(null)
     },
   })
 
@@ -969,6 +973,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
                     onRenameTitle={handleRenameTitle}
                     onDeleteEntry={handleDeleteEntry}
                     loadFrontmatter={loadFrontmatter}
+                    newlyCreatedPath={newlyCreatedPath}
                   />
                 )
               })}
