@@ -5,6 +5,7 @@ import { KEYS } from 'platejs'
 import { type PlateElementProps, usePluginOption } from 'platejs/react'
 import { cn } from '@/lib/utils'
 import { useEditorStore } from '@/store/editor-store'
+import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 
 const headingTopMap: Record<string, string> = {
@@ -22,6 +23,7 @@ const otherTypeTopMap: Record<string, string> = {
   [KEYS.img]: 'top-2',
   [KEYS.blockquote]: 'top-0.5',
   [KEYS.callout]: 'top-0',
+  [DATABASE_KEY]: 'top-4.5',
 }
 
 export function DragHandle({

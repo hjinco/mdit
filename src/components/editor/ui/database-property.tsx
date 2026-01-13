@@ -97,7 +97,7 @@ export function InlineEditableField({
   return (
     <div className="group/cell relative flex h-full min-h-[34px] w-full items-center">
       {isEditing ? (
-        <div className="absolute inset-0 z-10 flex items-center bg-background ring-2 ring-primary/50">
+        <div className="absolute inset-0 z-50 flex items-center bg-background ring-2 ring-inset ring-primary/50">
           <Input
             ref={(node) => {
               inputRef.current = node
@@ -158,19 +158,94 @@ function parseArrayItems(raw: string) {
     .filter(Boolean)
 }
 
+const TAG_COLORS = [
+  'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+  'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',
+]
+
+function getTagColorClass(tag: string) {
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) {
+    hash = Math.imul(hash, 31) + tag.charCodeAt(i)
+  }
+  const index = Math.abs(hash) % TAG_COLORS.length
+  return TAG_COLORS[index]
+}
+
 function DatabaseArrayEditor({
   value,
   onChange,
-  placeholder = 'Add tags...',
+  placeholder = 'Empty',
 }: ArrayEditorProps) {
+  const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Use refs to access latest values in effect without re-binding
+  const draftRef = useRef(draft)
+  const onChangeRef = useRef(onChange)
+
+  useEffect(() => {
+    draftRef.current = draft
+  }, [draft])
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   const items = Array.isArray(value)
     ? value.map((item) => String(item ?? '').trim()).filter(Boolean)
     : typeof value === 'string'
       ? parseArrayItems(value)
       : []
+
+  const itemsRef = useRef(items)
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+
+  useEffect(() => {
+    if (!isEditing) return
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        const currentDraft = draftRef.current
+        if (currentDraft.trim()) {
+          const nextItems = parseArrayItems(currentDraft)
+          if (nextItems.length) {
+            const merged = [...itemsRef.current]
+            for (const item of nextItems) {
+              if (!merged.includes(item)) {
+                merged.push(item)
+              }
+            }
+            onChangeRef.current(merged)
+          }
+        }
+        setIsEditing(false)
+        setDraft('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isEditing])
+
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus()
+    }
+  }, [isEditing])
 
   const addItems = (raw: string) => {
     const nextItems = parseArrayItems(raw)
@@ -190,22 +265,57 @@ function DatabaseArrayEditor({
     onChange(next)
   }
 
+  if (!isEditing) {
+    if (items.length === 0) {
+      return (
+        <div
+          className="flex h-full w-full cursor-text items-center px-3 text-sm text-muted-foreground/50 hover:bg-muted/30"
+          onClick={() => setIsEditing(true)}
+        >
+          {placeholder}
+        </div>
+      )
+    }
+    return (
+      <div
+        className="flex h-full w-full cursor-text items-center gap-1.5 overflow-hidden px-3 hover:bg-muted/30"
+        onClick={() => setIsEditing(true)}
+      >
+        {items.map((item) => (
+          <span
+            key={item}
+            className={cn(
+              'inline-flex shrink-0 items-center rounded-[3px] px-1.5 py-0.5 text-[12px] font-medium leading-none',
+              getTagColorClass(item)
+            )}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div
-      className="flex h-full min-h-[34px] w-full items-center gap-1.5 overflow-x-auto px-3 text-sm"
+      ref={containerRef}
+      className="absolute inset-0 z-50 flex h-full w-full items-center gap-1.5 overflow-x-auto bg-background px-3 text-sm ring-2 ring-inset ring-primary/50"
       onClick={() => inputRef.current?.focus()}
     >
       {items.map((item, index) => (
         <span
           key={`${item}-${index}`}
-          className="inline-flex items-center gap-1 rounded-[3px] bg-muted/60 px-1.5 py-0.5 text-[12px] text-foreground/90"
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1 rounded-[3px] px-1.5 py-0.5 text-[12px] font-medium leading-none',
+            getTagColorClass(item)
+          )}
         >
           <span className="max-w-[8rem] truncate" title={item}>
             {item}
           </span>
           <button
             type="button"
-            className="text-muted-foreground/60 hover:text-destructive transition-colors"
+            className="opacity-50 hover:opacity-100"
             onClick={(event) => {
               event.stopPropagation()
               removeItem(index)
@@ -217,7 +327,7 @@ function DatabaseArrayEditor({
           </button>
         </span>
       ))}
-      <Input
+      <input
         ref={inputRef}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
@@ -228,10 +338,13 @@ function DatabaseArrayEditor({
           } else if (event.key === 'Backspace' && !draft && items.length) {
             event.preventDefault()
             removeItem(items.length - 1)
+          } else if (event.key === 'Escape') {
+            setIsEditing(false)
+            setDraft('')
           }
         }}
-        placeholder={items.length ? '' : placeholder}
-        className="h-7 w-[120px] border-0 bg-transparent px-1 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40"
+        placeholder={items.length ? '' : 'Add tags...'}
+        className="h-full min-w-[60px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
       />
     </div>
   )
