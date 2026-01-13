@@ -64,9 +64,11 @@ export function InlineEditableField({
 }: InlineEditableFieldProps) {
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const hasAutoEdited = useRef(false)
 
   useEffect(() => {
-    if (autoEdit && !isEditing) {
+    if (autoEdit && !isEditing && !hasAutoEdited.current) {
+      hasAutoEdited.current = true
       // Add a small delay to ensure scrolling completes before focusing
       const timer = setTimeout(() => {
         setIsEditing(true)

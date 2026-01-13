@@ -874,7 +874,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
     newlyCreatedPath,
     virtualizer,
     onScrollComplete: () => {
-      setNewlyCreatedPath(null)
+      // setNewlyCreatedPath(null)
     },
   })
 
