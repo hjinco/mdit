@@ -10,12 +10,13 @@ import {
   CalendarArrowUp,
   CalendarClockIcon,
   CalendarIcon,
-  FolderOpenIcon,
   type LucideIcon,
   PlusIcon,
   RefreshCcwIcon,
+  SearchIcon,
   Trash2Icon,
   TypeIcon,
+  XIcon,
 } from 'lucide-react'
 import { isAbsolute, join, relative } from 'pathe'
 import type { PlateElementProps } from 'platejs/react'
@@ -381,14 +382,14 @@ function DatabaseRow({
 
   return (
     <div
-      className="absolute left-0 top-0 grid w-full items-stretch border-b border-border/50 text-sm transition-colors hover:bg-muted/30 group/row"
+      className="absolute left-0 top-0 grid w-full items-stretch border-b border-border/50 text-sm transition-colors group/row"
       style={{
         gridTemplateColumns,
         transform: `translateY(${offsetY}px)`,
         height: '34px',
       }}
     >
-      <div className="relative flex items-center border-r border-border/50 px-0 last:border-r-0 group/name overflow-hidden">
+      <div className="relative flex items-center border-r border-border/50 px-0 last:border-r-0 group/name min-w-0">
         <InlineEditableField
           value={displayTitle}
           placeholder="Untitled"
@@ -396,7 +397,7 @@ function DatabaseRow({
           autoEdit={isNewlyCreated}
           buttonProps={{
             className:
-              'rounded-none w-full justify-start text-left truncate font-semibold text-foreground px-3 hover:bg-transparent h-full',
+              'rounded-none w-full justify-start text-left truncate font-medium text-foreground px-3 hover:bg-transparent h-full',
           }}
         />
         <Button
@@ -417,7 +418,7 @@ function DatabaseRow({
         return (
           <div
             key={column.name}
-            className={`flex items-center px-0 truncate ${isLastColumn ? '' : 'border-r border-border/50'}`}
+            className={`relative flex items-center px-0 min-w-0 ${isLastColumn ? '' : 'border-r border-border/50'}`}
           >
             <ValueEditor
               type={column.type}
@@ -526,7 +527,7 @@ function DatabaseSortMenu({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-muted-foreground/70 hover:bg-muted/20 hover:text-foreground"
+          className="h-7 w-7 rounded-sm text-muted-foreground/70 hover:bg-muted/20 hover:text-foreground"
           aria-label="Sort database"
         >
           <ArrowUpDownIcon className="h-4 w-4" />
@@ -648,6 +649,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
   const [frontmatterByPath, setFrontmatterByPath] = useState<FrontmatterCache>(
     new Map()
   )
+  const [searchQuery, setSearchQuery] = useState('')
   const [newlyCreatedPath, setNewlyCreatedPath] = useState<string | null>(null)
   const frontmatterRef = useRef(frontmatterByPath)
   const inFlightRef = useRef<Set<string>>(new Set())
@@ -812,12 +814,20 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
     [columns.length]
   )
 
+  const filteredEntries = useMemo(() => {
+    if (!searchQuery) return entries
+    const lowerQuery = searchQuery.toLowerCase()
+    return entries.filter((entry) =>
+      getDisplayTitle(entry).toLowerCase().includes(lowerQuery)
+    )
+  }, [entries, searchQuery])
+
   const sortedEntries = useMemo(() => {
     if (sortOption === 'none') {
-      return entries
+      return filteredEntries
     }
 
-    const sorted = [...entries].sort((a, b) => {
+    const sorted = [...filteredEntries].sort((a, b) => {
       const nameComparison = compareText(getDisplayTitle(a), getDisplayTitle(b))
       let comparison = 0
 
@@ -858,7 +868,13 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
     })
 
     return sorted
-  }, [entries, sortOption, sortDirection, frontmatterByPath, columnTypes])
+  }, [
+    filteredEntries,
+    sortOption,
+    sortDirection,
+    frontmatterByPath,
+    columnTypes,
+  ])
 
   const parentRef = useRef<HTMLDivElement | null>(null)
   const virtualizer = useVirtualizer({
@@ -881,10 +897,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
   let bodyContent: ReactNode
   if (!resolvedFolderPath) {
     bodyContent = (
-      <div className="flex flex-col items-center justify-center gap-4 p-12 text-center bg-muted/5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
-          <FolderOpenIcon className="h-6 w-6 text-muted-foreground/60" />
-        </div>
+      <div className="flex flex-col items-center justify-center gap-4 p-12 text-center">
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium text-foreground/80">
             Empty database
@@ -915,7 +928,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
           variant="outline"
           size="sm"
           onClick={handleNewEntry}
-          className="h-8 px-4 rounded-md border-muted/50 hover:bg-muted/30 transition-colors"
+          className="h-8 px-4 rounded-md border-muted/50 hover:bg-muted/50 transition-colors"
         >
           <PlusIcon className="mr-2 h-4 w-4" />
           Create first entry
@@ -944,7 +957,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
                     className={`flex h-9 items-center px-3 truncate ${isLastColumn ? '' : 'border-r border-border/50'}`}
                   >
                     <Icon className="mr-2 h-3.5 w-3.5 shrink-0 opacity-70" />
-                    <span className="truncate">{column.name}</span>
+                    <span className="truncate font-medium">{column.name}</span>
                   </div>
                 )
               })}
@@ -980,7 +993,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
             </div>
           </div>
         </div>
-        <div className="sticky bottom-0 border-t border-border/50 bg-background/50 backdrop-blur-sm z-10">
+        <div className="sticky bottom-0 z-10">
           <button
             type="button"
             className="flex h-9 w-full items-center px-3 text-sm text-muted-foreground/60 transition-colors hover:bg-muted/20 hover:text-muted-foreground group"
@@ -1001,9 +1014,9 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
         contentEditable={false}
         onContextMenu={(event) => event.stopPropagation()}
       >
-        <div className="overflow-hidden rounded border bg-background">
-          <div className="flex items-center justify-between border-b border-muted/40 bg-muted/5 px-3 py-2.5">
-            <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
+        <div className="overflow-hidden rounded bg-background">
+          <div className="flex items-center justify-between border-b border-muted/40 py-2.5">
+            <div className="flex items-center gap-2.5 text-xl font-semibold text-foreground">
               {element.folder || 'Database'}
             </div>
             <div className="flex items-center gap-1">
@@ -1014,6 +1027,25 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
                 onSortOptionChange={updateSortOption}
                 onSortDirectionChange={updateSortDirection}
               />
+              <div className="relative h-7 w-36 transition-all focus-within:w-56 ml-1">
+                <SearchIcon className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search"
+                  className="h-full w-full rounded-sm border border-transparent bg-muted/40 pl-8 pr-7 text-xs text-foreground placeholder-muted-foreground/50 transition-colors hover:bg-muted/50 focus:border-border/40 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+                  spellCheck={false}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground/50 hover:bg-muted hover:text-foreground"
+                  >
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
               <FolderPicker
                 onSelect={handleSelectFolder}
                 currentPath={element.folder}
