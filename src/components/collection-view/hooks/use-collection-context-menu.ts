@@ -1,7 +1,7 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { useCallback, useState } from 'react'
 import type { ChatConfig } from '@/store/ai-settings-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 
 type UseCollectionContextMenuProps = {
   renameConfig: ChatConfig | null

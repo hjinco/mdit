@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 
 type DropKind = 'over' | 'drop' | 'leave' | 'enter'
 type Point = { x: number; y: number }
@@ -69,7 +69,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
   const zonesRef = useRef(new Map<string, ZoneInternal>())
   const currentZoneIdRef = useRef<string | null>(null)
   const unlistenRef = useRef<null | (() => void)>(null)
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
+  const workspacePath = useStore((state) => state.workspacePath)
 
   const registerZone = useCallback<DropAPI['registerZone']>(
     (cfg, setIsOver) => {

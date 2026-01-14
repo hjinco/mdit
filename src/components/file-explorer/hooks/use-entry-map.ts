@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
 export function useEntryMap(entries: WorkspaceEntry[]) {

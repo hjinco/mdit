@@ -1,14 +1,14 @@
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useShallow } from 'zustand/shallow'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function HistoryNavigation() {
-  const { canGoBack, canGoForward, goBack, goForward } = useTabStore(
+  const { canGoBack, canGoForward, goBack, goForward } = useStore(
     useShallow((s) => ({
       canGoBack: s.historyIndex > 0,
       canGoForward: s.historyIndex < s.history.length - 1,

@@ -1,9 +1,27 @@
+import { generateText } from 'ai'
 import { basename, dirname, join } from 'pathe'
-import { create } from 'zustand'
+import { toast } from 'sonner'
+import type { StateCreator } from 'zustand'
+import { FileSystemRepository } from '@/repositories/file-system-repository'
+import {
+  removeFileFrontmatterProperty,
+  renameFileFrontmatterProperty,
+  updateFileFrontmatter,
+} from '@/utils/frontmatter-utils'
 import {
   getFileNameFromPath,
   isPathEqualOrDescendant,
 } from '@/utils/path-utils'
+import { useAISettingsStore } from '../ai-settings-store'
+import type { CollectionSlice } from '../collection/collection-slice'
+import type { TabSlice } from '../tab/tab-slice'
+import {
+  AI_RENAME_SYSTEM_PROMPT,
+  buildRenamePrompt,
+  collectSiblingNoteNames,
+  createModelFromConfig,
+  extractAndSanitizeName,
+} from './utils/ai-rename-utils'
 import {
   addEntryToState,
   buildWorkspaceEntries,
@@ -13,27 +31,21 @@ import {
   sortWorkspaceEntries,
   updateEntryInState,
   updateEntryMetadata,
-} from './workspace/utils/entry-utils'
+} from './utils/entry-utils'
 import {
   addExpandedDirectories,
   removeExpandedDirectories,
   renameExpandedDirectories,
-} from './workspace/utils/expanded-directories-utils'
-import { rewriteMarkdownRelativeLinks } from './workspace/utils/markdown-link-utils'
+} from './utils/expanded-directories-utils'
+import { rewriteMarkdownRelativeLinks } from './utils/markdown-link-utils'
 import {
   removePinsForPaths,
   renamePinnedDirectories,
-} from './workspace/utils/pinned-directories-utils'
-import { waitForUnsavedTabToSettle } from './workspace/utils/tab-save-utils'
-import { generateUniqueFileName } from './workspace/utils/unique-filename-utils'
-import type { WorkspaceEntry } from './workspace-store'
-import type { WorkspaceStoreAdapter } from './workspace-store-adapter'
-import type {
-  AISettingsAdapter,
-  CollectionStoreAdapter,
-  FileExplorerSelectionAdapter,
-  TabStoreAdapter,
-} from './workspace-store-adapters'
+} from './utils/pinned-directories-utils'
+import { waitForUnsavedTabToSettle } from './utils/tab-save-utils'
+import { generateUniqueFileName } from './utils/unique-filename-utils'
+import type { WorkspaceFileSelectionSlice } from './workspace-file-selection-slice'
+import type { WorkspaceEntry, WorkspaceSlice } from './workspace-slice'
 
 export type GenerateText = (args: any) => Promise<{ text: string }>
 
@@ -88,17 +100,12 @@ export type AiRenameUtils = {
 export type WorkspaceFsStoreDependencies = {
   fileSystemRepository: FileSystemRepositoryLike
   generateText: GenerateText
-  tabStoreAdapter: TabStoreAdapter
-  collectionStoreAdapter: CollectionStoreAdapter
-  fileExplorerSelectionAdapter: FileExplorerSelectionAdapter
-  aiSettingsAdapter: AISettingsAdapter
-  workspaceStoreAdapter: WorkspaceStoreAdapter
   frontmatterUtils: FrontmatterUtils
   toast: ToastLike
   aiRenameUtils: AiRenameUtils
 }
 
-export type WorkspaceFsStore = {
+export type WorkspaceFsSlice = {
   lastFsOperationTime: number | null
   recordFsOperation: () => void
   saveNoteContent: (path: string, contents: string) => Promise<void>
@@ -134,21 +141,24 @@ export type WorkspaceFsStore = {
   updateEntryModifiedDate: (path: string) => Promise<void>
 }
 
-export const createWorkspaceFsStore = ({
-  fileSystemRepository,
-  generateText,
-  tabStoreAdapter,
-  collectionStoreAdapter,
-  fileExplorerSelectionAdapter,
-  aiSettingsAdapter,
-  workspaceStoreAdapter,
-  frontmatterUtils,
-  toast,
-  aiRenameUtils,
-}: WorkspaceFsStoreDependencies) =>
-  create<WorkspaceFsStore>((set, get) => {
-    const getWorkspaceSnapshot = () => workspaceStoreAdapter.getSnapshot()
-
+export const prepareWorkspaceFsSlice =
+  ({
+    fileSystemRepository,
+    generateText,
+    frontmatterUtils,
+    toast,
+    aiRenameUtils,
+  }: WorkspaceFsStoreDependencies): StateCreator<
+    WorkspaceFsSlice &
+      WorkspaceSlice &
+      WorkspaceFileSelectionSlice &
+      CollectionSlice &
+      TabSlice,
+    [],
+    [],
+    WorkspaceFsSlice
+  > =>
+  (set, get) => {
     return {
       lastFsOperationTime: null,
 
@@ -191,8 +201,7 @@ export const createWorkspaceFsStore = ({
       },
 
       createFolder: async (directoryPath: string, folderName: string) => {
-        const { workspacePath, entries, expandedDirectories } =
-          getWorkspaceSnapshot()
+        const { workspacePath, entries, expandedDirectories } = get()
 
         if (!workspacePath) {
           return null
@@ -238,16 +247,14 @@ export const createWorkspaceFsStore = ({
             directoryPath,
             folderPath,
           ])
-          await workspaceStoreAdapter.applyWorkspaceUpdate({
+          await get().applyWorkspaceUpdate({
             entries: updatedEntries,
             expandedDirectories: updatedExpanded,
           })
 
-          collectionStoreAdapter.setCurrentCollectionPath(folderPath)
-          fileExplorerSelectionAdapter.setSelectedEntryPaths(
-            new Set([folderPath])
-          )
-          fileExplorerSelectionAdapter.setSelectionAnchorPath(folderPath)
+          get().setCurrentCollectionPath(folderPath)
+          get().setSelectedEntryPaths(new Set([folderPath]))
+          get().setSelectionAnchorPath(folderPath)
 
           return folderPath
         } catch (error) {
@@ -260,7 +267,7 @@ export const createWorkspaceFsStore = ({
         directoryPath: string,
         options?: { initialName?: string; initialContent?: string }
       ) => {
-        const { workspacePath } = getWorkspaceSnapshot()
+        const { workspacePath } = get()
 
         if (!workspacePath) {
           throw new Error('Workspace path is not set')
@@ -291,27 +298,27 @@ export const createWorkspaceFsStore = ({
           modifiedAt: now,
         }
 
-        workspaceStoreAdapter.updateEntries((entries) =>
+        get().updateEntries((entries) =>
           directoryPath === workspacePath
             ? sortWorkspaceEntries([...entries, newFileEntry])
             : addEntryToState(entries, directoryPath, newFileEntry)
         )
 
-        fileExplorerSelectionAdapter.setSelectedEntryPaths(new Set([filePath]))
-        fileExplorerSelectionAdapter.setSelectionAnchorPath(filePath)
+        get().setSelectedEntryPaths(new Set([filePath]))
+        get().setSelectionAnchorPath(filePath)
 
         return filePath
       },
 
       createAndOpenNote: async () => {
-        const { workspacePath } = getWorkspaceSnapshot()
+        const { workspacePath } = get()
 
         if (!workspacePath) {
           return
         }
 
-        const { tab } = tabStoreAdapter.getSnapshot()
-        const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
+        const { tab } = get()
+        const { currentCollectionPath } = get()
         let targetDirectory = workspacePath
 
         // Priority: currentCollectionPath > tab directory > workspace root
@@ -322,19 +329,16 @@ export const createWorkspaceFsStore = ({
         }
 
         const newNotePath = await get().createNote(targetDirectory)
-        await tabStoreAdapter.openTab(newNotePath)
+        await get().openTab(newNotePath)
       },
 
       deleteEntries: async (paths: string[]) => {
-        const { tab } = tabStoreAdapter.getSnapshot()
+        const { tab } = get()
         const activeTabPath = tab?.path
 
         if (activeTabPath && paths.includes(activeTabPath)) {
-          await waitForUnsavedTabToSettle(
-            activeTabPath,
-            tabStoreAdapter.getSnapshot
-          )
-          tabStoreAdapter.closeTab(activeTabPath)
+          await waitForUnsavedTabToSettle(activeTabPath, get)
+          get().closeTab(activeTabPath)
         }
 
         if (paths.length === 1) {
@@ -346,12 +350,11 @@ export const createWorkspaceFsStore = ({
 
         // Remove deleted paths from history
         for (const path of paths) {
-          tabStoreAdapter.removePathFromHistory(path)
+          get().removePathFromHistory(path)
         }
 
         // Update currentCollectionPath and lastCollectionPath if they're being deleted
-        const { currentCollectionPath, lastCollectionPath } =
-          collectionStoreAdapter.getSnapshot()
+        const { currentCollectionPath, lastCollectionPath } = get()
         const shouldClearCurrentCollectionPath =
           currentCollectionPath && paths.includes(currentCollectionPath)
         const shouldClearLastCollectionPath =
@@ -359,16 +362,15 @@ export const createWorkspaceFsStore = ({
 
         if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
           if (shouldClearCurrentCollectionPath) {
-            collectionStoreAdapter.setCurrentCollectionPath(null)
+            get().setCurrentCollectionPath(null)
           }
           if (shouldClearLastCollectionPath) {
-            collectionStoreAdapter.clearLastCollectionPath()
+            get().clearLastCollectionPath()
           }
         }
 
         // Remove deleted entries from state without full refresh
-        const { pinnedDirectories, expandedDirectories, entries } =
-          getWorkspaceSnapshot()
+        const { pinnedDirectories, expandedDirectories, entries } = get()
 
         const filteredPins = removePinsForPaths(pinnedDirectories, paths)
         const pinsChanged = filteredPins.length !== pinnedDirectories.length
@@ -377,7 +379,7 @@ export const createWorkspaceFsStore = ({
           expandedDirectories,
           paths
         )
-        await workspaceStoreAdapter.applyWorkspaceUpdate({
+        await get().applyWorkspaceUpdate({
           entries: removeEntriesFromState(entries, paths),
           expandedDirectories: updatedExpanded,
           ...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
@@ -389,7 +391,8 @@ export const createWorkspaceFsStore = ({
       },
 
       renameNoteWithAI: async (entry) => {
-        const renameConfig = aiSettingsAdapter.getRenameConfig()
+        // TODO
+        const renameConfig = useAISettingsStore.getState().renameConfig
 
         if (!renameConfig) {
           return
@@ -438,7 +441,7 @@ export const createWorkspaceFsStore = ({
 
         const renamedPath = await get().renameEntry(entry, finalFileName)
 
-        const { tab } = tabStoreAdapter.getSnapshot()
+        const { tab } = get()
 
         toast.success(`Renamed note to "${finalFileName}"`, {
           position: 'bottom-left',
@@ -448,7 +451,7 @@ export const createWorkspaceFsStore = ({
               : {
                   label: 'Open',
                   onClick: () => {
-                    tabStoreAdapter.openTab(renamedPath)
+                    get().openTab(renamedPath)
                   },
                 },
         })
@@ -462,7 +465,7 @@ export const createWorkspaceFsStore = ({
           return entry.path
         }
 
-        await waitForUnsavedTabToSettle(entry.path, tabStoreAdapter.getSnapshot)
+        await waitForUnsavedTabToSettle(entry.path, get)
 
         const directoryPath = dirname(entry.path)
         const nextPath = join(directoryPath, trimmedName)
@@ -478,15 +481,15 @@ export const createWorkspaceFsStore = ({
         await fileSystemRepository.rename(entry.path, nextPath)
         get().recordFsOperation()
 
-        await tabStoreAdapter.renameTab(entry.path, nextPath)
-        tabStoreAdapter.updateHistoryPath(entry.path, nextPath)
+        await get().renameTab(entry.path, nextPath)
+        get().updateHistoryPath(entry.path, nextPath)
 
         const {
           workspacePath,
           pinnedDirectories,
           expandedDirectories,
           entries,
-        } = getWorkspaceSnapshot()
+        } = get()
 
         if (!workspacePath) throw new Error('Workspace path is not set')
 
@@ -501,7 +504,7 @@ export const createWorkspaceFsStore = ({
           ? renameExpandedDirectories(expandedDirectories, entry.path, nextPath)
           : expandedDirectories
 
-        await workspaceStoreAdapter.applyWorkspaceUpdate({
+        await get().applyWorkspaceUpdate({
           entries: updateEntryInState(
             entries,
             entry.path,
@@ -514,9 +517,9 @@ export const createWorkspaceFsStore = ({
 
         // Update currentCollectionPath if the renamed entry is a directory and matches the current collection path
         if (entry.isDirectory) {
-          const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
+          const { currentCollectionPath } = get()
           if (currentCollectionPath === entry.path) {
-            collectionStoreAdapter.setCurrentCollectionPath(nextPath)
+            get().setCurrentCollectionPath(nextPath)
           }
         }
 
@@ -524,7 +527,7 @@ export const createWorkspaceFsStore = ({
       },
 
       moveEntry: async (sourcePath: string, destinationPath: string) => {
-        const { workspacePath } = getWorkspaceSnapshot()
+        const { workspacePath } = get()
 
         if (!workspacePath) throw new Error('Workspace path is not set')
 
@@ -552,16 +555,10 @@ export const createWorkspaceFsStore = ({
         }
 
         try {
-          await waitForUnsavedTabToSettle(
-            sourcePath,
-            tabStoreAdapter.getSnapshot
-          )
+          await waitForUnsavedTabToSettle(sourcePath, get)
 
           // Find the entry to move before path operations to determine if it's a directory
-          const entryToMove = findEntryByPath(
-            getWorkspaceSnapshot().entries,
-            sourcePath
-          )
+          const entryToMove = findEntryByPath(get().entries, sourcePath)
 
           if (!entryToMove) {
             return false
@@ -625,19 +622,18 @@ export const createWorkspaceFsStore = ({
           }
 
           // Update tab path if the moved file is currently open
-          await tabStoreAdapter.renameTab(sourcePath, newPath, {
+          await get().renameTab(sourcePath, newPath, {
             refreshContent: shouldRefreshTab,
           })
-          tabStoreAdapter.updateHistoryPath(sourcePath, newPath)
+          get().updateHistoryPath(sourcePath, newPath)
 
-          const { currentCollectionPath } = collectionStoreAdapter.getSnapshot()
+          const { currentCollectionPath } = get()
 
           // Update currentCollectionPath if it's being moved
           const shouldUpdateCollectionPath =
             currentCollectionPath === sourcePath
 
-          const { entries, expandedDirectories, pinnedDirectories } =
-            getWorkspaceSnapshot()
+          const { entries, expandedDirectories, pinnedDirectories } = get()
 
           // Use unified moveEntryInState for both root and subdirectory moves
           const updatedEntries = moveEntryInState(
@@ -664,7 +660,7 @@ export const createWorkspaceFsStore = ({
               (path, index) => path !== pinnedDirectories[index]
             )
 
-          await workspaceStoreAdapter.applyWorkspaceUpdate({
+          await get().applyWorkspaceUpdate({
             entries: updatedEntries,
             expandedDirectories: updatedExpanded,
             ...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
@@ -672,7 +668,7 @@ export const createWorkspaceFsStore = ({
 
           // Update currentCollectionPath if it's being moved
           if (shouldUpdateCollectionPath) {
-            collectionStoreAdapter.setCurrentCollectionPath(newPath)
+            get().setCurrentCollectionPath(newPath)
           }
 
           return true
@@ -688,7 +684,7 @@ export const createWorkspaceFsStore = ({
       },
 
       copyEntry: async (sourcePath: string, destinationPath: string) => {
-        const { workspacePath } = getWorkspaceSnapshot()
+        const { workspacePath } = get()
 
         // Validation 1: Check if workspace is set
         if (!workspacePath) {
@@ -787,7 +783,7 @@ export const createWorkspaceFsStore = ({
         }
 
         if (!isDirectory) {
-          workspaceStoreAdapter.updateEntries((entries) =>
+          get().updateEntries((entries) =>
             destinationPath === workspacePath
               ? sortWorkspaceEntries([...entries, newFileEntry])
               : addEntryToState(entries, destinationPath, newFileEntry)
@@ -795,7 +791,7 @@ export const createWorkspaceFsStore = ({
         }
 
         if (isDirectory) {
-          const { entries, expandedDirectories } = getWorkspaceSnapshot()
+          const { entries, expandedDirectories } = get()
           const updatedEntries =
             destinationPath === workspacePath
               ? sortWorkspaceEntries([...entries, newFileEntry])
@@ -806,7 +802,7 @@ export const createWorkspaceFsStore = ({
             newPath,
           ])
 
-          await workspaceStoreAdapter.applyWorkspaceUpdate({
+          await get().applyWorkspaceUpdate({
             entries: updatedEntries,
             expandedDirectories: updatedExpanded,
           })
@@ -819,7 +815,7 @@ export const createWorkspaceFsStore = ({
         sourcePath: string,
         destinationPath: string
       ) => {
-        const { workspacePath } = getWorkspaceSnapshot()
+        const { workspacePath } = get()
 
         // Validation 1: Check if workspace is set
         if (!workspacePath) {
@@ -886,7 +882,7 @@ export const createWorkspaceFsStore = ({
           modifiedAt: fileMetadata.modifiedAt,
         }
 
-        const { entries, expandedDirectories } = getWorkspaceSnapshot()
+        const { entries, expandedDirectories } = get()
 
         const updatedEntries =
           destinationPath === workspacePath
@@ -900,7 +896,7 @@ export const createWorkspaceFsStore = ({
             ])
           : undefined
 
-        await workspaceStoreAdapter.applyWorkspaceUpdate({
+        await get().applyWorkspaceUpdate({
           entries: updatedEntries,
           ...(updatedExpanded && { expandedDirectories: updatedExpanded }),
         })
@@ -920,7 +916,7 @@ export const createWorkspaceFsStore = ({
             metadata.createdAt = new Date(fileMetadata.birthtime)
           }
 
-          workspaceStoreAdapter.updateEntries((entries) =>
+          get().updateEntries((entries) =>
             updateEntryMetadata(entries, path, metadata)
           )
         } catch (error) {
@@ -929,4 +925,26 @@ export const createWorkspaceFsStore = ({
         }
       },
     }
-  })
+  }
+
+const frontmatterUtils: FrontmatterUtils = {
+  updateFileFrontmatter,
+  renameFileFrontmatterProperty,
+  removeFileFrontmatterProperty,
+}
+
+const aiRenameUtils: AiRenameUtils = {
+  AI_RENAME_SYSTEM_PROMPT,
+  buildRenamePrompt,
+  collectSiblingNoteNames,
+  createModelFromConfig,
+  extractAndSanitizeName,
+}
+
+export const createWorkspaceFsSlice = prepareWorkspaceFsSlice({
+  fileSystemRepository: new FileSystemRepository(),
+  generateText,
+  frontmatterUtils,
+  toast,
+  aiRenameUtils,
+})

@@ -28,9 +28,9 @@ import { KEYS, PointApi, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
+import { useStore } from '@/store'
 import { useEditorStore } from '@/store/editor-store'
 import { useMDXSettingsStore } from '@/store/mdx-settings-store'
-import { useTabStore } from '@/store/tab-store'
 import { datePattern, type ValueType } from '@/utils/frontmatter-value-utils'
 import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
@@ -80,7 +80,7 @@ function toRelativeImagePath(path: string): string {
     return path
   }
 
-  const tabPath = useTabStore.getState().tab?.path
+  const tabPath = useStore.getState().tab?.path
   if (!tabPath) {
     return path
   }
@@ -90,7 +90,7 @@ function toRelativeImagePath(path: string): string {
 }
 
 async function collectFrontmatterDefaults(): Promise<KVRow[]> {
-  const tabPath = useTabStore.getState().tab?.path
+  const tabPath = useStore.getState().tab?.path
   if (!tabPath) {
     return []
   }

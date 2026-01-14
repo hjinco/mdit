@@ -1,10 +1,12 @@
 import { FolderOpenIcon } from 'lucide-react'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { isMac } from '@/utils/platform'
 
 export function Welcome() {
-  const { openFolderPicker } = useWorkspaceStore()
+  const { openFolderPicker } = useStore((state) => ({
+    openFolderPicker: state.openFolderPicker,
+  }))
 
   return (
     <div className="w-full h-screen flex flex-col">

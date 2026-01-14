@@ -1,22 +1,27 @@
 import { type UnwatchFn, watch } from '@tauri-apps/plugin-fs'
-import { create } from 'zustand'
+import type { StateCreator } from 'zustand'
 import { hasHiddenEntryInPaths } from '@/utils/path-utils'
-import { useWorkspaceFsStore } from './workspace-fs-store'
-import { useWorkspaceStore } from './workspace-store'
+import type { WorkspaceFsSlice } from './workspace-fs-slice'
+import type { WorkspaceSlice } from './workspace-slice'
 
-type WorkspaceWatchStore = {
+export type WorkspaceWatchSlice = {
   unwatchFn: UnwatchFn | null
   watchWorkspace: () => Promise<void>
   unwatchWorkspace: () => void
 }
 
-export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
+export const prepareWorkspaceWatchSlice =
+  (): StateCreator<
+    WorkspaceWatchSlice & WorkspaceSlice & WorkspaceFsSlice,
+    [],
+    [],
+    WorkspaceWatchSlice
+  > =>
   (set, get) => ({
     unwatchFn: null,
 
     watchWorkspace: async () => {
-      const workspaceStore = useWorkspaceStore.getState()
-      const workspacePath = workspaceStore.workspacePath
+      const workspacePath = get().workspacePath
       if (!workspacePath) {
         return
       }
@@ -36,15 +41,12 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
           }
 
           // Skip events that occurred within 2 seconds of an internal FS operation
-          const lastFsOpTime =
-            useWorkspaceFsStore.getState().lastFsOperationTime
+          const lastFsOpTime = get().lastFsOperationTime
           if (lastFsOpTime !== null && Date.now() - lastFsOpTime < 5000) {
             return
           }
 
-          const workspaceStoreState = useWorkspaceStore.getState()
-
-          workspaceStoreState.refreshWorkspaceEntries()
+          get().refreshWorkspaceEntries()
 
           // Handle rename events for files moving in/out of workspace
           // if (
@@ -426,7 +428,7 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
       )
 
       // Verify workspace path hasn't changed before storing unwatch function
-      if (useWorkspaceStore.getState().workspacePath !== workspacePath) {
+      if (get().workspacePath !== workspacePath) {
         unwatch()
         return
       }
@@ -442,4 +444,5 @@ export const useWorkspaceWatchStore = create<WorkspaceWatchStore>(
       }
     },
   })
-)
+
+export const createWorkspaceWatchSlice = prepareWorkspaceWatchSlice()

@@ -1,6 +1,6 @@
-import { create } from 'zustand'
+import type { StateCreator } from 'zustand'
 
-type FileExplorerSelectionStore = {
+export type WorkspaceFileSelectionSlice = {
   selectedEntryPaths: Set<string>
   selectionAnchorPath: string | null
   setSelectedEntryPaths: (paths: Set<string>) => void
@@ -8,7 +8,13 @@ type FileExplorerSelectionStore = {
   resetSelection: () => void
 }
 
-export const useFileExplorerSelectionStore = create<FileExplorerSelectionStore>(
+export const prepareWorkspaceFileSelectionSlice =
+  (): StateCreator<
+    WorkspaceFileSelectionSlice,
+    [],
+    [],
+    WorkspaceFileSelectionSlice
+  > =>
   (set) => ({
     selectedEntryPaths: new Set(),
     selectionAnchorPath: null,
@@ -20,4 +26,6 @@ export const useFileExplorerSelectionStore = create<FileExplorerSelectionStore>(
         selectionAnchorPath: null,
       }),
   })
-)
+
+export const createWorkspaceFileSelectionSlice =
+  prepareWorkspaceFileSelectionSlice()

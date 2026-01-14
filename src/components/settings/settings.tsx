@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
+import { useStore } from '@/store'
 import { useUIStore } from '@/store/ui-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import { Dialog, DialogContent } from '@/ui/dialog'
 import { AITab } from './ui/ai-tab'
 import { IndexingTab } from './ui/indexing-tab'
@@ -19,7 +19,7 @@ export function SettingsDialog() {
         settingsInitialTab: s.settingsInitialTab,
       }))
     )
-  const workspacePath = useWorkspaceStore((s) => s.workspacePath)
+  const workspacePath = useStore((s) => s.workspacePath)
   const [activeTab, setActiveTab] = useState<SettingsTab>('preferences')
 
   useEffect(() => {

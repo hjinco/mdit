@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useStore } from '@/store'
 import { useGitSyncStore } from '@/store/git-sync-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import {
   Field,
   FieldContent,
@@ -15,7 +15,7 @@ import { Switch } from '@/ui/switch'
 import { Textarea } from '@/ui/textarea'
 
 export function SyncTab() {
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
+  const workspacePath = useStore((state) => state.workspacePath)
   const { getSyncConfig, setBranchName, setCommitMessage, setAutoSync } =
     useGitSyncStore()
 

@@ -1,6 +1,6 @@
 import { KEYS, type Value } from 'platejs'
 import { useEffect, useRef } from 'react'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import {
   getFileNameWithoutExtension,
   sanitizeFilename,
@@ -14,7 +14,7 @@ const UNTITLED_PATTERN = /^Untitled( \d+)?$/
  */
 export function useLinkedTabName(path: string, value: Value) {
   const hasLinkedForTab = useRef(false)
-  const setLinkedTab = useTabStore((s) => s.setLinkedTab)
+  const setLinkedTab = useStore((s) => s.setLinkedTab)
 
   // Link the tab name to the first heading on initial render if conditions match
   useEffect(() => {

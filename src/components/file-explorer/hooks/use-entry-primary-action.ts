@@ -1,6 +1,6 @@
 import { type MouseEvent, useCallback } from 'react'
 import { revealInFileManager } from '@/components/file-explorer/utils/file-manager'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { isImageFile } from '@/utils/file-icon'
 
 type UseEntryPrimaryActionParams = {

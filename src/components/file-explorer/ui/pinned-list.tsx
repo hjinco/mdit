@@ -3,8 +3,7 @@ import { PinIcon, PinOffIcon } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 
-import { useCollectionStore } from '@/store/collection-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 import {
   getFolderNameFromPath,
   normalizePathSeparators,
@@ -13,22 +12,23 @@ import { useEntryMap } from '../hooks/use-entry-map'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
 
 export function PinnedList() {
-  const { currentCollectionPath, setCurrentCollectionPath } =
-    useCollectionStore(
-      useShallow((state) => ({
-        currentCollectionPath: state.currentCollectionPath,
-        setCurrentCollectionPath: state.setCurrentCollectionPath,
-      }))
-    )
-  const { pinnedDirectories, workspacePath, entries, unpinDirectory } =
-    useWorkspaceStore(
-      useShallow((state) => ({
-        pinnedDirectories: state.pinnedDirectories,
-        workspacePath: state.workspacePath,
-        entries: state.entries,
-        unpinDirectory: state.unpinDirectory,
-      }))
-    )
+  const {
+    currentCollectionPath,
+    setCurrentCollectionPath,
+    pinnedDirectories,
+    workspacePath,
+    entries,
+    unpinDirectory,
+  } = useStore(
+    useShallow((state) => ({
+      currentCollectionPath: state.currentCollectionPath,
+      setCurrentCollectionPath: state.setCurrentCollectionPath,
+      pinnedDirectories: state.pinnedDirectories,
+      workspacePath: state.workspacePath,
+      entries: state.entries,
+      unpinDirectory: state.unpinDirectory,
+    }))
+  )
 
   const entryMap = useEntryMap(entries)
 

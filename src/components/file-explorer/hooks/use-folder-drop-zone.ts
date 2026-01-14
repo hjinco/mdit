@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { useDropZone } from '@/contexts/drop-context'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
 export function useFolderDropZone({
@@ -12,8 +12,13 @@ export function useFolderDropZone({
   depth: number
 }) {
   const ref = useRef<HTMLDivElement | null>(null)
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const { moveEntry, moveExternalEntry } = useWorkspaceFsStore()
+  const { workspacePath, moveEntry, moveExternalEntry } = useStore(
+    useShallow((state) => ({
+      workspacePath: state.workspacePath,
+      moveEntry: state.moveEntry,
+      moveExternalEntry: state.moveExternalEntry,
+    }))
+  )
 
   const setRef = useCallback((node: HTMLDivElement | null) => {
     ref.current = node

@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, PanelLeftIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { useFolderDropZone } from '../hooks/use-folder-drop-zone'
 import { getEntryButtonClassName } from '../utils/entry-classnames'
 import { TreeNodeRenameInput } from './tree-node-rename-input'

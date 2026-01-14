@@ -1,6 +1,6 @@
 import { type MouseEvent, useCallback, useState } from 'react'
 import { useUIStore } from '@/store/ui-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { isImageFile } from '@/utils/file-icon'
 
 type Props = {

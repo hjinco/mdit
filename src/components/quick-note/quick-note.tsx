@@ -9,8 +9,9 @@ import {
 } from 'platejs/react'
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import { isMac } from '@/utils/platform'
 import { Editor } from '../editor/editor'
 import { EditorKit } from '../editor/plugins/editor-kit'
@@ -18,8 +19,12 @@ import { LicenseKeyButton } from '../license/license-key-button'
 import { SettingsDialog } from '../settings/settings'
 
 export function QuickNote() {
-  const tab = useTabStore((s) => s.tab)
-  const openTab = useTabStore((s) => s.openTab)
+  const { tab, openTab } = useStore(
+    useShallow((state) => ({
+      tab: state.tab,
+      openTab: state.openTab,
+    }))
+  )
   const editor = usePlateEditor({ plugins: EditorKit })
 
   useEffect(() => {

@@ -14,10 +14,10 @@ import {
   useRef,
 } from 'react'
 import { toast } from 'sonner'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
+import { useStore } from '@/store'
 import { useEditorStore } from '@/store/editor-store'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { isMac } from '@/utils/platform'
 import { Header } from './header/header'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
@@ -26,7 +26,7 @@ import { useLinkedTabName } from './hooks/use-linked-tab-name'
 import { EditorKit } from './plugins/editor-kit'
 
 export function Editor() {
-  const tab = useTabStore((s) => s.tab)
+  const tab = useStore((s) => s.tab)
   const handleTypingProgress = useEditorStore((s) => s.handleTypingProgress)
 
   const editor = useMemo(() => {
@@ -76,9 +76,13 @@ function EditorContent({
 }) {
   const isSaved = useRef(true)
   const isInitializing = useRef(true)
-  const setTabSaved = useTabStore((s) => s.setTabSaved)
+  const { setTabSaved, saveNoteContent } = useStore(
+    useShallow((s) => ({
+      setTabSaved: s.setTabSaved,
+      saveNoteContent: s.saveNoteContent,
+    }))
+  )
   const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
-  const saveNoteContent = useWorkspaceFsStore((s) => s.saveNoteContent)
 
   const editor = usePlateEditor({
     plugins: EditorKit,

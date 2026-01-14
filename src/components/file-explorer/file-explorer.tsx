@@ -5,14 +5,11 @@ import { useShallow } from 'zustand/shallow'
 import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
+import { useStore } from '@/store'
 import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useCollectionStore } from '@/store/collection-store'
-import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
-import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
 import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
 import { useDeleteShortcut } from './hooks/use-delete-shortcut'
 import { useEnterToRename } from './hooks/use-enter-to-rename'
@@ -56,20 +53,47 @@ export function FileExplorer() {
     pinnedDirectories,
     pinDirectory,
     unpinDirectory,
-  } = useWorkspaceStore()
-  const {
     createNote,
     createFolder,
     deleteEntries,
     renameNoteWithAI,
     renameEntry,
-  } = useWorkspaceFsStore()
-  const { setCurrentCollectionPath } = useCollectionStore()
-  const { tab, openTab, clearLinkedTab } = useTabStore(
-    useShallow((s) => ({
-      tab: s.tab,
-      openTab: s.openTab,
-      clearLinkedTab: s.clearLinkedTab,
+    setCurrentCollectionPath,
+    tab,
+    openTab,
+    clearLinkedTab,
+    selectedEntryPaths,
+    selectionAnchorPath,
+    setSelectedEntryPaths,
+    setSelectionAnchorPath,
+    resetSelection,
+  } = useStore(
+    useShallow((state) => ({
+      workspacePath: state.workspacePath,
+      entries: state.entries,
+      expandedDirectories: state.expandedDirectories,
+      setExpandedDirectories: state.setExpandedDirectories,
+      recentWorkspacePaths: state.recentWorkspacePaths,
+      toggleDirectory: state.toggleDirectory,
+      setWorkspace: state.setWorkspace,
+      openFolderPicker: state.openFolderPicker,
+      pinnedDirectories: state.pinnedDirectories,
+      pinDirectory: state.pinDirectory,
+      unpinDirectory: state.unpinDirectory,
+      createNote: state.createNote,
+      createFolder: state.createFolder,
+      deleteEntries: state.deleteEntries,
+      renameNoteWithAI: state.renameNoteWithAI,
+      renameEntry: state.renameEntry,
+      setCurrentCollectionPath: state.setCurrentCollectionPath,
+      tab: state.tab,
+      openTab: state.openTab,
+      clearLinkedTab: state.clearLinkedTab,
+      selectedEntryPaths: state.selectedEntryPaths,
+      selectionAnchorPath: state.selectionAnchorPath,
+      setSelectedEntryPaths: state.setSelectedEntryPaths,
+      setSelectionAnchorPath: state.setSelectionAnchorPath,
+      resetSelection: state.resetSelection,
     }))
   )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
@@ -82,21 +106,6 @@ export function FileExplorer() {
   >(null)
   const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
     () => new Set()
-  )
-  const {
-    selectedEntryPaths,
-    selectionAnchorPath,
-    setSelectedEntryPaths,
-    setSelectionAnchorPath,
-    resetSelection,
-  } = useFileExplorerSelectionStore(
-    useShallow((state) => ({
-      selectedEntryPaths: state.selectedEntryPaths,
-      selectionAnchorPath: state.selectionAnchorPath,
-      setSelectedEntryPaths: state.setSelectedEntryPaths,
-      setSelectionAnchorPath: state.setSelectionAnchorPath,
-      resetSelection: state.resetSelection,
-    }))
   )
   const visibleEntryPaths = useMemo(() => {
     const paths: string[] = []

@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useState } from 'react'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 
 export function useEditorOnlyMode() {
-  const hydrateFromOpenedFiles = useTabStore(
+  const hydrateFromOpenedFiles = useStore(
     (state) => state.hydrateFromOpenedFiles
   )
   const [hasCheckedOpenedFiles, setHasCheckedOpenedFiles] = useState(false)

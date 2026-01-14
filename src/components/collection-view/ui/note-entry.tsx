@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react'
 import { cn } from '@/lib/utils'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 
 type NoteEntryProps = {
   entry: WorkspaceEntry

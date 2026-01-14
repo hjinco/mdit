@@ -3,7 +3,7 @@ import {
   isPathInPaths,
   normalizePathSeparators,
 } from '@/utils/path-utils'
-import type { WorkspaceEntry } from '../../workspace-store'
+import type { WorkspaceEntry } from '../workspace-slice'
 import { collectDirectoryPaths } from './expanded-directories-utils'
 
 export function normalizePinnedDirectoriesList(paths: unknown[]): string[] {

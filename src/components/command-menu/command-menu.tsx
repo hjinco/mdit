@@ -4,9 +4,8 @@ import useMeasure from 'react-use-measure'
 import { useShallow } from 'zustand/shallow'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useSemanticNoteSearch } from '@/hooks/use-semantic-note-search'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import { useUIStore } from '@/store/ui-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import {
   CommandDialog,
   CommandEmpty,
@@ -26,9 +25,13 @@ import {
 import { highlightQuery } from './utils/highlight-query'
 
 export function CommandMenu() {
-  const entries = useWorkspaceStore((state) => state.entries)
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const openTab = useTabStore((state) => state.openTab)
+  const { entries, workspacePath, openTab } = useStore(
+    useShallow((state) => ({
+      entries: state.entries,
+      workspacePath: state.workspacePath,
+      openTab: state.openTab,
+    }))
+  )
 
   const {
     isCommandMenuOpen,

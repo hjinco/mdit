@@ -15,9 +15,7 @@ import { useEditorRef } from 'platejs/react'
 import type React from 'react'
 import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useFileExplorerSelectionStore } from '@/store/file-explorer-selection-store'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
+import { useStore } from '@/store'
 import { isImageFile } from '@/utils/file-icon'
 import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
@@ -48,16 +46,16 @@ const depthAwareCollision: CollisionDetection = (args) => {
 
 export function DndProvider({ children }: DndProviderProps) {
   const editor = useEditorRef()
-  const moveEntry = useWorkspaceFsStore((s) => s.moveEntry)
-  const { selectedEntryPaths, resetSelection } = useFileExplorerSelectionStore(
+  const { moveEntry, selectedEntryPaths, resetSelection } = useStore(
     useShallow((state) => ({
+      moveEntry: state.moveEntry,
       selectedEntryPaths: state.selectedEntryPaths,
       resetSelection: state.resetSelection,
     }))
   )
 
   const toRelativeImagePath = useCallback((path: string) => {
-    const tabPath = useTabStore.getState().tab?.path
+    const tabPath = useStore.getState().tab?.path
     if (!tabPath) {
       return path
     }
@@ -387,12 +385,12 @@ export function DndProvider({ children }: DndProviderProps) {
       const hasMultipleSelections = selectedEntryPaths.size > 1
 
       if (isSelected && hasMultipleSelections) {
-        const selectedPaths = Array.from(selectedEntryPaths)
+        const selectedPaths = Array.from(selectedEntryPaths) as string[]
         // Only move top-level selections; drop descendants to preserve hierarchy
         const pathsToMove = selectedPaths.filter(
-          (path) =>
+          (path: string) =>
             !selectedPaths.some(
-              (otherPath) =>
+              (otherPath: string) =>
                 otherPath !== path && isPathEqualOrDescendant(path, otherPath)
             )
         )

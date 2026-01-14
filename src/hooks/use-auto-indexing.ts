@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
+import { useStore } from '@/store'
 import { useIndexingStore } from '@/store/indexing-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
@@ -13,9 +13,7 @@ export function useAutoIndexing(workspacePath: string | null) {
       config: workspacePath ? state.configs[workspacePath] : null,
     }))
   )
-  const isMigrationsComplete = useWorkspaceStore(
-    (state) => state.isMigrationsComplete
-  )
+  const isMigrationsComplete = useStore((state) => state.isMigrationsComplete)
   const intervalRef = useRef<number | null>(null)
 
   useEffect(() => {

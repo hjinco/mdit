@@ -1,30 +1,26 @@
-import { create } from 'zustand'
-import { computeCollectionEntries } from './collection/helpers/collection-entries'
-import type { WorkspaceEntry } from './workspace-store'
-import { useWorkspaceStore } from './workspace-store'
-import {
-  type WorkspaceStoreAdapter,
-  workspaceStoreAdapter,
-} from './workspace-store-adapter'
+import type { StateCreator } from 'zustand'
+import type {
+  WorkspaceEntry,
+  WorkspaceSlice,
+} from '../workspace/workspace-slice'
+import { computeCollectionEntries } from './helpers/collection-entries'
 
-type CollectionStore = {
+export type CollectionSlice = {
   currentCollectionPath: string | null
   lastCollectionPath: string | null
   collectionEntries: WorkspaceEntry[]
   setCurrentCollectionPath: (
     path: string | null | ((prev: string | null) => string | null)
   ) => void
+  clearLastCollectionPath: () => void
   resetCollectionPath: () => void
   toggleCollectionView: () => void
   refreshCollectionEntries: () => void
 }
 
-export const createCollectionStore = ({
-  workspaceStoreAdapter,
-}: {
-  workspaceStoreAdapter: WorkspaceStoreAdapter
-}) =>
-  create<CollectionStore>((set, get) => ({
+export const prepareCollectionSlice =
+  (): StateCreator<CollectionSlice & WorkspaceSlice, [], [], CollectionSlice> =>
+  (set, get) => ({
     currentCollectionPath: null,
     lastCollectionPath: null,
     collectionEntries: [],
@@ -37,11 +33,14 @@ export const createCollectionStore = ({
           currentCollectionPath: nextPath,
           lastCollectionPath:
             nextPath !== null ? nextPath : state.lastCollectionPath,
-          collectionEntries: computeCollectionEntries(
-            nextPath,
-            workspaceStoreAdapter.getSnapshot().entries
-          ),
+          collectionEntries: computeCollectionEntries(nextPath, get().entries),
         }
+      })
+    },
+
+    clearLastCollectionPath: () => {
+      set({
+        lastCollectionPath: null,
       })
     },
 
@@ -64,7 +63,7 @@ export const createCollectionStore = ({
           currentCollectionPath: lastCollectionPath,
           collectionEntries: computeCollectionEntries(
             lastCollectionPath,
-            workspaceStoreAdapter.getSnapshot().entries
+            get().entries
           ),
         })
       }
@@ -74,33 +73,31 @@ export const createCollectionStore = ({
       set((state) => ({
         collectionEntries: computeCollectionEntries(
           state.currentCollectionPath,
-          workspaceStoreAdapter.getSnapshot().entries
+          get().entries
         ),
       }))
     },
-  }))
-
-export const useCollectionStore = createCollectionStore({
-  workspaceStoreAdapter,
-})
-
-let workspacePathUnsub: (() => void) | null = null
-
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    workspacePathUnsub?.()
-    workspacePathUnsub = null
   })
-}
 
-// Subscribe to workspacePath changes and update collection entries.
-if (!workspacePathUnsub) {
-  workspacePathUnsub = useWorkspaceStore.subscribe((state, prevState) => {
-    const collectionState = useCollectionStore.getState()
-    if (state.workspacePath !== prevState.workspacePath) {
-      collectionState.resetCollectionPath()
-    } else if (state.entries !== prevState.entries) {
-      collectionState.refreshCollectionEntries()
-    }
-  })
-}
+export const createCollectionSlice = prepareCollectionSlice()
+
+// let workspacePathUnsub: (() => void) | null = null
+
+// if (import.meta.hot) {
+//   import.meta.hot.dispose(() => {
+//     workspacePathUnsub?.()
+//     workspacePathUnsub = null
+//   })
+// }
+
+// // Subscribe to workspacePath changes and update collection entries.
+// if (!workspacePathUnsub) {
+//   workspacePathUnsub = useWorkspaceStore.subscribe((state, prevState) => {
+//     const collectionState = useCollectionStore.getState()
+//     if (state.workspacePath !== prevState.workspacePath) {
+//       collectionState.resetCollectionPath()
+//     } else if (state.entries !== prevState.entries) {
+//       collectionState.refreshCollectionEntries()
+//     }
+//   })
+// }

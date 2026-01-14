@@ -1,7 +1,7 @@
 import { Menu, MenuItem } from '@tauri-apps/api/menu'
 import { ChevronDown, InboxIcon } from 'lucide-react'
 import { type MouseEvent, useCallback } from 'react'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import {
   DropdownMenu,
@@ -28,7 +28,7 @@ export function WorkspaceDropdown({
   onWorkspaceSelect,
   onOpenFolderPicker,
 }: WorkspaceDropdownProps) {
-  const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspace)
+  const clearWorkspace = useStore((s) => s.clearWorkspace)
 
   const currentWorkspaceName = workspacePath
     ? getFolderNameFromPath(workspacePath)

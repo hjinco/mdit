@@ -12,23 +12,22 @@ import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 
 import { cn } from '@/lib/utils'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import { useStore } from '@/store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import {
   getFileNameFromPath,
   getFileNameWithoutExtension,
 } from '@/utils/path-utils'
 
 export function Tab() {
-  const { tab, linkedTab, clearLinkedTab } = useTabStore(
+  const { tab, linkedTab, clearLinkedTab, renameEntry } = useStore(
     useShallow((s) => ({
       tab: s.tab,
       linkedTab: s.linkedTab,
       clearLinkedTab: s.clearLinkedTab,
+      renameEntry: s.renameEntry,
     }))
   )
-  const renameEntry = useWorkspaceFsStore((state) => state.renameEntry)
   const [isEditing, setIsEditing] = useState(false)
   const displayName = linkedTab?.name ?? tab?.name ?? ''
   const [draftName, setDraftName] = useState(displayName)
