@@ -77,7 +77,9 @@ export type WorkspaceSlice = {
     action: (expandedDirectories: string[]) => string[]
   ) => Promise<void>
   updateEntries: (
-    action: (entries: WorkspaceEntry[]) => WorkspaceEntry[]
+    entriesOrAction:
+      | WorkspaceEntry[]
+      | ((entries: WorkspaceEntry[]) => WorkspaceEntry[])
   ) => void
   applyWorkspaceUpdate: (update: {
     entries?: WorkspaceEntry[]
@@ -188,8 +190,8 @@ export const prepareWorkspaceSlice =
           entries
         )
 
+        get().updateEntries(entries)
         set({
-          entries,
           isTreeLoading: false,
           expandedDirectories: syncedExpandedDirectories,
           pinnedDirectories: nextPinned,
@@ -247,10 +249,13 @@ export const prepareWorkspaceSlice =
         }
       },
 
-      updateEntries: (action) => {
-        set((state) => ({
-          entries: action(state.entries),
-        }))
+      updateEntries: (entriesOrAction) => {
+        const entries =
+          typeof entriesOrAction === 'function'
+            ? entriesOrAction(get().entries)
+            : entriesOrAction
+        set({ entries })
+        get().refreshCollectionEntries()
       },
 
       applyWorkspaceUpdate: async (update) => {
@@ -263,8 +268,10 @@ export const prepareWorkspaceSlice =
           update.pinnedDirectories
 
         if (shouldUpdate) {
+          if (update.entries) {
+            get().updateEntries(update.entries)
+          }
           set((state) => ({
-            entries: update.entries ?? state.entries,
             expandedDirectories:
               update.expandedDirectories ?? state.expandedDirectories,
             pinnedDirectories:
@@ -427,8 +434,8 @@ export const prepareWorkspaceSlice =
           )
           const nextExpanded = syncedExpanded
 
+          get().updateEntries(entries)
           set({
-            entries,
             isTreeLoading: false,
             expandedDirectories: syncedExpanded,
             ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),

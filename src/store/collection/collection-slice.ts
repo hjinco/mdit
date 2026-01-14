@@ -80,24 +80,3 @@ export const prepareCollectionSlice =
   })
 
 export const createCollectionSlice = prepareCollectionSlice()
-
-// let workspacePathUnsub: (() => void) | null = null
-
-// if (import.meta.hot) {
-//   import.meta.hot.dispose(() => {
-//     workspacePathUnsub?.()
-//     workspacePathUnsub = null
-//   })
-// }
-
-// // Subscribe to workspacePath changes and update collection entries.
-// if (!workspacePathUnsub) {
-//   workspacePathUnsub = useWorkspaceStore.subscribe((state, prevState) => {
-//     const collectionState = useCollectionStore.getState()
-//     if (state.workspacePath !== prevState.workspacePath) {
-//       collectionState.resetCollectionPath()
-//     } else if (state.entries !== prevState.entries) {
-//       collectionState.refreshCollectionEntries()
-//     }
-//   })
-// }
