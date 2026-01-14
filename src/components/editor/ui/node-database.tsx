@@ -396,7 +396,7 @@ function DatabaseRow({
           autoEdit={isNewlyCreated}
           buttonProps={{
             className:
-              'rounded-none w-full justify-start text-left truncate font-medium text-foreground px-3 hover:bg-transparent h-full',
+              'rounded-none w-full justify-start text-left truncate font-medium text-foreground px-3 hover:bg-muted/50 h-full',
           }}
         />
         <Button
@@ -940,7 +940,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
         <div ref={parentRef} className="flex-1 overflow-auto">
           <div className="min-w-fit inline-block align-middle w-full">
             <div
-              className="sticky z-20 top-0 grid items-center border-b border-border/50 bg-background text-[12px] font-normal text-muted-foreground"
+              className="sticky z-20 top-0 grid items-center border-b border-border/50 bg-background text-[12px] text-muted-foreground"
               style={{ gridTemplateColumns }}
             >
               <div className="flex h-9 items-center border-r border-border/50 px-3 last:border-r-0">
@@ -956,7 +956,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
                     className={`flex h-9 items-center px-3 truncate ${isLastColumn ? '' : 'border-r border-border/50'}`}
                   >
                     <Icon className="mr-2 h-3.5 w-3.5 shrink-0 opacity-70" />
-                    <span className="truncate font-medium">{column.name}</span>
+                    <span className="truncate">{column.name}</span>
                   </div>
                 )
               })}
@@ -995,7 +995,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
         <div className="sticky bottom-0 z-10">
           <button
             type="button"
-            className="flex h-9 w-full items-center px-3 text-sm text-muted-foreground/60 transition-colors hover:bg-muted/20 hover:text-muted-foreground group"
+            className="flex h-9 w-full items-center px-3 text-sm text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-muted-foreground cursor-pointer group"
             onClick={handleNewEntry}
           >
             <PlusIcon className="mr-2 h-4 w-4 opacity-50 group-hover:opacity-100" />
@@ -1014,7 +1014,7 @@ export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
         onContextMenu={(event) => event.stopPropagation()}
       >
         <div className="overflow-hidden rounded bg-background">
-          <div className="flex items-center justify-between border-b border-muted/40 py-2.5">
+          <div className="flex items-center justify-between border-b border-border/50 px-2 py-2.5">
             <div className="flex items-center gap-2.5 text-xl font-semibold text-foreground">
               {element.folder || 'Database'}
             </div>

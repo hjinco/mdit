@@ -1,8 +1,8 @@
 import {
   CalendarIcon,
+  CheckSquare2,
   HashIcon,
   ListIcon,
-  ToggleLeftIcon,
   TypeIcon,
 } from 'lucide-react'
 import type {
@@ -30,7 +30,7 @@ export const PROPERTY_ICONS: Record<
 > = {
   string: TypeIcon,
   number: HashIcon,
-  boolean: ToggleLeftIcon,
+  boolean: CheckSquare2,
   date: CalendarIcon,
   array: ListIcon,
 }
@@ -97,7 +97,7 @@ export function InlineEditableField({
   return (
     <div className="group/cell relative flex h-full min-h-[34px] w-full items-center">
       {isEditing ? (
-        <div className="absolute inset-0 z-50 flex items-center bg-background ring-2 ring-inset ring-primary/50">
+        <div className="absolute inset-0 z-50 flex items-center bg-background ring-2 ring-inset ring-brand/80">
           <Input
             ref={(node) => {
               inputRef.current = node
@@ -129,8 +129,8 @@ export function InlineEditableField({
           size="sm"
           {...buttonProps}
           className={cn(
-            'h-full w-full justify-start rounded-none px-3 text-left text-sm font-normal text-foreground/90 hover:bg-muted/30',
-            !value && 'text-muted-foreground/60',
+            'h-full w-full justify-start rounded-none px-3 text-left text-sm text-foreground/90 hover:bg-muted/50 hover:text-foreground/90 transition-none',
+            !value && 'text-muted-foreground/40 hover:text-muted-foreground/40',
             className,
             buttonProps?.className
           )}
@@ -268,24 +268,27 @@ function DatabaseArrayEditor({
   if (!isEditing) {
     if (items.length === 0) {
       return (
-        <div
-          className="flex h-full w-full cursor-text items-center px-3 text-sm text-muted-foreground/50 hover:bg-muted/30"
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-full w-full justify-start rounded-none px-3 text-left text-sm text-muted-foreground/40 hover:bg-muted/50 hover:text-muted-foreground/40 transition-none"
           onClick={() => setIsEditing(true)}
         >
-          {placeholder}
-        </div>
+          <span className="truncate">{placeholder}</span>
+        </Button>
       )
     }
     return (
       <div
-        className="flex h-full w-full cursor-text items-center gap-1.5 overflow-hidden px-3 hover:bg-muted/30"
+        className="flex h-full w-full cursor-pointer items-center gap-1.5 overflow-hidden px-3 hover:bg-muted/50"
         onClick={() => setIsEditing(true)}
       >
         {items.map((item) => (
           <span
             key={item}
             className={cn(
-              'inline-flex shrink-0 items-center rounded-[3px] px-1.5 py-0.5 text-[12px] font-medium leading-none',
+              'inline-flex shrink-0 items-center rounded-[3px] px-1.5 py-0.5 text-[12px] leading-none',
               getTagColorClass(item)
             )}
           >
@@ -299,14 +302,14 @@ function DatabaseArrayEditor({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-50 flex h-full w-full items-center gap-1.5 overflow-x-auto bg-background px-3 text-sm ring-2 ring-inset ring-primary/50"
+      className="absolute inset-0 z-50 flex h-full w-full items-center gap-1.5 overflow-x-auto bg-background px-3 text-sm ring-2 ring-inset ring-brand/80"
       onClick={() => inputRef.current?.focus()}
     >
       {items.map((item, index) => (
         <span
           key={`${item}-${index}`}
           className={cn(
-            'inline-flex shrink-0 items-center gap-1 rounded-[3px] px-1.5 py-0.5 text-[12px] font-medium leading-none',
+            'inline-flex shrink-0 items-center gap-1 rounded-[3px] px-1.5 py-0.5 text-[12px] leading-none',
             getTagColorClass(item)
           )}
         >
@@ -315,7 +318,7 @@ function DatabaseArrayEditor({
           </span>
           <button
             type="button"
-            className="opacity-50 hover:opacity-100"
+            className="cursor-pointer opacity-50 hover:opacity-100"
             onClick={(event) => {
               event.stopPropagation()
               removeItem(index)
@@ -343,7 +346,6 @@ function DatabaseArrayEditor({
             setDraft('')
           }
         }}
-        placeholder={items.length ? '' : 'Add tags...'}
         className="h-full min-w-[60px] flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
       />
     </div>
@@ -397,8 +399,9 @@ export function ValueEditor({
               variant="ghost"
               size="sm"
               className={cn(
-                'h-full min-h-[34px] w-full justify-start rounded-none px-3 text-left text-sm font-normal text-foreground/90 hover:bg-muted/30',
-                !dateValue && 'text-muted-foreground/60',
+                'h-full min-h-[34px] w-full justify-start rounded-none px-3 text-left text-sm text-foreground/90 hover:bg-muted/50 hover:text-foreground/90 transition-none',
+                !dateValue &&
+                  'text-muted-foreground/40 hover:text-muted-foreground/40',
                 className
               )}
             >
