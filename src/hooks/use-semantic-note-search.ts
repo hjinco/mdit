@@ -47,7 +47,7 @@ export function useSemanticNoteSearch(
       return
     }
 
-    invoke<QuerySearchEntry[]>('search_query_entries', {
+    invoke<QuerySearchEntry[]>('search_query_entries_command', {
       workspacePath,
       query: trimmedQuery,
       embeddingProvider,

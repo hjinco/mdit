@@ -134,12 +134,15 @@ export const useIndexingStore = create<IndexingStore>((set, get) => ({
     }))
 
     try {
-      const result = await invoke<WorkspaceIndexSummary>('index_workspace', {
-        workspacePath,
-        embeddingProvider,
-        embeddingModel,
-        forceReindex,
-      })
+      const result = await invoke<WorkspaceIndexSummary>(
+        'index_workspace_command',
+        {
+          workspacePath,
+          embeddingProvider,
+          embeddingModel,
+          forceReindex,
+        }
+      )
       return result
     } finally {
       set((state) => ({

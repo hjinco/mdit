@@ -122,7 +122,7 @@ export function IndexingTab() {
   const loadIndexingMeta = useCallback(async (path: string) => {
     setIsMetaLoading(true)
     try {
-      const meta = await invoke<IndexingMeta>('get_indexing_meta', {
+      const meta = await invoke<IndexingMeta>('get_indexing_meta_command', {
         workspacePath: path,
       })
 
