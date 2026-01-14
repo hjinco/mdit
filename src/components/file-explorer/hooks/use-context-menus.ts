@@ -44,9 +44,12 @@ type UseFileExplorerMenusProps = {
   handleDeleteEntries: (paths: string[]) => Promise<void>
   createNote: (
     directoryPath: string,
-    options?: { initialName?: string; initialContent?: string }
+    options?: {
+      initialName?: string
+      initialContent?: string
+      openTab?: boolean
+    }
   ) => Promise<string>
-  openTab: (path: string) => void
   workspacePath: string | null
   selectedEntryPaths: Set<string>
   setSelectedEntryPaths: (paths: Set<string>) => void
@@ -66,7 +69,6 @@ export const useFileExplorerMenus = ({
   beginNewFolder,
   handleDeleteEntries,
   createNote,
-  openTab,
   workspacePath,
   selectedEntryPaths,
   setSelectedEntryPaths,
@@ -263,8 +265,7 @@ export const useFileExplorerMenus = ({
             id: `new-note-${normalizedDirectoryPath}`,
             text: 'New Note',
             action: async () => {
-              const filePath = await createNote(directoryPath)
-              openTab(filePath)
+              await createNote(directoryPath, { openTab: true })
             },
           }),
         ]
@@ -289,12 +290,9 @@ export const useFileExplorerMenus = ({
                         const templateContent = await readTextFile(
                           template.path
                         )
-                        const filePath = await createNote(directoryPath, {
+                        await createNote(directoryPath, {
+                          openTab: true,
                           initialName: template.name,
-                          initialContent: templateContent,
-                        })
-                        const { openTab } = useStore.getState()
-                        await openTab(filePath, false, false, {
                           initialContent: templateContent,
                         })
                       } catch {
@@ -428,7 +426,6 @@ export const useFileExplorerMenus = ({
       beginNewFolder,
       createNote,
       handleDeleteEntries,
-      openTab,
       workspacePath,
       pinnedDirectories,
       pinDirectory,

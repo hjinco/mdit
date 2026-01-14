@@ -199,7 +199,7 @@ export function CollectionView() {
             sortDirection={sortDirection}
             onDirectionChange={setSortDirection}
           />
-          <NewNoteButton />
+          <NewNoteButton directoryPath={currentCollectionPath} />
         </div>
       </div>
       <div

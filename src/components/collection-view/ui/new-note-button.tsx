@@ -5,8 +5,12 @@ import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
-export function NewNoteButton() {
-  const createAndOpenNote = useStore((s) => s.createAndOpenNote)
+export function NewNoteButton({
+  directoryPath,
+}: {
+  directoryPath: string | null
+}) {
+  const createNote = useStore((s) => s.createNote)
 
   return (
     <Tooltip>
@@ -15,7 +19,9 @@ export function NewNoteButton() {
           variant="ghost"
           size="icon"
           className="text-foreground/70 hover:bg-background/40"
-          onClick={createAndOpenNote}
+          onClick={() =>
+            directoryPath && createNote(directoryPath, { openTab: true })
+          }
         >
           <SquarePenIcon />
         </Button>

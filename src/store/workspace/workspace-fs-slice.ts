@@ -125,7 +125,11 @@ export type WorkspaceFsSlice = {
   ) => Promise<string | null>
   createNote: (
     directoryPath: string,
-    options?: { initialName?: string; initialContent?: string }
+    options?: {
+      initialName?: string
+      initialContent?: string
+      openTab?: boolean
+    }
   ) => Promise<string>
   createAndOpenNote: () => Promise<void>
   deleteEntries: (paths: string[]) => Promise<void>
@@ -263,10 +267,7 @@ export const prepareWorkspaceFsSlice =
         }
       },
 
-      createNote: async (
-        directoryPath: string,
-        options?: { initialName?: string; initialContent?: string }
-      ) => {
+      createNote: async (directoryPath, options) => {
         const { workspacePath } = get()
 
         if (!workspacePath) {
@@ -304,8 +305,11 @@ export const prepareWorkspaceFsSlice =
             : addEntryToState(entries, directoryPath, newFileEntry)
         )
 
-        get().setSelectedEntryPaths(new Set([filePath]))
-        get().setSelectionAnchorPath(filePath)
+        if (options?.openTab) {
+          await get().openTab(filePath)
+          get().setSelectedEntryPaths(new Set([filePath]))
+          get().setSelectionAnchorPath(filePath)
+        }
 
         return filePath
       },
