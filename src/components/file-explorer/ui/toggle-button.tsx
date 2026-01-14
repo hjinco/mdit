@@ -1,7 +1,7 @@
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from 'lucide-react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
-import { useEditorStore } from '@/store/editor-store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
@@ -13,9 +13,14 @@ type Props = {
 }
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
-  const isFocusMode = useEditorStore((s) => s.isFocusMode)
-  const currentCollectionPath = useStore((s) => s.currentCollectionPath)
+  const { isFocusMode, currentCollectionPath } = useStore(
+    useShallow((s) => ({
+      isFocusMode: s.isFocusMode,
+      currentCollectionPath: s.currentCollectionPath,
+    }))
+  )
   const isCollectionViewOpen = currentCollectionPath !== null
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>

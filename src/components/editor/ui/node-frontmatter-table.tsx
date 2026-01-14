@@ -22,7 +22,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
-import { useEditorStore } from '@/store/editor-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { Calendar } from '@/ui/calendar'
 import {
@@ -380,7 +380,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
   const keyboardNavFlagRef = useRef(false)
   const addButtonRef = useRef<HTMLButtonElement | null>(null)
   const editor = useEditorRef()
-  const { frontmatterFocusTarget, setFrontmatterFocusTarget } = useEditorStore(
+  const { frontmatterFocusTarget, setFrontmatterFocusTarget } = useStore(
     useShallow((s) => ({
       frontmatterFocusTarget: s.frontmatterFocusTarget,
       setFrontmatterFocusTarget: s.setFrontmatterFocusTarget,

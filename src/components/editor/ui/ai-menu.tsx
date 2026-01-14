@@ -8,8 +8,8 @@ import {
   usePluginOption,
 } from 'platejs/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useLicenseStore } from '@/store/license-store'
+import { useShallow } from 'zustand/shallow'
+import { useStore } from '@/store'
 import { Popover, PopoverAnchor, PopoverContent } from '@/ui/popover'
 import { useAICommands } from '../hooks/use-ai-commands'
 import { useChat } from '../hooks/use-chat'
@@ -27,7 +27,12 @@ export function AIMenu() {
   const open = usePluginOption(AIChatPlugin, 'open') && isFocusedLast
   const [value, setValue] = useState('')
 
-  const chatConfig = useAISettingsStore((s) => s.chatConfig)
+  const { chatConfig, licenseStatus } = useStore(
+    useShallow((s) => ({
+      chatConfig: s.chatConfig,
+      licenseStatus: s.status,
+    }))
+  )
   const chat = useChat(chatConfig)
 
   const { status, messages } = chat
@@ -37,8 +42,6 @@ export function AIMenu() {
 
   const [addCommandOpen, setAddCommandOpen] = useState(false)
   const { commands, addCommand, removeCommand } = useAICommands()
-
-  const licenseStatus = useLicenseStore((s) => s.status)
 
   const isSelecting = useIsSelecting()
 

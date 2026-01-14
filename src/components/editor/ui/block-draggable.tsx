@@ -4,7 +4,7 @@ import { GripVertical } from 'lucide-react'
 import { KEYS } from 'platejs'
 import { type PlateElementProps, usePluginOption } from 'platejs/react'
 import { cn } from '@/lib/utils'
-import { useEditorStore } from '@/store/editor-store'
+import { useStore } from '@/store'
 import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 
@@ -38,7 +38,7 @@ export function DragHandle({
   setNodeRef: (node: HTMLDivElement) => void
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
 }) {
-  const isFocusMode = useEditorStore((s) => s.isFocusMode)
+  const isFocusMode = useStore((s) => s.isFocusMode)
 
   const topClass =
     isFirstChild && headingTopMap[type]

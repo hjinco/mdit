@@ -17,7 +17,6 @@ import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
-import { useEditorStore } from '@/store/editor-store'
 import { isMac } from '@/utils/platform'
 import { Header } from './header/header'
 import { useAutoRenameOnSave } from './hooks/use-auto-rename-on-save'
@@ -27,7 +26,7 @@ import { EditorKit } from './plugins/editor-kit'
 
 export function Editor() {
   const tab = useStore((s) => s.tab)
-  const handleTypingProgress = useEditorStore((s) => s.handleTypingProgress)
+  const handleTypingProgress = useStore((s) => s.handleTypingProgress)
 
   const editor = useMemo(() => {
     return createSlateEditor({
@@ -82,7 +81,7 @@ function EditorContent({
       saveNoteContent: s.saveNoteContent,
     }))
   )
-  const resetFocusMode = useEditorStore((s) => s.resetFocusMode)
+  const resetFocusMode = useStore((s) => s.resetFocusMode)
 
   const editor = usePlateEditor({
     plugins: EditorKit,

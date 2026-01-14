@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useGitSyncStore } from '@/store/git-sync-store'
 import {
   Field,
   FieldContent,
@@ -15,9 +15,21 @@ import { Switch } from '@/ui/switch'
 import { Textarea } from '@/ui/textarea'
 
 export function SyncTab() {
-  const workspacePath = useStore((state) => state.workspacePath)
-  const { getSyncConfig, setBranchName, setCommitMessage, setAutoSync } =
-    useGitSyncStore()
+  const {
+    workspacePath,
+    getSyncConfig,
+    setBranchName,
+    setCommitMessage,
+    setAutoSync,
+  } = useStore(
+    useShallow((state) => ({
+      workspacePath: state.workspacePath,
+      getSyncConfig: state.getSyncConfig,
+      setBranchName: state.setBranchName,
+      setCommitMessage: state.setCommitMessage,
+      setAutoSync: state.setAutoSync,
+    }))
+  )
 
   const [branchName, setBranchNameLocal] = useState('')
   const [commitMessage, setCommitMessageLocal] = useState('')

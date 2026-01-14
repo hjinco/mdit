@@ -5,7 +5,6 @@ import { useShallow } from 'zustand/shallow'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useSemanticNoteSearch } from '@/hooks/use-semantic-note-search'
 import { useStore } from '@/store'
-import { useUIStore } from '@/store/ui-store'
 import {
   CommandDialog,
   CommandEmpty,
@@ -38,7 +37,7 @@ export function CommandMenu() {
     setCommandMenuOpen,
     openCommandMenu,
     closeCommandMenu,
-  } = useUIStore(
+  } = useStore(
     useShallow((state) => ({
       isCommandMenuOpen: state.isCommandMenuOpen,
       setCommandMenuOpen: state.setCommandMenuOpen,

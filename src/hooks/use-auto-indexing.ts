@@ -1,19 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useIndexingStore } from '@/store/indexing-store'
 
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
-  const { getIndexingConfig, indexWorkspace, config } = useIndexingStore(
-    useShallow((state) => ({
-      getIndexingConfig: state.getIndexingConfig,
-      indexWorkspace: state.indexWorkspace,
-      config: workspacePath ? state.configs[workspacePath] : null,
-    }))
-  )
-  const isMigrationsComplete = useStore((state) => state.isMigrationsComplete)
+  const { getIndexingConfig, indexWorkspace, config, isMigrationsComplete } =
+    useStore(
+      useShallow((state) => ({
+        getIndexingConfig: state.getIndexingConfig,
+        indexWorkspace: state.indexWorkspace,
+        config: workspacePath ? state.configs[workspacePath] : null,
+        isMigrationsComplete: state.isMigrationsComplete,
+      }))
+    )
   const intervalRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export function useAutoIndexing(workspacePath: string | null) {
     const runAutoIndex = async () => {
       // Skip if indexing is already running (check current state from store)
       // Use getState() to get the latest state instead of relying on closure
-      const currentState = useIndexingStore.getState().indexingState
+      const currentState = useStore.getState().indexingState
       if (currentState[workspacePath]) {
         return
       }

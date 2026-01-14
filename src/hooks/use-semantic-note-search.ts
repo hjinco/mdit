@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useIndexingStore } from '@/store/indexing-store'
+import { useStore } from '@/store'
 import type { QuerySearchEntry } from '@/types/query-search-entry'
 
 export type SemanticNoteSearchResult = {
@@ -18,8 +18,8 @@ export function useSemanticNoteSearch(
   const [results, setResults] = useState<SemanticNoteSearchResult[]>([])
   const requestIdRef = useRef(0)
 
-  const getIndexingConfig = useIndexingStore((state) => state.getIndexingConfig)
-  const indexingConfig = useIndexingStore((state) =>
+  const getIndexingConfig = useStore((state) => state.getIndexingConfig)
+  const indexingConfig = useStore((state) =>
     workspacePath ? (state.configs[workspacePath] ?? null) : null
   )
 

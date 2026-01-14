@@ -6,8 +6,6 @@ import { useAutoCloseSidebars } from '@/hooks/use-auto-close-sidebars'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
-import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useUIStore } from '@/store/ui-store'
 import { addExpandedDirectory } from '@/store/workspace/utils/expanded-directories-utils'
 import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { useFileExplorerMenus } from './hooks/use-context-menus'
@@ -27,7 +25,7 @@ import { WorkspaceDropdown } from './ui/workspace-dropdown'
 
 export function FileExplorer() {
   const fileExplorerRef = useRef<HTMLElement | null>(null)
-  const { isFileExplorerOpen, setFileExplorerOpen } = useUIStore(
+  const { isFileExplorerOpen, setFileExplorerOpen } = useStore(
     useShallow((state) => ({
       isFileExplorerOpen: state.isFileExplorerOpen,
       setFileExplorerOpen: state.setFileExplorerOpen,
@@ -95,8 +93,8 @@ export function FileExplorer() {
       resetSelection: state.resetSelection,
     }))
   )
-  const renameConfig = useAISettingsStore((state) => state.renameConfig)
-  const openImagePreview = useUIStore((state) => state.openImagePreview)
+  const renameConfig = useStore((state) => state.renameConfig)
+  const openImagePreview = useStore((state) => state.openImagePreview)
   const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
     null
   )

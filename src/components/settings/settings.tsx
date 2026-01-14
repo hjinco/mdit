@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useUIStore } from '@/store/ui-store'
 import { Dialog, DialogContent } from '@/ui/dialog'
 import { AITab } from './ui/ai-tab'
 import { IndexingTab } from './ui/indexing-tab'
@@ -11,15 +10,20 @@ import { PreferencesTab } from './ui/preferences-tab'
 import { SyncTab } from './ui/sync-tab'
 
 export function SettingsDialog() {
-  const { isSettingsDialogOpen, setSettingsDialogOpen, settingsInitialTab } =
-    useUIStore(
-      useShallow((s) => ({
-        isSettingsDialogOpen: s.isSettingsDialogOpen,
-        setSettingsDialogOpen: s.setSettingsDialogOpen,
-        settingsInitialTab: s.settingsInitialTab,
-      }))
-    )
-  const workspacePath = useStore((s) => s.workspacePath)
+  const {
+    workspacePath,
+    isSettingsDialogOpen,
+    setSettingsDialogOpen,
+    settingsInitialTab,
+  } = useStore(
+    useShallow((s) => ({
+      workspacePath: s.workspacePath,
+      isSettingsDialogOpen: s.isSettingsDialogOpen,
+      setSettingsDialogOpen: s.setSettingsDialogOpen,
+      settingsInitialTab: s.settingsInitialTab,
+    }))
+  )
+
   const [activeTab, setActiveTab] = useState<SettingsTab>('preferences')
 
   useEffect(() => {
@@ -39,7 +43,7 @@ export function SettingsDialog() {
     setSettingsDialogOpen(open)
     // Reset initial tab when dialog closes
     if (!open) {
-      useUIStore.setState({ settingsInitialTab: null })
+      useStore.setState({ settingsInitialTab: null })
     }
   }
 

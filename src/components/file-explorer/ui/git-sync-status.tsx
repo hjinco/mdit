@@ -1,6 +1,6 @@
 import { RefreshCw, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ type Props = {
 
 export function GitSyncStatus({ workspacePath }: Props) {
   const { isGitRepo, status, sync, error } = useGitSync(workspacePath)
-  const openSettings = useUIStore((s) => s.openSettingsWithTab)
+  const openSettings = useStore((s) => s.openSettingsWithTab)
 
   if (!isGitRepo) {
     return null

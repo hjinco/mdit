@@ -1,12 +1,12 @@
 import { SearchIcon } from 'lucide-react'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function SearchButton() {
-  const openCommandMenu = useUIStore((s) => s.openCommandMenu)
+  const openCommandMenu = useStore((s) => s.openCommandMenu)
   return (
     <Tooltip>
       <TooltipTrigger asChild>

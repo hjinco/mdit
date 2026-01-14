@@ -2,24 +2,27 @@ import { useShallow } from 'zustand/shallow'
 import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
-import { useEditorStore } from '@/store/editor-store'
-import { useUIStore } from '@/store/ui-store'
 import { isMac } from '@/utils/platform'
 import { HistoryNavigation } from './history-navigation'
 import { MoreButton } from './more-button'
 import { Tab } from './tab'
 
 export function Header() {
-  const isFileExplorerOpen = useUIStore((s) => s.isFileExplorerOpen)
-  const { currentCollectionPath, workspacePath } = useStore(
+  const {
+    isFileExplorerOpen,
+    isFocusMode,
+    currentCollectionPath,
+    workspacePath,
+  } = useStore(
     useShallow((s) => ({
+      isFileExplorerOpen: s.isFileExplorerOpen,
+      isFocusMode: s.isFocusMode,
       currentCollectionPath: s.currentCollectionPath,
       workspacePath: s.workspacePath,
     }))
   )
   const isCollectionViewOpen = currentCollectionPath !== null
   const isFullscreen = useIsFullscreen()
-  const isFocusMode = useEditorStore((s) => s.isFocusMode)
 
   return (
     <div

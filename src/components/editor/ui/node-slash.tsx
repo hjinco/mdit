@@ -29,8 +29,6 @@ import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 import YAML from 'yaml'
 import { useStore } from '@/store'
-import { useEditorStore } from '@/store/editor-store'
-import { useMDXSettingsStore } from '@/store/mdx-settings-store'
 import { datePattern, type ValueType } from '@/utils/frontmatter-value-utils'
 import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
@@ -241,7 +239,7 @@ const groups: Group[] = [
           if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
 
           const defaults = await collectFrontmatterDefaults()
-          useEditorStore.getState().setFrontmatterFocusTarget('firstCell')
+          useStore.getState().setFrontmatterFocusTarget('firstCell')
           editor.tf.replaceNodes(
             {
               type: FRONTMATTER_KEY,
@@ -477,7 +475,7 @@ export function SlashInputElement(
   props: PlateElementProps<TComboboxInputElement>
 ) {
   const { editor, element } = props
-  const isMDXEnabled = useMDXSettingsStore((state) => state.isMDXEnabled)
+  const isMDXEnabled = useStore((state) => state.isMDXEnabled)
 
   const elementPath = editor.api.findPath(element)
   const beforePoint = elementPath ? editor.api.before(elementPath) : null

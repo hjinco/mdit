@@ -3,8 +3,6 @@ import { Loader2Icon, RefreshCcwIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useIndexingStore } from '@/store/indexing-store'
 import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { Button } from '@/ui/button'
 import {
@@ -31,25 +29,30 @@ type IndexingMeta = {
 }
 
 export function IndexingTab() {
-  const { workspacePath, entries } = useStore(
+  const {
+    workspacePath,
+    entries,
+    ollamaModels,
+    fetchOllamaModels,
+    setIndexingConfig,
+    indexWorkspace,
+    indexingState,
+    configs,
+  } = useStore(
     useShallow((state) => ({
       workspacePath: state.workspacePath,
       entries: state.entries,
+      ollamaModels: state.ollamaModels,
+      fetchOllamaModels: state.fetchOllamaModels,
+      setIndexingConfig: state.setIndexingConfig,
+      indexWorkspace: state.indexWorkspace,
+      indexingState: state.indexingState,
+      configs: state.configs,
     }))
   )
-  const { setIndexingConfig, indexWorkspace, indexingState, configs } =
-    useIndexingStore(
-      useShallow((state) => ({
-        setIndexingConfig: state.setIndexingConfig,
-        indexWorkspace: state.indexWorkspace,
-        indexingState: state.indexingState,
-        configs: state.configs,
-      }))
-    )
   const isIndexing = workspacePath
     ? (indexingState[workspacePath] ?? false)
     : false
-  const { ollamaModels, fetchOllamaModels } = useAISettingsStore()
 
   const [currentConfig, setCurrentConfig] = useState<{
     embeddingProvider: string
@@ -82,7 +85,7 @@ export function IndexingTab() {
     }
 
     // Load from settings file
-    const { getIndexingConfig } = useIndexingStore.getState()
+    const { getIndexingConfig } = useStore.getState()
     getIndexingConfig(workspacePath).then((config) => {
       if (config) {
         setCurrentConfig({

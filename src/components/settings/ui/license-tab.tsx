@@ -2,7 +2,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { type ChangeEvent, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useLicenseStore } from '@/store/license-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import {
   Field,
@@ -22,7 +22,7 @@ export function LicenseTab() {
     clearLicenseError,
     registerLicenseKey,
     deactivateLicense,
-  } = useLicenseStore(
+  } = useStore(
     useShallow((s) => ({
       status: s.status,
       error: s.error,

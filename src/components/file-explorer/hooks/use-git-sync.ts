@@ -8,7 +8,6 @@ import { Command } from '@tauri-apps/plugin-shell'
 import { join } from 'pathe'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '@/store'
-import { useGitSyncStore } from '@/store/git-sync-store'
 
 // Finite representation of the sync lifecycle states the hook can emit.
 type GitSyncStatus = 'syncing' | 'synced' | 'unsynced' | 'error'
@@ -32,7 +31,7 @@ const EMPTY_STATE: GitSyncState = {
 
 export function useGitSync(workspacePath: string | null) {
   const [state, setState] = useState<GitSyncState>(EMPTY_STATE)
-  const getSyncConfig = useGitSyncStore((state) => state.getSyncConfig)
+  const getSyncConfig = useStore((state) => state.getSyncConfig)
   const isSyncingRef = useRef(false)
 
   // Returns the hook to a neutral, non-repo state.
