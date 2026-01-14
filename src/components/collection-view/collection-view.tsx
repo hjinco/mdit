@@ -5,8 +5,6 @@ import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
-import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useUIStore } from '@/store/ui-store'
 import { getFolderNameFromPath } from '@/utils/path-utils'
 import { isMac } from '@/utils/platform'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
@@ -23,6 +21,8 @@ import { SortSelector } from './ui/sort-selector'
 
 export function CollectionView() {
   const {
+    isFileExplorerOpen,
+    renameConfig,
     currentCollectionPath,
     setCurrentCollectionPath,
     collectionEntries,
@@ -37,6 +37,8 @@ export function CollectionView() {
     updateEntryModifiedDate,
   } = useStore(
     useShallow((state) => ({
+      isFileExplorerOpen: state.isFileExplorerOpen,
+      renameConfig: state.renameConfig,
       currentCollectionPath: state.currentCollectionPath,
       setCurrentCollectionPath: state.setCurrentCollectionPath,
       collectionEntries: state.collectionEntries,
@@ -61,9 +63,6 @@ export function CollectionView() {
       setCurrentCollectionPath((prev) => (open ? prev : null))
     },
   })
-
-  const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
   const displayName = currentCollectionPath
     ? getFolderNameFromPath(currentCollectionPath)

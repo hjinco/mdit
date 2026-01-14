@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useImageEditStore } from '@/store/image-edit-store'
 import { Button } from '@/ui/button'
 import { Checkbox } from '@/ui/checkbox'
 import {
@@ -36,7 +35,7 @@ import {
 } from './utils/image-process-utils'
 
 export function ImageEditDialog() {
-  const { imageEditPath, closeImageEdit } = useImageEditStore(
+  const { imageEditPath, closeImageEdit } = useStore(
     useShallow((state) => ({
       imageEditPath: state.imageEditPath,
       closeImageEdit: state.closeImageEdit,

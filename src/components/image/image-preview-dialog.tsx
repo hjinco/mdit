@@ -4,13 +4,13 @@ import { ImageOff } from 'lucide-react'
 import { basename } from 'pathe'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 import { Dialog, DialogContent, DialogTitle } from '@/ui/dialog'
 import { formatFileSize } from '@/utils/format-utils'
 import { getImageProperties } from './utils/image-process-utils'
 
 export function ImagePreviewDialog() {
-  const { imagePreviewPath, closeImagePreview } = useUIStore(
+  const { imagePreviewPath, closeImagePreview } = useStore(
     useShallow((state) => ({
       imagePreviewPath: state.imagePreviewPath,
       closeImagePreview: state.closeImagePreview,

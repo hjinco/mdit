@@ -1,6 +1,6 @@
 import type { PlateEditor } from 'platejs/react'
 import { useEffect, useRef } from 'react'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 
 /**
  * Save and restore editor selection when command menu opens/closes.
@@ -9,7 +9,7 @@ import { useUIStore } from '@/store/ui-store'
  */
 export function useCommandMenuSelectionRestore(editor: PlateEditor) {
   const savedSelectionRef = useRef<typeof editor.selection>(null)
-  const isCommandMenuOpen = useUIStore((s) => s.isCommandMenuOpen)
+  const isCommandMenuOpen = useStore((s) => s.isCommandMenuOpen)
 
   useEffect(() => {
     if (isCommandMenuOpen) {

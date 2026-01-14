@@ -12,7 +12,7 @@ import {
   getFileNameFromPath,
   isPathEqualOrDescendant,
 } from '@/utils/path-utils'
-import { useAISettingsStore } from '../ai-settings-store'
+import type { AISettingsSlice } from '../ai-settings/ai-settings-slice'
 import type { CollectionSlice } from '../collection/collection-slice'
 import type { TabSlice } from '../tab/tab-slice'
 import {
@@ -157,7 +157,8 @@ export const prepareWorkspaceFsSlice =
       WorkspaceSlice &
       WorkspaceFileSelectionSlice &
       CollectionSlice &
-      TabSlice,
+      TabSlice &
+      AISettingsSlice,
     [],
     [],
     WorkspaceFsSlice
@@ -396,7 +397,7 @@ export const prepareWorkspaceFsSlice =
 
       renameNoteWithAI: async (entry) => {
         // TODO
-        const renameConfig = useAISettingsStore.getState().renameConfig
+        const { renameConfig } = get()
 
         if (!renameConfig) {
           return

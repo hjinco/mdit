@@ -1,7 +1,7 @@
 import { PointApi } from 'platejs'
 import { createPlatePlugin } from 'platejs/react'
 import { memo } from 'react'
-import { useEditorStore } from '@/store/editor-store'
+import { useStore } from '@/store'
 import { FrontmatterElement } from '../ui/node-frontmatter'
 
 export const FRONTMATTER_KEY = 'frontmatter'
@@ -41,7 +41,7 @@ export const frontmatterPlugin = createPlatePlugin({
 
       event.preventDefault()
       event.stopPropagation()
-      useEditorStore.getState().setFrontmatterFocusTarget('addButton')
+      useStore.getState().setFrontmatterFocusTarget('addButton')
     },
   },
 })

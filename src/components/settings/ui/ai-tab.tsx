@@ -1,7 +1,8 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { useAISettingsStore } from '@/store/ai-settings-store'
+import { useShallow } from 'zustand/shallow'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import {
   Field,
@@ -42,7 +43,21 @@ export function AITab() {
     selectRenameModel,
     clearRenameModel,
     toggleModelEnabled,
-  } = useAISettingsStore()
+  } = useStore(
+    useShallow((state) => ({
+      connectedProviders: state.connectedProviders,
+      apiModels: state.apiModels,
+      ollamaModels: state.ollamaModels,
+      enabledChatModels: state.enabledChatModels,
+      connectProvider: state.connectProvider,
+      disconnectProvider: state.disconnectProvider,
+      fetchOllamaModels: state.fetchOllamaModels,
+      renameConfig: state.renameConfig,
+      selectRenameModel: state.selectRenameModel,
+      clearRenameModel: state.clearRenameModel,
+      toggleModelEnabled: state.toggleModelEnabled,
+    }))
+  )
 
   useEffect(() => {
     fetchOllamaModels()

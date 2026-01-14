@@ -1,6 +1,7 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
+import { useShallow } from 'zustand/shallow'
 import { useTheme } from '@/contexts/theme-context'
-import { useMDXSettingsStore } from '@/store/mdx-settings-store'
+import { useStore } from '@/store'
 import {
   Field,
   FieldContent,
@@ -21,7 +22,12 @@ import { Switch } from '@/ui/switch'
 
 export function PreferencesTab() {
   const { theme, setTheme } = useTheme()
-  const { isMDXEnabled, setMDXEnabled } = useMDXSettingsStore()
+  const { isMDXEnabled, setMDXEnabled } = useStore(
+    useShallow((state) => ({
+      isMDXEnabled: state.isMDXEnabled,
+      setMDXEnabled: state.setMDXEnabled,
+    }))
+  )
 
   const themeOptions: Array<{
     value: 'light' | 'dark' | 'system'

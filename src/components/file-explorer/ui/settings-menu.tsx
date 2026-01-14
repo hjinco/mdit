@@ -1,10 +1,10 @@
 import { SettingsIcon } from 'lucide-react'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function SettingsMenu() {
-  const setSettingsDialogOpen = useUIStore((s) => s.setSettingsDialogOpen)
+  const setSettingsDialogOpen = useStore((s) => s.setSettingsDialogOpen)
 
   return (
     <Button

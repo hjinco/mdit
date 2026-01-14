@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
-import { useUIStore } from '@/store/ui-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
@@ -28,7 +27,7 @@ export function WindowMenu() {
     zoomIn,
     zoomOut,
     resetZoom,
-  } = useUIStore(
+  } = useStore(
     useShallow((s) => ({
       toggleFileExplorer: s.toggleFileExplorerOpen,
       openCommandMenu: s.openCommandMenu,

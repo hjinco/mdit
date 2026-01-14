@@ -1,18 +1,17 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useLicenseStore } from '../../store/license-store'
-import { useUIStore } from '../../store/ui-store'
+import { useStore } from '@/store'
 import { Button } from '../../ui/button'
 import { checkInternetConnectivity } from '../../utils/network-utils'
 
 export function LicenseKeyButton() {
-  const { status, checkLicense } = useLicenseStore(
+  const { status, checkLicense, openSettingsWithTab } = useStore(
     useShallow((s) => ({
       status: s.status,
       checkLicense: s.checkLicense,
+      openSettingsWithTab: s.openSettingsWithTab,
     }))
   )
-  const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
 
   useEffect(() => {
     const checkAndValidateLicense = async () => {

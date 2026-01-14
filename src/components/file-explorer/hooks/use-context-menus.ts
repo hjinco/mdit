@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import clipboard from 'tauri-plugin-clipboard-api'
+import { useShallow } from 'zustand/shallow'
 import {
   getRevealInFileManagerLabel,
   revealInFileManager,
@@ -22,8 +23,7 @@ import {
   saveNoteAsTemplate,
 } from '@/components/file-explorer/utils/template-utils'
 import { useStore } from '@/store'
-import type { ChatConfig } from '@/store/ai-settings-store'
-import { useImageEditStore } from '@/store/image-edit-store'
+import type { ChatConfig } from '@/store/ai-settings/ai-settings-slice'
 import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
@@ -79,8 +79,12 @@ export const useFileExplorerMenus = ({
   pinDirectory,
   unpinDirectory,
 }: UseFileExplorerMenusProps) => {
-  const openImageEdit = useImageEditStore((state) => state.openImageEdit)
-  const copyEntry = useStore((state) => state.copyEntry)
+  const { openImageEdit, copyEntry } = useStore(
+    useShallow((state) => ({
+      openImageEdit: state.openImageEdit,
+      copyEntry: state.copyEntry,
+    }))
+  )
 
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {

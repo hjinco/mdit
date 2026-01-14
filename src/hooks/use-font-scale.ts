@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 
 /**
  * Syncs the current font scale to the root CSS variable.
  */
 export function useFontScale() {
-  const fontScale = useUIStore((s) => s.fontScale)
+  const fontScale = useStore((s) => s.fontScale)
 
   useEffect(() => {
     document.documentElement.style.setProperty(

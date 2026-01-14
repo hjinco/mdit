@@ -1,8 +1,7 @@
 import { Check, ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { useCurrentWindowLabel } from '@/hooks/use-current-window-label'
 import { cn } from '@/lib/utils'
-import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useUIStore } from '@/store/ui-store'
+import { useStore } from '@/store'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +18,13 @@ export function AIModelSelector({
   modelPopoverOpen,
   onModelPopoverOpenChange,
 }: AIModelSelectorProps) {
-  const openSettingsWithTab = useUIStore((s) => s.openSettingsWithTab)
-  const { enabledChatModels, chatConfig, selectModel } = useAISettingsStore()
+  const { enabledChatModels, chatConfig, selectModel, openSettingsWithTab } =
+    useStore((s) => ({
+      enabledChatModels: s.enabledChatModels,
+      chatConfig: s.chatConfig,
+      selectModel: s.selectModel,
+      openSettingsWithTab: s.openSettingsWithTab,
+    }))
   const windowLabel = useCurrentWindowLabel()
 
   return (
