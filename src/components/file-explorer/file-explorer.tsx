@@ -21,7 +21,6 @@ import { GitSyncStatus } from './ui/git-sync-status'
 import { PinnedList } from './ui/pinned-list'
 import { RootNewFolderInput } from './ui/root-new-folder-input'
 import { SettingsMenu } from './ui/settings-menu'
-// import { TagList } from './ui/tag-list'
 import { TopMenu } from './ui/top-menu'
 import { TreeNode } from './ui/tree-node'
 import { WorkspaceDropdown } from './ui/workspace-dropdown'
@@ -274,7 +273,6 @@ export function FileExplorer() {
       beginNewFolder,
       handleDeleteEntries,
       createNote: createNoteAndScroll,
-      openTab,
       workspacePath,
       selectedEntryPaths,
       setSelectedEntryPaths,
