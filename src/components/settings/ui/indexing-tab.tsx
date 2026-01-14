@@ -2,9 +2,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { Loader2Icon, RefreshCcwIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
+import { useStore } from '@/store'
 import { useAISettingsStore } from '@/store/ai-settings-store'
 import { useIndexingStore } from '@/store/indexing-store'
-import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { Button } from '@/ui/button'
 import {
   Field,
@@ -30,8 +31,12 @@ type IndexingMeta = {
 }
 
 export function IndexingTab() {
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const entries = useWorkspaceStore((state) => state.entries)
+  const { workspacePath, entries } = useStore(
+    useShallow((state) => ({
+      workspacePath: state.workspacePath,
+      entries: state.entries,
+    }))
+  )
   const { setIndexingConfig, indexWorkspace, indexingState, configs } =
     useIndexingStore(
       useShallow((state) => ({

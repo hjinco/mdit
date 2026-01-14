@@ -1,12 +1,12 @@
 import { SquarePenIcon } from 'lucide-react'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
+import { useStore } from '@/store'
 import { Button } from '@/ui/button'
 import { Kbd, KbdGroup } from '@/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getModifierKey } from '@/utils/keyboard-shortcut'
 
 export function NewNoteButton() {
-  const createAndOpenNote = useWorkspaceFsStore((s) => s.createAndOpenNote)
+  const createAndOpenNote = useStore((s) => s.createAndOpenNote)
 
   return (
     <Tooltip>

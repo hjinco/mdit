@@ -1,6 +1,7 @@
 import { ChevronsUpDown, FolderIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import { useStore } from '@/store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { Button } from '@/ui/button'
 import {
   Command,
@@ -63,7 +64,7 @@ function collectDirectories(
 
 export function FolderPicker({ onSelect, workspacePath }: FolderPickerProps) {
   const [open, setOpen] = useState(false)
-  const entries = useWorkspaceStore((state) => state.entries)
+  const entries = useStore((state) => state.entries)
 
   const directories = useMemo(() => {
     return collectDirectories(entries, workspacePath)

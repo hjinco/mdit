@@ -21,11 +21,10 @@ import {
   getTemplateFiles,
   saveNoteAsTemplate,
 } from '@/components/file-explorer/utils/template-utils'
+import { useStore } from '@/store'
 import type { ChatConfig } from '@/store/ai-settings-store'
 import { useImageEditStore } from '@/store/image-edit-store'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { isImageFile } from '@/utils/file-icon'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
@@ -79,7 +78,7 @@ export const useFileExplorerMenus = ({
   unpinDirectory,
 }: UseFileExplorerMenusProps) => {
   const openImageEdit = useImageEditStore((state) => state.openImageEdit)
-  const copyEntry = useWorkspaceFsStore((state) => state.copyEntry)
+  const copyEntry = useStore((state) => state.copyEntry)
 
   const showEntryMenu = useCallback(
     async (entry: WorkspaceEntry, selectionPaths: string[]) => {
@@ -294,7 +293,7 @@ export const useFileExplorerMenus = ({
                           initialName: template.name,
                           initialContent: templateContent,
                         })
-                        const { openTab } = useTabStore.getState()
+                        const { openTab } = useStore.getState()
                         await openTab(filePath, false, false, {
                           initialContent: templateContent,
                         })

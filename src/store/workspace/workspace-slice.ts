@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { resolve } from 'pathe'
 import { toast } from 'sonner'
-import { create } from 'zustand'
+import type { StateCreator } from 'zustand'
 import type { WorkspaceSettings } from '@/lib/settings-utils'
 import { FileSystemRepository } from '@/repositories/file-system-repository'
 import { WorkspaceHistoryRepository } from '@/repositories/workspace-history-repository'
@@ -12,27 +12,18 @@ import {
   isPathEqualOrDescendant,
   normalizePathSeparators,
 } from '@/utils/path-utils'
-import {
-  buildWorkspaceEntries,
-  findEntryByPath,
-} from './workspace/utils/entry-utils'
+import type { CollectionSlice } from '../collection/collection-slice'
+import type { TabSlice } from '../tab/tab-slice'
+import { buildWorkspaceEntries, findEntryByPath } from './utils/entry-utils'
 import {
   syncExpandedDirectoriesWithEntries,
   toggleExpandedDirectory,
-} from './workspace/utils/expanded-directories-utils'
+} from './utils/expanded-directories-utils'
 import {
   filterPinsForWorkspace,
   filterPinsWithEntries,
   normalizePinnedDirectoriesList,
-} from './workspace/utils/pinned-directories-utils'
-import type {
-  CollectionStoreAdapter,
-  TabStoreAdapter,
-} from './workspace-store-adapters'
-import {
-  collectionStoreAdapter,
-  tabStoreAdapter,
-} from './workspace-store-adapters'
+} from './utils/pinned-directories-utils'
 
 const MAX_HISTORY_LENGTH = 5
 
@@ -44,17 +35,15 @@ type OpenDialog = (options: {
 
 type ApplyWorkspaceMigrations = (workspacePath: string) => Promise<void>
 
-type WorkspaceStoreDependencies = {
+type WorkspaceSliceDependencies = {
   fileSystemRepository: FileSystemRepository
   settingsRepository: WorkspaceSettingsRepository
   historyRepository: WorkspaceHistoryRepository
   openDialog: OpenDialog
   applyWorkspaceMigrations: ApplyWorkspaceMigrations
-  tabStoreAdapter: TabStoreAdapter
-  collectionStoreAdapter: CollectionStoreAdapter
 }
 
-const buildWorkspaceState = (overrides?: Partial<WorkspaceStore>) => ({
+const buildWorkspaceState = (overrides?: Partial<WorkspaceSlice>) => ({
   isLoading: false,
   workspacePath: null,
   recentWorkspacePaths: [],
@@ -75,7 +64,7 @@ export type WorkspaceEntry = {
   modifiedAt?: Date
 }
 
-type WorkspaceStore = {
+export type WorkspaceSlice = {
   isLoading: boolean
   workspacePath: string | null
   recentWorkspacePaths: string[]
@@ -88,7 +77,9 @@ type WorkspaceStore = {
     action: (expandedDirectories: string[]) => string[]
   ) => Promise<void>
   updateEntries: (
-    action: (entries: WorkspaceEntry[]) => WorkspaceEntry[]
+    entriesOrAction:
+      | WorkspaceEntry[]
+      | ((entries: WorkspaceEntry[]) => WorkspaceEntry[])
   ) => void
   applyWorkspaceUpdate: (update: {
     entries?: WorkspaceEntry[]
@@ -105,16 +96,20 @@ type WorkspaceStore = {
   clearWorkspace: () => Promise<void>
 }
 
-export const createWorkspaceStore = ({
-  fileSystemRepository,
-  settingsRepository,
-  historyRepository,
-  openDialog,
-  applyWorkspaceMigrations,
-  tabStoreAdapter,
-  collectionStoreAdapter,
-}: WorkspaceStoreDependencies) =>
-  create<WorkspaceStore>((set, get) => {
+export const prepareWorkspaceSlice =
+  ({
+    openDialog,
+    applyWorkspaceMigrations,
+    fileSystemRepository,
+    settingsRepository,
+    historyRepository,
+  }: WorkspaceSliceDependencies): StateCreator<
+    WorkspaceSlice & TabSlice & CollectionSlice,
+    [],
+    [],
+    WorkspaceSlice
+  > =>
+  (set, get) => {
     const restoreLastOpenedNoteFromSettings = async (
       workspacePath: string,
       settings: WorkspaceSettings
@@ -132,9 +127,11 @@ export const createWorkspaceStore = ({
           (await fileSystemRepository.exists(absolutePath)) &&
           get().workspacePath === workspacePath
         ) {
-          tabStoreAdapter.openTab(absolutePath).catch((error) => {
-            console.debug('Failed to open last opened note:', error)
-          })
+          get()
+            .openTab(absolutePath)
+            .catch((error) => {
+              console.debug('Failed to open last opened note:', error)
+            })
         }
       } catch (error) {
         console.debug('Failed to restore last opened note:', error)
@@ -193,8 +190,8 @@ export const createWorkspaceStore = ({
           entries
         )
 
+        get().updateEntries(entries)
         set({
-          entries,
           isTreeLoading: false,
           expandedDirectories: syncedExpandedDirectories,
           pinnedDirectories: nextPinned,
@@ -252,10 +249,13 @@ export const createWorkspaceStore = ({
         }
       },
 
-      updateEntries: (action) => {
-        set((state) => ({
-          entries: action(state.entries),
-        }))
+      updateEntries: (entriesOrAction) => {
+        const entries =
+          typeof entriesOrAction === 'function'
+            ? entriesOrAction(get().entries)
+            : entriesOrAction
+        set({ entries })
+        get().refreshCollectionEntries()
       },
 
       applyWorkspaceUpdate: async (update) => {
@@ -268,8 +268,10 @@ export const createWorkspaceStore = ({
           update.pinnedDirectories
 
         if (shouldUpdate) {
+          if (update.entries) {
+            get().updateEntries(update.entries)
+          }
           set((state) => ({
-            entries: update.entries ?? state.entries,
             expandedDirectories:
               update.expandedDirectories ?? state.expandedDirectories,
             pinnedDirectories:
@@ -328,7 +330,7 @@ export const createWorkspaceStore = ({
               isTreeLoading: Boolean(workspacePath),
             })
           )
-          collectionStoreAdapter.resetCollectionPath()
+          get().resetCollectionPath()
 
           if (workspacePath) {
             await bootstrapWorkspace(workspacePath, {
@@ -340,7 +342,7 @@ export const createWorkspaceStore = ({
         } catch (error) {
           console.error('Failed to initialize workspace:', error)
           set(buildWorkspaceState())
-          collectionStoreAdapter.resetCollectionPath()
+          get().resetCollectionPath()
         }
       },
 
@@ -357,13 +359,13 @@ export const createWorkspaceStore = ({
             return
           }
 
-          const { tab } = tabStoreAdapter.getSnapshot()
+          const { tab } = get()
 
           if (tab) {
-            tabStoreAdapter.closeTab(tab.path)
+            get().closeTab(tab.path)
           }
 
-          tabStoreAdapter.clearHistory()
+          get().clearHistory()
 
           const recentWorkspacePaths = get().recentWorkspacePaths
 
@@ -381,7 +383,7 @@ export const createWorkspaceStore = ({
               isTreeLoading: true,
             })
           )
-          collectionStoreAdapter.resetCollectionPath()
+          get().resetCollectionPath()
 
           await bootstrapWorkspace(path)
         } catch (error) {
@@ -432,8 +434,8 @@ export const createWorkspaceStore = ({
           )
           const nextExpanded = syncedExpanded
 
+          get().updateEntries(entries)
           set({
-            entries,
             isTreeLoading: false,
             expandedDirectories: syncedExpanded,
             ...(pinsChanged ? { pinnedDirectories: nextPinned } : {}),
@@ -525,7 +527,7 @@ export const createWorkspaceStore = ({
       },
 
       clearWorkspace: async () => {
-        const { tab } = tabStoreAdapter.getSnapshot()
+        const { tab } = get()
         const workspacePath = get().workspacePath
 
         if (!workspacePath) return
@@ -533,8 +535,8 @@ export const createWorkspaceStore = ({
         await fileSystemRepository.moveToTrash(workspacePath)
 
         if (tab) {
-          tabStoreAdapter.closeTab(tab.path)
-          tabStoreAdapter.clearHistory()
+          get().closeTab(tab.path)
+          get().clearHistory()
         }
 
         const recentWorkspacePaths = get().recentWorkspacePaths
@@ -550,12 +552,12 @@ export const createWorkspaceStore = ({
             isMigrationsComplete: true,
           })
         )
-        collectionStoreAdapter.resetCollectionPath()
+        get().resetCollectionPath()
       },
     }
-  })
+  }
 
-export const useWorkspaceStore = createWorkspaceStore({
+export const createWorkspaceSlice = prepareWorkspaceSlice({
   fileSystemRepository: new FileSystemRepository(),
   settingsRepository: new WorkspaceSettingsRepository(),
   historyRepository: new WorkspaceHistoryRepository(),
@@ -565,6 +567,4 @@ export const useWorkspaceStore = createWorkspaceStore({
   },
   applyWorkspaceMigrations: (workspacePath: string) =>
     invoke<void>('apply_workspace_migrations', { workspacePath }),
-  tabStoreAdapter,
-  collectionStoreAdapter,
 })

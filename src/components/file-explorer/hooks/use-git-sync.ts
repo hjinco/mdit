@@ -7,8 +7,8 @@ import {
 import { Command } from '@tauri-apps/plugin-shell'
 import { join } from 'pathe'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useStore } from '@/store'
 import { useGitSyncStore } from '@/store/git-sync-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 
 // Finite representation of the sync lifecycle states the hook can emit.
 type GitSyncStatus = 'syncing' | 'synced' | 'unsynced' | 'error'
@@ -199,7 +199,7 @@ export function useGitSync(workspacePath: string | null) {
         commitHashBeforePull === null || commitHashAfterPull === null
 
       if (isInitialRepo || commitHashBeforePull !== commitHashAfterPull) {
-        await useWorkspaceStore.getState().refreshWorkspaceEntries()
+        await useStore.getState().refreshWorkspaceEntries()
       }
     } catch (error) {
       const message =

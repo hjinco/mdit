@@ -13,20 +13,21 @@ import { Welcome } from './components/welcome/welcome'
 import { ScreenCaptureProvider } from './contexts/screen-capture-context'
 import { useAutoIndexing } from './hooks/use-auto-indexing'
 import { useFontScale } from './hooks/use-font-scale'
-import { useWorkspaceStore } from './store/workspace-store'
-import { useWorkspaceWatchStore } from './store/workspace-watch-store'
+import { useStore } from './store'
 import { isLinux, isWindows10 } from './utils/platform'
 
 export function App() {
-  const { workspacePath, isLoading, initializeWorkspace } = useWorkspaceStore(
+  const {
+    workspacePath,
+    isLoading,
+    initializeWorkspace,
+    watchWorkspace,
+    unwatchWorkspace,
+  } = useStore(
     useShallow((s) => ({
       workspacePath: s.workspacePath,
       isLoading: s.isLoading,
       initializeWorkspace: s.initializeWorkspace,
-    }))
-  )
-  const { watchWorkspace, unwatchWorkspace } = useWorkspaceWatchStore(
-    useShallow((s) => ({
       watchWorkspace: s.watchWorkspace,
       unwatchWorkspace: s.unwatchWorkspace,
     }))

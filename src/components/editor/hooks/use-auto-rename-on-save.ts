@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
+import { useStore } from '@/store'
 import { getFileNameWithoutExtension } from '@/utils/path-utils'
 
 /**
@@ -9,8 +8,7 @@ import { getFileNameWithoutExtension } from '@/utils/path-utils'
 export function useAutoRenameOnSave(path: string) {
   const handleRenameAfterSave = useCallback(() => {
     // Check if we should rename based on tab.name (which may be from first heading)
-    const { tab, linkedTab } = useTabStore.getState()
-    const { renameEntry } = useWorkspaceFsStore.getState()
+    const { tab, linkedTab, renameEntry } = useStore.getState()
 
     if (tab && tab.path === path) {
       const isLinkedToCurrentTab = linkedTab && linkedTab.path === tab.path

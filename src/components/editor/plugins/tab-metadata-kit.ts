@@ -1,7 +1,6 @@
 import { KEYS } from 'platejs'
 import { createPlatePlugin } from 'platejs/react'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
 import { sanitizeFilename } from '@/utils/path-utils'
 
 /**
@@ -29,11 +28,11 @@ const TabMetadataPlugin = createPlatePlugin({
   handlers: {
     onChange: ({ editor }) => {
       // editor only mode
-      if (!useWorkspaceStore.getState().workspacePath) {
+      if (!useStore.getState().workspacePath) {
         return
       }
 
-      const { tab, linkedTab, updateLinkedName } = useTabStore.getState()
+      const { tab, linkedTab, updateLinkedName } = useStore.getState()
 
       const isLinkedToCurrentTab =
         tab && linkedTab && linkedTab.path === tab.path

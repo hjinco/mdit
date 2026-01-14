@@ -52,7 +52,8 @@
       },
       "performance": {
         "noNamespaceImport": "off",
-        "noImgElement": "off"
+        "noImgElement": "off",
+        "noBarrelFile": "off"
       }
     }
   }

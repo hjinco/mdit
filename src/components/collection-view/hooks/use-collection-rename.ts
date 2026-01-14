@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 
 type RenameEntry = (
   entry: WorkspaceEntry,

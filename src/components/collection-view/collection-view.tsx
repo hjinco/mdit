@@ -4,11 +4,9 @@ import { type MouseEvent, useCallback, useMemo, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useResizablePanel } from '@/hooks/use-resizable-panel'
 import { cn } from '@/lib/utils'
+import { useStore } from '@/store'
 import { useAISettingsStore } from '@/store/ai-settings-store'
-import { useCollectionStore } from '@/store/collection-store'
-import { useTabStore } from '@/store/tab-store'
 import { useUIStore } from '@/store/ui-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
 import { getFolderNameFromPath } from '@/utils/path-utils'
 import { isMac } from '@/utils/platform'
 import { useCollectionContextMenu } from './hooks/use-collection-context-menu'
@@ -24,14 +22,35 @@ import { NoteEntry } from './ui/note-entry'
 import { SortSelector } from './ui/sort-selector'
 
 export function CollectionView() {
-  const { currentCollectionPath, setCurrentCollectionPath, collectionEntries } =
-    useCollectionStore(
-      useShallow((state) => ({
-        currentCollectionPath: state.currentCollectionPath,
-        setCurrentCollectionPath: state.setCurrentCollectionPath,
-        collectionEntries: state.collectionEntries,
-      }))
-    )
+  const {
+    currentCollectionPath,
+    setCurrentCollectionPath,
+    collectionEntries,
+    tab,
+    linkedTab,
+    openTab,
+    isSaved,
+    clearLinkedTab,
+    deleteEntries,
+    renameNoteWithAI,
+    renameEntry,
+    updateEntryModifiedDate,
+  } = useStore(
+    useShallow((state) => ({
+      currentCollectionPath: state.currentCollectionPath,
+      setCurrentCollectionPath: state.setCurrentCollectionPath,
+      collectionEntries: state.collectionEntries,
+      tab: state.tab,
+      linkedTab: state.linkedTab,
+      openTab: state.openTab,
+      isSaved: state.isSaved,
+      clearLinkedTab: state.clearLinkedTab,
+      deleteEntries: state.deleteEntries,
+      renameNoteWithAI: state.renameNoteWithAI,
+      renameEntry: state.renameEntry,
+      updateEntryModifiedDate: state.updateEntryModifiedDate,
+    }))
+  )
   const isCollectionViewOpen = currentCollectionPath !== null
   const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
     storageKey: 'collection-view-width',
@@ -42,30 +61,8 @@ export function CollectionView() {
       setCurrentCollectionPath((prev) => (open ? prev : null))
     },
   })
-  const { tab, linkedTab, openTab, isSaved, clearLinkedTab } = useTabStore(
-    useShallow((state) => ({
-      tab: state.tab,
-      linkedTab: state.linkedTab,
-      openTab: state.openTab,
-      isSaved: state.isSaved,
-      clearLinkedTab: state.clearLinkedTab,
-    }))
-  )
 
   const isFileExplorerOpen = useUIStore((state) => state.isFileExplorerOpen)
-  const {
-    deleteEntries,
-    renameNoteWithAI,
-    renameEntry,
-    updateEntryModifiedDate,
-  } = useWorkspaceFsStore(
-    useShallow((state) => ({
-      deleteEntries: state.deleteEntries,
-      renameNoteWithAI: state.renameNoteWithAI,
-      renameEntry: state.renameEntry,
-      updateEntryModifiedDate: state.updateEntryModifiedDate,
-    }))
-  )
   const renameConfig = useAISettingsStore((state) => state.renameConfig)
 
   const displayName = currentCollectionPath
@@ -250,7 +247,9 @@ export function CollectionView() {
                 <NoteEntry
                   key={entry.path}
                   entry={entry}
-                  name={isActive ? (linkedTab?.name ?? tab.name) : entry.name}
+                  name={
+                    isActive ? (linkedTab?.name ?? tab?.name ?? '') : entry.name
+                  }
                   isActive={isActive}
                   isSelected={isSelected}
                   onClick={handleClick}

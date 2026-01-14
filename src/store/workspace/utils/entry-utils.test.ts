@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { WorkspaceEntry } from '../../workspace-store'
+import type { WorkspaceEntry } from '../workspace-slice'
 import {
   addEntryToState,
   findEntryByPath,

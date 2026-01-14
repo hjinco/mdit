@@ -24,9 +24,8 @@ import { PlateElement, useEditorRef } from 'platejs/react'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useTabStore } from '@/store/tab-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import { useWorkspaceStore, type WorkspaceEntry } from '@/store/workspace-store'
+import { useStore } from '@/store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { Button } from '@/ui/button'
 import {
   DropdownMenu,
@@ -588,27 +587,27 @@ function DatabaseSortMenu({
 export function DatabaseElement(props: PlateElementProps<TDatabaseElement>) {
   const editor = useEditorRef()
   const element = props.element as TDatabaseElement
-  const { workspacePath, workspaceEntries, isTreeLoading } = useWorkspaceStore(
+  const {
+    workspacePath,
+    workspaceEntries,
+    isTreeLoading,
+    openTab,
+    createNote,
+    deleteEntry,
+    renameEntry,
+    updateFrontmatter,
+  } = useStore(
     useShallow((state) => ({
       workspacePath: state.workspacePath,
       workspaceEntries: state.entries,
       isTreeLoading: state.isTreeLoading,
-    }))
-  )
-  const { openTab } = useTabStore(
-    useShallow((state) => ({
       openTab: state.openTab,
+      createNote: state.createNote,
+      deleteEntry: state.deleteEntry,
+      renameEntry: state.renameEntry,
+      updateFrontmatter: state.updateFrontmatter,
     }))
   )
-  const { createNote, deleteEntry, renameEntry, updateFrontmatter } =
-    useWorkspaceFsStore(
-      useShallow((state) => ({
-        createNote: state.createNote,
-        deleteEntry: state.deleteEntry,
-        renameEntry: state.renameEntry,
-        updateFrontmatter: state.updateFrontmatter,
-      }))
-    )
 
   const resolvedFolderPath = resolveFolderPath(element.folder, workspacePath)
   const entries = useMemo(() => {

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { WorkspaceEntry } from '@/store/workspace-store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 
 export type NoteResult = {
   path: string

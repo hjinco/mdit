@@ -1,4 +1,4 @@
-import type { WorkspaceEntry } from '../../workspace-store'
+import type { WorkspaceEntry } from '../workspace-slice'
 
 export function collectDirectoryPaths(
   entries: WorkspaceEntry[],

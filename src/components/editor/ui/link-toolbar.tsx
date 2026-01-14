@@ -39,10 +39,10 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
-import { useTabStore } from '@/store/tab-store'
-import type { WorkspaceEntry } from '@/store/workspace-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
+import { useStore } from '@/store'
+import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { buttonVariants } from '@/ui/button'
 import { Separator } from '@/ui/separator'
 
@@ -173,9 +173,18 @@ function LinkUrlInput() {
   const editor = useEditorRef()
   const { api, setOption } = useEditorPlugin(LinkPlugin)
 
-  const workspaceEntries = useWorkspaceStore((state) => state.entries)
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const currentTabPath = useTabStore((state) => state.tab?.path ?? null)
+  const {
+    entries: workspaceEntries,
+    workspacePath,
+    tab,
+  } = useStore(
+    useShallow((state) => ({
+      entries: state.entries,
+      workspacePath: state.workspacePath,
+      tab: state.tab,
+    }))
+  )
+  const currentTabPath = tab?.path ?? null
 
   const suggestionsSource = useMemo(
     () => flattenWorkspaceFiles(workspaceEntries, workspacePath),
@@ -601,9 +610,17 @@ function LinkIcon({ value }: { value: string }) {
 function LinkOpenButton() {
   const editor = useEditorRef()
   const selection = useEditorSelection()
-  const workspacePath = useWorkspaceStore((state) => state.workspacePath)
-  const openTab = useTabStore((state) => state.openTab)
-  const currentTab = useTabStore((state) => state.tab)
+  const {
+    workspacePath,
+    openTab,
+    tab: currentTab,
+  } = useStore(
+    useShallow((state) => ({
+      workspacePath: state.workspacePath,
+      openTab: state.openTab,
+      tab: state.tab,
+    }))
+  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: get element when the selection changes
   const { element } = useMemo(() => {

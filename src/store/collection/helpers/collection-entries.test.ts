@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { WorkspaceEntry } from '../../workspace-store'
+import type { WorkspaceEntry } from '../../workspace/workspace-slice'
 import { computeCollectionEntries } from './collection-entries'
 
 const makeFile = (

@@ -5,7 +5,7 @@ import {
   normalizePathSeparators,
 } from '@/utils/path-utils'
 
-import type { WorkspaceEntry } from '../../workspace-store'
+import type { WorkspaceEntry } from '../workspace-slice'
 
 type WorkspaceEntryFileSystem = {
   readDir: (path: string) => Promise<DirEntry[]>

@@ -1,22 +1,23 @@
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { useCollectionStore } from '@/store/collection-store'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import { useUIStore } from '@/store/ui-store'
-import { useWorkspaceFsStore } from '@/store/workspace-fs-store'
-import { useWorkspaceStore } from '@/store/workspace-store'
 import { installWindowMenu } from './menu'
 
 export function WindowMenu() {
-  const createAndOpenNote = useWorkspaceFsStore((s) => s.createAndOpenNote)
-  const { openFolderPicker } = useWorkspaceStore(
+  const {
+    createAndOpenNote,
+    openFolderPicker,
+    toggleCollectionView,
+    goBack,
+    goForward,
+  } = useStore(
     useShallow((s) => ({
+      createAndOpenNote: s.createAndOpenNote,
       openFolderPicker: s.openFolderPicker,
-    }))
-  )
-  const { toggleCollectionView } = useCollectionStore(
-    useShallow((s) => ({
       toggleCollectionView: s.toggleCollectionView,
+      goBack: s.goBack,
+      goForward: s.goForward,
     }))
   )
 
@@ -35,12 +36,6 @@ export function WindowMenu() {
       zoomIn: s.increaseFontScale,
       zoomOut: s.decreaseFontScale,
       resetZoom: s.resetFontScale,
-    }))
-  )
-  const { goBack, goForward } = useTabStore(
-    useShallow((s) => ({
-      goBack: s.goBack,
-      goForward: s.goForward,
     }))
   )
 

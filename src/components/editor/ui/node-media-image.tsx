@@ -8,7 +8,7 @@ import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
 import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { useTabStore } from '@/store/tab-store'
+import { useStore } from '@/store'
 import { Caption, CaptionTextarea } from './caption'
 import { MediaToolbar } from './media-toolbar'
 import {
@@ -20,7 +20,7 @@ import {
 export const ImageElement = withHOC(
   ResizableProvider,
   function ImageElement(props: PlateElementProps<TImageElement>) {
-    const tabPath = useTabStore((state) => state.tab?.path)
+    const tabPath = useStore((state) => state.tab?.path)
     const { align = 'center', focused, readOnly, selected } = useMediaState()
     const width = useResizableValue('width')
     const [hasError, setHasError] = useState(false)
