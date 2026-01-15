@@ -110,7 +110,6 @@ export function Draggable(props: PlateElementProps) {
 
   return (
     <div
-      ref={draggableRef}
       className={cn(
         'group relative transition-opacity flow-root',
         isDragging && !isBlockSelected && 'opacity-30'
