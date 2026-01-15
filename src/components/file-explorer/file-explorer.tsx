@@ -1,4 +1,4 @@
-import { useDroppable } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/react'
 import { motion } from 'motion/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
@@ -134,16 +134,15 @@ export function FileExplorer() {
   const entryMap = useEntryMap(entries)
 
   // Setup workspace root as a drop target (for internal dnd)
-  const { setNodeRef: setWorkspaceDropRef, isOver: isOverWorkspaceInternal } =
-    useDroppable({
-      id: `droppable-${workspacePath}`,
-      data: {
-        path: workspacePath,
-        isDirectory: true,
-        depth: -1,
-      },
-      disabled: !workspacePath,
-    })
+  const { ref: workspaceDropRef, isDropTarget } = useDroppable({
+    id: `droppable-${workspacePath}`,
+    data: {
+      path: workspacePath,
+      isDirectory: true,
+      depth: -1,
+    },
+    disabled: !workspacePath,
+  })
 
   // Setup external file drop zone for workspace root
   const { isOver: isOverWorkspaceExternal, ref: workspaceExternalDropRef } =
@@ -153,7 +152,7 @@ export function FileExplorer() {
     })
 
   // Combine both drop states for visual feedback
-  const isOverWorkspace = isOverWorkspaceInternal || isOverWorkspaceExternal
+  const isOverWorkspace = isDropTarget || isOverWorkspaceExternal
 
   const beginRenaming = useCallback((entry: WorkspaceEntry) => {
     setRenamingEntryPath(entry.path)
@@ -335,7 +334,7 @@ export function FileExplorer() {
           </div>
           <div
             ref={(node) => {
-              setWorkspaceDropRef(node)
+              workspaceDropRef(node)
               workspaceExternalDropRef(node)
             }}
             className={cn(

@@ -1,4 +1,4 @@
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/react'
 import { ChevronDown, ChevronRight, PanelLeftIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -94,7 +94,7 @@ export function TreeNode({
   const showExtension = !isMarkdown && extension
 
   // Setup draggable
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { ref: draggableRef, isDragging } = useDraggable({
     id: entry.path,
     data: {
       path: entry.path,
@@ -105,7 +105,7 @@ export function TreeNode({
   })
 
   // Setup droppable only for directories (for internal dnd)
-  const { setNodeRef: setDroppableRef, isOver: isOverInternal } = useDroppable({
+  const { ref: droppableRef, isDropTarget } = useDroppable({
     id: `droppable-${entry.path}`,
     data: {
       path: entry.path,
@@ -122,7 +122,7 @@ export function TreeNode({
   })
 
   // Combine both drop states for visual feedback
-  const isOver = isOverInternal || isOverExternal
+  const isOver = isDropTarget || isOverExternal
 
   const handlePrimaryAction = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -170,10 +170,10 @@ export function TreeNode({
   // Common button ref callback that combines setNodeRef and buttonRef
   const handleButtonRef = useCallback(
     (node: HTMLButtonElement | null) => {
-      setNodeRef(node)
+      draggableRef(node)
       buttonRef.current = node
     },
-    [setNodeRef]
+    [draggableRef]
   )
 
   useEffect(() => {
@@ -320,7 +320,7 @@ export function TreeNode({
       {isDirectory ? (
         <div
           ref={(node) => {
-            setDroppableRef(node)
+            droppableRef(node)
             externalDropRef(node)
           }}
           className="relative rounded-sm"
@@ -346,8 +346,6 @@ export function TreeNode({
               )}
               style={{ paddingLeft: `${depth * INDENTATION_WIDTH}px` }}
               disabled={isBusy}
-              {...attributes}
-              {...listeners}
             >
               <div
                 className={cn(
@@ -466,8 +464,6 @@ export function TreeNode({
           )}
           style={{ paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px` }}
           disabled={isBusy}
-          {...attributes}
-          {...listeners}
         >
           <div
             className={cn(

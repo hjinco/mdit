@@ -1,4 +1,4 @@
-import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/react'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { GripVertical } from 'lucide-react'
 import { KEYS } from 'platejs'
@@ -74,7 +74,7 @@ export function Draggable(props: PlateElementProps) {
   const elementId = props.element.id as string
   const isFirstChild = props.path.length === 1 && props.path[0] === 0
 
-  const { setNodeRef, attributes, listeners, isDragging } = useDraggable({
+  const { ref: draggableRef, isDragging } = useDraggable({
     id: `editor-${elementId}`,
     data: { kind: 'editor', id: elementId },
   })
@@ -86,14 +86,14 @@ export function Draggable(props: PlateElementProps) {
   const isBlockSelected = !!selectedIds && selectedIds.has(elementId)
 
   // Top drop zone - always call hooks, but only use when valid
-  const { setNodeRef: setTopDropRef, isOver: isOverTop } = useDroppable({
+  const { ref: topDropRef, isDropTarget: isOverTop } = useDroppable({
     id: `editor-${elementId}-top`,
     data: { kind: 'editor', id: elementId, position: 'top' },
     disabled: isDragging || isBlockSelected,
   })
 
   // Bottom drop zone - always call hooks, but only use when valid
-  const { setNodeRef: setBottomDropRef, isOver: isOverBottom } = useDroppable({
+  const { ref: bottomDropRef, isDropTarget: isOverBottom } = useDroppable({
     id: `editor-${elementId}-bottom`,
     data: { kind: 'editor', id: elementId, position: 'bottom' },
     disabled: isDragging || isBlockSelected,
@@ -118,11 +118,8 @@ export function Draggable(props: PlateElementProps) {
       <DragHandle
         type={props.element.type}
         isFirstChild={isFirstChild}
-        setNodeRef={setNodeRef}
-        {...attributes}
-        {...listeners}
+        setNodeRef={draggableRef}
         onMouseDown={(e) => {
-          listeners?.onMouseDown?.(e)
           e.preventDefault()
           e.stopPropagation()
         }}
@@ -130,14 +127,14 @@ export function Draggable(props: PlateElementProps) {
       />
       {/* Top drop zone */}
       <div
-        ref={setTopDropRef}
+        ref={topDropRef}
         className="absolute inset-x-0 top-0 h-1/2 z-10"
         style={{ pointerEvents: 'none' }}
         contentEditable={false}
       />
       {/* Bottom drop zone */}
       <div
-        ref={setBottomDropRef}
+        ref={bottomDropRef}
         className="absolute inset-x-0 bottom-0 h-1/2 z-10"
         style={{ pointerEvents: 'none' }}
         contentEditable={false}
