@@ -1,12 +1,4 @@
-import {
-  type CollisionDetection,
-  DndContext,
-  type DragEndEvent,
-  PointerSensor,
-  pointerWithin,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
+import { DragDropProvider, DragOverlay, PointerSensor } from '@dnd-kit/react'
 import { insertImage } from '@platejs/media'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
 import { dirname, extname, relative } from 'pathe'
@@ -21,27 +13,6 @@ import { isPathEqualOrDescendant } from '@/utils/path-utils'
 
 type DndProviderProps = {
   children: React.ReactNode
-}
-
-// Custom collision detection: prioritize deepest depth
-const depthAwareCollision: CollisionDetection = (args) => {
-  const collisions = pointerWithin(args)
-
-  if (collisions.length === 0) {
-    return collisions
-  }
-
-  // Sort by depth (deepest first)
-  const sortedCollisions = collisions.sort((a, b) => {
-    const containerA = args.droppableContainers.find((c) => c.id === a.id)
-    const containerB = args.droppableContainers.find((c) => c.id === b.id)
-    const depthA = containerA?.data.current?.depth ?? -1
-    const depthB = containerB?.data.current?.depth ?? -1
-    return depthB - depthA // Descending order (deepest first)
-  })
-
-  // Return only the deepest one
-  return [sortedCollisions[0]]
 }
 
 export function DndProvider({ children }: DndProviderProps) {
@@ -87,19 +58,30 @@ export function DndProvider({ children }: DndProviderProps) {
     [selectedEntryPaths]
   )
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 4 },
-    })
-  )
+  const sensors = [
+    PointerSensor.configure({
+      activationConstraints: {
+        distance: { value: 4 },
+      },
+    }),
+  ]
 
   const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const overData = event.over?.data.current as
+    async (event: {
+      operation: { source: any; target: any }
+      canceled: boolean
+    }) => {
+      const { operation, canceled } = event
+      if (canceled) {
+        return
+      }
+
+      const { source, target } = operation
+      const overData = target?.data as
         | { kind: 'editor'; id?: string; position?: 'top' | 'bottom' }
         | undefined
       if (overData?.kind === 'editor') {
-        const activeData = event.active.data.current as
+        const activeData = source.data as
           | { path?: string; isDirectory?: boolean }
           | { id?: string }
         if ('path' in activeData) {
@@ -365,8 +347,8 @@ export function DndProvider({ children }: DndProviderProps) {
         return
       }
 
-      const sourcePath = event.active.data.current?.path as string | undefined
-      const dropZoneId = event.over?.id as string | undefined
+      const sourcePath = source.data?.path as string | undefined
+      const dropZoneId = target?.id as string | undefined
 
       if (!sourcePath || !dropZoneId) {
         return
@@ -437,12 +419,11 @@ export function DndProvider({ children }: DndProviderProps) {
   )
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragEnd={handleDragEnd}
-      collisionDetection={depthAwareCollision}
-    >
+    <DragDropProvider sensors={sensors} onDragEnd={handleDragEnd}>
       {children}
-    </DndContext>
+      <DragOverlay>
+        <div />
+      </DragOverlay>
+    </DragDropProvider>
   )
 }
