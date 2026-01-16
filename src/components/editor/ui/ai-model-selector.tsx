@@ -1,4 +1,5 @@
 import { Check, ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
+import { useShallow } from 'zustand/shallow'
 import { useCurrentWindowLabel } from '@/hooks/use-current-window-label'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
@@ -19,12 +20,14 @@ export function AIModelSelector({
   onModelPopoverOpenChange,
 }: AIModelSelectorProps) {
   const { enabledChatModels, chatConfig, selectModel, openSettingsWithTab } =
-    useStore((s) => ({
-      enabledChatModels: s.enabledChatModels,
-      chatConfig: s.chatConfig,
-      selectModel: s.selectModel,
-      openSettingsWithTab: s.openSettingsWithTab,
-    }))
+    useStore(
+      useShallow((s) => ({
+        enabledChatModels: s.enabledChatModels,
+        chatConfig: s.chatConfig,
+        selectModel: s.selectModel,
+        openSettingsWithTab: s.openSettingsWithTab,
+      }))
+    )
   const windowLabel = useCurrentWindowLabel()
 
   return (

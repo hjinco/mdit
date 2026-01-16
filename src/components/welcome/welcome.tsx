@@ -4,9 +4,7 @@ import { Button } from '@/ui/button'
 import { isMac } from '@/utils/platform'
 
 export function Welcome() {
-  const { openFolderPicker } = useStore((state) => ({
-    openFolderPicker: state.openFolderPicker,
-  }))
+  const openFolderPicker = useStore((state) => state.openFolderPicker)
 
   return (
     <div className="w-full h-screen flex flex-col">
