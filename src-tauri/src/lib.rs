@@ -10,6 +10,12 @@ mod trash;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
+#[tauri::command]
+fn show_main_window(window: tauri::WebviewWindow) {
+    window.show().unwrap();
+    window.set_focus().unwrap();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = file_opener::AppState::default();
@@ -19,8 +25,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(main_window) = app.get_webview_window("main") {
-                let _ = main_window.show();
-                let _ = main_window.set_focus();
+                show_main_window(main_window);
             }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -35,6 +40,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
+            show_main_window,
             file_opener::get_opened_files,
             copy::copy,
             database::get_file_frontmatter,
@@ -54,6 +60,16 @@ pub fn run() {
 
     app.run(|app_handle, event| {
         match event {
+            tauri::RunEvent::Ready { .. } => {
+                if let Some(main_window) = app_handle.get_webview_window("main") {
+                    let _ = main_window.hide();
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    // Open edit window if files were passed as command line arguments
+                    file_opener::open_edit_window_if_files_exist(app_handle);
+                }
+            }
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => {
                 // Show main window if it exists, otherwise create it
@@ -65,11 +81,6 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             tauri::RunEvent::Opened { urls } => {
                 file_opener::handle_opened_event(app_handle, urls);
-            }
-            #[cfg(not(target_os = "macos"))]
-            tauri::RunEvent::Ready { .. } => {
-                // Open edit window if files were passed as command line arguments
-                file_opener::open_edit_window_if_files_exist(app_handle);
             }
             _ => {}
         }
