@@ -489,14 +489,11 @@ export const prepareWorkspaceFsSlice =
         await get().renameTab(entry.path, nextPath)
         get().updateHistoryPath(entry.path, nextPath)
 
-        const {
-          workspacePath,
-          pinnedDirectories,
-          expandedDirectories,
-          entries,
-        } = get()
+        if (get().isEditMode) {
+          return nextPath
+        }
 
-        if (!workspacePath) throw new Error('Workspace path is not set')
+        const { pinnedDirectories, expandedDirectories, entries } = get()
 
         const updatedPins = entry.isDirectory
           ? renamePinnedDirectories(pinnedDirectories, entry.path, nextPath)
