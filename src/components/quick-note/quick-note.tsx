@@ -19,10 +19,11 @@ import { LicenseKeyButton } from '../license/license-key-button'
 import { SettingsDialog } from '../settings/settings'
 
 export function QuickNote() {
-  const { tab, openTab } = useStore(
+  const { tab, openTab, setIsEditMode } = useStore(
     useShallow((state) => ({
       tab: state.tab,
       openTab: state.openTab,
+      setIsEditMode: state.setIsEditMode,
     }))
   )
   const editor = usePlateEditor({ plugins: EditorKit })
@@ -50,11 +51,12 @@ export function QuickNote() {
     try {
       await writeTextFile(path, content)
       await openTab(path, false, false, { initialContent: content })
+      setIsEditMode(true)
     } catch (error) {
       console.error('Failed to save file:', error)
       toast.error('Failed to save file')
     }
-  }, [editor, openTab])
+  }, [editor, openTab, setIsEditMode])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()

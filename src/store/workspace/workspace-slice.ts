@@ -45,6 +45,7 @@ type WorkspaceSliceDependencies = {
 
 const buildWorkspaceState = (overrides?: Partial<WorkspaceSlice>) => ({
   isLoading: false,
+  isEditMode: false,
   workspacePath: null,
   recentWorkspacePaths: [],
   entries: [],
@@ -66,6 +67,8 @@ export type WorkspaceEntry = {
 
 export type WorkspaceSlice = {
   isLoading: boolean
+  isEditMode: boolean
+  setIsEditMode: (isEditMode: boolean) => void
   workspacePath: string | null
   recentWorkspacePaths: string[]
   isTreeLoading: boolean
@@ -229,6 +232,10 @@ export const prepareWorkspaceSlice =
 
     return {
       ...buildWorkspaceState({ isLoading: true }),
+
+      setIsEditMode: (isEditMode: boolean) => {
+        set({ isEditMode })
+      },
 
       setExpandedDirectories: async (action) => {
         const { workspacePath, expandedDirectories } = get()
