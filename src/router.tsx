@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core'
+import { useEffect } from 'react'
 import { App } from '@/app'
 import { EditNote } from './components/quick-note/edit-note'
 import { QuickNote } from './components/quick-note/quick-note'
@@ -7,6 +9,12 @@ import { useCurrentWindowLabel } from './hooks/use-current-window-label'
 
 export function Router() {
   const label = useCurrentWindowLabel()
+
+  useEffect(() => {
+    if (label === 'main') {
+      invoke('show_main_window').catch(console.error)
+    }
+  }, [label])
 
   if (label === null) {
     return null
