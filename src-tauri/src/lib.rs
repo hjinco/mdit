@@ -12,8 +12,12 @@ use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
 #[tauri::command]
 fn show_main_window(window: tauri::WebviewWindow) {
-    window.show().unwrap();
-    window.set_focus().unwrap();
+    if let Err(e) = window.show() {
+        eprintln!("Failed to show window: {e}");
+    }
+    if let Err(e) = window.set_focus() {
+        eprintln!("Failed to focus window: {e}");
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

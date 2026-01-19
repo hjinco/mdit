@@ -11,8 +11,10 @@ export function Router() {
   const label = useCurrentWindowLabel()
 
   useEffect(() => {
-    invoke('show_main_window')
-  }, [])
+    if (label === 'main') {
+      invoke('show_main_window').catch(console.error)
+    }
+  }, [label])
 
   if (label === null) {
     return null
