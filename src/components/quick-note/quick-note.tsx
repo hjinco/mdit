@@ -71,7 +71,7 @@ export function QuickNote() {
     return (
       <>
         <div className="h-screen flex flex-col bg-muted">
-          <div className="flex-1 flex">
+          <div className="flex-1 flex overflow-hidden">
             <Editor />
           </div>
           <div className="fixed bottom-1 right-1">
