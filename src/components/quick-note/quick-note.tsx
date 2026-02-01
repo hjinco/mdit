@@ -40,7 +40,7 @@ export function QuickNote() {
 
     try {
       await writeTextFile(path, content)
-      navigate(`#/edit?path=${encodeURIComponent(path)}`, {
+      navigate(`/edit?path=${encodeURIComponent(path)}`, {
         replace: true,
       })
     } catch (error) {
