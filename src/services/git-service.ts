@@ -186,7 +186,7 @@ export class GitService {
       }
     }
 
-    await this.ensureGitSuccess(['push', 'origin', branch])
+    await this.ensureGitSuccess(['push', '--', 'origin', branch])
 
     const isInitialRepo =
       commitHashBeforePull === null || commitHashAfterPull === null
