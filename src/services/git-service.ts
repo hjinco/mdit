@@ -163,7 +163,7 @@ export class GitService {
 
     const commitHashBeforePull = await this.getCurrentCommitHash()
 
-    await this.ensureGitSuccess(['pull', 'origin', branch])
+    await this.ensureGitSuccess(['pull', '--', 'origin', branch])
 
     const commitHashAfterPull = await this.getCurrentCommitHash()
 
