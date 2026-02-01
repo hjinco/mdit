@@ -296,7 +296,7 @@ export class GitService {
     const command = Command.create('git', ['-C', this.workspacePath, ...args])
     const result = await command.execute()
     return {
-      code: result.code ?? 0,
+      code: result.code === null ? 1 : result.code,
       stdout: result.stdout,
       stderr: result.stderr,
     }
