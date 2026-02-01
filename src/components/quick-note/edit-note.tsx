@@ -1,4 +1,3 @@
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useEffect } from 'react'
 import { useFontScale } from '@/hooks/use-font-scale'
 import { useStore } from '@/store'
@@ -16,22 +15,11 @@ export function EditNote({ filePath }: { filePath: string }) {
     openTab(filePath)
   }, [setIsEditMode, filePath, openTab])
 
-  useEffect(() => {
-    const appWindow = getCurrentWindow()
-    const closeListener = appWindow.listen('tauri://close-requested', () => {
-      appWindow.destroy()
-    })
-
-    return () => {
-      closeListener.then((unlisten) => unlisten())
-    }
-  }, [])
-
   return (
     <>
       <div className="h-screen flex flex-col bg-muted">
         <div className="flex-1 flex overflow-hidden">
-          <Editor />
+          <Editor destroyOnClose />
         </div>
         <div className="fixed bottom-1 right-1">
           <LicenseKeyButton />
