@@ -13,7 +13,7 @@ const createQuickNoteWindow = () => {
   const windowLabel = `quick-note-${crypto.randomUUID()}`
 
   new WebviewWindow(windowLabel, {
-    url: '/index.html',
+    url: '/index.html#/quick-note',
     title: 'Mdit',
     width: 800,
     height: 600,

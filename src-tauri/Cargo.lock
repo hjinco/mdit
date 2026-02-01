@@ -2857,6 +2857,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tiktoken-rs",
  "trash",
+ "urlencoding",
  "walkdir",
  "webp",
 ]

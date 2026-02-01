@@ -26,12 +26,25 @@ fn open_edit_window(app_handle: &tauri::AppHandle) {
         return;
     }
 
+    // Get the first opened file to include in the URL hash
+    let state = app_handle.state::<AppState>();
+    let opened_files = state.opened_files.lock().unwrap();
+    let file_path = opened_files.first().cloned().unwrap_or_default();
+
+    // Build the URL with hash route
+    let url = if file_path.is_empty() {
+        "index.html#/edit".to_string()
+    } else {
+        format!("index.html#/edit?path={}", urlencoding::encode(&file_path))
+    };
+
     // Create the editor-only window on demand for file association opens (Finder, "Open with", etc.).
     // We clone the main window config so styling stays consistent with tauri.conf.json.
     let created = (|| -> Option<tauri::WebviewWindow> {
         let mut config = app_handle.config().app.windows.first()?.clone();
         config.label = "edit".to_string();
         config.visible = true;
+        config.url = tauri::WebviewUrl::App(url.into());
 
         tauri::WebviewWindowBuilder::from_config(app_handle, &config)
             .ok()?
@@ -72,7 +85,7 @@ pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>)
 pub fn open_edit_window_if_files_exist(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<AppState>();
     let opened_files = state.opened_files.lock().unwrap();
-    
+
     if !opened_files.is_empty() {
         open_edit_window(app_handle);
     }
@@ -100,10 +113,4 @@ fn get_opened_files_from_args() -> Vec<String> {
 #[cfg(target_os = "macos")]
 fn get_opened_files_from_args() -> Vec<String> {
     Vec::new()
-}
-
-/// Tauri command: retrieves the list of opened files.
-#[tauri::command]
-pub fn get_opened_files(state: tauri::State<AppState>) -> Vec<String> {
-    state.opened_files.lock().unwrap().clone()
 }
