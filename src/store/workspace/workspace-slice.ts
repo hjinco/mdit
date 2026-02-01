@@ -13,6 +13,7 @@ import {
   normalizePathSeparators,
 } from '@/utils/path-utils'
 import type { CollectionSlice } from '../collection/collection-slice'
+import type { GitSyncSlice } from '../git-sync/git-sync-slice'
 import type { TabSlice } from '../tab/tab-slice'
 import { buildWorkspaceEntries, findEntryByPath } from './utils/entry-utils'
 import {
@@ -107,7 +108,7 @@ export const prepareWorkspaceSlice =
     settingsRepository,
     historyRepository,
   }: WorkspaceSliceDependencies): StateCreator<
-    WorkspaceSlice & TabSlice & CollectionSlice,
+    WorkspaceSlice & TabSlice & CollectionSlice & GitSyncSlice,
     [],
     [],
     WorkspaceSlice
@@ -340,6 +341,7 @@ export const prepareWorkspaceSlice =
           get().resetCollectionPath()
 
           if (workspacePath) {
+            await get().initGitSync(workspacePath)
             await bootstrapWorkspace(workspacePath, {
               restoreLastOpenedNote: true,
             })
@@ -391,6 +393,9 @@ export const prepareWorkspaceSlice =
             })
           )
           get().resetCollectionPath()
+
+          // Initialize git sync for the new workspace
+          await get().initGitSync(path)
 
           await bootstrapWorkspace(path)
         } catch (error) {
@@ -538,6 +543,9 @@ export const prepareWorkspaceSlice =
         const workspacePath = get().workspacePath
 
         if (!workspacePath) return
+
+        // Stop git sync before clearing workspace
+        get().stopGitSync()
 
         await fileSystemRepository.moveToTrash(workspacePath)
 

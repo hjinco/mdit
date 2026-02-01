@@ -330,7 +330,7 @@ export function FileExplorer() {
               onWorkspaceSelect={setWorkspace}
               onOpenFolderPicker={openFolderPicker}
             />
-            <GitSyncStatus workspacePath={workspacePath} />
+            <GitSyncStatus />
           </div>
           <div
             ref={(node) => {

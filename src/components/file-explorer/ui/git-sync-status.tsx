@@ -11,15 +11,13 @@ import {
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
-import { useGitSync } from '../hooks/use-git-sync'
 
-type Props = {
-  workspacePath: string | null
-}
+export function GitSyncStatus() {
+  const gitSyncState = useStore((state) => state.gitSyncState)
+  const performSync = useStore((state) => state.performSync)
+  const openSettings = useStore((state) => state.openSettingsWithTab)
 
-export function GitSyncStatus({ workspacePath }: Props) {
-  const { isGitRepo, status, sync, error } = useGitSync(workspacePath)
-  const openSettings = useStore((s) => s.openSettingsWithTab)
+  const { isGitRepo, status, error } = gitSyncState
 
   if (!isGitRepo) {
     return null
@@ -96,7 +94,7 @@ export function GitSyncStatus({ workspacePath }: Props) {
           {getStatusLabel()}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={sync} disabled={status === 'syncing'}>
+        <DropdownMenuItem onClick={performSync} disabled={status === 'syncing'}>
           <RefreshCw className="size-3.5" />
           {status === 'error' ? 'Retry' : 'Git Sync'}
         </DropdownMenuItem>
