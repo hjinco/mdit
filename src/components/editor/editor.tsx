@@ -24,7 +24,7 @@ import { useCommandMenuSelectionRestore } from './hooks/use-command-menu-selecti
 import { useLinkedTabName } from './hooks/use-linked-tab-name'
 import { EditorKit } from './plugins/editor-kit'
 
-export function Editor() {
+export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
   const tab = useStore((s) => s.tab)
   const handleTypingProgress = useStore((s) => s.handleTypingProgress)
 
@@ -59,6 +59,7 @@ export function Editor() {
         path={tab.path}
         value={value}
         onTypingProgress={handleTypingProgress}
+        destroyOnClose={destroyOnClose}
       />
     </div>
   )
@@ -68,10 +69,12 @@ function EditorContent({
   path,
   value,
   onTypingProgress,
+  destroyOnClose,
 }: {
   path: string
   value: Value
   onTypingProgress: () => void
+  destroyOnClose?: boolean
 }) {
   const isSaved = useRef(true)
   const isInitializing = useRef(true)
@@ -90,9 +93,9 @@ function EditorContent({
 
   const { handleRenameAfterSave } = useAutoRenameOnSave(path)
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (isSaved.current) return
-    saveNoteContent(path, editor.api.markdown.serialize())
+    await saveNoteContent(path, editor.api.markdown.serialize())
       .then(() => {
         isSaved.current = true
         setTabSaved(true)
@@ -109,16 +112,22 @@ function EditorContent({
     const appWindow = getCurrentWindow()
 
     const interval = setInterval(handleSave, 10_000)
-    const closeListener = appWindow.listen('tauri://close-requested', () => {
-      handleSave()
-    })
+    const closeListener = appWindow.listen(
+      'tauri://close-requested',
+      async () => {
+        await handleSave()
+        if (destroyOnClose) {
+          appWindow.destroy()
+        }
+      }
+    )
 
     return () => {
       closeListener.then((unlisten) => unlisten())
       clearInterval(interval)
       handleSave()
     }
-  }, [handleSave])
+  }, [handleSave, destroyOnClose])
 
   useEffect(() => {
     const targetIndex = editor.children.findIndex(
