@@ -9,23 +9,13 @@ import {
 } from 'platejs/react'
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
-import { useShallow } from 'zustand/shallow'
+import { useLocation } from 'wouter'
 import { cn } from '@/lib/utils'
-import { useStore } from '@/store'
 import { isMac } from '@/utils/platform'
-import { Editor } from '../editor/editor'
 import { EditorKit } from '../editor/plugins/editor-kit'
-import { LicenseKeyButton } from '../license/license-key-button'
-import { SettingsDialog } from '../settings/settings'
 
 export function QuickNote() {
-  const { tab, openTab, setIsEditMode } = useStore(
-    useShallow((state) => ({
-      tab: state.tab,
-      openTab: state.openTab,
-      setIsEditMode: state.setIsEditMode,
-    }))
-  )
+  const [, navigate] = useLocation()
   const editor = usePlateEditor({ plugins: EditorKit })
 
   useEffect(() => {
@@ -50,13 +40,14 @@ export function QuickNote() {
 
     try {
       await writeTextFile(path, content)
-      await openTab(path, false, false, { initialContent: content })
-      setIsEditMode(true)
+      navigate(`/edit?path=${encodeURIComponent(path)}`, {
+        replace: true,
+      })
     } catch (error) {
       console.error('Failed to save file:', error)
       toast.error('Failed to save file')
     }
-  }, [editor, openTab, setIsEditMode])
+  }, [editor, navigate])
 
   useEffect(() => {
     const appWindow = getCurrentWindow()
@@ -68,22 +59,6 @@ export function QuickNote() {
       closeListener.then((unlisten) => unlisten())
     }
   }, [])
-
-  if (tab) {
-    return (
-      <>
-        <div className="h-screen flex flex-col bg-muted">
-          <div className="flex-1 flex overflow-hidden">
-            <Editor />
-          </div>
-          <div className="fixed bottom-1 right-1">
-            <LicenseKeyButton />
-          </div>
-        </div>
-        <SettingsDialog />
-      </>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">

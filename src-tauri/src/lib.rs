@@ -45,7 +45,6 @@ pub fn run() {
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
             show_main_window,
-            file_opener::get_opened_files,
             copy::copy,
             database::get_file_frontmatter,
             trash::move_to_trash,
