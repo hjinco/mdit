@@ -341,6 +341,7 @@ export const prepareWorkspaceSlice =
           get().resetCollectionPath()
 
           if (workspacePath) {
+            await get().initGitSync(workspacePath)
             await bootstrapWorkspace(workspacePath, {
               restoreLastOpenedNote: true,
             })
