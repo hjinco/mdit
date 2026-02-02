@@ -12,7 +12,6 @@ export const documents = sqliteTable('doc', {
   relPath: text('rel_path').notNull().unique(),
   chunkingVersion: integer('chunking_version').notNull(),
   lastHash: text('last_hash').notNull(),
-  lastLinkHash: text('last_link_hash').notNull().default(''),
   lastEmbeddingModel: text('last_embedding_model').notNull(),
   lastEmbeddingDim: integer('last_embedding_dim').notNull(),
 })

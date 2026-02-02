@@ -14,5 +14,4 @@ CREATE TABLE `link` (
 --> statement-breakpoint
 CREATE INDEX `idx_link_source` ON `link` (`source_doc_id`);--> statement-breakpoint
 CREATE INDEX `idx_link_target` ON `link` (`target_doc_id`);--> statement-breakpoint
-CREATE INDEX `idx_link_target_path` ON `link` (`target_path`);--> statement-breakpoint
-ALTER TABLE `doc` ADD `last_link_hash` text DEFAULT '' NOT NULL;
+CREATE INDEX `idx_link_target_path` ON `link` (`target_path`);

@@ -22,7 +22,6 @@ struct DocRecord {
     last_hash: Option<String>,
     last_embedding_model: Option<String>,
     last_embedding_dim: Option<i32>,
-    last_link_hash: Option<String>,
 }
 
 impl DocRecord {
@@ -43,7 +42,7 @@ impl DocRecord {
     }
 
     fn links_up_to_date(&self, doc_hash: &str) -> bool {
-        self.last_link_hash
+        self.last_hash
             .as_deref()
             .map(|hash| hash == doc_hash)
             .unwrap_or(false)
@@ -104,7 +103,7 @@ pub(crate) fn sync_documents(
 fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim, last_link_hash FROM doc",
+            "SELECT id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim FROM doc",
         )
         .context("Failed to prepare statement to load documents")?;
 
@@ -117,15 +116,13 @@ fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
                 row.get::<_, i32>(5)?,
-                row.get::<_, String>(6)?,
             ))
         })
         .context("Failed to read documents")?;
 
     let mut docs = HashMap::new();
     for row in rows {
-        let (id, rel_path, chunking_version, last_hash, last_model, last_dim, last_link_hash) =
-            row?;
+        let (id, rel_path, chunking_version, last_hash, last_model, last_dim) = row?;
         docs.insert(
             rel_path,
             DocRecord {
@@ -134,7 +131,6 @@ fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
                 last_hash: option_from_string(last_hash),
                 last_embedding_model: option_from_string(last_model),
                 last_embedding_dim: option_from_dim(last_dim),
-                last_link_hash: option_from_string(last_link_hash),
             },
         );
     }
@@ -194,8 +190,8 @@ fn ensure_docs_for_files(
         }
 
         conn.execute(
-            "INSERT INTO doc (rel_path, chunking_version, last_hash, last_link_hash, last_embedding_model, last_embedding_dim) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            params![file.rel_path, TARGET_CHUNKING_VERSION, "", "", "", 0],
+            "INSERT INTO doc (rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![file.rel_path, TARGET_CHUNKING_VERSION, "", "", 0],
         )
         .with_context(|| format!("Failed to insert doc for {}", file.rel_path))?;
 
@@ -210,7 +206,6 @@ fn ensure_docs_for_files(
                 last_hash: None,
                 last_embedding_model: None,
                 last_embedding_dim: None,
-                last_link_hash: None,
             },
         );
     }
@@ -240,7 +235,8 @@ fn process_file(
     if refresh_all_links || !doc_record.links_up_to_date(&doc_hash) {
         let links = link_resolver.resolve_links(file, doc_id, &contents);
         replace_links_for_doc(conn, doc_id, &links, summary)?;
-        update_doc_link_hash(conn, doc_record, &doc_hash)?;
+        // Update last_hash after link processing to prevent re-processing on next sync
+        update_doc_hash_only(conn, doc_record, &doc_hash)?;
     }
 
     let Some(embedding) = embedding else {
@@ -316,18 +312,18 @@ fn update_doc_metadata(
     Ok(())
 }
 
-fn update_doc_link_hash(
+fn update_doc_hash_only(
     conn: &Connection,
     doc_record: &mut DocRecord,
     doc_hash: &str,
 ) -> Result<()> {
     conn.execute(
-        "UPDATE doc SET last_link_hash = ?1 WHERE id = ?2",
+        "UPDATE doc SET last_hash = ?1 WHERE id = ?2",
         params![doc_hash, doc_record.id],
     )
-    .with_context(|| format!("Failed to update doc link hash {}", doc_record.id))?;
+    .with_context(|| format!("Failed to update doc hash {}", doc_record.id))?;
 
-    doc_record.last_link_hash = Some(doc_hash.to_string());
+    doc_record.last_hash = Some(doc_hash.to_string());
 
     Ok(())
 }

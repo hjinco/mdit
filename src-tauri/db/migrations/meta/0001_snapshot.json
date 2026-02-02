@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b965d99b-610d-45dc-9a4c-759a240f4e8c",
+  "id": "38117cec-7c09-4eb1-adc1-ddcfa1ebcde8",
   "prevId": "bc995f6f-224d-4b6a-aab5-c1dd0dc80c86",
   "tables": {
     "doc": {
@@ -34,14 +34,6 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "last_link_hash": {
-          "name": "last_link_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "''"
         },
         "last_embedding_model": {
           "name": "last_embedding_model",
