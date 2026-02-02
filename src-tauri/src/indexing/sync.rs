@@ -350,10 +350,12 @@ fn replace_links_for_doc(
         .with_context(|| format!("Failed to clear links for doc {}", doc_id))?;
     summary.links_deleted += deleted as usize;
 
+    let mut stmt = tx.prepare(
+        "INSERT INTO link (source_doc_id, target_doc_id, target_path, target_anchor, alias, is_embed, is_wiki, is_external) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    ).with_context(|| format!("Failed to prepare link insert for doc {}", doc_id))?;
     for link in links {
-        tx.execute(
-            "INSERT INTO link (source_doc_id, target_doc_id, target_path, target_anchor, alias, is_embed, is_wiki, is_external) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        stmt.execute(
             params![
                 doc_id,
                 link.target_doc_id,
