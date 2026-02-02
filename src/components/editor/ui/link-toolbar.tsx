@@ -19,7 +19,13 @@ import {
   Link,
   Unlink,
 } from 'lucide-react'
-import { join, dirname as pathDirname, relative } from 'pathe'
+import {
+  isAbsolute,
+  join,
+  dirname as pathDirname,
+  relative,
+  resolve,
+} from 'pathe'
 import type { TLinkElement } from 'platejs'
 import { KEYS } from 'platejs'
 import {
@@ -40,6 +46,7 @@ import {
   useState,
 } from 'react'
 import { useShallow } from 'zustand/shallow'
+import { startsWithHttpProtocol } from '@/components/editor/utils/link-utils'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
 import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
@@ -164,6 +171,8 @@ type WorkspaceFileOption = {
   relativePathLower: string
 }
 
+type LinkMode = 'wiki' | 'markdown'
+
 const backslashRegex = /\\/g
 const multipleSlashesRegex = /\/{2,}/g
 const trailingSlashesRegex = /\/+$/
@@ -197,7 +206,77 @@ function LinkUrlInput() {
     [encodedUrl]
   )
 
-  const [value, setValue] = useState(decodedUrl)
+  const selection = useEditorSelection()
+
+  const { element } = useMemo(() => {
+    const entry = editor.api.node<TLinkElement>({
+      match: { type: editor.getType(KEYS.link) },
+    })
+
+    if (!entry) {
+      return {
+        element: null as
+          | (TLinkElement & {
+              wiki?: boolean
+              wikiTarget?: string
+            })
+          | null,
+      }
+    }
+
+    const [node] = entry
+
+    return {
+      element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
+    }
+  }, [editor])
+
+  const [linkMode, setLinkMode] = useState<LinkMode>('wiki')
+
+  useEffect(() => {
+    if (!selection) {
+      return
+    }
+
+    if (!element) {
+      setLinkMode('wiki')
+      return
+    }
+
+    const isWiki = Boolean(element.wiki || element.wikiTarget)
+    setLinkMode(isWiki ? 'wiki' : 'markdown')
+  }, [element, selection])
+
+  const displayValue = useMemo(() => {
+    if (!decodedUrl && !element?.wikiTarget) {
+      return ''
+    }
+
+    if (linkMode === 'wiki') {
+      const wikiTarget = element?.wikiTarget
+      if (wikiTarget) {
+        return normalizeWikiTargetForDisplay(wikiTarget)
+      }
+
+      if (!decodedUrl) {
+        return ''
+      }
+
+      if (startsWithHttpProtocol(decodedUrl)) {
+        return decodedUrl
+      }
+
+      return normalizeWikiTargetForDisplay(decodedUrl)
+    }
+
+    if (!decodedUrl) {
+      return ''
+    }
+
+    return normalizeMarkdownPathForDisplay(decodedUrl)
+  }, [decodedUrl, element?.wikiTarget, linkMode])
+
+  const [value, setValue] = useState(displayValue)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const listboxId = useId()
 
@@ -215,8 +294,10 @@ function LinkUrlInput() {
   // Sync input value with external URL changes, but prevent unnecessary re-renders
   // by only updating when the value actually changes
   useEffect(() => {
-    setValue((previous) => (previous === decodedUrl ? previous : decodedUrl))
-  }, [decodedUrl])
+    setValue((previous) =>
+      previous === displayValue ? previous : displayValue
+    )
+  }, [displayValue])
 
   const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     event.stopPropagation()
@@ -226,6 +307,12 @@ function LinkUrlInput() {
   }, [])
 
   const isHttpLink = startsWithHttpProtocol(value)
+
+  useEffect(() => {
+    if (isHttpLink) {
+      setLinkMode('markdown')
+    }
+  }, [isHttpLink])
 
   const suggestionsEnabled = !isHttpLink
 
@@ -331,6 +418,18 @@ function LinkUrlInput() {
 
   const handleSelectSuggestion = useCallback(
     (file: WorkspaceFileOption) => {
+      if (linkMode === 'wiki') {
+        const displayValue = normalizeWikiTargetForDisplay(file.relativePath)
+        setValue(displayValue)
+        applyUrlToEditor(displayValue)
+        setHighlightedIndex(-1)
+
+        requestAnimationFrame(() => {
+          ref.current?.focus()
+        })
+        return
+      }
+
       if (!currentTabPath) {
         return
       }
@@ -346,15 +445,17 @@ function LinkUrlInput() {
           ? `./${normalizedRelativePath}`
           : normalizedRelativePath
 
-      setValue(nextValue)
-      applyUrlToEditor(nextValue)
+      const displayValue = normalizeMarkdownPathForDisplay(nextValue)
+
+      setValue(displayValue)
+      applyUrlToEditor(displayValue)
       setHighlightedIndex(-1)
 
       requestAnimationFrame(() => {
         ref.current?.focus()
       })
     },
-    [applyUrlToEditor, currentTabPath, ref]
+    [applyUrlToEditor, currentTabPath, linkMode, ref]
   )
 
   const handleBlur = useCallback(() => {
@@ -384,13 +485,86 @@ function LinkUrlInput() {
       return
     }
 
-    applyUrlToEditor(trimmedValue)
+    const isWebLink = startsWithHttpProtocol(trimmedValue)
+    let nextUrl = trimmedValue
+    let nextWikiTarget: string | null = null
+
+    if (!isWebLink && linkMode === 'wiki') {
+      const normalizedTarget = toWorkspaceRelativeWikiTarget({
+        input: trimmedValue,
+        workspacePath,
+        currentTabPath,
+      })
+
+      if (normalizedTarget) {
+        nextUrl = normalizedTarget
+        nextWikiTarget = normalizedTarget
+      } else {
+        const fallbackTarget = normalizeWikiTargetForDisplay(trimmedValue)
+        if (fallbackTarget) {
+          nextUrl = fallbackTarget
+          nextWikiTarget = fallbackTarget
+        }
+      }
+    }
+
+    if (
+      !isWebLink &&
+      linkMode === 'markdown' &&
+      currentTabPath &&
+      !trimmedValue.startsWith('#')
+    ) {
+      const { rawPath, target } = parseInternalLinkTarget(trimmedValue)
+      const resolvedPath = resolveInternalLinkPath({
+        rawPath,
+        target,
+        workspaceFiles: suggestionsSource,
+        workspacePath,
+        currentTabPath,
+      })
+
+      if (resolvedPath) {
+        const tabDirectory = pathDirname(currentTabPath)
+        const relativePath = normalizePathSeparators(
+          relative(tabDirectory, resolvedPath)
+        )
+        nextUrl =
+          relativePath &&
+          !relativePath.startsWith('.') &&
+          !relativePath.startsWith('/')
+            ? `./${relativePath}`
+            : relativePath
+      }
+    }
+
+    applyUrlToEditor(nextUrl)
 
     const didSubmit = upsertLink(editor, {
-      url: trimmedValue,
+      url: nextUrl,
       skipValidation: true,
     })
     if (didSubmit) {
+      const entry = editor.api.node<TLinkElement>({
+        match: { type: editor.getType(KEYS.link) },
+      })
+
+      if (entry) {
+        const [, path] = entry
+        if (isWebLink || linkMode === 'markdown') {
+          editor.tf.unsetNodes(['wiki', 'wikiTarget'], {
+            at: path,
+          })
+        } else {
+          editor.tf.setNodes(
+            {
+              wiki: true,
+              wikiTarget: nextWikiTarget ?? nextUrl,
+            },
+            { at: path }
+          )
+        }
+      }
+
       setHighlightedIndex(-1)
       api.floatingLink.hide()
       editor.tf.focus()
@@ -400,7 +574,17 @@ function LinkUrlInput() {
     requestAnimationFrame(() => {
       ref.current?.focus()
     })
-  }, [api, applyUrlToEditor, editor, ref, trimmedValue])
+  }, [
+    api,
+    applyUrlToEditor,
+    currentTabPath,
+    editor,
+    linkMode,
+    ref,
+    suggestionsSource,
+    trimmedValue,
+    workspacePath,
+  ])
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -489,6 +673,34 @@ function LinkUrlInput() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <div className="flex items-center justify-between px-2 pb-1 text-xs text-muted-foreground">
+        <span>Link type</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className={cn(
+              buttonVariants({ size: 'sm', variant: 'ghost' }),
+              'h-6 px-2 text-xs',
+              linkMode === 'wiki' && 'bg-accent text-accent-foreground'
+            )}
+            onClick={() => setLinkMode('wiki')}
+            disabled={isHttpLink}
+          >
+            Wiki
+          </button>
+          <button
+            type="button"
+            className={cn(
+              buttonVariants({ size: 'sm', variant: 'ghost' }),
+              'h-6 px-2 text-xs',
+              linkMode === 'markdown' && 'bg-accent text-accent-foreground'
+            )}
+            onClick={() => setLinkMode('markdown')}
+          >
+            Markdown
+          </button>
+        </div>
+      </div>
       <div className="flex items-center">
         <div className="flex items-center pr-1 pl-2 text-muted-foreground">
           <LinkIcon value={value} />
@@ -611,11 +823,13 @@ function LinkOpenButton() {
   const editor = useEditorRef()
   const selection = useEditorSelection()
   const {
+    entries: workspaceEntries,
     workspacePath,
     openTab,
     tab: currentTab,
   } = useStore(
     useShallow((state) => ({
+      entries: state.entries,
       workspacePath: state.workspacePath,
       openTab: state.openTab,
       tab: state.tab,
@@ -629,19 +843,25 @@ function LinkOpenButton() {
     })
 
     if (!entry) {
-      return { element: null as TLinkElement | null }
+      return {
+        element: null as (TLinkElement & { wikiTarget?: string }) | null,
+      }
     }
 
     const [node] = entry
 
     return {
-      element: node,
+      element: node as TLinkElement & { wikiTarget?: string },
     }
   }, [selection])
 
   const href = element?.url ?? ''
   const decodedUrl = href ? safelyDecodeUrl(href) : ''
   const isWebLink = startsWithHttpProtocol(decodedUrl)
+  const workspaceFiles = useMemo(
+    () => flattenWorkspaceFiles(workspaceEntries, workspacePath),
+    [workspaceEntries, workspacePath]
+  )
 
   const handleOpen = useCallback(
     async (event: MouseEvent<HTMLButtonElement>) => {
@@ -665,9 +885,23 @@ function LinkOpenButton() {
           }
 
           let absolutePath: string | null = null
+          const rawTarget = element?.wikiTarget || targetUrl
+          const { rawPath, target } = parseInternalLinkTarget(rawTarget)
+          const resolvedPath = resolveInternalLinkPath({
+            rawPath,
+            target,
+            workspaceFiles,
+            workspacePath,
+            currentTabPath: currentTab?.path ?? null,
+          })
 
-          if (targetUrl.startsWith('/')) {
-            const workspaceRelativePath = stripLeadingSlashes(targetUrl)
+          if (resolvedPath) {
+            await openTab(resolvedPath)
+            return
+          }
+
+          if (rawTarget.startsWith('/')) {
+            const workspaceRelativePath = stripLeadingSlashes(rawTarget)
             absolutePath = join(workspacePath, workspaceRelativePath)
           } else {
             const currentPath = currentTab?.path
@@ -676,7 +910,7 @@ function LinkOpenButton() {
             }
 
             const currentDirectory = pathDirname(currentPath)
-            absolutePath = join(currentDirectory, targetUrl)
+            absolutePath = join(currentDirectory, rawTarget)
           }
 
           if (!absolutePath) {
@@ -720,8 +954,10 @@ function LinkOpenButton() {
       currentTab?.path,
       decodedUrl,
       element?.url,
+      element?.wikiTarget,
       isWebLink,
       openTab,
+      workspaceFiles,
       workspacePath,
     ]
   )
@@ -844,6 +1080,229 @@ function normalizePathSeparators(path: string): string {
   return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed
 }
 
+function normalizeWikiTargetForDisplay(value: string): string {
+  const decoded = safelyDecodeUrl(value.trim())
+  if (!decoded) {
+    return ''
+  }
+
+  const [pathPart, hashPart] = decoded.split('#', 2)
+  let normalized = normalizePathSeparators(pathPart)
+  normalized = stripCurrentDirectoryPrefix(normalized)
+  normalized = stripLeadingSlashes(normalized)
+
+  if (normalized.endsWith('.mdx')) {
+    normalized = normalized.slice(0, -4)
+  } else if (normalized.endsWith('.md')) {
+    normalized = normalized.slice(0, -3)
+  }
+
+  return hashPart ? `${normalized}#${hashPart}` : normalized
+}
+
+function normalizeMarkdownPathForDisplay(value: string): string {
+  const decoded = safelyDecodeUrl(value.trim())
+  if (!decoded) {
+    return ''
+  }
+
+  const [pathPart, hashPart] = decoded.split('#', 2)
+  const normalized = normalizePathSeparators(pathPart)
+  return hashPart ? `${normalized}#${hashPart}` : normalized
+}
+
+function toWorkspaceRelativeWikiTarget(options: {
+  input: string
+  workspacePath: string | null
+  currentTabPath: string | null
+}): string {
+  const { input, workspacePath, currentTabPath } = options
+  const decoded = safelyDecodeUrl(input.trim())
+  if (!decoded) {
+    return ''
+  }
+
+  const [pathPart, hashPart] = decoded.split('#', 2)
+  let normalizedPath = normalizePathSeparators(pathPart)
+
+  if (!normalizedPath) {
+    return hashPart ? `#${hashPart}` : ''
+  }
+
+  const hasRootPrefix = normalizedPath.startsWith('/')
+  const hasRelativePrefix =
+    normalizedPath.startsWith('./') || normalizedPath.startsWith('../')
+  const isAbsPath = isAbsolute(normalizedPath)
+
+  if (workspacePath && (hasRootPrefix || hasRelativePrefix || isAbsPath)) {
+    const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
+    let absolutePath: string | null = null
+
+    if (hasRootPrefix) {
+      absolutePath = join(normalizedRoot, stripLeadingSlashes(normalizedPath))
+    } else if (isAbsPath) {
+      absolutePath = normalizedPath
+    } else if (currentTabPath) {
+      absolutePath = resolve(pathDirname(currentTabPath), normalizedPath)
+    }
+
+    if (absolutePath) {
+      const normalizedAbsolute = normalizePathSeparators(absolutePath)
+      if (normalizedAbsolute === normalizedRoot) {
+        normalizedPath = ''
+      } else if (normalizedAbsolute.startsWith(`${normalizedRoot}/`)) {
+        normalizedPath = normalizedAbsolute.slice(normalizedRoot.length + 1)
+      }
+    }
+  }
+
+  normalizedPath = stripCurrentDirectoryPrefix(
+    stripLeadingSlashes(normalizedPath)
+  )
+  normalizedPath = stripMarkdownExtension(normalizedPath)
+
+  return hashPart ? `${normalizedPath}#${hashPart}` : normalizedPath
+}
+
+function stripMarkdownExtension(value: string): string {
+  const lower = value.toLowerCase()
+  if (lower.endsWith('.mdx')) {
+    return value.slice(0, -4)
+  }
+  if (lower.endsWith('.md')) {
+    return value.slice(0, -3)
+  }
+  return value
+}
+
+function parseInternalLinkTarget(value: string): {
+  rawPath: string
+  target: string
+  hash?: string
+} {
+  const decoded = safelyDecodeUrl(value.trim())
+  const [pathPart, hashPart] = decoded.split('#', 2)
+  let rawPath = normalizePathSeparators(pathPart)
+  rawPath = stripCurrentDirectoryPrefix(rawPath)
+  rawPath = stripLeadingSlashes(rawPath)
+
+  return {
+    rawPath,
+    target: stripMarkdownExtension(rawPath),
+    hash: hashPart,
+  }
+}
+
+function pickPreferredFile(
+  matches: WorkspaceFileOption[],
+  normalizedCurrentDir: string | null
+): WorkspaceFileOption | null {
+  if (!matches.length) {
+    return null
+  }
+
+  if (!normalizedCurrentDir) {
+    return matches[0]
+  }
+
+  const preferred = matches.find((file) => {
+    const fileDir = normalizePathSeparators(pathDirname(file.absolutePath))
+    return fileDir === normalizedCurrentDir
+  })
+
+  return preferred ?? matches[0]
+}
+
+function resolveInternalLinkPath(options: {
+  rawPath: string
+  target: string
+  workspaceFiles: WorkspaceFileOption[]
+  workspacePath: string | null
+  currentTabPath: string | null
+}): string | null {
+  const { rawPath, target, workspaceFiles, workspacePath, currentTabPath } =
+    options
+
+  if (!workspacePath || workspaceFiles.length === 0) {
+    return null
+  }
+
+  const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
+  if (!normalizedWorkspaceRoot) {
+    return null
+  }
+
+  const normalizedCurrentDir = currentTabPath
+    ? normalizePathSeparators(pathDirname(currentTabPath))
+    : null
+
+  const normalizedAbsoluteMap = new Map<string, string>()
+  for (const file of workspaceFiles) {
+    normalizedAbsoluteMap.set(
+      normalizePathSeparators(file.absolutePath),
+      file.absolutePath
+    )
+  }
+
+  const segments = new Set<string>()
+  if (rawPath) {
+    segments.add(rawPath)
+  }
+  if (target) {
+    segments.add(`${target}.md`)
+    segments.add(`${target}.mdx`)
+  }
+
+  const candidates: string[] = []
+  const addCandidate = (base: string | null, segment: string) => {
+    if (!base || !segment) {
+      return
+    }
+    candidates.push(normalizePathSeparators(join(base, segment)))
+  }
+
+  for (const segment of segments) {
+    addCandidate(normalizedCurrentDir, segment)
+    addCandidate(normalizedWorkspaceRoot, segment)
+  }
+
+  for (const candidate of candidates) {
+    const matched = normalizedAbsoluteMap.get(candidate)
+    if (matched) {
+      return matched
+    }
+  }
+
+  const targetLower = target.toLowerCase()
+  if (targetLower) {
+    const relativeMatches = workspaceFiles.filter(
+      (file) =>
+        stripMarkdownExtension(file.relativePath).toLowerCase() === targetLower
+    )
+    const relativeMatch = pickPreferredFile(
+      relativeMatches,
+      normalizedCurrentDir
+    )
+    if (relativeMatch) {
+      return relativeMatch.absolutePath
+    }
+  }
+
+  const hasSeparator = target.includes('/') || target.includes('\\')
+  if (!hasSeparator && targetLower) {
+    const nameMatches = workspaceFiles.filter(
+      (file) =>
+        stripMarkdownExtension(file.displayName).toLowerCase() === targetLower
+    )
+    const nameMatch = pickPreferredFile(nameMatches, normalizedCurrentDir)
+    if (nameMatch) {
+      return nameMatch.absolutePath
+    }
+  }
+
+  return null
+}
+
 function normalizeWorkspaceRoot(workspacePath: string): string {
   if (!workspacePath) {
     return ''
@@ -886,9 +1345,4 @@ function safelyDecodeUrl(url: string): string {
     }
     throw error
   }
-}
-
-function startsWithHttpProtocol(value: string): boolean {
-  const lower = value.trim().toLowerCase()
-  return lower.startsWith('http://') || lower.startsWith('https://')
 }

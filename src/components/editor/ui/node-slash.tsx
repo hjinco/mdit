@@ -1,12 +1,12 @@
 import { AIChatPlugin } from '@platejs/ai/react'
 import { EmojiInputPlugin } from '@platejs/emoji/react'
-import { insertImage } from '@platejs/media'
 import { open } from '@tauri-apps/plugin-dialog'
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs'
 import {
   CalendarIcon,
   Code2,
   Database,
+  FileText,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -23,7 +23,7 @@ import {
   TableOfContentsIcon,
   TypeIcon,
 } from 'lucide-react'
-import { dirname, isAbsolute, relative, resolve } from 'pathe'
+import { dirname, resolve } from 'pathe'
 import { KEYS, PointApi, type TComboboxInputElement } from 'platejs'
 import type { PlateEditor, PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
@@ -33,6 +33,7 @@ import { datePattern, type ValueType } from '@/utils/frontmatter-value-utils'
 import { DATABASE_KEY } from '../plugins/database-kit'
 import { FRONTMATTER_KEY } from '../plugins/frontmatter-kit'
 import { applyPreviousCodeBlockLanguage } from '../utils/code-block-language'
+import { buildImageLinkData } from '../utils/image-link'
 import { insertBlock, insertInlineElement } from '../utils/transforms'
 import {
   InlineCombobox,
@@ -73,18 +74,19 @@ function extractFrontmatterSource(markdown: string): string | null {
   return match ? match[1] : null
 }
 
-function toRelativeImagePath(path: string): string {
-  if (!path || path.startsWith('http') || !isAbsolute(path)) {
-    return path
+function insertImageNode(editor: PlateEditor, path: string, options?: any) {
+  const imageData = buildImageLinkData(path)
+  const imageNode = {
+    type: editor.getType(KEYS.img),
+    url: imageData.url,
+    ...(imageData.wiki ? { wiki: true, wikiTarget: imageData.wikiTarget } : {}),
+    children: [{ text: '' }],
   }
 
-  const tabPath = useStore.getState().tab?.path
-  if (!tabPath) {
-    return path
-  }
-
-  const tabDir = dirname(tabPath)
-  return relative(tabDir, path)
+  editor.tf.insertNodes(imageNode, {
+    nextBlock: true,
+    ...options,
+  } as any)
 }
 
 async function collectFrontmatterDefaults(): Promise<KVRow[]> {
@@ -380,12 +382,12 @@ const groups: Group[] = [
           if (path) {
             const block = editor.api.block()
             if (block) {
-              insertImage(editor, toRelativeImagePath(path), {
+              insertImageNode(editor, path, {
                 at: block[1],
                 nextBlock: false,
               })
             } else {
-              insertImage(editor, toRelativeImagePath(path))
+              insertImageNode(editor, path)
             }
           }
         },
@@ -455,6 +457,38 @@ const groups: Group[] = [
         icon: <RadicalIcon />,
         label: 'Inline Equation',
         value: KEYS.inlineEquation,
+      },
+      {
+        focusEditor: false,
+        icon: <FileText />,
+        keywords: ['wiki', 'link', 'internal', 'note', 'page'],
+        label: 'Wiki Link',
+        value: 'wikiLink',
+        onSelect: (editor: PlateEditor, _value: string) => {
+          // Insert a wiki link placeholder that the user can edit
+          editor.tf.insertNodes({
+            type: KEYS.link,
+            url: '',
+            wiki: true,
+            wikiTarget: 'Page Title',
+            children: [{ text: 'Page Title' }],
+          })
+          // Select the text for easy editing
+          const selection = editor.selection
+          if (selection) {
+            const entry = editor.api.node({
+              at: selection,
+              match: { type: KEYS.link },
+            })
+            if (entry) {
+              const [, path] = entry
+              editor.tf.select({
+                anchor: { path: [...path, 0], offset: 0 },
+                focus: { path: [...path, 0], offset: 10 }, // "Page Title".length
+              })
+            }
+          }
+        },
       },
     ].map((item) => {
       // Skip mapping if onSelect is already defined (for emoji)

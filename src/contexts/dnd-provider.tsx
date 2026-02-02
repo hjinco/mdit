@@ -1,12 +1,12 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from '@dnd-kit/react'
-import { insertImage } from '@platejs/media'
 import { BlockSelectionPlugin } from '@platejs/selection/react'
-import { dirname, extname, relative } from 'pathe'
+import { extname } from 'pathe'
 import { KEYS, PathApi } from 'platejs'
 import { useEditorRef } from 'platejs/react'
 import type React from 'react'
 import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { buildImageLinkData } from '@/components/editor/utils/image-link'
 import { useStore } from '@/store'
 import { isImageFile } from '@/utils/file-icon'
 import { isPathEqualOrDescendant } from '@/utils/path-utils'
@@ -24,16 +24,6 @@ export function DndProvider({ children }: DndProviderProps) {
       resetSelection: state.resetSelection,
     }))
   )
-
-  const toRelativeImagePath = useCallback((path: string) => {
-    const tabPath = useStore.getState().tab?.path
-    if (!tabPath) {
-      return path
-    }
-
-    const tabDir = dirname(tabPath)
-    return relative(tabDir, path)
-  }, [])
 
   const collectImagePaths = useCallback(
     (activeData: { path?: string; isDirectory?: boolean } | undefined) => {
@@ -116,7 +106,17 @@ export function DndProvider({ children }: DndProviderProps) {
           }
 
           for (const imagePath of imagePaths) {
-            insertImage(editor, toRelativeImagePath(imagePath), {
+            const imageData = buildImageLinkData(imagePath)
+            const imageNode = {
+              type: editor.getType(KEYS.img),
+              url: imageData.url,
+              ...(imageData.wiki
+                ? { wiki: true, wikiTarget: imageData.wikiTarget }
+                : {}),
+              children: [{ text: '' }],
+            }
+
+            editor.tf.insertNodes(imageNode, {
               at: insertPath,
               // For top position, insert before (nextBlock: false)
               // For bottom position with non-code/table blocks, use nextBlock
@@ -408,14 +408,7 @@ export function DndProvider({ children }: DndProviderProps) {
       // Reset selection after move
       resetSelection()
     },
-    [
-      moveEntry,
-      selectedEntryPaths,
-      resetSelection,
-      collectImagePaths,
-      toRelativeImagePath,
-      editor,
-    ]
+    [moveEntry, selectedEntryPaths, resetSelection, collectImagePaths, editor]
   )
 
   return (
