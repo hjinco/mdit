@@ -25,6 +25,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@emoji-mart/data": "^1.2.1",
+    "@flowershow/remark-wiki-link": "^3.3.1",
     "@hookform/resolvers": "^5.2.2",
     "@platejs/ai": "^52.1.0",
     "@platejs/autoformat": "^52.0.11",

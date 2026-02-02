@@ -3,7 +3,12 @@ import type { TLinkElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement } from 'platejs/react'
 
-export function LinkElement(props: PlateElementProps<TLinkElement>) {
+type TLinkElementWithWiki = TLinkElement & {
+  wiki?: boolean
+  wikiTarget?: string
+}
+
+export function LinkElement(props: PlateElementProps<TLinkElementWithWiki>) {
   return (
     <PlateElement
       {...props}

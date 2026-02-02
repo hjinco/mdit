@@ -52,6 +52,13 @@ export function MediaToolbar({
     !isImagePreviewOpen &&
     !hide
   const isEditing = useFloatingMediaValue('isEditing')
+  const element = useElement()
+  const { props: buttonProps } = useRemoveNodeButton({ element })
+
+  const isWikiMedia = Boolean(
+    (element as { wiki?: boolean; wikiTarget?: string }).wiki ||
+      (element as { wiki?: boolean; wikiTarget?: string }).wikiTarget
+  )
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: true
   useEffect(() => {
@@ -59,9 +66,6 @@ export function MediaToolbar({
       FloatingMediaStore.set('isEditing', false)
     }
   }, [open])
-
-  const element = useElement()
-  const { props: buttonProps } = useRemoveNodeButton({ element })
 
   return (
     <Popover open={open} modal={false}>
@@ -93,11 +97,14 @@ export function MediaToolbar({
               Edit link
             </FloatingMediaPrimitive.EditButton> */}
 
-            <CaptionButton size="sm" variant="ghost">
-              Caption
-            </CaptionButton>
-
-            <Separator orientation="vertical" className="mx-1 h-6" />
+            {!isWikiMedia && (
+              <>
+                <CaptionButton size="sm" variant="ghost">
+                  Caption
+                </CaptionButton>
+                <Separator orientation="vertical" className="mx-1 h-6" />
+              </>
+            )}
 
             <Button size="sm" variant="ghost" {...buttonProps}>
               <Trash2Icon />

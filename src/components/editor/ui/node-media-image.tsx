@@ -7,6 +7,7 @@ import type { TImageElement } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, withHOC } from 'platejs/react'
 import { useMemo, useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
 import { Caption, CaptionTextarea } from './caption'
@@ -20,27 +21,50 @@ import {
 export const ImageElement = withHOC(
   ResizableProvider,
   function ImageElement(props: PlateElementProps<TImageElement>) {
-    const tabPath = useStore((state) => state.tab?.path)
+    const { tabPath, workspacePath } = useStore(
+      useShallow((state) => ({
+        tabPath: state.tab?.path,
+        workspacePath: state.workspacePath,
+      }))
+    )
     const { align = 'center', focused, readOnly, selected } = useMediaState()
     const width = useResizableValue('width')
     const [hasError, setHasError] = useState(false)
 
     const src = useMemo(() => {
-      const url = props.element.url
+      const {
+        url = '',
+        wiki,
+        wikiTarget,
+      } = props.element as TImageElement & {
+        wiki?: boolean
+        wikiTarget?: string
+      }
 
-      if (url.startsWith('http')) {
-        return url
+      const rawUrl = wikiTarget || url
+
+      if (!rawUrl) {
+        return ''
+      }
+
+      if (rawUrl.startsWith('http')) {
+        return rawUrl
       }
 
       let baseSrc: string
 
-      if (isAbsolute(url)) {
-        baseSrc = url
+      if (isAbsolute(rawUrl)) {
+        baseSrc = rawUrl
+      } else if (wiki || wikiTarget) {
+        if (!workspacePath) {
+          return ''
+        }
+        baseSrc = resolve(workspacePath, rawUrl)
       } else {
         if (!tabPath) {
           return ''
         }
-        baseSrc = resolve(dirname(tabPath), url)
+        baseSrc = resolve(dirname(tabPath), rawUrl)
       }
 
       baseSrc = convertFileSrc(baseSrc)
@@ -49,7 +73,12 @@ export const ImageElement = withHOC(
       const cacheBuster = Date.now()
       const separator = baseSrc.includes('?') ? '&' : '?'
       return `${baseSrc}${separator}nocache=${cacheBuster}`
-    }, [props.element.url, tabPath])
+    }, [tabPath, workspacePath, props.element])
+
+    const isWikiImage = Boolean(
+      (props.element as { wiki?: boolean; wikiTarget?: string }).wiki ||
+        (props.element as { wiki?: boolean; wikiTarget?: string }).wikiTarget
+    )
 
     return (
       <MediaToolbar plugin={ImagePlugin} hide={hasError}>
@@ -98,15 +127,17 @@ export const ImageElement = withHOC(
                 />
               </Resizable>
 
-              <Caption style={{ width }} align={align}>
-                <CaptionTextarea
-                  readOnly={readOnly}
-                  onFocus={(e) => {
-                    e.preventDefault()
-                  }}
-                  placeholder="Write a caption..."
-                />
-              </Caption>
+              {!isWikiImage && (
+                <Caption style={{ width }} align={align}>
+                  <CaptionTextarea
+                    readOnly={readOnly}
+                    onFocus={(e) => {
+                      e.preventDefault()
+                    }}
+                    placeholder="Write a caption..."
+                  />
+                </Caption>
+              )}
             </figure>
           )}
 
