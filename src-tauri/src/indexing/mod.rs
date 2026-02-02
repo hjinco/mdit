@@ -19,6 +19,7 @@ use crate::migrations;
 mod chunking;
 mod embedding;
 mod files;
+mod links;
 mod search;
 mod sync;
 
@@ -47,6 +48,10 @@ pub struct IndexSummary {
     pub segments_updated: usize,
     /// Number of embeddings written or refreshed.
     pub embeddings_written: usize,
+    /// Links written or refreshed.
+    pub links_written: usize,
+    /// Links deleted before refresh.
+    pub links_deleted: usize,
     /// Detailed per-file errors that prevented indexing.
     pub skipped_files: Vec<String>,
 }
@@ -58,21 +63,17 @@ pub struct IndexingMeta {
     pub indexed_doc_count: usize,
 }
 
+pub(crate) struct EmbeddingContext {
+    pub(crate) embedder: EmbeddingClient,
+    pub(crate) target_dim: i32,
+}
+
 pub fn index_workspace(
     workspace_root: &Path,
     embedding_provider: &str,
     embedding_model: &str,
     force_reindex: bool,
 ) -> Result<IndexSummary> {
-    // Validate user-provided configuration up front for clearer errors.
-    if embedding_provider.trim().is_empty() {
-        return Err(anyhow!("Embedding provider must be provided"));
-    }
-
-    if embedding_model.trim().is_empty() {
-        return Err(anyhow!("Embedding model must be provided"));
-    }
-
     if !workspace_root.exists() {
         return Err(anyhow!(
             "Workspace path does not exist: {}",
@@ -80,18 +81,29 @@ pub fn index_workspace(
         ));
     }
 
-    // Resolve embedding dimension by generating a test embedding.
-    let target_dim = resolve_embedding_dimension(embedding_provider, embedding_model)?;
+    let has_embedding_config =
+        !embedding_provider.trim().is_empty() && !embedding_model.trim().is_empty();
 
-    if target_dim <= 0 {
-        return Err(anyhow!(
-            "Target embedding dimension must be positive (received {})",
-            target_dim
-        ));
-    }
+    let embedding_context = if has_embedding_config {
+        // Resolve embedding dimension by generating a test embedding.
+        let target_dim = resolve_embedding_dimension(embedding_provider, embedding_model)?;
 
-    // Embedder handles communication with the chosen vector backend.
-    let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
+        if target_dim <= 0 {
+            return Err(anyhow!(
+                "Target embedding dimension must be positive (received {})",
+                target_dim
+            ));
+        }
+
+        // Embedder handles communication with the chosen vector backend.
+        let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
+        Some(EmbeddingContext {
+            embedder,
+            target_dim,
+        })
+    } else {
+        None
+    };
 
     let db_path = migrations::run_workspace_migrations(workspace_root)?;
     let mut conn = Connection::open(&db_path)
@@ -117,9 +129,9 @@ pub fn index_workspace(
 
     sync_documents(
         &mut conn,
+        workspace_root,
         markdown_files,
-        &embedder,
-        target_dim,
+        embedding_context.as_ref(),
         &mut summary,
     )?;
 
@@ -185,7 +197,10 @@ pub async fn index_workspace_command(
     force_reindex: bool,
 ) -> Result<IndexSummary, String> {
     let workspace_path = PathBuf::from(workspace_path);
-    let provider = embedding_provider.unwrap_or_else(|| "ollama".to_string());
+    let provider = match embedding_provider {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => "ollama".to_string(),
+    };
     let model = embedding_model;
 
     run_blocking(move || {
