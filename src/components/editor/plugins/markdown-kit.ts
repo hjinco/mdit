@@ -20,13 +20,12 @@ import {
   type ValueType,
 } from '@/utils/frontmatter-value-utils'
 import type { KVRow } from '../ui/node-frontmatter-table'
+import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from '../utils/link-utils'
 import { DATABASE_KEY } from './database-kit'
 import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const EQUATION_ENVIRONMENT_REGEX =
   /^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
-
-const WINDOWS_ABSOLUTE_PATH_REGEX = /^[A-Za-z]:[\\/]/
 
 function createRowId() {
   return Math.random().toString(36).slice(2, 9)
@@ -134,16 +133,11 @@ function getPlainText(value: unknown): string {
   return ''
 }
 
-function hasParentTraversal(path: string): boolean {
-  const normalized = path.replace(/\\/g, '/')
-  return normalized.split('/').some((segment) => segment === '..')
-}
-
 function isWikiEmbedTargetSafe(path: string): boolean {
   const normalized = path.trim()
   if (!normalized) return false
   if (normalized.startsWith('/')) return false
-  if (WINDOWS_ABSOLUTE_PATH_REGEX.test(normalized)) return false
+  if (WINDOWS_ABSOLUTE_REGEX.test(normalized)) return false
   return !hasParentTraversal(normalized)
 }
 
@@ -289,6 +283,26 @@ export const MarkdownKit = [
         embed: {
           deserialize: (mdastNode, _deco, options) => {
             const target = mdastNode.value || ''
+            if (!isWikiEmbedTargetSafe(target)) {
+              const hName = mdastNode.data?.hName
+              const hProperties = mdastNode.data?.hProperties ?? {}
+              if (hName === 'img') {
+                const altText =
+                  typeof hProperties.alt === 'string' ? hProperties.alt : ''
+                return {
+                  type: getPluginType(options.editor!, KEYS.img),
+                  url: '',
+                  caption: [{ text: altText }],
+                  children: [{ text: '' }],
+                }
+              }
+              return {
+                type: getPluginType(options.editor!, KEYS.link),
+                url: '',
+                children: [{ text: target }],
+              }
+            }
+
             const hName = mdastNode.data?.hName
             const hProperties = mdastNode.data?.hProperties ?? {}
             const url = hProperties.src || mdastNode.data?.path || target
@@ -402,11 +416,16 @@ export const MarkdownKit = [
           deserialize: (mdastNode) => {
             const target = mdastNode.value || ''
             const alias = mdastNode.data?.alias
-            const url = target
-
+            if (!isWikiEmbedTargetSafe(target)) {
+              return {
+                type: KEYS.link,
+                url: '',
+                children: [{ text: alias || target }],
+              }
+            }
             return {
               type: KEYS.link,
-              url,
+              url: target,
               wiki: true,
               wikiTarget: target,
               children: [{ text: alias || target }],

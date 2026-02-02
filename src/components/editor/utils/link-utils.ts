@@ -1,7 +1,7 @@
 import { isAbsolute } from 'pathe'
 import { normalizePathSeparators } from '@/utils/path-utils'
 
-const WINDOWS_ABSOLUTE_REGEX = /^[A-Za-z]:[\\/]/
+export const WINDOWS_ABSOLUTE_REGEX = /^[A-Za-z]:[\\/]/
 
 export function hasParentTraversal(path: string): boolean {
   const segments = normalizePathSeparators(path).split('/')
