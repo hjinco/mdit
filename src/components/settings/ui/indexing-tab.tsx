@@ -1,8 +1,8 @@
-import { invoke } from '@tauri-apps/api/core'
 import { Loader2Icon, RefreshCcwIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useStore } from '@/store'
+import { calculateIndexingProgress } from '@/store/indexing/helpers/indexing-utils'
 import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
 import { Button } from '@/ui/button'
 import {
@@ -23,218 +23,134 @@ import {
 } from '@/ui/select'
 import { EmbeddingModelChangeDialog } from './embedding-model-change-dialog'
 
-type IndexingMeta = {
-  indexedDocCount: number
-}
-
 export function IndexingTab() {
   const {
     workspacePath,
     entries,
     ollamaModels,
     fetchOllamaModels,
-    setIndexingConfig,
     indexWorkspace,
     indexingState,
     configs,
+    indexedDocCount,
+    isMetaLoading,
+    showModelChangeDialog,
+    loadIndexingMeta,
+    startIndexingMetaPolling,
+    stopIndexingMetaPolling,
+    handleModelChangeRequest,
+    confirmModelChange,
+    cancelModelChange,
   } = useStore(
     useShallow((state) => ({
       workspacePath: state.workspacePath,
       entries: state.entries,
       ollamaModels: state.ollamaModels,
       fetchOllamaModels: state.fetchOllamaModels,
-      setIndexingConfig: state.setIndexingConfig,
       indexWorkspace: state.indexWorkspace,
       indexingState: state.indexingState,
       configs: state.configs,
+      indexedDocCount: state.indexedDocCount,
+      isMetaLoading: state.isMetaLoading,
+      showModelChangeDialog: state.showModelChangeDialog,
+      loadIndexingMeta: state.loadIndexingMeta,
+      startIndexingMetaPolling: state.startIndexingMetaPolling,
+      stopIndexingMetaPolling: state.stopIndexingMetaPolling,
+      handleModelChangeRequest: state.handleModelChangeRequest,
+      confirmModelChange: state.confirmModelChange,
+      cancelModelChange: state.cancelModelChange,
     }))
   )
+
   const isIndexing = workspacePath
     ? (indexingState[workspacePath] ?? false)
     : false
 
-  const [currentConfig, setCurrentConfig] = useState<{
-    embeddingProvider: string
-    embeddingModel: string
-  }>({
-    embeddingProvider: '',
-    embeddingModel: '',
-  })
-
-  useEffect(() => {
+  // Get current config from store
+  const currentConfig = useMemo(() => {
     if (!workspacePath) {
-      setCurrentConfig({
-        embeddingProvider: '',
-        embeddingModel: '',
-      })
-      return
+      return null
     }
-
-    // Check store cache first
-    if (configs[workspacePath]) {
-      setCurrentConfig({
-        embeddingProvider: configs[workspacePath].embeddingProvider,
-        embeddingModel: configs[workspacePath].embeddingModel,
-      })
-      return
-    }
-
-    // Load from settings file
-    const { getIndexingConfig } = useStore.getState()
-    getIndexingConfig(workspacePath).then((config) => {
-      if (config) {
-        setCurrentConfig({
-          embeddingProvider: config.embeddingProvider,
-          embeddingModel: config.embeddingModel,
-        })
-      } else {
-        setCurrentConfig({
-          embeddingProvider: '',
-          embeddingModel: '',
-        })
-      }
-    })
+    return configs[workspacePath] ?? null
   }, [workspacePath, configs])
 
-  const embeddingProvider = currentConfig.embeddingProvider
-  const embeddingModel = currentConfig.embeddingModel
-  const [isMetaLoading, setIsMetaLoading] = useState(false)
-  const [indexingProgress, setIndexingProgress] = useState(0)
-  const [indexedDocCount, setIndexedDocCount] = useState(0)
-  const workspacePathRef = useRef<string | null>(null)
-  const [showModelChangeDialog, setShowModelChangeDialog] = useState(false)
-  const [pendingModelChange, setPendingModelChange] = useState<{
-    provider: string
-    model: string
-  } | null>(null)
+  const embeddingProvider = currentConfig?.embeddingProvider ?? ''
+  const embeddingModel = currentConfig?.embeddingModel ?? ''
 
   const totalFiles = useMemo(() => countMarkdownFiles(entries), [entries])
 
+  const indexingProgress = useMemo(
+    () => calculateIndexingProgress(indexedDocCount, totalFiles),
+    [indexedDocCount, totalFiles]
+  )
+
+  // Fetch models on mount
   useEffect(() => {
     fetchOllamaModels()
   }, [fetchOllamaModels])
 
-  const loadIndexingMeta = useCallback(async (path: string) => {
-    setIsMetaLoading(true)
-    try {
-      const meta = await invoke<IndexingMeta>('get_indexing_meta_command', {
-        workspacePath: path,
-      })
-
-      if (workspacePathRef.current !== path) {
-        return
-      }
-
-      setIndexedDocCount(meta.indexedDocCount ?? 0)
-    } catch (error) {
-      if (workspacePathRef.current === path) {
-        console.error('Failed to load indexing metadata:', error)
-        setIndexedDocCount(0)
-      }
-    } finally {
-      if (workspacePathRef.current === path) {
-        setIsMetaLoading(false)
-      }
-    }
-  }, [])
-
+  // Load config when workspace changes
   useEffect(() => {
-    workspacePathRef.current = workspacePath
-  }, [workspacePath])
-
-  useEffect(() => {
-    if (!workspacePath || !isIndexing) {
+    if (!workspacePath) {
       return
     }
 
-    const poll = () => {
-      loadIndexingMeta(workspacePath)
-    }
+    const { getIndexingConfig } = useStore.getState()
+    getIndexingConfig(workspacePath)
+  }, [workspacePath])
 
-    poll()
-    const intervalId = window.setInterval(poll, 5000)
-    return () => window.clearInterval(intervalId)
-  }, [workspacePath, isIndexing, loadIndexingMeta])
-
+  // Load indexing meta and start polling when workspace changes
   useEffect(() => {
     if (!workspacePath) {
-      setIndexedDocCount(0)
       return
     }
 
     loadIndexingMeta(workspacePath)
   }, [workspacePath, loadIndexingMeta])
 
+  // Start/stop polling based on indexing state
   useEffect(() => {
-    if (!totalFiles) {
-      setIndexingProgress(0)
+    if (!workspacePath || !isIndexing) {
+      stopIndexingMetaPolling()
       return
     }
 
-    const clampedIndexed = Math.min(indexedDocCount, totalFiles)
-    const progress = Math.round((clampedIndexed / totalFiles) * 100)
-    setIndexingProgress(progress)
-  }, [totalFiles, indexedDocCount])
+    startIndexingMetaPolling(workspacePath)
+    return () => stopIndexingMetaPolling()
+  }, [
+    workspacePath,
+    isIndexing,
+    startIndexingMetaPolling,
+    stopIndexingMetaPolling,
+  ])
 
-  const handleEmbeddingModelChange = async (value: string) => {
+  const handleEmbeddingModelChange = useCallback(
+    async (value: string) => {
+      if (!workspacePath) {
+        return
+      }
+
+      await handleModelChangeRequest(
+        value,
+        workspacePath,
+        currentConfig,
+        indexedDocCount
+      )
+    },
+    [workspacePath, currentConfig, indexedDocCount, handleModelChangeRequest]
+  )
+
+  const handleConfirmModelChange = useCallback(async () => {
     if (!workspacePath) {
       return
     }
 
-    // Parse provider|model format
-    const parts = value.split('|')
-    if (parts.length >= 2) {
-      const [provider, ...modelParts] = parts
-      const model = modelParts.join('|')
+    await confirmModelChange(workspacePath, true)
+  }, [workspacePath, confirmModelChange])
 
-      // Check if model is actually changing
-      const isModelChanging =
-        embeddingProvider !== provider || embeddingModel !== model
-
-      // Show warning dialog if:
-      // 1. Model is actually changing (not initial setup)
-      // 2. There are indexed documents
-      if (isModelChanging && indexedDocCount > 0) {
-        setPendingModelChange({ provider, model })
-        setShowModelChangeDialog(true)
-        return
-      }
-
-      // No warning needed, update model directly
-      await setIndexingConfig(
-        workspacePath,
-        provider,
-        model,
-        false // Auto index disabled
-      )
-    }
-  }
-
-  const handleConfirmModelChange = async () => {
-    if (!workspacePath || !pendingModelChange) {
-      return
-    }
-
-    const { provider, model } = pendingModelChange
-
-    // Update model first
-    await setIndexingConfig(workspacePath, provider, model, false)
-
-    // Then immediately run force reindex
-    try {
-      await indexWorkspace(workspacePath, provider, model, true)
-      await loadIndexingMeta(workspacePath)
-    } catch (error) {
-      console.error('Failed to reindex workspace:', error)
-    }
-
-    setPendingModelChange(null)
-  }
-
-  const handleDialogCancel = () => {
-    setPendingModelChange(null)
-    setShowModelChangeDialog(false)
-  }
+  const handleDialogCancel = useCallback(() => {
+    cancelModelChange()
+  }, [cancelModelChange])
 
   const isEmbeddingModelConfigured = embeddingModel !== ''
   const isEmbeddingModelAvailable =
@@ -282,7 +198,7 @@ export function IndexingTab() {
         open={showModelChangeDialog}
         onOpenChange={(open) => {
           if (open) {
-            setShowModelChangeDialog(true)
+            // Dialog is controlled by store, shouldn't open manually
           } else {
             handleDialogCancel()
           }
