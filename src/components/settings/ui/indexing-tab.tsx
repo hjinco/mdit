@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/ui/select'
-import { Switch } from '@/ui/switch'
 import { EmbeddingModelChangeDialog } from './embedding-model-change-dialog'
 
 type IndexingMeta = {
@@ -57,11 +56,9 @@ export function IndexingTab() {
   const [currentConfig, setCurrentConfig] = useState<{
     embeddingProvider: string
     embeddingModel: string
-    autoIndex?: boolean
   }>({
     embeddingProvider: '',
     embeddingModel: '',
-    autoIndex: false,
   })
 
   useEffect(() => {
@@ -69,7 +66,6 @@ export function IndexingTab() {
       setCurrentConfig({
         embeddingProvider: '',
         embeddingModel: '',
-        autoIndex: false,
       })
       return
     }
@@ -79,7 +75,6 @@ export function IndexingTab() {
       setCurrentConfig({
         embeddingProvider: configs[workspacePath].embeddingProvider,
         embeddingModel: configs[workspacePath].embeddingModel,
-        autoIndex: configs[workspacePath].autoIndex ?? false,
       })
       return
     }
@@ -91,13 +86,11 @@ export function IndexingTab() {
         setCurrentConfig({
           embeddingProvider: config.embeddingProvider,
           embeddingModel: config.embeddingModel,
-          autoIndex: config.autoIndex ?? false,
         })
       } else {
         setCurrentConfig({
           embeddingProvider: '',
           embeddingModel: '',
-          autoIndex: false,
         })
       }
     })
@@ -105,7 +98,6 @@ export function IndexingTab() {
 
   const embeddingProvider = currentConfig.embeddingProvider
   const embeddingModel = currentConfig.embeddingModel
-  const autoIndexingEnabled = currentConfig.autoIndex ?? false
   const [isMetaLoading, setIsMetaLoading] = useState(false)
   const [indexingProgress, setIndexingProgress] = useState(0)
   const [indexedDocCount, setIndexedDocCount] = useState(0)
@@ -213,7 +205,7 @@ export function IndexingTab() {
         workspacePath,
         provider,
         model,
-        autoIndexingEnabled
+        false // Auto index disabled
       )
     }
   }
@@ -226,7 +218,7 @@ export function IndexingTab() {
     const { provider, model } = pendingModelChange
 
     // Update model first
-    await setIndexingConfig(workspacePath, provider, model, autoIndexingEnabled)
+    await setIndexingConfig(workspacePath, provider, model, false)
 
     // Then immediately run force reindex
     try {
@@ -242,19 +234,6 @@ export function IndexingTab() {
   const handleDialogCancel = () => {
     setPendingModelChange(null)
     setShowModelChangeDialog(false)
-  }
-
-  const handleAutoIndexingChange = async (checked: boolean) => {
-    if (!workspacePath) {
-      return
-    }
-    // Preserve embedding config when updating auto-indexing
-    await setIndexingConfig(
-      workspacePath,
-      embeddingProvider,
-      embeddingModel,
-      checked
-    )
   }
 
   const isEmbeddingModelConfigured = embeddingModel !== ''
@@ -349,20 +328,6 @@ export function IndexingTab() {
               </Select>
             </Field>
 
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel>Automatic Indexing</FieldLabel>
-                <FieldDescription>
-                  Automatically index workspace every 10 minutes
-                </FieldDescription>
-              </FieldContent>
-              <Switch
-                checked={autoIndexingEnabled}
-                onCheckedChange={handleAutoIndexingChange}
-                disabled={!isEmbeddingModelAvailable}
-              />
-            </Field>
-
             <Field>
               <FieldContent>
                 <FieldLabel>Indexing Progress</FieldLabel>
@@ -412,36 +377,6 @@ export function IndexingTab() {
                   Force Rebuild
                 </Button>
               </div>
-            </Field>
-
-            <Field orientation="vertical">
-              <FieldContent>
-                <FieldLabel>Ollama Embedding Models</FieldLabel>
-                <FieldDescription>
-                  Models are automatically fetched from your local Ollama
-                  instance
-                </FieldDescription>
-              </FieldContent>
-              <FieldGroup className="gap-0 mt-2">
-                {ollamaModels.length === 0 ? (
-                  <div className="py-2 text-sm text-muted-foreground">
-                    No Ollama embedding models available. Make sure Ollama is
-                    installed and running.
-                  </div>
-                ) : (
-                  ollamaModels.map((model) => (
-                    <Field
-                      key={model}
-                      orientation="horizontal"
-                      className="py-2"
-                    >
-                      <FieldContent>
-                        <FieldLabel className="text-xs">{model}</FieldLabel>
-                      </FieldContent>
-                    </Field>
-                  ))
-                )}
-              </FieldGroup>
             </Field>
           </FieldGroup>
         </FieldSet>
