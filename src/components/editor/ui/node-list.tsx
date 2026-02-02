@@ -1,4 +1,4 @@
-import { getListSiblings, isOrderedList } from '@platejs/list'
+import { isOrderedList } from '@platejs/list'
 import {
   useTodoListElement,
   useTodoListElementState,
@@ -12,7 +12,6 @@ import {
   useReadOnly,
 } from 'platejs/react'
 import { useCallback } from 'react'
-import { useConfetti } from '@/contexts/confetti-context'
 import { cn } from '@/lib/utils'
 import { Checkbox } from '@/ui/checkbox'
 
@@ -56,37 +55,14 @@ function TodoMarker(props: PlateElementProps) {
   const state = useTodoListElementState({ element: props.element })
   const { checkboxProps } = useTodoListElement(state)
   const readOnly = useReadOnly()
-  const confetti = useConfetti()
   const { onCheckedChange, ...restCheckboxProps } = checkboxProps
 
   const handleCheckedChange = useCallback(
     (value: CheckedState) => {
       if (value === 'indeterminate') return
       onCheckedChange(value)
-      if (readOnly || value !== true || !confetti) return
-
-      const path = state.editor.api.findPath(state.element)
-      if (!path) return
-
-      if (state.element.indent !== 1) return
-
-      const siblings = getListSiblings(state.editor, [state.element, path], {
-        query: (node) => node.listStyleType === state.element.listStyleType,
-      })
-
-      const allChecked =
-        siblings.length > 0 &&
-        siblings.every(([node]) =>
-          node === state.element || node.id === state.element.id
-            ? value === true
-            : Boolean(node.checked)
-        )
-
-      if (allChecked && siblings.length >= 5) {
-        confetti.fireConfetti()
-      }
     },
-    [confetti, onCheckedChange, readOnly, state.editor, state.element]
+    [onCheckedChange]
   )
 
   return (
