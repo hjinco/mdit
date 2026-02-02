@@ -11,8 +11,8 @@
     "tauri": "tauri",
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
+    "lint": "biome check",
     "lint:fix": "biome check --write",
-    "lint:check": "biome check",
     "ci": "pnpm lint:check && pnpm ts:check && pnpm test"
   },
   "dependencies": {
@@ -137,5 +137,5 @@
     "vite": "^7.0.4",
     "vitest": "^4.0.9"
   },
-  "packageManager": "pnpm@10.25.0"
+  "packageManager": "pnpm@10.28.2"
 }
