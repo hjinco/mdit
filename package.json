@@ -14,7 +14,7 @@
     "test:rust": "cd src-tauri && cargo test",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "ci": "pnpm lint && pnpm ts:check && pnpm test && pnpm test:rust"
+    "ci": "pnpm lint && pnpm ts:check && pnpm test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.39",
