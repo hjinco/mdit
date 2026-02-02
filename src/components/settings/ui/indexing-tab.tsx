@@ -146,8 +146,7 @@ export function IndexingTab() {
     }
 
     await confirmModelChange(workspacePath, true)
-    await loadIndexingMeta(workspacePath)
-  }, [workspacePath, confirmModelChange, loadIndexingMeta])
+  }, [workspacePath, confirmModelChange])
 
   const handleDialogCancel = useCallback(() => {
     cancelModelChange()

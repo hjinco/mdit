@@ -11,6 +11,7 @@ import {
 import {
   type IndexingMeta,
   isModelChanging,
+  parseEmbeddingModelValue,
   shouldShowModelChangeWarning,
 } from './helpers/indexing-utils'
 
@@ -302,13 +303,12 @@ export const prepareIndexingSlice = ({
       currentConfig: IndexingConfig | null,
       indexedCount: number
     ) => {
-      const parts = value.split('|')
-      if (parts.length < 2) {
+      const parsed = parseEmbeddingModelValue(value)
+      if (!parsed) {
         return
       }
 
-      const [provider, ...modelParts] = parts
-      const model = modelParts.join('|')
+      const { provider, model } = parsed
 
       const isChanging = isModelChanging(currentConfig, provider, model)
       const shouldShowWarning = shouldShowModelChangeWarning(
