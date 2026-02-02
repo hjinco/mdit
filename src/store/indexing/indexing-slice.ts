@@ -21,6 +21,8 @@ export type WorkspaceIndexSummary = {
   segments_created: number
   segments_updated: number
   embeddings_written: number
+  links_written: number
+  links_deleted: number
   skipped_files: string[]
 }
 

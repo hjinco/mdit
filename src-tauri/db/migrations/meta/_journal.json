@@ -8,6 +8,13 @@
       "when": 1762926095883,
       "tag": "0000_famous_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1770013945246,
+      "tag": "0001_little_inhumans",
+      "breakpoints": true
     }
   ]
 }
