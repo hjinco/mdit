@@ -54,6 +54,7 @@ pub fn run() {
             indexing::index_workspace_command,
             indexing::get_indexing_meta_command,
             indexing::search_query_entries_command,
+            indexing::get_backlinks_command,
             image_processing::get_image_properties_command,
             image_processing::edit_image_command
         ])

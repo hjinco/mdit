@@ -11,7 +11,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
-use rusqlite::Connection;
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
 
 use crate::migrations;
@@ -203,10 +203,7 @@ pub async fn index_workspace_command(
     };
     let model = embedding_model;
 
-    run_blocking(move || {
-        index_workspace(&workspace_path, &provider, &model, force_reindex)
-    })
-    .await
+    run_blocking(move || index_workspace(&workspace_path, &provider, &model, force_reindex)).await
 }
 
 #[tauri::command]
@@ -233,4 +230,99 @@ pub async fn search_query_entries_command(
         )
     })
     .await
+}
+
+/// Represents a single backlink (a document that links to the target document).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BacklinkEntry {
+    /// Relative path from workspace root to the source document.
+    pub rel_path: String,
+    /// Filename without extension for display purposes.
+    pub file_name: String,
+}
+
+/// Get all documents that link to the specified document (backlinks).
+///
+/// Queries the link table for entries where the target is the given document.
+/// Returns a list of source documents with their relative paths and filenames.
+pub fn get_backlinks(workspace_root: &Path, file_path: &Path) -> Result<Vec<BacklinkEntry>> {
+    // Convert absolute file path to relative path
+    let rel_path = file_path
+        .strip_prefix(workspace_root)
+        .with_context(|| {
+            format!(
+                "Failed to compute relative path for {} within workspace {}",
+                file_path.display(),
+                workspace_root.display()
+            )
+        })?
+        .to_string_lossy()
+        .replace('\\', "/");
+
+    // Database is located at <workspace_root>/.mdit/db.sqlite
+    // Migrations are already applied when workspace is opened
+    let db_path = workspace_root.join(".mdit").join("db.sqlite");
+    let conn = Connection::open(&db_path)
+        .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
+
+    // Find the doc ID for the target file
+    let target_doc_id: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM doc WHERE rel_path = ?1",
+            params![&rel_path],
+            |row| row.get(0),
+        )
+        .optional()
+        .context("Failed to query target document ID")?;
+
+    // Query for backlinks - documents that link to this one
+    // We check both target_doc_id (for resolved links) and target_path (for unresolved)
+    let mut backlinks = Vec::new();
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT d.rel_path \
+         FROM link l \
+         JOIN doc d ON d.id = l.source_doc_id \
+         WHERE l.target_doc_id = ?1 OR (l.target_doc_id IS NULL AND l.target_path = ?2) \
+         ORDER BY d.rel_path",
+        )
+        .context("Failed to prepare backlink query")?;
+
+    // Use -1 as sentinel for missing doc ID; query handles both resolved links (via target_doc_id)
+    // and unresolved links (via target_path) using OR condition
+    let target_doc_id_param = target_doc_id.unwrap_or(-1);
+    let rows = stmt
+        .query_map(params![target_doc_id_param, &rel_path], |row| {
+            let rel_path: String = row.get(0)?;
+            // Extract filename without extension
+            let file_name = std::path::Path::new(&rel_path)
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_else(|| rel_path.clone());
+
+            Ok(BacklinkEntry {
+                rel_path,
+                file_name,
+            })
+        })
+        .context("Failed to query backlinks")?;
+
+    for row in rows {
+        backlinks.push(row?);
+    }
+
+    Ok(backlinks)
+}
+
+#[tauri::command]
+pub async fn get_backlinks_command(
+    workspace_path: String,
+    file_path: String,
+) -> Result<Vec<BacklinkEntry>, String> {
+    let workspace_path = PathBuf::from(workspace_path);
+    let file_path = PathBuf::from(file_path);
+
+    run_blocking(move || get_backlinks(&workspace_path, &file_path)).await
 }
