@@ -1,5 +1,5 @@
 import { useEquationInput } from '@platejs/math/react'
-import katex, { type KatexOptions } from 'katex'
+import type { KatexOptions } from 'katex'
 import { CornerDownLeftIcon, RadicalIcon } from 'lucide-react'
 import type { TEquationElement } from 'platejs'
 import { PathApi } from 'platejs'
@@ -29,6 +29,20 @@ import {
 } from '@/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/ui/popover'
 import { KATEX_ENVIRONMENTS } from '../utils/katex'
+
+let katexPromise: Promise<typeof import('katex')> | null = null
+let katexCssLoaded = false
+
+const loadKatex = () => {
+  if (!katexPromise) {
+    katexPromise = import('katex')
+  }
+  if (!katexCssLoaded) {
+    katexCssLoaded = true
+    void import('katex/dist/katex.min.css')
+  }
+  return katexPromise
+}
 
 export function EquationElement(props: PlateElementProps<TEquationElement>) {
   const selected = useSelected()
@@ -415,7 +429,14 @@ export const useEquationElement = ({
       typeof element.environment === 'string'
         ? `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`
         : element.texExpression
-    katex.render(equation, katexRef.current, options)
+    let isActive = true
+    void loadKatex().then(({ default: katex }) => {
+      if (!isActive || !katexRef.current) return
+      katex.render(equation, katexRef.current, options)
+    })
+    return () => {
+      isActive = false
+    }
   }, [element.environment, element.texExpression])
 }
 
