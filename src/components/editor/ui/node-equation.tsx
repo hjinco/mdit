@@ -30,18 +30,19 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover"
 import { KATEX_ENVIRONMENTS } from "../utils/katex"
 
-let katexPromise: Promise<typeof import('katex')> | null = null
-let katexCssLoaded = false
+let katexJsPromise: Promise<typeof import("katex")> | null = null
+let katexCssPromise: Promise<any> | null = null
 
 const loadKatex = () => {
-  if (!katexPromise) {
-    katexPromise = import('katex')
-  }
-  if (!katexCssLoaded) {
-    katexCssLoaded = true
-    void import('katex/dist/katex.min.css')
-  }
-  return katexPromise
+	if (!katexJsPromise) {
+		katexJsPromise = import("katex")
+	}
+	if (!katexCssPromise) {
+		katexCssPromise = import("katex/dist/katex.min.css")
+	}
+	return Promise.all([katexJsPromise, katexCssPromise]).then(
+		([katexModule]) => katexModule,
+	)
 }
 
 export function EquationElement(props: PlateElementProps<TEquationElement>) {
@@ -429,7 +430,14 @@ export const useEquationElement = ({
 			typeof element.environment === "string"
 				? `\\begin{${element.environment}}\n${element.texExpression}\n\\end{${element.environment}}`
 				: element.texExpression
-		katex.render(equation, katexRef.current, options)
+		let isActive = true
+		void loadKatex().then(({ default: katex }) => {
+			if (!isActive || !katexRef.current) return
+			katex.render(equation, katexRef.current, options)
+		})
+		return () => {
+			isActive = false
+		}
 	}, [element.environment, element.texExpression])
 }
 
