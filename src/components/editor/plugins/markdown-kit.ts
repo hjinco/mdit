@@ -9,6 +9,7 @@ import {
   remarkMdx,
   remarkMention,
 } from '@platejs/markdown'
+import { phrasing } from 'mdast-util-phrasing'
 import { getPluginType, KEYS, type TEquationElement } from 'platejs'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkGfm from 'remark-gfm'
@@ -26,6 +27,17 @@ import { FRONTMATTER_KEY } from './frontmatter-kit'
 
 const EQUATION_ENVIRONMENT_REGEX =
   /^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
+
+type MdastRoot = {
+  type: 'root'
+  children: MdastNode[]
+}
+
+type MdastNode = {
+  type?: string
+  children?: MdastNode[]
+  value?: string
+}
 
 function createRowId() {
   return Math.random().toString(36).slice(2, 9)
@@ -141,6 +153,16 @@ function isWikiEmbedTargetSafe(path: string): boolean {
   return !hasParentTraversal(normalized)
 }
 
+function isEmptyParagraph(node: MdastNode | undefined): boolean {
+  if (!node || node.type !== 'paragraph') return false
+  if (!node.children || node.children.length === 0) return true
+  return node.children.every((child) => {
+    if (child.type !== 'text') return false
+    const value = typeof child.value === 'string' ? child.value : ''
+    return value.replace(/\u200b/g, '').trim().length === 0
+  })
+}
+
 export const MarkdownKit = [
   MarkdownPlugin.configure({
     options: {
@@ -153,6 +175,23 @@ export const MarkdownKit = [
         remarkFrontmatter,
         remarkWikiLink,
       ],
+      remarkStringifyOptions: {
+        handlers: {
+          root: (node: MdastRoot, _parent: unknown, state: any, info: any) => {
+            const children = [...node.children]
+            while (children.length > 0 && isEmptyParagraph(children.at(-1))) {
+              children.pop()
+            }
+
+            const hasPhrasing = children.some(phrasing)
+            const container = hasPhrasing
+              ? state.containerPhrasing
+              : state.containerFlow
+
+            return container.call(state, { ...node, children }, info)
+          },
+        },
+      },
       rules: {
         [FRONTMATTER_KEY]: {
           serialize: (node) => {

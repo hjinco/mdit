@@ -60,6 +60,27 @@ const extractText = (node: any): string => {
 }
 
 describe('markdown-kit serialization', () => {
+  it('drops trailing empty paragraph on serialization', async () => {
+    const editor = await createMarkdownEditor()
+    const value = [
+      {
+        type: KEYS.p,
+        children: [{ text: 'Hello' }],
+      },
+      {
+        type: KEYS.p,
+        children: [{ text: '' }],
+      },
+      {
+        type: KEYS.p,
+        children: [{ text: '' }],
+      },
+    ]
+
+    const markdown = serializeMd(editor, { value })
+    expect(markdown).toBe('Hello\n')
+  })
+
   it('serializes internal links as wiki links', async () => {
     const editor = await createMarkdownEditor()
     const value = [
