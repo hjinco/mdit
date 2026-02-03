@@ -1,56 +1,56 @@
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capability for the main window",
-  "windows": ["main", "quick-note-*", "edit"],
-  "permissions": [
-    "core:default",
-    "core:window:allow-start-dragging",
-    "core:webview:allow-create-webview",
-    "core:webview:allow-create-webview-window",
-    "core:app:allow-default-window-icon",
-    "core:window:allow-hide",
-    "core:window:allow-show",
-    "core:window:allow-destroy",
-    "core:window:allow-set-fullscreen",
-    "process:default",
-    "opener:default",
-    "dialog:default",
-    "fs:read-all",
-    "fs:write-all",
-    "clipboard:read-all",
-    "clipboard:write-all",
-    "window-state:default",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
-    {
-      "identifier": "fs:scope",
-      "allow": [
-        { "path": "**" },
-        { "path": "**/*" },
-        { "path": "**/.*" },
-        { "path": "**/.mdit/**" },
-        { "path": "**/.mdit/.gitignore" }
-      ]
-    },
-    "keyring:default",
-    {
-      "identifier": "shell:allow-execute",
-      "allow": [
-        { "cmd": "grep", "name": "grep", "args": true },
-        { "cmd": "git", "name": "git", "args": true },
-        { "cmd": "findstr", "name": "findstr", "args": true },
-        { "cmd": "open", "name": "open", "args": true },
-        { "cmd": "xdg-open", "name": "xdg-open", "args": true },
-        { "cmd": "explorer.exe", "name": "explorer.exe", "args": true }
-      ]
-    },
-    {
-      "identifier": "http:default",
-      "allow": [
-        { "url": "https://www.google.com/generate_204" },
-        { "url": "https://example.com" }
-      ]
-    }
-  ]
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Capability for the main window",
+	"windows": ["main", "quick-note-*", "edit"],
+	"permissions": [
+		"core:default",
+		"core:window:allow-start-dragging",
+		"core:webview:allow-create-webview",
+		"core:webview:allow-create-webview-window",
+		"core:app:allow-default-window-icon",
+		"core:window:allow-hide",
+		"core:window:allow-show",
+		"core:window:allow-destroy",
+		"core:window:allow-set-fullscreen",
+		"process:default",
+		"opener:default",
+		"dialog:default",
+		"fs:read-all",
+		"fs:write-all",
+		"clipboard:read-all",
+		"clipboard:write-all",
+		"window-state:default",
+		"global-shortcut:allow-register",
+		"global-shortcut:allow-unregister",
+		{
+			"identifier": "fs:scope",
+			"allow": [
+				{ "path": "**" },
+				{ "path": "**/*" },
+				{ "path": "**/.*" },
+				{ "path": "**/.mdit/**" },
+				{ "path": "**/.mdit/.gitignore" }
+			]
+		},
+		"keyring:default",
+		{
+			"identifier": "shell:allow-execute",
+			"allow": [
+				{ "cmd": "grep", "name": "grep", "args": true },
+				{ "cmd": "git", "name": "git", "args": true },
+				{ "cmd": "findstr", "name": "findstr", "args": true },
+				{ "cmd": "open", "name": "open", "args": true },
+				{ "cmd": "xdg-open", "name": "xdg-open", "args": true },
+				{ "cmd": "explorer.exe", "name": "explorer.exe", "args": true }
+			]
+		},
+		{
+			"identifier": "http:default",
+			"allow": [
+				{ "url": "https://www.google.com/generate_204" },
+				{ "url": "https://example.com" }
+			]
+		}
+	]
 }

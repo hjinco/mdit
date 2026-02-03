@@ -1,8 +1,8 @@
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { createOpenAI } from '@ai-sdk/openai'
-import type { DirEntry } from '@tauri-apps/plugin-fs'
-import { ollama } from 'ollama-ai-provider-v2'
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createOpenAI } from "@ai-sdk/openai"
+import type { DirEntry } from "@tauri-apps/plugin-fs"
+import { ollama } from "ollama-ai-provider-v2"
 
 export const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
 Return only the new title without a file extension. 
@@ -16,70 +16,70 @@ export const MULTIPLE_WHITESPACE_REGEX = /\s+/g
 export const TRAILING_DOTS_REGEX = /\.+$/
 
 export function createModelFromConfig(config: {
-  provider: string
-  model: string
-  apiKey: string
+	provider: string
+	model: string
+	apiKey: string
 }) {
-  switch (config.provider) {
-    case 'anthropic':
-      return createAnthropic({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'google':
-      return createGoogleGenerativeAI({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'openai':
-      return createOpenAI({
-        apiKey: config.apiKey,
-      })(config.model)
-    case 'ollama':
-      return ollama(config.model)
-    default:
-      throw new Error(`Unsupported provider: ${config.provider}`)
-  }
+	switch (config.provider) {
+		case "anthropic":
+			return createAnthropic({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "google":
+			return createGoogleGenerativeAI({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "openai":
+			return createOpenAI({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "ollama":
+			return ollama(config.model)
+		default:
+			throw new Error(`Unsupported provider: ${config.provider}`)
+	}
 }
 
 export function collectSiblingNoteNames(
-  entries: DirEntry[],
-  currentFileName: string
+	entries: DirEntry[],
+	currentFileName: string,
 ): string[] {
-  return entries
-    .filter(
-      (entry) =>
-        !!entry.name &&
-        entry.name !== currentFileName &&
-        !entry.name?.startsWith('.') &&
-        entry.name?.toLowerCase().endsWith('.md')
-    )
-    .map((entry) => stripExtension(entry.name, '.md').trim())
-    .filter((name) => name.length > 0)
-    .slice(0, 10)
+	return entries
+		.filter(
+			(entry) =>
+				!!entry.name &&
+				entry.name !== currentFileName &&
+				!entry.name?.startsWith(".") &&
+				entry.name?.toLowerCase().endsWith(".md"),
+		)
+		.map((entry) => stripExtension(entry.name, ".md").trim())
+		.filter((name) => name.length > 0)
+		.slice(0, 10)
 }
 
 export function buildRenamePrompt({
-  currentName,
-  otherNoteNames,
-  content,
-  dirPath,
+	currentName,
+	otherNoteNames,
+	content,
+	dirPath,
 }: {
-  currentName: string
-  otherNoteNames: string[]
-  content: string
-  dirPath: string
+	currentName: string
+	otherNoteNames: string[]
+	content: string
+	dirPath: string
 }) {
-  const truncatedContent =
-    content.length > MAX_NOTE_CONTEXT_LENGTH
-      ? `${content.slice(0, MAX_NOTE_CONTEXT_LENGTH)}\n…`
-      : content
+	const truncatedContent =
+		content.length > MAX_NOTE_CONTEXT_LENGTH
+			? `${content.slice(0, MAX_NOTE_CONTEXT_LENGTH)}\n…`
+			: content
 
-  const others =
-    otherNoteNames.length > 0
-      ? otherNoteNames.map((name) => `- ${name}`).join('\n')
-      : 'None'
+	const others =
+		otherNoteNames.length > 0
+			? otherNoteNames.map((name) => `- ${name}`).join("\n")
+			: "None"
 
-  return `Generate a better file name for a markdown note. 
-- The note is currently called "${stripExtension(currentName, '.md')}".
+	return `Generate a better file name for a markdown note. 
+- The note is currently called "${stripExtension(currentName, ".md")}".
 - The note resides in the folder: ${dirPath}.
 - Other notes in this folder:\n${others}
 
@@ -92,31 +92,31 @@ Respond with a single title (no quotes, no markdown, no extension).`
 }
 
 export function extractName(raw: string) {
-  return raw
-    .split('\n')[0]
-    .replace(/[`"'<>]/g, ' ')
-    .trim()
+	return raw
+		.split("\n")[0]
+		.replace(/[`"'<>]/g, " ")
+		.trim()
 }
 
 export function sanitizeFileName(name: string) {
-  const withoutMd = name.replace(MARKDOWN_EXT_REGEX, '')
-  const cleaned = withoutMd
-    .replace(INVALID_FILENAME_CHARS_REGEX, ' ')
-    .replace(MULTIPLE_WHITESPACE_REGEX, ' ')
-    .replace(TRAILING_DOTS_REGEX, '')
-    .trim()
+	const withoutMd = name.replace(MARKDOWN_EXT_REGEX, "")
+	const cleaned = withoutMd
+		.replace(INVALID_FILENAME_CHARS_REGEX, " ")
+		.replace(MULTIPLE_WHITESPACE_REGEX, " ")
+		.replace(TRAILING_DOTS_REGEX, "")
+		.trim()
 
-  const truncated = cleaned.slice(0, 60).trim()
+	const truncated = cleaned.slice(0, 60).trim()
 
-  return truncated
+	return truncated
 }
 
 export function extractAndSanitizeName(raw: string) {
-  return sanitizeFileName(extractName(raw))
+	return sanitizeFileName(extractName(raw))
 }
 
 export function stripExtension(fileName: string, extension: string) {
-  return extension && fileName.toLowerCase().endsWith(extension.toLowerCase())
-    ? fileName.slice(0, -extension.length)
-    : fileName
+	return extension && fileName.toLowerCase().endsWith(extension.toLowerCase())
+		? fileName.slice(0, -extension.length)
+		: fileName
 }

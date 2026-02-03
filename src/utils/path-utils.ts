@@ -15,12 +15,12 @@ const MULTIPLE_SLASHES_REGEX = /\/{2,}/g
  * normalizePathSeparators('/home//user//file') // '/home/user/file'
  */
 export const normalizePathSeparators = (path: string): string => {
-  const withForwardSlashes = path.replace(BACKSLASH_REGEX, '/')
-  const collapsed = withForwardSlashes.replace(MULTIPLE_SLASHES_REGEX, '/')
-  if (collapsed.length <= 1) {
-    return collapsed
-  }
-  return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed
+	const withForwardSlashes = path.replace(BACKSLASH_REGEX, "/")
+	const collapsed = withForwardSlashes.replace(MULTIPLE_SLASHES_REGEX, "/")
+	if (collapsed.length <= 1) {
+		return collapsed
+	}
+	return collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed
 }
 
 /**
@@ -35,8 +35,8 @@ export const normalizePathSeparators = (path: string): string => {
  * getFileNameFromPath('/home/user/file.txt') // 'file.txt'
  */
 export const getFileNameFromPath = (path: string): string => {
-  const segments = path.split(PATH_SEGMENT_REGEX)
-  return segments.length > 0 ? (segments.at(-1) ?? path) : path
+	const segments = path.split(PATH_SEGMENT_REGEX)
+	return segments.length > 0 ? (segments.at(-1) ?? path) : path
 }
 
 /**
@@ -51,10 +51,10 @@ export const getFileNameFromPath = (path: string): string => {
  * getFolderNameFromPath('/home/user/documents') // 'documents'
  */
 export const getFolderNameFromPath = (path: string): string => {
-  const segments = path.split(PATH_SEGMENT_REGEX)
-  // Filter out empty segments (e.g., trailing slashes)
-  const nonEmptySegments = segments.filter((seg) => seg.length > 0)
-  return nonEmptySegments.length > 0 ? (nonEmptySegments.at(-1) ?? path) : path
+	const segments = path.split(PATH_SEGMENT_REGEX)
+	// Filter out empty segments (e.g., trailing slashes)
+	const nonEmptySegments = segments.filter((seg) => seg.length > 0)
+	return nonEmptySegments.length > 0 ? (nonEmptySegments.at(-1) ?? path) : path
 }
 
 /**
@@ -69,9 +69,9 @@ export const getFolderNameFromPath = (path: string): string => {
  * getFileNameWithoutExtension('/home/user/file.md') // 'file'
  */
 export const getFileNameWithoutExtension = (path: string): string => {
-  const fileName = getFileNameFromPath(path)
-  const lastDotIndex = fileName.lastIndexOf('.')
-  return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName
+	const fileName = getFileNameFromPath(path)
+	const lastDotIndex = fileName.lastIndexOf(".")
+	return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName
 }
 
 /**
@@ -87,8 +87,8 @@ export const getFileNameWithoutExtension = (path: string): string => {
  * sanitizeFilename('  File/Name\\Test  ') // 'FileNameTest'
  */
 export const sanitizeFilename = (text: string): string => {
-  // Remove invalid filename characters: / \ : * ? " < > |
-  return text.replace(/[/\\:*?"<>|]/g, '').trim()
+	// Remove invalid filename characters: / \ : * ? " < > |
+	return text.replace(/[/\\:*?"<>|]/g, "").trim()
 }
 
 /**
@@ -105,17 +105,17 @@ export const sanitizeFilename = (text: string): string => {
  * isPathEqualOrDescendant('/home/user/file.txt', '/home/user') // true
  */
 export const isPathEqualOrDescendant = (
-  path: string,
-  parentPath: string
+	path: string,
+	parentPath: string,
 ): boolean => {
-  const normalizedPath = normalizePathSeparators(path)
-  const normalizedParent = normalizePathSeparators(parentPath)
+	const normalizedPath = normalizePathSeparators(path)
+	const normalizedParent = normalizePathSeparators(parentPath)
 
-  if (normalizedPath === normalizedParent) {
-    return true
-  }
+	if (normalizedPath === normalizedParent) {
+		return true
+	}
 
-  return normalizedPath.startsWith(`${normalizedParent}/`)
+	return normalizedPath.startsWith(`${normalizedParent}/`)
 }
 
 /**
@@ -131,17 +131,17 @@ export const isPathEqualOrDescendant = (
  * isPathInPaths('C:\\Users\\Documents', ['C:/Users']) // true
  */
 export const isPathInPaths = (path: string, targetPaths: string[]): boolean => {
-  if (targetPaths.length === 0) {
-    return false
-  }
+	if (targetPaths.length === 0) {
+		return false
+	}
 
-  for (const targetPath of targetPaths) {
-    if (isPathEqualOrDescendant(path, targetPath)) {
-      return true
-    }
-  }
+	for (const targetPath of targetPaths) {
+		if (isPathEqualOrDescendant(path, targetPath)) {
+			return true
+		}
+	}
 
-  return false
+	return false
 }
 
 /**
@@ -159,25 +159,25 @@ export const isPathInPaths = (path: string, targetPaths: string[]): boolean => {
  * replaceFileExtension('/home/user/file', 'txt') // '/home/user/file.txt'
  */
 export const replaceFileExtension = (
-  filePath: string,
-  newExtension: string
+	filePath: string,
+	newExtension: string,
 ): string => {
-  const lastSeparator = Math.max(
-    filePath.lastIndexOf('/'),
-    filePath.lastIndexOf('\\')
-  )
-  const lastDotIndex = filePath.lastIndexOf('.')
-  const basenameStart = lastSeparator + 1 // points to the first char of the filename
+	const lastSeparator = Math.max(
+		filePath.lastIndexOf("/"),
+		filePath.lastIndexOf("\\"),
+	)
+	const lastDotIndex = filePath.lastIndexOf(".")
+	const basenameStart = lastSeparator + 1 // points to the first char of the filename
 
-  // Only treat the dot as an extension delimiter when:
-  // - it appears after the last path separator, and
-  // - it is not the leading character of the basename (so hidden files like ".env" are preserved)
-  if (lastDotIndex > basenameStart) {
-    return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
-  }
+	// Only treat the dot as an extension delimiter when:
+	// - it appears after the last path separator, and
+	// - it is not the leading character of the basename (so hidden files like ".env" are preserved)
+	if (lastDotIndex > basenameStart) {
+		return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
+	}
 
-  // If no valid extension is found, append the new one
-  return `${filePath}.${newExtension}`
+	// If no valid extension is found, append the new one
+	return `${filePath}.${newExtension}`
 }
 
 /**
@@ -194,27 +194,27 @@ export const replaceFileExtension = (
  * getBasePathAndExtension('/home/user/file') // { basePath: '/home/user/file', extension: null }
  */
 export const getBasePathAndExtension = (
-  filePath: string
+	filePath: string,
 ): {
-  basePath: string
-  extension: string | null
+	basePath: string
+	extension: string | null
 } => {
-  const lastSeparator = Math.max(
-    filePath.lastIndexOf('/'),
-    filePath.lastIndexOf('\\')
-  )
-  const basenameStart = lastSeparator + 1
-  const lastDotIndex = filePath.lastIndexOf('.')
+	const lastSeparator = Math.max(
+		filePath.lastIndexOf("/"),
+		filePath.lastIndexOf("\\"),
+	)
+	const basenameStart = lastSeparator + 1
+	const lastDotIndex = filePath.lastIndexOf(".")
 
-  const hasExtension = lastDotIndex > basenameStart
-  if (hasExtension) {
-    return {
-      basePath: filePath.slice(0, lastDotIndex),
-      extension: filePath.slice(lastDotIndex + 1),
-    }
-  }
+	const hasExtension = lastDotIndex > basenameStart
+	if (hasExtension) {
+		return {
+			basePath: filePath.slice(0, lastDotIndex),
+			extension: filePath.slice(lastDotIndex + 1),
+		}
+	}
 
-  return { basePath: filePath, extension: null }
+	return { basePath: filePath, extension: null }
 }
 
 /**
@@ -230,12 +230,12 @@ export const getBasePathAndExtension = (
  * hasDotFolderInPaths(['C:\\Users\\Documents\\file.txt']) // false
  */
 export const hasHiddenEntryInPaths = (paths: string[]): boolean => {
-  return paths.some((path) => {
-    const segments = path.split(PATH_SEGMENT_REGEX)
-    // A hidden segment starts with a dot, but is not '.' or '..'
-    return segments.some(
-      (segment) =>
-        segment.startsWith('.') && segment !== '.' && segment !== '..'
-    )
-  })
+	return paths.some((path) => {
+		const segments = path.split(PATH_SEGMENT_REGEX)
+		// A hidden segment starts with a dot, but is not '.' or '..'
+		return segments.some(
+			(segment) =>
+				segment.startsWith(".") && segment !== "." && segment !== "..",
+		)
+	})
 }

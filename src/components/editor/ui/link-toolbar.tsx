@@ -1,1348 +1,1348 @@
-import { flip, offset, type UseVirtualFloatingOptions } from '@platejs/floating'
-import { upsertLink } from '@platejs/link'
+import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating"
+import { upsertLink } from "@platejs/link"
 import {
-  type LinkFloatingToolbarState,
-  LinkPlugin,
-  useFloatingLinkEdit,
-  useFloatingLinkEditState,
-  useFloatingLinkInsert,
-  useFloatingLinkInsertState,
-  useFloatingLinkUrlInputState,
-} from '@platejs/link/react'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { cva } from 'class-variance-authority'
+	type LinkFloatingToolbarState,
+	LinkPlugin,
+	useFloatingLinkEdit,
+	useFloatingLinkEditState,
+	useFloatingLinkInsert,
+	useFloatingLinkInsertState,
+	useFloatingLinkUrlInputState,
+} from "@platejs/link/react"
+import { openUrl } from "@tauri-apps/plugin-opener"
+import { cva } from "class-variance-authority"
 import {
-  Check,
-  ExternalLink,
-  FileIcon,
-  GlobeIcon,
-  Link,
-  Unlink,
-} from 'lucide-react'
+	Check,
+	ExternalLink,
+	FileIcon,
+	GlobeIcon,
+	Link,
+	Unlink,
+} from "lucide-react"
 import {
-  isAbsolute,
-  join,
-  dirname as pathDirname,
-  relative,
-  resolve,
-} from 'pathe'
-import type { TLinkElement } from 'platejs'
-import { KEYS } from 'platejs'
+	isAbsolute,
+	join,
+	dirname as pathDirname,
+	relative,
+	resolve,
+} from "pathe"
+import type { TLinkElement } from "platejs"
+import { KEYS } from "platejs"
 import {
-  useEditorPlugin,
-  useEditorRef,
-  useEditorSelection,
-  useFormInputProps,
-  usePluginOption,
-} from 'platejs/react'
+	useEditorPlugin,
+	useEditorRef,
+	useEditorSelection,
+	useFormInputProps,
+	usePluginOption,
+} from "platejs/react"
 import {
-  type ChangeEvent,
-  type KeyboardEvent,
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from 'react'
-import { useShallow } from 'zustand/shallow'
-import { startsWithHttpProtocol } from '@/components/editor/utils/link-utils'
-import { cn } from '@/lib/utils'
-import { useStore } from '@/store'
-import type { WorkspaceEntry } from '@/store/workspace/workspace-slice'
-import { buttonVariants } from '@/ui/button'
-import { Separator } from '@/ui/separator'
+	type ChangeEvent,
+	type KeyboardEvent,
+	type MouseEvent,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useState,
+} from "react"
+import { useShallow } from "zustand/shallow"
+import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
+import { cn } from "@/lib/utils"
+import { useStore } from "@/store"
+import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import { buttonVariants } from "@/ui/button"
+import { Separator } from "@/ui/separator"
 
 const popoverVariants = cva(
-  'z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden'
+	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
 )
 
 export function LinkFloatingToolbar({
-  state,
+	state,
 }: {
-  state?: LinkFloatingToolbarState
+	state?: LinkFloatingToolbarState
 }) {
-  const activeCommentId = usePluginOption({ key: KEYS.comment }, 'activeId')
-  const activeSuggestionId = usePluginOption(
-    { key: KEYS.suggestion },
-    'activeId'
-  )
+	const activeCommentId = usePluginOption({ key: KEYS.comment }, "activeId")
+	const activeSuggestionId = usePluginOption(
+		{ key: KEYS.suggestion },
+		"activeId",
+	)
 
-  const floatingOptions: UseVirtualFloatingOptions = useMemo(() => {
-    return {
-      middleware: [
-        offset(8),
-        flip({
-          fallbackPlacements: ['bottom-end', 'top-start', 'top-end'],
-          padding: 12,
-        }),
-      ],
-      placement:
-        activeSuggestionId || activeCommentId ? 'top-start' : 'bottom-start',
-    }
-  }, [activeCommentId, activeSuggestionId])
+	const floatingOptions: UseVirtualFloatingOptions = useMemo(() => {
+		return {
+			middleware: [
+				offset(8),
+				flip({
+					fallbackPlacements: ["bottom-end", "top-start", "top-end"],
+					padding: 12,
+				}),
+			],
+			placement:
+				activeSuggestionId || activeCommentId ? "top-start" : "bottom-start",
+		}
+	}, [activeCommentId, activeSuggestionId])
 
-  const insertState = useFloatingLinkInsertState({
-    ...state,
-    floatingOptions: {
-      ...floatingOptions,
-      ...state?.floatingOptions,
-    },
-  })
-  const {
-    hidden,
-    props: insertProps,
-    ref: insertRef,
-  } = useFloatingLinkInsert(insertState)
+	const insertState = useFloatingLinkInsertState({
+		...state,
+		floatingOptions: {
+			...floatingOptions,
+			...state?.floatingOptions,
+		},
+	})
+	const {
+		hidden,
+		props: insertProps,
+		ref: insertRef,
+	} = useFloatingLinkInsert(insertState)
 
-  const editState = useFloatingLinkEditState({
-    ...state,
-    floatingOptions: {
-      ...floatingOptions,
-      ...state?.floatingOptions,
-    },
-  })
-  const {
-    editButtonProps,
-    props: editProps,
-    ref: editRef,
-    unlinkButtonProps,
-  } = useFloatingLinkEdit(editState)
-  const inputProps = useFormInputProps({
-    preventDefaultOnEnterKeydown: true,
-  })
+	const editState = useFloatingLinkEditState({
+		...state,
+		floatingOptions: {
+			...floatingOptions,
+			...state?.floatingOptions,
+		},
+	})
+	const {
+		editButtonProps,
+		props: editProps,
+		ref: editRef,
+		unlinkButtonProps,
+	} = useFloatingLinkEdit(editState)
+	const inputProps = useFormInputProps({
+		preventDefaultOnEnterKeydown: true,
+	})
 
-  if (hidden) return null
+	if (hidden) return null
 
-  const input = (
-    <div className="flex min-w-[330px] flex-col" {...inputProps}>
-      <LinkUrlInput />
-    </div>
-  )
+	const input = (
+		<div className="flex min-w-[330px] flex-col" {...inputProps}>
+			<LinkUrlInput />
+		</div>
+	)
 
-  const editContent = editState.isEditing ? (
-    input
-  ) : (
-    <div className="box-content flex items-center">
-      <button
-        className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-        type="button"
-        {...editButtonProps}
-      >
-        Edit link
-      </button>
+	const editContent = editState.isEditing ? (
+		input
+	) : (
+		<div className="box-content flex items-center">
+			<button
+				className={buttonVariants({ size: "sm", variant: "ghost" })}
+				type="button"
+				{...editButtonProps}
+			>
+				Edit link
+			</button>
 
-      <Separator orientation="vertical" />
+			<Separator orientation="vertical" />
 
-      <LinkOpenButton />
+			<LinkOpenButton />
 
-      <Separator orientation="vertical" />
+			<Separator orientation="vertical" />
 
-      <button
-        className={buttonVariants({
-          size: 'icon',
-          variant: 'ghost',
-        })}
-        type="button"
-        {...unlinkButtonProps}
-      >
-        <Unlink width={18} />
-      </button>
-    </div>
-  )
+			<button
+				className={buttonVariants({
+					size: "icon",
+					variant: "ghost",
+				})}
+				type="button"
+				{...unlinkButtonProps}
+			>
+				<Unlink width={18} />
+			</button>
+		</div>
+	)
 
-  return (
-    <>
-      <div ref={insertRef} className={popoverVariants()} {...insertProps}>
-        {input}
-      </div>
+	return (
+		<>
+			<div ref={insertRef} className={popoverVariants()} {...insertProps}>
+				{input}
+			</div>
 
-      <div ref={editRef} className={popoverVariants()} {...editProps}>
-        {editContent}
-      </div>
-    </>
-  )
+			<div ref={editRef} className={popoverVariants()} {...editProps}>
+				{editContent}
+			</div>
+		</>
+	)
 }
 
 type WorkspaceFileOption = {
-  absolutePath: string
-  displayName: string
-  relativePath: string
-  relativePathLower: string
+	absolutePath: string
+	displayName: string
+	relativePath: string
+	relativePathLower: string
 }
 
-type LinkMode = 'wiki' | 'markdown'
+type LinkMode = "wiki" | "markdown"
 
 const backslashRegex = /\\/g
 const multipleSlashesRegex = /\/{2,}/g
 const trailingSlashesRegex = /\/+$/
 
 function LinkUrlInput() {
-  const { ref } = useFloatingLinkUrlInputState()
-  const editor = useEditorRef()
-  const { api, setOption } = useEditorPlugin(LinkPlugin)
-
-  const {
-    entries: workspaceEntries,
-    workspacePath,
-    tab,
-  } = useStore(
-    useShallow((state) => ({
-      entries: state.entries,
-      workspacePath: state.workspacePath,
-      tab: state.tab,
-    }))
-  )
-  const currentTabPath = tab?.path ?? null
-
-  const suggestionsSource = useMemo(
-    () => flattenWorkspaceFiles(workspaceEntries, workspacePath),
-    [workspaceEntries, workspacePath]
-  )
-
-  const encodedUrl = usePluginOption(LinkPlugin, 'url') as string | undefined
-  const decodedUrl = useMemo(
-    () => (encodedUrl ? safelyDecodeUrl(encodedUrl) : ''),
-    [encodedUrl]
-  )
-
-  const selection = useEditorSelection()
-
-  const { element } = useMemo(() => {
-    const entry = editor.api.node<TLinkElement>({
-      match: { type: editor.getType(KEYS.link) },
-    })
-
-    if (!entry) {
-      return {
-        element: null as
-          | (TLinkElement & {
-              wiki?: boolean
-              wikiTarget?: string
-            })
-          | null,
-      }
-    }
-
-    const [node] = entry
-
-    return {
-      element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
-    }
-  }, [editor])
-
-  const [linkMode, setLinkMode] = useState<LinkMode>('wiki')
-
-  useEffect(() => {
-    if (!selection) {
-      return
-    }
-
-    if (!element) {
-      setLinkMode('wiki')
-      return
-    }
-
-    const isWiki = Boolean(element.wiki || element.wikiTarget)
-    setLinkMode(isWiki ? 'wiki' : 'markdown')
-  }, [element, selection])
-
-  const displayValue = useMemo(() => {
-    if (!decodedUrl && !element?.wikiTarget) {
-      return ''
-    }
-
-    if (linkMode === 'wiki') {
-      const wikiTarget = element?.wikiTarget
-      if (wikiTarget) {
-        return normalizeWikiTargetForDisplay(wikiTarget)
-      }
-
-      if (!decodedUrl) {
-        return ''
-      }
-
-      if (startsWithHttpProtocol(decodedUrl)) {
-        return decodedUrl
-      }
-
-      return normalizeWikiTargetForDisplay(decodedUrl)
-    }
-
-    if (!decodedUrl) {
-      return ''
-    }
-
-    return normalizeMarkdownPathForDisplay(decodedUrl)
-  }, [decodedUrl, element?.wikiTarget, linkMode])
-
-  const [value, setValue] = useState(displayValue)
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
-  const listboxId = useId()
-
-  const trimmedValue = useMemo(() => value.trim(), [value])
-
-  const applyUrlToEditor = useCallback(
-    (rawUrl: string) => {
-      const encoded = ensureUriEncoding(rawUrl)
-      setOption('url', encoded)
-      return encoded
-    },
-    [setOption]
-  )
-
-  // Sync input value with external URL changes, but prevent unnecessary re-renders
-  // by only updating when the value actually changes
-  useEffect(() => {
-    setValue((previous) =>
-      previous === displayValue ? previous : displayValue
-    )
-  }, [displayValue])
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    event.stopPropagation()
-    const nextValue = event.target.value
-    setValue(nextValue)
-    setHighlightedIndex(-1)
-  }, [])
-
-  const isHttpLink = startsWithHttpProtocol(value)
-
-  useEffect(() => {
-    if (isHttpLink) {
-      setLinkMode('markdown')
-    }
-  }, [isHttpLink])
-
-  const suggestionsEnabled = !isHttpLink
-
-  const { hasExactMatch, suggestions: filteredSuggestions } = useMemo(() => {
-    if (!suggestionsEnabled) {
-      return { hasExactMatch: false, suggestions: [] as WorkspaceFileOption[] }
-    }
-
-    if (!trimmedValue) {
-      return {
-        hasExactMatch: false,
-        suggestions: [] as WorkspaceFileOption[],
-      }
-    }
-
-    const normalizedQuery = normalizePathSeparators(trimmedValue)
-    const normalizedLowerQuery = normalizedQuery.toLowerCase()
-    const pathQueryCandidates = createPathQueryCandidates(normalizedLowerQuery)
-    const exactQueryCandidates = new Set(pathQueryCandidates)
-    const displayNameQuery = stripCurrentDirectoryPrefix(
-      stripLeadingSlashes(normalizedLowerQuery)
-    )
-    const tabDirectory = currentTabPath ? pathDirname(currentTabPath) : null
-
-    let exactMatchFound = false
-
-    const suggestions = suggestionsSource.filter((file) => {
-      const matchesRelativePath = pathQueryCandidates.some((candidate) =>
-        file.relativePathLower.includes(candidate)
-      )
-
-      if (
-        !exactMatchFound &&
-        exactQueryCandidates.has(file.relativePathLower)
-      ) {
-        exactMatchFound = true
-      }
-
-      if (matchesRelativePath) {
-        return true
-      }
-
-      if (
-        displayNameQuery &&
-        file.displayName.toLowerCase().includes(displayNameQuery)
-      ) {
-        return true
-      }
-
-      if (tabDirectory) {
-        const relativeToTabLower = normalizePathSeparators(
-          relative(tabDirectory, file.absolutePath)
-        ).toLowerCase()
-
-        if (!exactMatchFound && exactQueryCandidates.has(relativeToTabLower)) {
-          exactMatchFound = true
-        }
-
-        if (
-          pathQueryCandidates.some((candidate) =>
-            relativeToTabLower.includes(candidate)
-          )
-        ) {
-          return true
-        }
-      }
-
-      return false
-    })
-
-    return { hasExactMatch: exactMatchFound, suggestions }
-  }, [suggestionsEnabled, suggestionsSource, trimmedValue, currentTabPath])
-
-  useEffect(() => {
-    setHighlightedIndex((previous) => {
-      if (previous < 0) {
-        return -1
-      }
-
-      if (previous >= filteredSuggestions.length) {
-        return filteredSuggestions.length ? filteredSuggestions.length - 1 : -1
-      }
-
-      return previous
-    })
-  }, [filteredSuggestions])
-
-  useEffect(() => {
-    if (highlightedIndex < 0) {
-      return
-    }
-
-    const highlightedElement = document.getElementById(
-      `${listboxId}-${highlightedIndex}`
-    )
-    if (highlightedElement) {
-      highlightedElement.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth',
-      })
-    }
-  }, [highlightedIndex, listboxId])
-
-  const handleSelectSuggestion = useCallback(
-    (file: WorkspaceFileOption) => {
-      if (linkMode === 'wiki') {
-        const displayValue = normalizeWikiTargetForDisplay(file.relativePath)
-        setValue(displayValue)
-        applyUrlToEditor(displayValue)
-        setHighlightedIndex(-1)
-
-        requestAnimationFrame(() => {
-          ref.current?.focus()
-        })
-        return
-      }
-
-      if (!currentTabPath) {
-        return
-      }
-
-      const tabDirectory = pathDirname(currentTabPath)
-      const relativePath = relative(tabDirectory, file.absolutePath)
-
-      const normalizedRelativePath = normalizePathSeparators(relativePath)
-      const nextValue =
-        normalizedRelativePath &&
-        !normalizedRelativePath.startsWith('.') &&
-        !normalizedRelativePath.startsWith('/')
-          ? `./${normalizedRelativePath}`
-          : normalizedRelativePath
-
-      const displayValue = normalizeMarkdownPathForDisplay(nextValue)
-
-      setValue(displayValue)
-      applyUrlToEditor(displayValue)
-      setHighlightedIndex(-1)
-
-      requestAnimationFrame(() => {
-        ref.current?.focus()
-      })
-    },
-    [applyUrlToEditor, currentTabPath, linkMode, ref]
-  )
-
-  const handleBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      setHighlightedIndex(-1)
-    })
-  }, [])
-
-  const hasQuery = Boolean(trimmedValue)
-
-  const showSuggestionList =
-    hasQuery &&
-    suggestionsEnabled &&
-    !hasExactMatch &&
-    filteredSuggestions.length > 0
-  const showEmptyState =
-    hasQuery &&
-    suggestionsEnabled &&
-    !hasExactMatch &&
-    filteredSuggestions.length === 0
-
-  const confirmLink = useCallback(() => {
-    if (!trimmedValue) {
-      requestAnimationFrame(() => {
-        ref.current?.focus()
-      })
-      return
-    }
-
-    const isWebLink = startsWithHttpProtocol(trimmedValue)
-    let nextUrl = trimmedValue
-    let nextWikiTarget: string | null = null
-
-    if (!isWebLink && linkMode === 'wiki') {
-      const normalizedTarget = toWorkspaceRelativeWikiTarget({
-        input: trimmedValue,
-        workspacePath,
-        currentTabPath,
-      })
-
-      if (normalizedTarget) {
-        nextUrl = normalizedTarget
-        nextWikiTarget = normalizedTarget
-      } else {
-        const fallbackTarget = normalizeWikiTargetForDisplay(trimmedValue)
-        if (fallbackTarget) {
-          nextUrl = fallbackTarget
-          nextWikiTarget = fallbackTarget
-        }
-      }
-    }
-
-    if (
-      !isWebLink &&
-      linkMode === 'markdown' &&
-      currentTabPath &&
-      !trimmedValue.startsWith('#')
-    ) {
-      const { rawPath, target } = parseInternalLinkTarget(trimmedValue)
-      const resolvedPath = resolveInternalLinkPath({
-        rawPath,
-        target,
-        workspaceFiles: suggestionsSource,
-        workspacePath,
-        currentTabPath,
-      })
-
-      if (resolvedPath) {
-        const tabDirectory = pathDirname(currentTabPath)
-        const relativePath = normalizePathSeparators(
-          relative(tabDirectory, resolvedPath)
-        )
-        nextUrl =
-          relativePath &&
-          !relativePath.startsWith('.') &&
-          !relativePath.startsWith('/')
-            ? `./${relativePath}`
-            : relativePath
-      }
-    }
-
-    applyUrlToEditor(nextUrl)
-
-    const didSubmit = upsertLink(editor, {
-      url: nextUrl,
-      skipValidation: true,
-    })
-    if (didSubmit) {
-      const entry = editor.api.node<TLinkElement>({
-        match: { type: editor.getType(KEYS.link) },
-      })
-
-      if (entry) {
-        const [, path] = entry
-        if (isWebLink || linkMode === 'markdown') {
-          editor.tf.unsetNodes(['wiki', 'wikiTarget'], {
-            at: path,
-          })
-        } else {
-          editor.tf.setNodes(
-            {
-              wiki: true,
-              wikiTarget: nextWikiTarget ?? nextUrl,
-            },
-            { at: path }
-          )
-        }
-      }
-
-      setHighlightedIndex(-1)
-      api.floatingLink.hide()
-      editor.tf.focus()
-      return
-    }
-
-    requestAnimationFrame(() => {
-      ref.current?.focus()
-    })
-  }, [
-    api,
-    applyUrlToEditor,
-    currentTabPath,
-    editor,
-    linkMode,
-    ref,
-    suggestionsSource,
-    trimmedValue,
-    workspacePath,
-  ])
-
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      const { key } = event
-
-      if (key === 'Enter') {
-        event.preventDefault()
-        event.stopPropagation()
-        event.nativeEvent.stopImmediatePropagation?.()
-
-        if (filteredSuggestions.length && highlightedIndex >= 0) {
-          const option = filteredSuggestions[highlightedIndex]
-          if (option) {
-            handleSelectSuggestion(option)
-          }
-          return
-        }
-
-        confirmLink()
-        return
-      }
-
-      event.stopPropagation()
-      event.nativeEvent.stopImmediatePropagation?.()
-
-      if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === 'a') {
-        event.preventDefault()
-        event.currentTarget.select()
-        return
-      }
-
-      if (key === 'Escape') {
-        event.preventDefault()
-        api.floatingLink.hide()
-        editor.tf.focus()
-        return
-      }
-
-      if (!filteredSuggestions.length) {
-        return
-      }
-
-      if (key === 'ArrowDown') {
-        event.preventDefault()
-        setHighlightedIndex((previous) => {
-          const next = previous + 1
-          if (next < 0) return 0
-          return next >= filteredSuggestions.length
-            ? filteredSuggestions.length - 1
-            : next
-        })
-        return
-      }
-
-      if (key === 'ArrowUp') {
-        event.preventDefault()
-        setHighlightedIndex((previous) => {
-          if (previous <= 0) {
-            return -1
-          }
-          return previous - 1
-        })
-        return
-      }
-    },
-    [
-      confirmLink,
-      filteredSuggestions,
-      handleSelectSuggestion,
-      highlightedIndex,
-      api,
-      editor,
-    ]
-  )
-
-  const handleConfirm = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      event.nativeEvent.stopImmediatePropagation?.()
-
-      confirmLink()
-    },
-    [confirmLink]
-  )
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between px-2 pb-1 text-xs text-muted-foreground">
-        <span>Link type</span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ size: 'sm', variant: 'ghost' }),
-              'h-6 px-2 text-xs',
-              linkMode === 'wiki' && 'bg-accent text-accent-foreground'
-            )}
-            onClick={() => setLinkMode('wiki')}
-            disabled={isHttpLink}
-          >
-            Wiki
-          </button>
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ size: 'sm', variant: 'ghost' }),
-              'h-6 px-2 text-xs',
-              linkMode === 'markdown' && 'bg-accent text-accent-foreground'
-            )}
-            onClick={() => setLinkMode('markdown')}
-          >
-            Markdown
-          </button>
-        </div>
-      </div>
-      <div className="flex items-center">
-        <div className="flex items-center pr-1 pl-2 text-muted-foreground">
-          <LinkIcon value={value} />
-        </div>
-
-        <div className="flex-1">
-          <input
-            ref={ref}
-            className="flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:ring-transparent focus-visible:outline-none md:text-sm"
-            placeholder="Paste link"
-            value={value}
-            data-plate-focus
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            role="combobox"
-            aria-expanded={showSuggestionList || showEmptyState}
-            aria-controls={showSuggestionList ? listboxId : undefined}
-            aria-activedescendant={
-              showSuggestionList && highlightedIndex >= 0
-                ? `${listboxId}-${highlightedIndex}`
-                : undefined
-            }
-            aria-autocomplete="list"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </div>
-
-        <button
-          type="button"
-          className={`${buttonVariants({ size: 'icon', variant: 'ghost' })} ml-1 flex-shrink-0 text-muted-foreground`}
-          aria-label="Apply link"
-          title="Apply link"
-          onClick={handleConfirm}
-          onMouseDown={(event) => {
-            event.stopPropagation()
-          }}
-          disabled={!trimmedValue}
-        >
-          <Check className="size-4" />
-        </button>
-      </div>
-
-      {(showSuggestionList || showEmptyState) && (
-        <div className="mt-2">
-          <div
-            onMouseLeave={() => {
-              setHighlightedIndex(-1)
-            }}
-          >
-            <div
-              id={listboxId}
-              role="listbox"
-              className="max-h-[300px] scroll-py-1 overflow-y-auto"
-            >
-              {showEmptyState ? (
-                <div className="py-4 text-center text-sm text-muted-foreground">
-                  No matching notes
-                </div>
-              ) : (
-                <div className="space-y-0.5 text-foreground">
-                  {filteredSuggestions.map((file, index) => {
-                    const isHighlighted = index === highlightedIndex
-                    return (
-                      <div
-                        key={file.absolutePath}
-                        id={`${listboxId}-${index}`}
-                        data-selected={isHighlighted}
-                        className={cn(
-                          'relative flex cursor-default select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden',
-                          'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
-                          isHighlighted
-                            ? 'bg-accent text-accent-foreground'
-                            : 'text-foreground'
-                        )}
-                        // Prevent mousedown from stealing focus from the input field
-                        onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
-                          event.preventDefault()
-                        }}
-                        onMouseEnter={() => {
-                          setHighlightedIndex(index)
-                        }}
-                        onClick={() => handleSelectSuggestion(file)}
-                      >
-                        <span className="text-sm font-medium whitespace-nowrap">
-                          {file.displayName}
-                        </span>
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {file.relativePath}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+	const { ref } = useFloatingLinkUrlInputState()
+	const editor = useEditorRef()
+	const { api, setOption } = useEditorPlugin(LinkPlugin)
+
+	const {
+		entries: workspaceEntries,
+		workspacePath,
+		tab,
+	} = useStore(
+		useShallow((state) => ({
+			entries: state.entries,
+			workspacePath: state.workspacePath,
+			tab: state.tab,
+		})),
+	)
+	const currentTabPath = tab?.path ?? null
+
+	const suggestionsSource = useMemo(
+		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
+		[workspaceEntries, workspacePath],
+	)
+
+	const encodedUrl = usePluginOption(LinkPlugin, "url") as string | undefined
+	const decodedUrl = useMemo(
+		() => (encodedUrl ? safelyDecodeUrl(encodedUrl) : ""),
+		[encodedUrl],
+	)
+
+	const selection = useEditorSelection()
+
+	const { element } = useMemo(() => {
+		const entry = editor.api.node<TLinkElement>({
+			match: { type: editor.getType(KEYS.link) },
+		})
+
+		if (!entry) {
+			return {
+				element: null as
+					| (TLinkElement & {
+							wiki?: boolean
+							wikiTarget?: string
+					  })
+					| null,
+			}
+		}
+
+		const [node] = entry
+
+		return {
+			element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
+		}
+	}, [editor])
+
+	const [linkMode, setLinkMode] = useState<LinkMode>("wiki")
+
+	useEffect(() => {
+		if (!selection) {
+			return
+		}
+
+		if (!element) {
+			setLinkMode("wiki")
+			return
+		}
+
+		const isWiki = Boolean(element.wiki || element.wikiTarget)
+		setLinkMode(isWiki ? "wiki" : "markdown")
+	}, [element, selection])
+
+	const displayValue = useMemo(() => {
+		if (!decodedUrl && !element?.wikiTarget) {
+			return ""
+		}
+
+		if (linkMode === "wiki") {
+			const wikiTarget = element?.wikiTarget
+			if (wikiTarget) {
+				return normalizeWikiTargetForDisplay(wikiTarget)
+			}
+
+			if (!decodedUrl) {
+				return ""
+			}
+
+			if (startsWithHttpProtocol(decodedUrl)) {
+				return decodedUrl
+			}
+
+			return normalizeWikiTargetForDisplay(decodedUrl)
+		}
+
+		if (!decodedUrl) {
+			return ""
+		}
+
+		return normalizeMarkdownPathForDisplay(decodedUrl)
+	}, [decodedUrl, element?.wikiTarget, linkMode])
+
+	const [value, setValue] = useState(displayValue)
+	const [highlightedIndex, setHighlightedIndex] = useState(-1)
+	const listboxId = useId()
+
+	const trimmedValue = useMemo(() => value.trim(), [value])
+
+	const applyUrlToEditor = useCallback(
+		(rawUrl: string) => {
+			const encoded = ensureUriEncoding(rawUrl)
+			setOption("url", encoded)
+			return encoded
+		},
+		[setOption],
+	)
+
+	// Sync input value with external URL changes, but prevent unnecessary re-renders
+	// by only updating when the value actually changes
+	useEffect(() => {
+		setValue((previous) =>
+			previous === displayValue ? previous : displayValue,
+		)
+	}, [displayValue])
+
+	const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+		event.stopPropagation()
+		const nextValue = event.target.value
+		setValue(nextValue)
+		setHighlightedIndex(-1)
+	}, [])
+
+	const isHttpLink = startsWithHttpProtocol(value)
+
+	useEffect(() => {
+		if (isHttpLink) {
+			setLinkMode("markdown")
+		}
+	}, [isHttpLink])
+
+	const suggestionsEnabled = !isHttpLink
+
+	const { hasExactMatch, suggestions: filteredSuggestions } = useMemo(() => {
+		if (!suggestionsEnabled) {
+			return { hasExactMatch: false, suggestions: [] as WorkspaceFileOption[] }
+		}
+
+		if (!trimmedValue) {
+			return {
+				hasExactMatch: false,
+				suggestions: [] as WorkspaceFileOption[],
+			}
+		}
+
+		const normalizedQuery = normalizePathSeparators(trimmedValue)
+		const normalizedLowerQuery = normalizedQuery.toLowerCase()
+		const pathQueryCandidates = createPathQueryCandidates(normalizedLowerQuery)
+		const exactQueryCandidates = new Set(pathQueryCandidates)
+		const displayNameQuery = stripCurrentDirectoryPrefix(
+			stripLeadingSlashes(normalizedLowerQuery),
+		)
+		const tabDirectory = currentTabPath ? pathDirname(currentTabPath) : null
+
+		let exactMatchFound = false
+
+		const suggestions = suggestionsSource.filter((file) => {
+			const matchesRelativePath = pathQueryCandidates.some((candidate) =>
+				file.relativePathLower.includes(candidate),
+			)
+
+			if (
+				!exactMatchFound &&
+				exactQueryCandidates.has(file.relativePathLower)
+			) {
+				exactMatchFound = true
+			}
+
+			if (matchesRelativePath) {
+				return true
+			}
+
+			if (
+				displayNameQuery &&
+				file.displayName.toLowerCase().includes(displayNameQuery)
+			) {
+				return true
+			}
+
+			if (tabDirectory) {
+				const relativeToTabLower = normalizePathSeparators(
+					relative(tabDirectory, file.absolutePath),
+				).toLowerCase()
+
+				if (!exactMatchFound && exactQueryCandidates.has(relativeToTabLower)) {
+					exactMatchFound = true
+				}
+
+				if (
+					pathQueryCandidates.some((candidate) =>
+						relativeToTabLower.includes(candidate),
+					)
+				) {
+					return true
+				}
+			}
+
+			return false
+		})
+
+		return { hasExactMatch: exactMatchFound, suggestions }
+	}, [suggestionsEnabled, suggestionsSource, trimmedValue, currentTabPath])
+
+	useEffect(() => {
+		setHighlightedIndex((previous) => {
+			if (previous < 0) {
+				return -1
+			}
+
+			if (previous >= filteredSuggestions.length) {
+				return filteredSuggestions.length ? filteredSuggestions.length - 1 : -1
+			}
+
+			return previous
+		})
+	}, [filteredSuggestions])
+
+	useEffect(() => {
+		if (highlightedIndex < 0) {
+			return
+		}
+
+		const highlightedElement = document.getElementById(
+			`${listboxId}-${highlightedIndex}`,
+		)
+		if (highlightedElement) {
+			highlightedElement.scrollIntoView({
+				block: "nearest",
+				behavior: "smooth",
+			})
+		}
+	}, [highlightedIndex, listboxId])
+
+	const handleSelectSuggestion = useCallback(
+		(file: WorkspaceFileOption) => {
+			if (linkMode === "wiki") {
+				const displayValue = normalizeWikiTargetForDisplay(file.relativePath)
+				setValue(displayValue)
+				applyUrlToEditor(displayValue)
+				setHighlightedIndex(-1)
+
+				requestAnimationFrame(() => {
+					ref.current?.focus()
+				})
+				return
+			}
+
+			if (!currentTabPath) {
+				return
+			}
+
+			const tabDirectory = pathDirname(currentTabPath)
+			const relativePath = relative(tabDirectory, file.absolutePath)
+
+			const normalizedRelativePath = normalizePathSeparators(relativePath)
+			const nextValue =
+				normalizedRelativePath &&
+				!normalizedRelativePath.startsWith(".") &&
+				!normalizedRelativePath.startsWith("/")
+					? `./${normalizedRelativePath}`
+					: normalizedRelativePath
+
+			const displayValue = normalizeMarkdownPathForDisplay(nextValue)
+
+			setValue(displayValue)
+			applyUrlToEditor(displayValue)
+			setHighlightedIndex(-1)
+
+			requestAnimationFrame(() => {
+				ref.current?.focus()
+			})
+		},
+		[applyUrlToEditor, currentTabPath, linkMode, ref],
+	)
+
+	const handleBlur = useCallback(() => {
+		requestAnimationFrame(() => {
+			setHighlightedIndex(-1)
+		})
+	}, [])
+
+	const hasQuery = Boolean(trimmedValue)
+
+	const showSuggestionList =
+		hasQuery &&
+		suggestionsEnabled &&
+		!hasExactMatch &&
+		filteredSuggestions.length > 0
+	const showEmptyState =
+		hasQuery &&
+		suggestionsEnabled &&
+		!hasExactMatch &&
+		filteredSuggestions.length === 0
+
+	const confirmLink = useCallback(() => {
+		if (!trimmedValue) {
+			requestAnimationFrame(() => {
+				ref.current?.focus()
+			})
+			return
+		}
+
+		const isWebLink = startsWithHttpProtocol(trimmedValue)
+		let nextUrl = trimmedValue
+		let nextWikiTarget: string | null = null
+
+		if (!isWebLink && linkMode === "wiki") {
+			const normalizedTarget = toWorkspaceRelativeWikiTarget({
+				input: trimmedValue,
+				workspacePath,
+				currentTabPath,
+			})
+
+			if (normalizedTarget) {
+				nextUrl = normalizedTarget
+				nextWikiTarget = normalizedTarget
+			} else {
+				const fallbackTarget = normalizeWikiTargetForDisplay(trimmedValue)
+				if (fallbackTarget) {
+					nextUrl = fallbackTarget
+					nextWikiTarget = fallbackTarget
+				}
+			}
+		}
+
+		if (
+			!isWebLink &&
+			linkMode === "markdown" &&
+			currentTabPath &&
+			!trimmedValue.startsWith("#")
+		) {
+			const { rawPath, target } = parseInternalLinkTarget(trimmedValue)
+			const resolvedPath = resolveInternalLinkPath({
+				rawPath,
+				target,
+				workspaceFiles: suggestionsSource,
+				workspacePath,
+				currentTabPath,
+			})
+
+			if (resolvedPath) {
+				const tabDirectory = pathDirname(currentTabPath)
+				const relativePath = normalizePathSeparators(
+					relative(tabDirectory, resolvedPath),
+				)
+				nextUrl =
+					relativePath &&
+					!relativePath.startsWith(".") &&
+					!relativePath.startsWith("/")
+						? `./${relativePath}`
+						: relativePath
+			}
+		}
+
+		applyUrlToEditor(nextUrl)
+
+		const didSubmit = upsertLink(editor, {
+			url: nextUrl,
+			skipValidation: true,
+		})
+		if (didSubmit) {
+			const entry = editor.api.node<TLinkElement>({
+				match: { type: editor.getType(KEYS.link) },
+			})
+
+			if (entry) {
+				const [, path] = entry
+				if (isWebLink || linkMode === "markdown") {
+					editor.tf.unsetNodes(["wiki", "wikiTarget"], {
+						at: path,
+					})
+				} else {
+					editor.tf.setNodes(
+						{
+							wiki: true,
+							wikiTarget: nextWikiTarget ?? nextUrl,
+						},
+						{ at: path },
+					)
+				}
+			}
+
+			setHighlightedIndex(-1)
+			api.floatingLink.hide()
+			editor.tf.focus()
+			return
+		}
+
+		requestAnimationFrame(() => {
+			ref.current?.focus()
+		})
+	}, [
+		api,
+		applyUrlToEditor,
+		currentTabPath,
+		editor,
+		linkMode,
+		ref,
+		suggestionsSource,
+		trimmedValue,
+		workspacePath,
+	])
+
+	const handleKeyDown = useCallback(
+		(event: KeyboardEvent<HTMLInputElement>) => {
+			const { key } = event
+
+			if (key === "Enter") {
+				event.preventDefault()
+				event.stopPropagation()
+				event.nativeEvent.stopImmediatePropagation?.()
+
+				if (filteredSuggestions.length && highlightedIndex >= 0) {
+					const option = filteredSuggestions[highlightedIndex]
+					if (option) {
+						handleSelectSuggestion(option)
+					}
+					return
+				}
+
+				confirmLink()
+				return
+			}
+
+			event.stopPropagation()
+			event.nativeEvent.stopImmediatePropagation?.()
+
+			if ((event.metaKey || event.ctrlKey) && key.toLowerCase() === "a") {
+				event.preventDefault()
+				event.currentTarget.select()
+				return
+			}
+
+			if (key === "Escape") {
+				event.preventDefault()
+				api.floatingLink.hide()
+				editor.tf.focus()
+				return
+			}
+
+			if (!filteredSuggestions.length) {
+				return
+			}
+
+			if (key === "ArrowDown") {
+				event.preventDefault()
+				setHighlightedIndex((previous) => {
+					const next = previous + 1
+					if (next < 0) return 0
+					return next >= filteredSuggestions.length
+						? filteredSuggestions.length - 1
+						: next
+				})
+				return
+			}
+
+			if (key === "ArrowUp") {
+				event.preventDefault()
+				setHighlightedIndex((previous) => {
+					if (previous <= 0) {
+						return -1
+					}
+					return previous - 1
+				})
+				return
+			}
+		},
+		[
+			confirmLink,
+			filteredSuggestions,
+			handleSelectSuggestion,
+			highlightedIndex,
+			api,
+			editor,
+		],
+	)
+
+	const handleConfirm = useCallback(
+		(event: MouseEvent<HTMLButtonElement>) => {
+			event.preventDefault()
+			event.stopPropagation()
+			event.nativeEvent.stopImmediatePropagation?.()
+
+			confirmLink()
+		},
+		[confirmLink],
+	)
+
+	return (
+		<div className="flex flex-1 flex-col">
+			<div className="flex items-center justify-between px-2 pb-1 text-xs text-muted-foreground">
+				<span>Link type</span>
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						className={cn(
+							buttonVariants({ size: "sm", variant: "ghost" }),
+							"h-6 px-2 text-xs",
+							linkMode === "wiki" && "bg-accent text-accent-foreground",
+						)}
+						onClick={() => setLinkMode("wiki")}
+						disabled={isHttpLink}
+					>
+						Wiki
+					</button>
+					<button
+						type="button"
+						className={cn(
+							buttonVariants({ size: "sm", variant: "ghost" }),
+							"h-6 px-2 text-xs",
+							linkMode === "markdown" && "bg-accent text-accent-foreground",
+						)}
+						onClick={() => setLinkMode("markdown")}
+					>
+						Markdown
+					</button>
+				</div>
+			</div>
+			<div className="flex items-center">
+				<div className="flex items-center pr-1 pl-2 text-muted-foreground">
+					<LinkIcon value={value} />
+				</div>
+
+				<div className="flex-1">
+					<input
+						ref={ref}
+						className="flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:ring-transparent focus-visible:outline-none md:text-sm"
+						placeholder="Paste link"
+						value={value}
+						data-plate-focus
+						onChange={handleChange}
+						onBlur={handleBlur}
+						onKeyDown={handleKeyDown}
+						role="combobox"
+						aria-expanded={showSuggestionList || showEmptyState}
+						aria-controls={showSuggestionList ? listboxId : undefined}
+						aria-activedescendant={
+							showSuggestionList && highlightedIndex >= 0
+								? `${listboxId}-${highlightedIndex}`
+								: undefined
+						}
+						aria-autocomplete="list"
+						autoComplete="off"
+						spellCheck={false}
+					/>
+				</div>
+
+				<button
+					type="button"
+					className={`${buttonVariants({ size: "icon", variant: "ghost" })} ml-1 flex-shrink-0 text-muted-foreground`}
+					aria-label="Apply link"
+					title="Apply link"
+					onClick={handleConfirm}
+					onMouseDown={(event) => {
+						event.stopPropagation()
+					}}
+					disabled={!trimmedValue}
+				>
+					<Check className="size-4" />
+				</button>
+			</div>
+
+			{(showSuggestionList || showEmptyState) && (
+				<div className="mt-2">
+					<div
+						onMouseLeave={() => {
+							setHighlightedIndex(-1)
+						}}
+					>
+						<div
+							id={listboxId}
+							role="listbox"
+							className="max-h-[300px] scroll-py-1 overflow-y-auto"
+						>
+							{showEmptyState ? (
+								<div className="py-4 text-center text-sm text-muted-foreground">
+									No matching notes
+								</div>
+							) : (
+								<div className="space-y-0.5 text-foreground">
+									{filteredSuggestions.map((file, index) => {
+										const isHighlighted = index === highlightedIndex
+										return (
+											<div
+												key={file.absolutePath}
+												id={`${listboxId}-${index}`}
+												data-selected={isHighlighted}
+												className={cn(
+													"relative flex cursor-default select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
+													"data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
+													isHighlighted
+														? "bg-accent text-accent-foreground"
+														: "text-foreground",
+												)}
+												// Prevent mousedown from stealing focus from the input field
+												onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
+													event.preventDefault()
+												}}
+												onMouseEnter={() => {
+													setHighlightedIndex(index)
+												}}
+												onClick={() => handleSelectSuggestion(file)}
+											>
+												<span className="text-sm font-medium whitespace-nowrap">
+													{file.displayName}
+												</span>
+												<span className="text-xs text-muted-foreground whitespace-nowrap">
+													{file.relativePath}
+												</span>
+											</div>
+										)
+									})}
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	)
 }
 
 function LinkIcon({ value }: { value: string }) {
-  const trimmed = value.trim()
+	const trimmed = value.trim()
 
-  if (startsWithHttpProtocol(trimmed)) {
-    return <GlobeIcon className="size-4" />
-  }
+	if (startsWithHttpProtocol(trimmed)) {
+		return <GlobeIcon className="size-4" />
+	}
 
-  if (trimmed.length > 0) {
-    return <FileIcon className="size-4" />
-  }
+	if (trimmed.length > 0) {
+		return <FileIcon className="size-4" />
+	}
 
-  return <Link className="size-4" />
+	return <Link className="size-4" />
 }
 
 function LinkOpenButton() {
-  const editor = useEditorRef()
-  const selection = useEditorSelection()
-  const {
-    entries: workspaceEntries,
-    workspacePath,
-    openTab,
-    tab: currentTab,
-  } = useStore(
-    useShallow((state) => ({
-      entries: state.entries,
-      workspacePath: state.workspacePath,
-      openTab: state.openTab,
-      tab: state.tab,
-    }))
-  )
+	const editor = useEditorRef()
+	const selection = useEditorSelection()
+	const {
+		entries: workspaceEntries,
+		workspacePath,
+		openTab,
+		tab: currentTab,
+	} = useStore(
+		useShallow((state) => ({
+			entries: state.entries,
+			workspacePath: state.workspacePath,
+			openTab: state.openTab,
+			tab: state.tab,
+		})),
+	)
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: get element when the selection changes
-  const { element } = useMemo(() => {
-    const entry = editor.api.node<TLinkElement>({
-      match: { type: editor.getType(KEYS.link) },
-    })
+	// biome-ignore lint/correctness/useExhaustiveDependencies: get element when the selection changes
+	const { element } = useMemo(() => {
+		const entry = editor.api.node<TLinkElement>({
+			match: { type: editor.getType(KEYS.link) },
+		})
 
-    if (!entry) {
-      return {
-        element: null as (TLinkElement & { wikiTarget?: string }) | null,
-      }
-    }
+		if (!entry) {
+			return {
+				element: null as (TLinkElement & { wikiTarget?: string }) | null,
+			}
+		}
 
-    const [node] = entry
+		const [node] = entry
 
-    return {
-      element: node as TLinkElement & { wikiTarget?: string },
-    }
-  }, [selection])
+		return {
+			element: node as TLinkElement & { wikiTarget?: string },
+		}
+	}, [selection])
 
-  const href = element?.url ?? ''
-  const decodedUrl = href ? safelyDecodeUrl(href) : ''
-  const isWebLink = startsWithHttpProtocol(decodedUrl)
-  const workspaceFiles = useMemo(
-    () => flattenWorkspaceFiles(workspaceEntries, workspacePath),
-    [workspaceEntries, workspacePath]
-  )
+	const href = element?.url ?? ""
+	const decodedUrl = href ? safelyDecodeUrl(href) : ""
+	const isWebLink = startsWithHttpProtocol(decodedUrl)
+	const workspaceFiles = useMemo(
+		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
+		[workspaceEntries, workspacePath],
+	)
 
-  const handleOpen = useCallback(
-    async (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault()
+	const handleOpen = useCallback(
+		async (event: MouseEvent<HTMLButtonElement>) => {
+			event.preventDefault()
 
-      const fallbackHref = element?.url ?? ''
-      const targetUrl = decodedUrl || fallbackHref
-      if (!targetUrl) {
-        return
-      }
+			const fallbackHref = element?.url ?? ""
+			const targetUrl = decodedUrl || fallbackHref
+			if (!targetUrl) {
+				return
+			}
 
-      if (!isWebLink) {
-        if (targetUrl.startsWith('#')) {
-          // TODO: handle anchor links
-          return
-        }
+			if (!isWebLink) {
+				if (targetUrl.startsWith("#")) {
+					// TODO: handle anchor links
+					return
+				}
 
-        try {
-          if (!workspacePath) {
-            return
-          }
+				try {
+					if (!workspacePath) {
+						return
+					}
 
-          let absolutePath: string | null = null
-          const rawTarget = element?.wikiTarget || targetUrl
-          const { rawPath, target } = parseInternalLinkTarget(rawTarget)
-          const resolvedPath = resolveInternalLinkPath({
-            rawPath,
-            target,
-            workspaceFiles,
-            workspacePath,
-            currentTabPath: currentTab?.path ?? null,
-          })
+					let absolutePath: string | null = null
+					const rawTarget = element?.wikiTarget || targetUrl
+					const { rawPath, target } = parseInternalLinkTarget(rawTarget)
+					const resolvedPath = resolveInternalLinkPath({
+						rawPath,
+						target,
+						workspaceFiles,
+						workspacePath,
+						currentTabPath: currentTab?.path ?? null,
+					})
 
-          if (resolvedPath) {
-            await openTab(resolvedPath)
-            return
-          }
+					if (resolvedPath) {
+						await openTab(resolvedPath)
+						return
+					}
 
-          if (rawTarget.startsWith('/')) {
-            const workspaceRelativePath = stripLeadingSlashes(rawTarget)
-            absolutePath = join(workspacePath, workspaceRelativePath)
-          } else {
-            const currentPath = currentTab?.path
-            if (!currentPath) {
-              return
-            }
+					if (rawTarget.startsWith("/")) {
+						const workspaceRelativePath = stripLeadingSlashes(rawTarget)
+						absolutePath = join(workspacePath, workspaceRelativePath)
+					} else {
+						const currentPath = currentTab?.path
+						if (!currentPath) {
+							return
+						}
 
-            const currentDirectory = pathDirname(currentPath)
-            absolutePath = join(currentDirectory, rawTarget)
-          }
+						const currentDirectory = pathDirname(currentPath)
+						absolutePath = join(currentDirectory, rawTarget)
+					}
 
-          if (!absolutePath) {
-            return
-          }
+					if (!absolutePath) {
+						return
+					}
 
-          const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
-          if (!normalizedWorkspaceRoot) {
-            console.warn('Workspace root missing; link open aborted')
-            return
-          }
+					const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
+					if (!normalizedWorkspaceRoot) {
+						console.warn("Workspace root missing; link open aborted")
+						return
+					}
 
-          const normalizedAbsolute = normalizePathSeparators(absolutePath)
+					const normalizedAbsolute = normalizePathSeparators(absolutePath)
 
-          if (
-            normalizedAbsolute !== normalizedWorkspaceRoot &&
-            !normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
-          ) {
-            console.warn(
-              'Workspace link outside of root blocked:',
-              normalizedAbsolute
-            )
-            return
-          }
+					if (
+						normalizedAbsolute !== normalizedWorkspaceRoot &&
+						!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
+					) {
+						console.warn(
+							"Workspace link outside of root blocked:",
+							normalizedAbsolute,
+						)
+						return
+					}
 
-          await openTab(absolutePath)
-        } catch (error) {
-          console.error('Failed to open workspace link:', error)
-        }
+					await openTab(absolutePath)
+				} catch (error) {
+					console.error("Failed to open workspace link:", error)
+				}
 
-        return
-      }
+				return
+			}
 
-      try {
-        await openUrl(targetUrl)
-      } catch (error) {
-        console.error('Failed to open external link:', error)
-      }
-    },
-    [
-      currentTab?.path,
-      decodedUrl,
-      element?.url,
-      element?.wikiTarget,
-      isWebLink,
-      openTab,
-      workspaceFiles,
-      workspacePath,
-    ]
-  )
+			try {
+				await openUrl(targetUrl)
+			} catch (error) {
+				console.error("Failed to open external link:", error)
+			}
+		},
+		[
+			currentTab?.path,
+			decodedUrl,
+			element?.url,
+			element?.wikiTarget,
+			isWebLink,
+			openTab,
+			workspaceFiles,
+			workspacePath,
+		],
+	)
 
-  return (
-    <button
-      type="button"
-      className={buttonVariants({
-        size: 'sm',
-        variant: 'ghost',
-      })}
-      onMouseOver={(event) => {
-        event.stopPropagation()
-      }}
-      onFocus={() => {
-        return
-      }}
-      onClick={handleOpen}
-    >
-      <ExternalLink width={18} />
-    </button>
-  )
+	return (
+		<button
+			type="button"
+			className={buttonVariants({
+				size: "sm",
+				variant: "ghost",
+			})}
+			onMouseOver={(event) => {
+				event.stopPropagation()
+			}}
+			onFocus={() => {
+				return
+			}}
+			onClick={handleOpen}
+		>
+			<ExternalLink width={18} />
+		</button>
+	)
 }
 
 // Recursively traverse workspace file tree and collect all .md files for autocomplete
 // Returns flattened list with relative paths for suggestion matching
 function flattenWorkspaceFiles(
-  entries: WorkspaceEntry[],
-  workspacePath: string | null
+	entries: WorkspaceEntry[],
+	workspacePath: string | null,
 ): WorkspaceFileOption[] {
-  if (!workspacePath) {
-    return []
-  }
+	if (!workspacePath) {
+		return []
+	}
 
-  const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
-  const files: WorkspaceFileOption[] = []
+	const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
+	const files: WorkspaceFileOption[] = []
 
-  const visit = (nodes: WorkspaceEntry[]) => {
-    for (const node of nodes) {
-      if (node.isDirectory) {
-        if (node.children) {
-          visit(node.children)
-        }
-        continue
-      }
+	const visit = (nodes: WorkspaceEntry[]) => {
+		for (const node of nodes) {
+			if (node.isDirectory) {
+				if (node.children) {
+					visit(node.children)
+				}
+				continue
+			}
 
-      // Only include .md files for linking
-      if (!node.name.toLowerCase().endsWith('.md')) {
-        continue
-      }
+			// Only include .md files for linking
+			if (!node.name.toLowerCase().endsWith(".md")) {
+				continue
+			}
 
-      const normalizedAbsolute = normalizePathSeparators(node.path)
-      let relativePath = ''
+			const normalizedAbsolute = normalizePathSeparators(node.path)
+			let relativePath = ""
 
-      // Calculate path relative to workspace root by stripping the root prefix
-      if (normalizedAbsolute.startsWith(`${normalizedRoot}/`)) {
-        relativePath = normalizedAbsolute.slice(normalizedRoot.length + 1)
-      } else if (normalizedAbsolute.startsWith(normalizedRoot)) {
-        relativePath = normalizedAbsolute.slice(normalizedRoot.length)
-      }
+			// Calculate path relative to workspace root by stripping the root prefix
+			if (normalizedAbsolute.startsWith(`${normalizedRoot}/`)) {
+				relativePath = normalizedAbsolute.slice(normalizedRoot.length + 1)
+			} else if (normalizedAbsolute.startsWith(normalizedRoot)) {
+				relativePath = normalizedAbsolute.slice(normalizedRoot.length)
+			}
 
-      relativePath = stripLeadingSlashes(relativePath)
-      if (!relativePath) {
-        relativePath = node.name
-      }
+			relativePath = stripLeadingSlashes(relativePath)
+			if (!relativePath) {
+				relativePath = node.name
+			}
 
-      const normalizedRelative = normalizePathSeparators(relativePath)
+			const normalizedRelative = normalizePathSeparators(relativePath)
 
-      files.push({
-        absolutePath: node.path,
-        displayName: node.name,
-        relativePath: normalizedRelative,
-        relativePathLower: normalizedRelative.toLowerCase(),
-      })
-    }
-  }
+			files.push({
+				absolutePath: node.path,
+				displayName: node.name,
+				relativePath: normalizedRelative,
+				relativePathLower: normalizedRelative.toLowerCase(),
+			})
+		}
+	}
 
-  visit(entries)
+	visit(entries)
 
-  files.sort((a, b) => a.relativePathLower.localeCompare(b.relativePathLower))
+	files.sort((a, b) => a.relativePathLower.localeCompare(b.relativePathLower))
 
-  return files
+	return files
 }
 
 // Convert all path separators to forward slashes and remove duplicates/trailing slashes
 // Ensures consistent path format across different operating systems
 function createPathQueryCandidates(normalizedLowerQuery: string): string[] {
-  if (!normalizedLowerQuery) {
-    return []
-  }
+	if (!normalizedLowerQuery) {
+		return []
+	}
 
-  const candidates = new Set<string>([normalizedLowerQuery])
+	const candidates = new Set<string>([normalizedLowerQuery])
 
-  const withoutCurrentDir = stripCurrentDirectoryPrefix(normalizedLowerQuery)
-  candidates.add(withoutCurrentDir)
+	const withoutCurrentDir = stripCurrentDirectoryPrefix(normalizedLowerQuery)
+	candidates.add(withoutCurrentDir)
 
-  const withoutLeadingSlashes = stripLeadingSlashes(normalizedLowerQuery)
-  candidates.add(withoutLeadingSlashes)
+	const withoutLeadingSlashes = stripLeadingSlashes(normalizedLowerQuery)
+	candidates.add(withoutLeadingSlashes)
 
-  const withoutBoth = stripCurrentDirectoryPrefix(withoutLeadingSlashes)
-  candidates.add(withoutBoth)
+	const withoutBoth = stripCurrentDirectoryPrefix(withoutLeadingSlashes)
+	candidates.add(withoutBoth)
 
-  return Array.from(candidates).filter(Boolean)
+	return Array.from(candidates).filter(Boolean)
 }
 
 function stripCurrentDirectoryPrefix(value: string): string {
-  let result = value
-  while (result.startsWith('./')) {
-    result = result.slice(2)
-  }
-  return result
+	let result = value
+	while (result.startsWith("./")) {
+		result = result.slice(2)
+	}
+	return result
 }
 
 function normalizePathSeparators(path: string): string {
-  const withForwardSlashes = path.replace(backslashRegex, '/')
-  const collapsed = withForwardSlashes.replace(multipleSlashesRegex, '/')
-  if (collapsed.length <= 1) {
-    return collapsed
-  }
-  return collapsed.endsWith('/') ? collapsed.slice(0, -1) : collapsed
+	const withForwardSlashes = path.replace(backslashRegex, "/")
+	const collapsed = withForwardSlashes.replace(multipleSlashesRegex, "/")
+	if (collapsed.length <= 1) {
+		return collapsed
+	}
+	return collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed
 }
 
 function normalizeWikiTargetForDisplay(value: string): string {
-  const decoded = safelyDecodeUrl(value.trim())
-  if (!decoded) {
-    return ''
-  }
+	const decoded = safelyDecodeUrl(value.trim())
+	if (!decoded) {
+		return ""
+	}
 
-  const [pathPart, hashPart] = decoded.split('#', 2)
-  let normalized = normalizePathSeparators(pathPart)
-  normalized = stripCurrentDirectoryPrefix(normalized)
-  normalized = stripLeadingSlashes(normalized)
+	const [pathPart, hashPart] = decoded.split("#", 2)
+	let normalized = normalizePathSeparators(pathPart)
+	normalized = stripCurrentDirectoryPrefix(normalized)
+	normalized = stripLeadingSlashes(normalized)
 
-  if (normalized.endsWith('.mdx')) {
-    normalized = normalized.slice(0, -4)
-  } else if (normalized.endsWith('.md')) {
-    normalized = normalized.slice(0, -3)
-  }
+	if (normalized.endsWith(".mdx")) {
+		normalized = normalized.slice(0, -4)
+	} else if (normalized.endsWith(".md")) {
+		normalized = normalized.slice(0, -3)
+	}
 
-  return hashPart ? `${normalized}#${hashPart}` : normalized
+	return hashPart ? `${normalized}#${hashPart}` : normalized
 }
 
 function normalizeMarkdownPathForDisplay(value: string): string {
-  const decoded = safelyDecodeUrl(value.trim())
-  if (!decoded) {
-    return ''
-  }
+	const decoded = safelyDecodeUrl(value.trim())
+	if (!decoded) {
+		return ""
+	}
 
-  const [pathPart, hashPart] = decoded.split('#', 2)
-  const normalized = normalizePathSeparators(pathPart)
-  return hashPart ? `${normalized}#${hashPart}` : normalized
+	const [pathPart, hashPart] = decoded.split("#", 2)
+	const normalized = normalizePathSeparators(pathPart)
+	return hashPart ? `${normalized}#${hashPart}` : normalized
 }
 
 function toWorkspaceRelativeWikiTarget(options: {
-  input: string
-  workspacePath: string | null
-  currentTabPath: string | null
+	input: string
+	workspacePath: string | null
+	currentTabPath: string | null
 }): string {
-  const { input, workspacePath, currentTabPath } = options
-  const decoded = safelyDecodeUrl(input.trim())
-  if (!decoded) {
-    return ''
-  }
+	const { input, workspacePath, currentTabPath } = options
+	const decoded = safelyDecodeUrl(input.trim())
+	if (!decoded) {
+		return ""
+	}
 
-  const [pathPart, hashPart] = decoded.split('#', 2)
-  let normalizedPath = normalizePathSeparators(pathPart)
+	const [pathPart, hashPart] = decoded.split("#", 2)
+	let normalizedPath = normalizePathSeparators(pathPart)
 
-  if (!normalizedPath) {
-    return hashPart ? `#${hashPart}` : ''
-  }
+	if (!normalizedPath) {
+		return hashPart ? `#${hashPart}` : ""
+	}
 
-  const hasRootPrefix = normalizedPath.startsWith('/')
-  const hasRelativePrefix =
-    normalizedPath.startsWith('./') || normalizedPath.startsWith('../')
-  const isAbsPath = isAbsolute(normalizedPath)
+	const hasRootPrefix = normalizedPath.startsWith("/")
+	const hasRelativePrefix =
+		normalizedPath.startsWith("./") || normalizedPath.startsWith("../")
+	const isAbsPath = isAbsolute(normalizedPath)
 
-  if (workspacePath && (hasRootPrefix || hasRelativePrefix || isAbsPath)) {
-    const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
-    let absolutePath: string | null = null
+	if (workspacePath && (hasRootPrefix || hasRelativePrefix || isAbsPath)) {
+		const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
+		let absolutePath: string | null = null
 
-    if (hasRootPrefix) {
-      absolutePath = join(normalizedRoot, stripLeadingSlashes(normalizedPath))
-    } else if (isAbsPath) {
-      absolutePath = normalizedPath
-    } else if (currentTabPath) {
-      absolutePath = resolve(pathDirname(currentTabPath), normalizedPath)
-    }
+		if (hasRootPrefix) {
+			absolutePath = join(normalizedRoot, stripLeadingSlashes(normalizedPath))
+		} else if (isAbsPath) {
+			absolutePath = normalizedPath
+		} else if (currentTabPath) {
+			absolutePath = resolve(pathDirname(currentTabPath), normalizedPath)
+		}
 
-    if (absolutePath) {
-      const normalizedAbsolute = normalizePathSeparators(absolutePath)
-      if (normalizedAbsolute === normalizedRoot) {
-        normalizedPath = ''
-      } else if (normalizedAbsolute.startsWith(`${normalizedRoot}/`)) {
-        normalizedPath = normalizedAbsolute.slice(normalizedRoot.length + 1)
-      }
-    }
-  }
+		if (absolutePath) {
+			const normalizedAbsolute = normalizePathSeparators(absolutePath)
+			if (normalizedAbsolute === normalizedRoot) {
+				normalizedPath = ""
+			} else if (normalizedAbsolute.startsWith(`${normalizedRoot}/`)) {
+				normalizedPath = normalizedAbsolute.slice(normalizedRoot.length + 1)
+			}
+		}
+	}
 
-  normalizedPath = stripCurrentDirectoryPrefix(
-    stripLeadingSlashes(normalizedPath)
-  )
-  normalizedPath = stripMarkdownExtension(normalizedPath)
+	normalizedPath = stripCurrentDirectoryPrefix(
+		stripLeadingSlashes(normalizedPath),
+	)
+	normalizedPath = stripMarkdownExtension(normalizedPath)
 
-  return hashPart ? `${normalizedPath}#${hashPart}` : normalizedPath
+	return hashPart ? `${normalizedPath}#${hashPart}` : normalizedPath
 }
 
 function stripMarkdownExtension(value: string): string {
-  const lower = value.toLowerCase()
-  if (lower.endsWith('.mdx')) {
-    return value.slice(0, -4)
-  }
-  if (lower.endsWith('.md')) {
-    return value.slice(0, -3)
-  }
-  return value
+	const lower = value.toLowerCase()
+	if (lower.endsWith(".mdx")) {
+		return value.slice(0, -4)
+	}
+	if (lower.endsWith(".md")) {
+		return value.slice(0, -3)
+	}
+	return value
 }
 
 function parseInternalLinkTarget(value: string): {
-  rawPath: string
-  target: string
-  hash?: string
+	rawPath: string
+	target: string
+	hash?: string
 } {
-  const decoded = safelyDecodeUrl(value.trim())
-  const [pathPart, hashPart] = decoded.split('#', 2)
-  let rawPath = normalizePathSeparators(pathPart)
-  rawPath = stripCurrentDirectoryPrefix(rawPath)
-  rawPath = stripLeadingSlashes(rawPath)
+	const decoded = safelyDecodeUrl(value.trim())
+	const [pathPart, hashPart] = decoded.split("#", 2)
+	let rawPath = normalizePathSeparators(pathPart)
+	rawPath = stripCurrentDirectoryPrefix(rawPath)
+	rawPath = stripLeadingSlashes(rawPath)
 
-  return {
-    rawPath,
-    target: stripMarkdownExtension(rawPath),
-    hash: hashPart,
-  }
+	return {
+		rawPath,
+		target: stripMarkdownExtension(rawPath),
+		hash: hashPart,
+	}
 }
 
 function pickPreferredFile(
-  matches: WorkspaceFileOption[],
-  normalizedCurrentDir: string | null
+	matches: WorkspaceFileOption[],
+	normalizedCurrentDir: string | null,
 ): WorkspaceFileOption | null {
-  if (!matches.length) {
-    return null
-  }
+	if (!matches.length) {
+		return null
+	}
 
-  if (!normalizedCurrentDir) {
-    return matches[0]
-  }
+	if (!normalizedCurrentDir) {
+		return matches[0]
+	}
 
-  const preferred = matches.find((file) => {
-    const fileDir = normalizePathSeparators(pathDirname(file.absolutePath))
-    return fileDir === normalizedCurrentDir
-  })
+	const preferred = matches.find((file) => {
+		const fileDir = normalizePathSeparators(pathDirname(file.absolutePath))
+		return fileDir === normalizedCurrentDir
+	})
 
-  return preferred ?? matches[0]
+	return preferred ?? matches[0]
 }
 
 function resolveInternalLinkPath(options: {
-  rawPath: string
-  target: string
-  workspaceFiles: WorkspaceFileOption[]
-  workspacePath: string | null
-  currentTabPath: string | null
+	rawPath: string
+	target: string
+	workspaceFiles: WorkspaceFileOption[]
+	workspacePath: string | null
+	currentTabPath: string | null
 }): string | null {
-  const { rawPath, target, workspaceFiles, workspacePath, currentTabPath } =
-    options
+	const { rawPath, target, workspaceFiles, workspacePath, currentTabPath } =
+		options
 
-  if (!workspacePath || workspaceFiles.length === 0) {
-    return null
-  }
+	if (!workspacePath || workspaceFiles.length === 0) {
+		return null
+	}
 
-  const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
-  if (!normalizedWorkspaceRoot) {
-    return null
-  }
+	const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
+	if (!normalizedWorkspaceRoot) {
+		return null
+	}
 
-  const normalizedCurrentDir = currentTabPath
-    ? normalizePathSeparators(pathDirname(currentTabPath))
-    : null
+	const normalizedCurrentDir = currentTabPath
+		? normalizePathSeparators(pathDirname(currentTabPath))
+		: null
 
-  const normalizedAbsoluteMap = new Map<string, string>()
-  for (const file of workspaceFiles) {
-    normalizedAbsoluteMap.set(
-      normalizePathSeparators(file.absolutePath),
-      file.absolutePath
-    )
-  }
+	const normalizedAbsoluteMap = new Map<string, string>()
+	for (const file of workspaceFiles) {
+		normalizedAbsoluteMap.set(
+			normalizePathSeparators(file.absolutePath),
+			file.absolutePath,
+		)
+	}
 
-  const segments = new Set<string>()
-  if (rawPath) {
-    segments.add(rawPath)
-  }
-  if (target) {
-    segments.add(`${target}.md`)
-    segments.add(`${target}.mdx`)
-  }
+	const segments = new Set<string>()
+	if (rawPath) {
+		segments.add(rawPath)
+	}
+	if (target) {
+		segments.add(`${target}.md`)
+		segments.add(`${target}.mdx`)
+	}
 
-  const candidates: string[] = []
-  const addCandidate = (base: string | null, segment: string) => {
-    if (!base || !segment) {
-      return
-    }
-    candidates.push(normalizePathSeparators(join(base, segment)))
-  }
+	const candidates: string[] = []
+	const addCandidate = (base: string | null, segment: string) => {
+		if (!base || !segment) {
+			return
+		}
+		candidates.push(normalizePathSeparators(join(base, segment)))
+	}
 
-  for (const segment of segments) {
-    addCandidate(normalizedCurrentDir, segment)
-    addCandidate(normalizedWorkspaceRoot, segment)
-  }
+	for (const segment of segments) {
+		addCandidate(normalizedCurrentDir, segment)
+		addCandidate(normalizedWorkspaceRoot, segment)
+	}
 
-  for (const candidate of candidates) {
-    const matched = normalizedAbsoluteMap.get(candidate)
-    if (matched) {
-      return matched
-    }
-  }
+	for (const candidate of candidates) {
+		const matched = normalizedAbsoluteMap.get(candidate)
+		if (matched) {
+			return matched
+		}
+	}
 
-  const targetLower = target.toLowerCase()
-  if (targetLower) {
-    const relativeMatches = workspaceFiles.filter(
-      (file) =>
-        stripMarkdownExtension(file.relativePath).toLowerCase() === targetLower
-    )
-    const relativeMatch = pickPreferredFile(
-      relativeMatches,
-      normalizedCurrentDir
-    )
-    if (relativeMatch) {
-      return relativeMatch.absolutePath
-    }
-  }
+	const targetLower = target.toLowerCase()
+	if (targetLower) {
+		const relativeMatches = workspaceFiles.filter(
+			(file) =>
+				stripMarkdownExtension(file.relativePath).toLowerCase() === targetLower,
+		)
+		const relativeMatch = pickPreferredFile(
+			relativeMatches,
+			normalizedCurrentDir,
+		)
+		if (relativeMatch) {
+			return relativeMatch.absolutePath
+		}
+	}
 
-  const hasSeparator = target.includes('/') || target.includes('\\')
-  if (!hasSeparator && targetLower) {
-    const nameMatches = workspaceFiles.filter(
-      (file) =>
-        stripMarkdownExtension(file.displayName).toLowerCase() === targetLower
-    )
-    const nameMatch = pickPreferredFile(nameMatches, normalizedCurrentDir)
-    if (nameMatch) {
-      return nameMatch.absolutePath
-    }
-  }
+	const hasSeparator = target.includes("/") || target.includes("\\")
+	if (!hasSeparator && targetLower) {
+		const nameMatches = workspaceFiles.filter(
+			(file) =>
+				stripMarkdownExtension(file.displayName).toLowerCase() === targetLower,
+		)
+		const nameMatch = pickPreferredFile(nameMatches, normalizedCurrentDir)
+		if (nameMatch) {
+			return nameMatch.absolutePath
+		}
+	}
 
-  return null
+	return null
 }
 
 function normalizeWorkspaceRoot(workspacePath: string): string {
-  if (!workspacePath) {
-    return ''
-  }
-  const normalized = normalizePathSeparators(workspacePath)
-  return normalized.replace(trailingSlashesRegex, '')
+	if (!workspacePath) {
+		return ""
+	}
+	const normalized = normalizePathSeparators(workspacePath)
+	return normalized.replace(trailingSlashesRegex, "")
 }
 
 function stripLeadingSlashes(value: string): string {
-  let index = 0
-  while (
-    index < value.length &&
-    (value[index] === '/' || value[index] === '\\')
-  ) {
-    index += 1
-  }
-  return value.slice(index)
+	let index = 0
+	while (
+		index < value.length &&
+		(value[index] === "/" || value[index] === "\\")
+	) {
+		index += 1
+	}
+	return value.slice(index)
 }
 
 // Store URLs percent-encoded so markdown serialization keeps spaces & Unicode stable
 // while avoiding double-encoding if segments are already escaped.
 function ensureUriEncoding(url: string): string {
-  try {
-    const isEncoded = url !== decodeURIComponent(url)
-    return isEncoded ? url : encodeURI(url)
-  } catch (error) {
-    if (error instanceof URIError) {
-      return url
-    }
-    throw error
-  }
+	try {
+		const isEncoded = url !== decodeURIComponent(url)
+		return isEncoded ? url : encodeURI(url)
+	} catch (error) {
+		if (error instanceof URIError) {
+			return url
+		}
+		throw error
+	}
 }
 
 function safelyDecodeUrl(url: string): string {
-  try {
-    return decodeURI(url)
-  } catch (error) {
-    if (error instanceof URIError) {
-      return url
-    }
-    throw error
-  }
+	try {
+		return decodeURI(url)
+	} catch (error) {
+		if (error instanceof URIError) {
+			return url
+		}
+		throw error
+	}
 }

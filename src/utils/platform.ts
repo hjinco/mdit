@@ -1,4 +1,4 @@
-import { platform, version } from '@tauri-apps/plugin-os'
+import { platform, version } from "@tauri-apps/plugin-os"
 
 let cachedPlatform: string | null = null
 
@@ -12,10 +12,10 @@ const WINDOWS_VERSION_REGEX = /^10\.0\.(\d+)/
  * @returns the platform string
  */
 export function getPlatform() {
-  if (cachedPlatform === null) {
-    cachedPlatform = platform()
-  }
-  return cachedPlatform
+	if (cachedPlatform === null) {
+		cachedPlatform = platform()
+	}
+	return cachedPlatform
 }
 
 /**
@@ -24,8 +24,8 @@ export function getPlatform() {
  * @returns true if macOS, false otherwise
  */
 export function isMac(): boolean {
-  const plat = getPlatform()
-  return plat === 'macos'
+	const plat = getPlatform()
+	return plat === "macos"
 }
 
 /**
@@ -34,8 +34,8 @@ export function isMac(): boolean {
  * @returns true if Windows, false otherwise
  */
 export function isWindows(): boolean {
-  const plat = getPlatform()
-  return plat === 'windows'
+	const plat = getPlatform()
+	return plat === "windows"
 }
 
 /**
@@ -44,8 +44,8 @@ export function isWindows(): boolean {
  * @returns true if Linux, false otherwise
  */
 export function isLinux(): boolean {
-  const plat = getPlatform()
-  return plat === 'linux'
+	const plat = getPlatform()
+	return plat === "linux"
 }
 
 /**
@@ -58,23 +58,23 @@ export function isLinux(): boolean {
  * @returns Promise that resolves to true if Windows 10 or below, false otherwise
  */
 export function isWindows10() {
-  if (!isWindows()) {
-    return false
-  }
+	if (!isWindows()) {
+		return false
+	}
 
-  try {
-    const osVersion = version()
+	try {
+		const osVersion = version()
 
-    // Windows 10/11 (10.0.x) - check build number
-    if (osVersion.startsWith('10.0')) {
-      const versionMatch = osVersion.match(WINDOWS_VERSION_REGEX)
-      // Windows 10: build < 22000, Windows 11: build >= 22000
-      return versionMatch ? Number.parseInt(versionMatch[1], 10) < 22_000 : true
-    }
+		// Windows 10/11 (10.0.x) - check build number
+		if (osVersion.startsWith("10.0")) {
+			const versionMatch = osVersion.match(WINDOWS_VERSION_REGEX)
+			// Windows 10: build < 22000, Windows 11: build >= 22000
+			return versionMatch ? Number.parseInt(versionMatch[1], 10) < 22_000 : true
+		}
 
-    // All other Windows versions (5.x, 6.x, etc.) are below Windows 10
-    return true
-  } catch {
-    return false
-  }
+		// All other Windows versions (5.x, 6.x, etc.) are below Windows 10
+		return true
+	} catch {
+		return false
+	}
 }

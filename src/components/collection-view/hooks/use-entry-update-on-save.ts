@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef } from "react"
 
 /**
  * Hook to update entry metadata (preview cache and modified date) when a file is saved.
@@ -12,32 +12,32 @@ import { useEffect, useRef } from 'react'
  * @param updateEntryModifiedDate - Function to update the entry's modified date for a given path
  */
 export function useEntryUpdateOnSave(
-  tabPath: string | null | undefined,
-  isSaved: boolean,
-  invalidatePreview: (path: string) => void,
-  updateEntryModifiedDate: (path: string) => Promise<void>
+	tabPath: string | null | undefined,
+	isSaved: boolean,
+	invalidatePreview: (path: string) => void,
+	updateEntryModifiedDate: (path: string) => Promise<void>,
 ) {
-  // Ref to track the previous tab path
-  // Used to detect when tab.path changes vs when the same file is saved
-  const prevTabPathRef = useRef<string | null>(null)
+	// Ref to track the previous tab path
+	// Used to detect when tab.path changes vs when the same file is saved
+	const prevTabPathRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    const currentTabPath = tabPath ?? null
+	useEffect(() => {
+		const currentTabPath = tabPath ?? null
 
-    // If tab.path has changed, update the ref and return early
-    // We don't update when just switching between files
-    if (prevTabPathRef.current !== currentTabPath) {
-      prevTabPathRef.current = currentTabPath
-      return
-    }
+		// If tab.path has changed, update the ref and return early
+		// We don't update when just switching between files
+		if (prevTabPathRef.current !== currentTabPath) {
+			prevTabPathRef.current = currentTabPath
+			return
+		}
 
-    // Only update if:
-    // 1. The tab path hasn't changed (same file)
-    // 2. The file has been saved (isSaved is true)
-    // This ensures we only refresh when the same file is edited and saved
-    if (isSaved && currentTabPath) {
-      invalidatePreview(currentTabPath)
-      updateEntryModifiedDate(currentTabPath)
-    }
-  }, [isSaved, tabPath, invalidatePreview, updateEntryModifiedDate])
+		// Only update if:
+		// 1. The tab path hasn't changed (same file)
+		// 2. The file has been saved (isSaved is true)
+		// This ensures we only refresh when the same file is edited and saved
+		if (isSaved && currentTabPath) {
+			invalidatePreview(currentTabPath)
+			updateEntryModifiedDate(currentTabPath)
+		}
+	}, [isSaved, tabPath, invalidatePreview, updateEntryModifiedDate])
 }

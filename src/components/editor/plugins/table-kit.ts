@@ -1,20 +1,20 @@
 import {
-  TableCellHeaderPlugin,
-  TableCellPlugin,
-  TablePlugin,
-  TableRowPlugin,
-} from '@platejs/table/react'
+	TableCellHeaderPlugin,
+	TableCellPlugin,
+	TablePlugin,
+	TableRowPlugin,
+} from "@platejs/table/react"
 
 import {
-  TableCellElement,
-  TableCellHeaderElement,
-  TableElement,
-  TableRowElement,
-} from '../ui/node-table'
+	TableCellElement,
+	TableCellHeaderElement,
+	TableElement,
+	TableRowElement,
+} from "../ui/node-table"
 
 export const TableKit = [
-  TablePlugin.withComponent(TableElement),
-  TableRowPlugin.withComponent(TableRowElement),
-  TableCellPlugin.withComponent(TableCellElement),
-  TableCellHeaderPlugin.withComponent(TableCellHeaderElement),
+	TablePlugin.withComponent(TableElement),
+	TableRowPlugin.withComponent(TableRowElement),
+	TableCellPlugin.withComponent(TableCellElement),
+	TableCellHeaderPlugin.withComponent(TableCellHeaderElement),
 ]

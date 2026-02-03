@@ -1,5 +1,5 @@
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useEffect, useState } from 'react'
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { useEffect, useState } from "react"
 
 /**
  * Hook to get the current window label.
@@ -16,12 +16,12 @@ import { useEffect, useState } from 'react'
  * ```
  */
 export function useCurrentWindowLabel(): string | null {
-  const [windowLabel, setWindowLabel] = useState<string | null>(null)
+	const [windowLabel, setWindowLabel] = useState<string | null>(null)
 
-  useEffect(() => {
-    const currentWindow = getCurrentWindow()
-    setWindowLabel(currentWindow.label)
-  }, [])
+	useEffect(() => {
+		const currentWindow = getCurrentWindow()
+		setWindowLabel(currentWindow.label)
+	}, [])
 
-  return windowLabel
+	return windowLabel
 }

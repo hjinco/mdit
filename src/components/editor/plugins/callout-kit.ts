@@ -1,5 +1,5 @@
-import { CalloutPlugin } from '@platejs/callout/react'
+import { CalloutPlugin } from "@platejs/callout/react"
 
-import { CalloutElement } from '../ui/node-callout'
+import { CalloutElement } from "../ui/node-callout"
 
 export const CalloutKit = [CalloutPlugin.withComponent(CalloutElement)]

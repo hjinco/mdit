@@ -2,13 +2,13 @@ const UNSAVED_TAB_CHECK_DELAY_MS = 200
 const MAX_UNSAVED_TAB_CHECKS = 5
 
 const delay = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
+	new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 type TabLike = { path: string }
 
 type TabStoreSnapshot<TTab extends TabLike = TabLike> = {
-  tab: TTab | null
-  isSaved: boolean
+	tab: TTab | null
+	isSaved: boolean
 }
 
 /**
@@ -16,22 +16,22 @@ type TabStoreSnapshot<TTab extends TabLike = TabLike> = {
  * maximum attempts have been reached. Returns the latest tab store snapshot.
  */
 export async function waitForUnsavedTabToSettle<
-  TState extends TabStoreSnapshot,
+	TState extends TabStoreSnapshot,
 >(targetPath: string, getTabState: () => TState): Promise<TState> {
-  let tabState = getTabState()
+	let tabState = getTabState()
 
-  if (targetPath !== tabState.tab?.path) {
-    return tabState
-  }
+	if (targetPath !== tabState.tab?.path) {
+		return tabState
+	}
 
-  for (let attempts = 0; attempts < MAX_UNSAVED_TAB_CHECKS; attempts++) {
-    if (tabState.isSaved) {
-      break
-    }
+	for (let attempts = 0; attempts < MAX_UNSAVED_TAB_CHECKS; attempts++) {
+		if (tabState.isSaved) {
+			break
+		}
 
-    await delay(UNSAVED_TAB_CHECK_DELAY_MS)
-    tabState = getTabState()
-  }
+		await delay(UNSAVED_TAB_CHECK_DELAY_MS)
+		tabState = getTabState()
+	}
 
-  return tabState
+	return tabState
 }

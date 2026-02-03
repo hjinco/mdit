@@ -1,92 +1,92 @@
 import {
-  type FloatingToolbarState,
-  flip,
-  offset,
-  useFloatingToolbar,
-  useFloatingToolbarState,
-} from '@platejs/floating'
-import { useComposedRef } from '@udecode/cn'
-import { KEYS } from 'platejs'
+	type FloatingToolbarState,
+	flip,
+	offset,
+	useFloatingToolbar,
+	useFloatingToolbarState,
+} from "@platejs/floating"
+import { useComposedRef } from "@udecode/cn"
+import { KEYS } from "platejs"
 import {
-  useEditorId,
-  useEditorSelector,
-  useEventEditorValue,
-  usePluginOption,
-} from 'platejs/react'
+	useEditorId,
+	useEditorSelector,
+	useEventEditorValue,
+	usePluginOption,
+} from "platejs/react"
 
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils"
 
-import { Toolbar } from './toolbar'
+import { Toolbar } from "./toolbar"
 
 export function FloatingToolbar({
-  children,
-  className,
-  state,
-  ...props
+	children,
+	className,
+	state,
+	...props
 }: React.ComponentProps<typeof Toolbar> & {
-  state?: FloatingToolbarState
+	state?: FloatingToolbarState
 }) {
-  const editorId = useEditorId()
-  const focusedEditorId = useEventEditorValue('focus')
-  const hideInCodeBlock = useEditorSelector((editor) => {
-    if (!editor.selection) return false
+	const editorId = useEditorId()
+	const focusedEditorId = useEventEditorValue("focus")
+	const hideInCodeBlock = useEditorSelector((editor) => {
+		if (!editor.selection) return false
 
-    return editor.api.some({
-      at: editor.selection,
-      match: { type: editor.getType(KEYS.codeBlock) },
-    })
-  }, [])
-  const isFloatingLinkOpen = !!usePluginOption({ key: KEYS.link }, 'mode')
-  const isAIChatOpen = usePluginOption({ key: KEYS.aiChat }, 'open')
+		return editor.api.some({
+			at: editor.selection,
+			match: { type: editor.getType(KEYS.codeBlock) },
+		})
+	}, [])
+	const isFloatingLinkOpen = !!usePluginOption({ key: KEYS.link }, "mode")
+	const isAIChatOpen = usePluginOption({ key: KEYS.aiChat }, "open")
 
-  const floatingToolbarState = useFloatingToolbarState({
-    editorId,
-    focusedEditorId,
-    hideToolbar: isFloatingLinkOpen || isAIChatOpen || hideInCodeBlock,
-    ...state,
-    floatingOptions: {
-      middleware: [
-        offset(12),
-        flip({
-          fallbackPlacements: [
-            'top-start',
-            'top-end',
-            'bottom-start',
-            'bottom-end',
-          ],
-          padding: 12,
-        }),
-      ],
-      placement: 'top',
-      ...state?.floatingOptions,
-    },
-  })
+	const floatingToolbarState = useFloatingToolbarState({
+		editorId,
+		focusedEditorId,
+		hideToolbar: isFloatingLinkOpen || isAIChatOpen || hideInCodeBlock,
+		...state,
+		floatingOptions: {
+			middleware: [
+				offset(12),
+				flip({
+					fallbackPlacements: [
+						"top-start",
+						"top-end",
+						"bottom-start",
+						"bottom-end",
+					],
+					padding: 12,
+				}),
+			],
+			placement: "top",
+			...state?.floatingOptions,
+		},
+	})
 
-  const {
-    clickOutsideRef,
-    hidden,
-    props: rootProps,
-    ref: floatingRef,
-  } = useFloatingToolbar(floatingToolbarState)
+	const {
+		clickOutsideRef,
+		hidden,
+		props: rootProps,
+		ref: floatingRef,
+	} = useFloatingToolbar(floatingToolbarState)
 
-  const ref = useComposedRef<HTMLDivElement>(props.ref, floatingRef)
+	const ref = useComposedRef<HTMLDivElement>(props.ref, floatingRef)
 
-  if (hidden) return null
+	if (hidden) return null
 
-  return (
-    <div ref={clickOutsideRef}>
-      <Toolbar
-        {...props}
-        {...rootProps}
-        ref={ref}
-        className={cn(
-          'absolute z-50 scrollbar-hide overflow-x-auto rounded-md border bg-popover/90 backdrop-blur-xs p-0.5 whitespace-nowrap opacity-100 shadow-md print:hidden',
-          'max-w-[80vw]',
-          className
-        )}
-      >
-        {children}
-      </Toolbar>
-    </div>
-  )
+	return (
+		<div ref={clickOutsideRef}>
+			<Toolbar
+				{...props}
+				{...rootProps}
+				ref={ref}
+				className={cn(
+					"absolute z-50 scrollbar-hide overflow-x-auto rounded-md border bg-popover/90 backdrop-blur-xs p-0.5 whitespace-nowrap opacity-100 shadow-md print:hidden",
+					"max-w-[80vw]",
+					className,
+				)}
+			>
+				{children}
+			</Toolbar>
+		</div>
+	)
 }
