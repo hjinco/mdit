@@ -1,54 +1,54 @@
-import { useShallow } from 'zustand/shallow'
-import { useIsFullscreen } from '@/hooks/use-is-fullscreen'
-import { cn } from '@/lib/utils'
-import { useStore } from '@/store'
-import { isMac } from '@/utils/platform'
-import { HistoryNavigation } from './history-navigation'
-import { MoreButton } from './more-button'
-import { Tab } from './tab'
+import { useShallow } from "zustand/shallow"
+import { useIsFullscreen } from "@/hooks/use-is-fullscreen"
+import { cn } from "@/lib/utils"
+import { useStore } from "@/store"
+import { isMac } from "@/utils/platform"
+import { HistoryNavigation } from "./history-navigation"
+import { MoreButton } from "./more-button"
+import { Tab } from "./tab"
 
 export function Header() {
-  const {
-    isFileExplorerOpen,
-    isFocusMode,
-    currentCollectionPath,
-    workspacePath,
-  } = useStore(
-    useShallow((s) => ({
-      isFileExplorerOpen: s.isFileExplorerOpen,
-      isFocusMode: s.isFocusMode,
-      currentCollectionPath: s.currentCollectionPath,
-      workspacePath: s.workspacePath,
-    }))
-  )
-  const isCollectionViewOpen = currentCollectionPath !== null
-  const isFullscreen = useIsFullscreen()
+	const {
+		isFileExplorerOpen,
+		isFocusMode,
+		currentCollectionPath,
+		workspacePath,
+	} = useStore(
+		useShallow((s) => ({
+			isFileExplorerOpen: s.isFileExplorerOpen,
+			isFocusMode: s.isFocusMode,
+			currentCollectionPath: s.currentCollectionPath,
+			workspacePath: s.workspacePath,
+		})),
+	)
+	const isCollectionViewOpen = currentCollectionPath !== null
+	const isFullscreen = useIsFullscreen()
 
-  return (
-    <div
-      className={cn(
-        'absolute z-100 top-0 left-0 bg-background h-12 flex items-center justify-center transition-[opacity] duration-600 w-[calc(100%-8px)]',
-        isFocusMode && 'pointer-events-none opacity-0'
-      )}
-      {...(isMac() && { 'data-tauri-drag-region': '' })}
-    >
-      <div
-        className={cn(
-          'absolute',
-          !isFileExplorerOpen && !isCollectionViewOpen
-            ? isMac() && !isFullscreen
-              ? 'left-30'
-              : 'left-12'
-            : 'left-2',
-          !workspacePath && (isMac() && !isFullscreen ? 'left-20' : 'left-2')
-        )}
-      >
-        <HistoryNavigation />
-      </div>
-      <Tab />
-      <div className="absolute right-0">
-        <MoreButton />
-      </div>
-    </div>
-  )
+	return (
+		<div
+			className={cn(
+				"absolute z-100 top-0 left-0 bg-background h-12 flex items-center justify-center transition-[opacity] duration-600 w-[calc(100%-8px)]",
+				isFocusMode && "pointer-events-none opacity-0",
+			)}
+			{...(isMac() && { "data-tauri-drag-region": "" })}
+		>
+			<div
+				className={cn(
+					"absolute",
+					!isFileExplorerOpen && !isCollectionViewOpen
+						? isMac() && !isFullscreen
+							? "left-30"
+							: "left-12"
+						: "left-2",
+					!workspacePath && (isMac() && !isFullscreen ? "left-20" : "left-2"),
+				)}
+			>
+				<HistoryNavigation />
+			</div>
+			<Tab />
+			<div className="absolute right-0">
+				<MoreButton />
+			</div>
+		</div>
+	)
 }

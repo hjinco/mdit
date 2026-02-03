@@ -1,7 +1,7 @@
-import type { IndexingConfig } from '../indexing-slice'
+import type { IndexingConfig } from "../indexing-slice"
 
 export type IndexingMeta = {
-  indexedDocCount: number
+	indexedDocCount: number
 }
 
 /**
@@ -9,15 +9,15 @@ export type IndexingMeta = {
  * Pure function - easily testable without mocks
  */
 export function calculateIndexingProgress(
-  indexedCount: number,
-  totalFiles: number
+	indexedCount: number,
+	totalFiles: number,
 ): number {
-  if (!totalFiles || totalFiles <= 0) {
-    return 0
-  }
+	if (!totalFiles || totalFiles <= 0) {
+		return 0
+	}
 
-  const clampedIndexed = Math.min(indexedCount, totalFiles)
-  return Math.round((clampedIndexed / totalFiles) * 100)
+	const clampedIndexed = Math.min(indexedCount, totalFiles)
+	return Math.round((clampedIndexed / totalFiles) * 100)
 }
 
 /**
@@ -25,52 +25,52 @@ export function calculateIndexingProgress(
  * Returns null if invalid format
  */
 export function parseEmbeddingModelValue(
-  value: string
+	value: string,
 ): { provider: string; model: string } | null {
-  const parts = value.split('|')
-  if (parts.length < 2) {
-    return null
-  }
+	const parts = value.split("|")
+	if (parts.length < 2) {
+		return null
+	}
 
-  const [provider, ...modelParts] = parts
-  const model = modelParts.join('|')
+	const [provider, ...modelParts] = parts
+	const model = modelParts.join("|")
 
-  if (!provider || !model) {
-    return null
-  }
+	if (!provider || !model) {
+		return null
+	}
 
-  return { provider, model }
+	return { provider, model }
 }
 
 /**
  * Check if the embedding model is actually changing
  */
 export function isModelChanging(
-  currentConfig: IndexingConfig | null,
-  newProvider: string,
-  newModel: string
+	currentConfig: IndexingConfig | null,
+	newProvider: string,
+	newModel: string,
 ): boolean {
-  if (!currentConfig) {
-    return true
-  }
+	if (!currentConfig) {
+		return true
+	}
 
-  return (
-    currentConfig.embeddingProvider !== newProvider ||
-    currentConfig.embeddingModel !== newModel
-  )
+	return (
+		currentConfig.embeddingProvider !== newProvider ||
+		currentConfig.embeddingModel !== newModel
+	)
 }
 
 /**
  * Determine if we should show the model change warning dialog
  */
 export function shouldShowModelChangeWarning(
-  isModelChanging: boolean,
-  indexedCount: number
+	isModelChanging: boolean,
+	indexedCount: number,
 ): boolean {
-  // Show warning if:
-  // 1. Model is actually changing (not initial setup)
-  // 2. There are indexed documents
-  return isModelChanging && indexedCount > 0
+	// Show warning if:
+	// 1. Model is actually changing (not initial setup)
+	// 2. There are indexed documents
+	return isModelChanging && indexedCount > 0
 }
 
 /**
@@ -78,36 +78,36 @@ export function shouldShowModelChangeWarning(
  * Returns null if not configured or available
  */
 export function buildSelectedEmbeddingModel(
-  embeddingProvider: string,
-  embeddingModel: string,
-  ollamaModels: string[]
+	embeddingProvider: string,
+	embeddingModel: string,
+	ollamaModels: string[],
 ): string | null {
-  const isConfigured = embeddingModel !== '' && embeddingProvider !== ''
-  const isAvailable = isConfigured && ollamaModels.includes(embeddingModel)
+	const isConfigured = embeddingModel !== "" && embeddingProvider !== ""
+	const isAvailable = isConfigured && ollamaModels.includes(embeddingModel)
 
-  if (!isAvailable) {
-    return null
-  }
+	if (!isAvailable) {
+		return null
+	}
 
-  return `${embeddingProvider}|${embeddingModel}`
+	return `${embeddingProvider}|${embeddingModel}`
 }
 
 /**
  * Check if indexing should be enabled
  */
 export function isIndexingEnabled(
-  selectedModel: string | null,
-  isIndexing: boolean,
-  isMetaLoading: boolean
+	selectedModel: string | null,
+	isIndexing: boolean,
+	isMetaLoading: boolean,
 ): boolean {
-  if (!selectedModel) {
-    return false
-  }
-  if (isIndexing) {
-    return false
-  }
-  if (isMetaLoading) {
-    return false
-  }
-  return true
+	if (!selectedModel) {
+		return false
+	}
+	if (isIndexing) {
+		return false
+	}
+	if (isMetaLoading) {
+		return false
+	}
+	return true
 }

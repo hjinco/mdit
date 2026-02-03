@@ -1,426 +1,426 @@
-import { readTextFile, rename as renameFile } from '@tauri-apps/plugin-fs'
-import { relative } from 'pathe'
-import type { StateCreator } from 'zustand'
-import type { WorkspaceSettings } from '@/lib/settings-utils'
-import { saveSettings } from '@/lib/settings-utils'
-import { getFileNameWithoutExtension } from '@/utils/path-utils'
-import type { WorkspaceSlice } from '../workspace/workspace-slice'
-import { removePathFromHistory } from './utils/history-utils'
+import { readTextFile, rename as renameFile } from "@tauri-apps/plugin-fs"
+import { relative } from "pathe"
+import type { StateCreator } from "zustand"
+import type { WorkspaceSettings } from "@/lib/settings-utils"
+import { saveSettings } from "@/lib/settings-utils"
+import { getFileNameWithoutExtension } from "@/utils/path-utils"
+import type { WorkspaceSlice } from "../workspace/workspace-slice"
+import { removePathFromHistory } from "./utils/history-utils"
 
 let tabIdCounter = 0
 
 const MAX_HISTORY_LENGTH = 50
 
 export type TabSliceDependencies = {
-  readTextFile: (path: string) => Promise<string>
-  renameFile: (oldPath: string, newPath: string) => Promise<void>
-  saveSettings: (
-    workspacePath: string,
-    settings: Partial<WorkspaceSettings>
-  ) => Promise<void>
+	readTextFile: (path: string) => Promise<string>
+	renameFile: (oldPath: string, newPath: string) => Promise<void>
+	saveSettings: (
+		workspacePath: string,
+		settings: Partial<WorkspaceSettings>,
+	) => Promise<void>
 }
 
 export type Tab = {
-  id: number
-  path: string
-  name: string
-  content: string
+	id: number
+	path: string
+	name: string
+	content: string
 }
 
 type RenameTabOptions = {
-  refreshContent?: boolean
-  renameOnFs?: boolean
+	refreshContent?: boolean
+	renameOnFs?: boolean
 }
 
 type LinkedTab = {
-  path: string
-  name: string
+	path: string
+	name: string
 } | null
 
 export type TabSlice = {
-  tab: Tab | null
-  linkedTab: LinkedTab
-  isSaved: boolean
-  history: string[]
-  historyIndex: number
-  hydrateFromOpenedFiles: (paths: string[]) => Promise<boolean>
-  openTab: (
-    path: string,
-    skipHistory?: boolean,
-    force?: boolean,
-    options?: { initialContent?: string }
-  ) => Promise<void>
-  closeTab: (path: string) => void
-  renameTab: (
-    oldPath: string,
-    newPath: string,
-    options?: RenameTabOptions
-  ) => Promise<void>
-  setTabSaved: (isSaved: boolean) => void
-  setLinkedTab: (linkedTab: LinkedTab) => void
-  updateLinkedName: (name: string) => void
-  clearLinkedTab: () => void
-  goBack: () => Promise<boolean>
-  goForward: () => Promise<boolean>
-  canGoBack: () => boolean
-  canGoForward: () => boolean
-  updateHistoryPath: (oldPath: string, newPath: string) => void
-  removePathFromHistory: (path: string) => void
-  clearHistory: () => void
+	tab: Tab | null
+	linkedTab: LinkedTab
+	isSaved: boolean
+	history: string[]
+	historyIndex: number
+	hydrateFromOpenedFiles: (paths: string[]) => Promise<boolean>
+	openTab: (
+		path: string,
+		skipHistory?: boolean,
+		force?: boolean,
+		options?: { initialContent?: string },
+	) => Promise<void>
+	closeTab: (path: string) => void
+	renameTab: (
+		oldPath: string,
+		newPath: string,
+		options?: RenameTabOptions,
+	) => Promise<void>
+	setTabSaved: (isSaved: boolean) => void
+	setLinkedTab: (linkedTab: LinkedTab) => void
+	updateLinkedName: (name: string) => void
+	clearLinkedTab: () => void
+	goBack: () => Promise<boolean>
+	goForward: () => Promise<boolean>
+	canGoBack: () => boolean
+	canGoForward: () => boolean
+	updateHistoryPath: (oldPath: string, newPath: string) => void
+	removePathFromHistory: (path: string) => void
+	clearHistory: () => void
 }
 
 export const prepareTabSlice =
-  ({
-    readTextFile,
-    renameFile,
-    saveSettings,
-  }: TabSliceDependencies): StateCreator<
-    TabSlice & WorkspaceSlice,
-    [],
-    [],
-    TabSlice
-  > =>
-  (set, get) => ({
-    tab: null,
-    linkedTab: null,
-    isSaved: true,
-    history: [],
-    historyIndex: -1,
-    hydrateFromOpenedFiles: async (paths: string[]) => {
-      const validPaths = paths.filter((path) => path.endsWith('.md'))
+	({
+		readTextFile,
+		renameFile,
+		saveSettings,
+	}: TabSliceDependencies): StateCreator<
+		TabSlice & WorkspaceSlice,
+		[],
+		[],
+		TabSlice
+	> =>
+	(set, get) => ({
+		tab: null,
+		linkedTab: null,
+		isSaved: true,
+		history: [],
+		historyIndex: -1,
+		hydrateFromOpenedFiles: async (paths: string[]) => {
+			const validPaths = paths.filter((path) => path.endsWith(".md"))
 
-      if (validPaths.length === 0) {
-        return false
-      }
+			if (validPaths.length === 0) {
+				return false
+			}
 
-      const initialPath = validPaths[0]
-      const name = getFileNameWithoutExtension(initialPath)
+			const initialPath = validPaths[0]
+			const name = getFileNameWithoutExtension(initialPath)
 
-      if (!name) {
-        return false
-      }
+			if (!name) {
+				return false
+			}
 
-      try {
-        const content = await readTextFile(initialPath)
-        const limitedHistory = validPaths.slice(0, MAX_HISTORY_LENGTH)
-        const initialIndex = Math.max(0, limitedHistory.indexOf(initialPath))
+			try {
+				const content = await readTextFile(initialPath)
+				const limitedHistory = validPaths.slice(0, MAX_HISTORY_LENGTH)
+				const initialIndex = Math.max(0, limitedHistory.indexOf(initialPath))
 
-        set({
-          tab: { id: ++tabIdCounter, path: initialPath, name, content },
-          linkedTab: null,
-          isSaved: true,
-          history: limitedHistory,
-          historyIndex: initialIndex,
-        })
+				set({
+					tab: { id: ++tabIdCounter, path: initialPath, name, content },
+					linkedTab: null,
+					isSaved: true,
+					history: limitedHistory,
+					historyIndex: initialIndex,
+				})
 
-        return true
-      } catch (error) {
-        console.error('Failed to hydrate tabs from opened files:', error)
-        return false
-      }
-    },
-    openTab: async (
-      path: string,
-      skipHistory = false,
-      force = false,
-      options?: { initialContent?: string }
-    ) => {
-      if (!path.endsWith('.md')) {
-        return
-      }
+				return true
+			} catch (error) {
+				console.error("Failed to hydrate tabs from opened files:", error)
+				return false
+			}
+		},
+		openTab: async (
+			path: string,
+			skipHistory = false,
+			force = false,
+			options?: { initialContent?: string },
+		) => {
+			if (!path.endsWith(".md")) {
+				return
+			}
 
-      const state = get()
+			const state = get()
 
-      // If opening the same tab, don't do anything (unless force is true)
-      if (!force && state.tab?.path === path) {
-        return
-      }
+			// If opening the same tab, don't do anything (unless force is true)
+			if (!force && state.tab?.path === path) {
+				return
+			}
 
-      const content =
-        options?.initialContent !== undefined
-          ? options.initialContent
-          : await readTextFile(path)
-      const name = getFileNameWithoutExtension(path)
+			const content =
+				options?.initialContent !== undefined
+					? options.initialContent
+					: await readTextFile(path)
+			const name = getFileNameWithoutExtension(path)
 
-      if (name) {
-        set({
-          tab: { id: ++tabIdCounter, path, name, content },
-          linkedTab: null,
-          isSaved: true,
-        })
+			if (name) {
+				set({
+					tab: { id: ++tabIdCounter, path, name, content },
+					linkedTab: null,
+					isSaved: true,
+				})
 
-        // Manage history unless we're navigating (skipHistory = true)
-        if (!skipHistory) {
-          const currentState = get()
-          let newHistory = [...currentState.history]
-          let newIndex = currentState.historyIndex
+				// Manage history unless we're navigating (skipHistory = true)
+				if (!skipHistory) {
+					const currentState = get()
+					let newHistory = [...currentState.history]
+					let newIndex = currentState.historyIndex
 
-          // Check if the path is different from the current history position
-          const isDifferentFromCurrent =
-            newIndex === -1 || newHistory[newIndex] !== path
+					// Check if the path is different from the current history position
+					const isDifferentFromCurrent =
+						newIndex === -1 || newHistory[newIndex] !== path
 
-          if (isDifferentFromCurrent) {
-            // Truncate forward history
-            newHistory = newHistory.slice(0, newIndex + 1)
+					if (isDifferentFromCurrent) {
+						// Truncate forward history
+						newHistory = newHistory.slice(0, newIndex + 1)
 
-            // Add new path
-            newHistory.push(path)
-            newIndex = newHistory.length - 1
+						// Add new path
+						newHistory.push(path)
+						newIndex = newHistory.length - 1
 
-            // Enforce max history length
-            if (newHistory.length > MAX_HISTORY_LENGTH) {
-              const excess = newHistory.length - MAX_HISTORY_LENGTH
-              newHistory = newHistory.slice(excess)
-              newIndex -= excess
-            }
+						// Enforce max history length
+						if (newHistory.length > MAX_HISTORY_LENGTH) {
+							const excess = newHistory.length - MAX_HISTORY_LENGTH
+							newHistory = newHistory.slice(excess)
+							newIndex -= excess
+						}
 
-            set({
-              history: newHistory,
-              historyIndex: newIndex,
-            })
-          }
+						set({
+							history: newHistory,
+							historyIndex: newIndex,
+						})
+					}
 
-          // Save last opened note path to workspace.json as relative path
-          const workspacePath = get().workspacePath
-          if (workspacePath) {
-            const relativePath = relative(workspacePath, path)
-            await saveSettings(workspacePath, {
-              lastOpenedNotePath: relativePath,
-            })
-          }
-        }
-      }
-    },
-    closeTab: (path) => {
-      const tab = get().tab
+					// Save last opened note path to workspace.json as relative path
+					const workspacePath = get().workspacePath
+					if (workspacePath) {
+						const relativePath = relative(workspacePath, path)
+						await saveSettings(workspacePath, {
+							lastOpenedNotePath: relativePath,
+						})
+					}
+				}
+			}
+		},
+		closeTab: (path) => {
+			const tab = get().tab
 
-      if (!tab || tab.path !== path) {
-        return
-      }
+			if (!tab || tab.path !== path) {
+				return
+			}
 
-      set({ tab: null })
-    },
-    renameTab: async (oldPath, newPath, options) => {
-      const refreshContent = options?.refreshContent ?? false
-      const shouldRenameOnFs = options?.renameOnFs ?? false
-      const tab = get().tab
+			set({ tab: null })
+		},
+		renameTab: async (oldPath, newPath, options) => {
+			const refreshContent = options?.refreshContent ?? false
+			const shouldRenameOnFs = options?.renameOnFs ?? false
+			const tab = get().tab
 
-      if (!tab || tab.path !== oldPath) {
-        return
-      }
+			if (!tab || tab.path !== oldPath) {
+				return
+			}
 
-      if (shouldRenameOnFs && oldPath !== newPath) {
-        try {
-          await renameFile(oldPath, newPath)
-          const nextName = getFileNameWithoutExtension(newPath)
-          const { linkedTab } = get()
-          const tab = get().tab
-          if (!tab) {
-            return
-          }
-          const nextTab = {
-            ...tab,
-            path: newPath,
-            name: nextName,
-          }
-          const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
+			if (shouldRenameOnFs && oldPath !== newPath) {
+				try {
+					await renameFile(oldPath, newPath)
+					const nextName = getFileNameWithoutExtension(newPath)
+					const { linkedTab } = get()
+					const tab = get().tab
+					if (!tab) {
+						return
+					}
+					const nextTab = {
+						...tab,
+						path: newPath,
+						name: nextName,
+					}
+					const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
 
-          set({
-            tab: nextTab,
-            linkedTab: shouldCarryLinked
-              ? {
-                  ...linkedTab,
-                  path: newPath,
-                }
-              : linkedTab,
-          })
-          return
-        } catch (error) {
-          console.error('Failed to rename tab on filesystem:', error)
-          throw error
-        }
-      }
+					set({
+						tab: nextTab,
+						linkedTab: shouldCarryLinked
+							? {
+									...linkedTab,
+									path: newPath,
+								}
+							: linkedTab,
+					})
+					return
+				} catch (error) {
+					console.error("Failed to rename tab on filesystem:", error)
+					throw error
+				}
+			}
 
-      const name = getFileNameWithoutExtension(newPath)
+			const name = getFileNameWithoutExtension(newPath)
 
-      if (!name) {
-        set({ tab: null, linkedTab: null })
-        return
-      }
+			if (!name) {
+				set({ tab: null, linkedTab: null })
+				return
+			}
 
-      let content = tab.content
-      let nextId = tab.id
+			let content = tab.content
+			let nextId = tab.id
 
-      if (refreshContent) {
-        nextId = ++tabIdCounter
+			if (refreshContent) {
+				nextId = ++tabIdCounter
 
-        if (newPath.endsWith('.md')) {
-          try {
-            content = await readTextFile(newPath)
-          } catch (error) {
-            console.error('Failed to refresh tab content after rename:', error)
-          }
-        }
-      }
+				if (newPath.endsWith(".md")) {
+					try {
+						content = await readTextFile(newPath)
+					} catch (error) {
+						console.error("Failed to refresh tab content after rename:", error)
+					}
+				}
+			}
 
-      const { linkedTab } = get()
-      const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
-      const nextTab = {
-        ...tab,
-        id: nextId,
-        path: newPath,
-        name,
-        content,
-      }
+			const { linkedTab } = get()
+			const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
+			const nextTab = {
+				...tab,
+				id: nextId,
+				path: newPath,
+				name,
+				content,
+			}
 
-      set((state) => ({
-        ...state,
-        tab: nextTab,
-        linkedTab: shouldCarryLinked
-          ? {
-              ...linkedTab,
-              path: newPath,
-            }
-          : state.linkedTab,
-      }))
-    },
-    setTabSaved: (isSaved) => {
-      set({
-        isSaved,
-      })
-    },
-    setLinkedTab: (linkedTab) => {
-      set({ linkedTab })
-    },
-    updateLinkedName: (name) => {
-      const { tab, linkedTab } = get()
+			set((state) => ({
+				...state,
+				tab: nextTab,
+				linkedTab: shouldCarryLinked
+					? {
+							...linkedTab,
+							path: newPath,
+						}
+					: state.linkedTab,
+			}))
+		},
+		setTabSaved: (isSaved) => {
+			set({
+				isSaved,
+			})
+		},
+		setLinkedTab: (linkedTab) => {
+			set({ linkedTab })
+		},
+		updateLinkedName: (name) => {
+			const { tab, linkedTab } = get()
 
-      if (!tab || !linkedTab) {
-        return
-      }
+			if (!tab || !linkedTab) {
+				return
+			}
 
-      const isSameTab = linkedTab.path === tab.path
+			const isSameTab = linkedTab.path === tab.path
 
-      if (!isSameTab || linkedTab.name === name) {
-        return
-      }
+			if (!isSameTab || linkedTab.name === name) {
+				return
+			}
 
-      set({ linkedTab: { ...linkedTab, name } })
-    },
-    clearLinkedTab: () => {
-      set({ linkedTab: null })
-    },
-    goBack: async () => {
-      const state = get()
+			set({ linkedTab: { ...linkedTab, name } })
+		},
+		clearLinkedTab: () => {
+			set({ linkedTab: null })
+		},
+		goBack: async () => {
+			const state = get()
 
-      // Check if we can go back
-      if (state.historyIndex <= 0) {
-        return false
-      }
+			// Check if we can go back
+			if (state.historyIndex <= 0) {
+				return false
+			}
 
-      const newIndex = state.historyIndex - 1
-      const targetPath = state.history[newIndex]
+			const newIndex = state.historyIndex - 1
+			const targetPath = state.history[newIndex]
 
-      // Update index first
-      set({ historyIndex: newIndex })
+			// Update index first
+			set({ historyIndex: newIndex })
 
-      // Open the tab (with skipHistory to avoid adding to history)
-      try {
-        await get().openTab(targetPath, true)
-        return true
-      } catch (error) {
-        console.error('Failed to go back in history:', error)
-        return false
-      }
-    },
-    goForward: async () => {
-      const state = get()
+			// Open the tab (with skipHistory to avoid adding to history)
+			try {
+				await get().openTab(targetPath, true)
+				return true
+			} catch (error) {
+				console.error("Failed to go back in history:", error)
+				return false
+			}
+		},
+		goForward: async () => {
+			const state = get()
 
-      // Check if we can go forward
-      if (state.historyIndex >= state.history.length - 1) {
-        return false
-      }
+			// Check if we can go forward
+			if (state.historyIndex >= state.history.length - 1) {
+				return false
+			}
 
-      const newIndex = state.historyIndex + 1
-      const targetPath = state.history[newIndex]
+			const newIndex = state.historyIndex + 1
+			const targetPath = state.history[newIndex]
 
-      // Update index first
-      set({ historyIndex: newIndex })
+			// Update index first
+			set({ historyIndex: newIndex })
 
-      // Open the tab (with skipHistory to avoid adding to history)
-      try {
-        await get().openTab(targetPath, true)
-        return true
-      } catch (error) {
-        console.error('Failed to go forward in history:', error)
-        return false
-      }
-    },
-    canGoBack: () => {
-      const state = get()
-      return state.historyIndex > 0
-    },
-    canGoForward: () => {
-      const state = get()
-      return state.historyIndex < state.history.length - 1
-    },
-    updateHistoryPath: (oldPath: string, newPath: string) => {
-      const state = get()
+			// Open the tab (with skipHistory to avoid adding to history)
+			try {
+				await get().openTab(targetPath, true)
+				return true
+			} catch (error) {
+				console.error("Failed to go forward in history:", error)
+				return false
+			}
+		},
+		canGoBack: () => {
+			const state = get()
+			return state.historyIndex > 0
+		},
+		canGoForward: () => {
+			const state = get()
+			return state.historyIndex < state.history.length - 1
+		},
+		updateHistoryPath: (oldPath: string, newPath: string) => {
+			const state = get()
 
-      // Update all occurrences of oldPath in history
-      const updatedHistory = state.history.map((path) =>
-        path === oldPath ? newPath : path
-      )
+			// Update all occurrences of oldPath in history
+			const updatedHistory = state.history.map((path) =>
+				path === oldPath ? newPath : path,
+			)
 
-      set({ history: updatedHistory })
-    },
-    removePathFromHistory: (path: string) => {
-      const state = get()
-      const { history, historyIndex } = removePathFromHistory(
-        state.history,
-        state.historyIndex,
-        path
-      )
-      const isCurrentTabDeleted = state.tab?.path === path
+			set({ history: updatedHistory })
+		},
+		removePathFromHistory: (path: string) => {
+			const state = get()
+			const { history, historyIndex } = removePathFromHistory(
+				state.history,
+				state.historyIndex,
+				path,
+			)
+			const isCurrentTabDeleted = state.tab?.path === path
 
-      if (isCurrentTabDeleted) {
-        if (history.length > 0) {
-          set({
-            history,
-            historyIndex,
-          })
+			if (isCurrentTabDeleted) {
+				if (history.length > 0) {
+					set({
+						history,
+						historyIndex,
+					})
 
-          const targetPath = history[historyIndex]
-          get()
-            .openTab(targetPath, true)
-            .catch((error) => {
-              console.error('Failed to navigate after deletion:', error)
-              set({ tab: null })
-            })
-        } else {
-          set({
-            tab: null,
-            history,
-            historyIndex: -1,
-          })
-        }
-      } else {
-        set({
-          history,
-          historyIndex,
-        })
-      }
-    },
-    clearHistory: () => {
-      set({
-        history: [],
-        historyIndex: -1,
-      })
-    },
-  })
+					const targetPath = history[historyIndex]
+					get()
+						.openTab(targetPath, true)
+						.catch((error) => {
+							console.error("Failed to navigate after deletion:", error)
+							set({ tab: null })
+						})
+				} else {
+					set({
+						tab: null,
+						history,
+						historyIndex: -1,
+					})
+				}
+			} else {
+				set({
+					history,
+					historyIndex,
+				})
+			}
+		},
+		clearHistory: () => {
+			set({
+				history: [],
+				historyIndex: -1,
+			})
+		},
+	})
 
 export const createTabSlice = prepareTabSlice({
-  readTextFile,
-  renameFile,
-  saveSettings,
+	readTextFile,
+	renameFile,
+	saveSettings,
 })

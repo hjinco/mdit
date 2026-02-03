@@ -1,556 +1,556 @@
-import type { Definition, Image, Link } from 'mdast'
-import { normalize, relative, resolve } from 'pathe'
-import remarkParse from 'remark-parse'
-import { unified } from 'unified'
-import { visit } from 'unist-util-visit'
+import type { Definition, Image, Link } from "mdast"
+import { normalize, relative, resolve } from "pathe"
+import remarkParse from "remark-parse"
+import { unified } from "unified"
+import { visit } from "unist-util-visit"
 
 type Replacement = {
-  start: number
-  end: number
-  text: string
+	start: number
+	end: number
+	text: string
 }
 
 type RewriteContext = {
-  fromDir: string
-  toDir: string
+	fromDir: string
+	toDir: string
 }
 
 type InlineTargetSlice = {
-  start: number
-  end: number
-  rawTarget: string
+	start: number
+	end: number
+	rawTarget: string
 }
 
 const ABSOLUTE_PROTOCOL_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 const DRIVE_PATH_REGEX = /^[a-zA-Z]:[\\/]/
 const WHITESPACE_REGEX = /\s/
 const ESCAPABLE_CHARACTERS = new Set([
-  '(',
-  ')',
-  '[',
-  ']',
-  '{',
-  '}',
-  '<',
-  '>',
-  '"',
-  "'",
-  ' ',
-  '\t',
-  '\n',
-  '\r',
-  '\\',
+	"(",
+	")",
+	"[",
+	"]",
+	"{",
+	"}",
+	"<",
+	">",
+	'"',
+	"'",
+	" ",
+	"\t",
+	"\n",
+	"\r",
+	"\\",
 ])
 const DESTINATION_ESCAPE_REGEX = /[()\s<>]/g
 
 const remarkProcessor = unified().use(remarkParse)
 
 export function rewriteMarkdownRelativeLinks(
-  content: string,
-  fromDir: string,
-  toDir: string
+	content: string,
+	fromDir: string,
+	toDir: string,
 ) {
-  if (!content?.length || !fromDir || !toDir) {
-    return content
-  }
+	if (!content?.length || !fromDir || !toDir) {
+		return content
+	}
 
-  const normalizedFrom = normalizeToPosix(fromDir)
-  const normalizedTo = normalizeToPosix(toDir)
+	const normalizedFrom = normalizeToPosix(fromDir)
+	const normalizedTo = normalizeToPosix(toDir)
 
-  if (normalizedFrom === normalizedTo) {
-    return content
-  }
+	if (normalizedFrom === normalizedTo) {
+		return content
+	}
 
-  const tree = remarkProcessor.parse(content)
-  const context: RewriteContext = {
-    fromDir: normalizedFrom,
-    toDir: normalizedTo,
-  }
+	const tree = remarkProcessor.parse(content)
+	const context: RewriteContext = {
+		fromDir: normalizedFrom,
+		toDir: normalizedTo,
+	}
 
-  const replacements: Replacement[] = []
+	const replacements: Replacement[] = []
 
-  visit(tree, (node) => {
-    if (node.type === 'definition') {
-      addDefinitionReplacement(node, content, context, replacements)
-      return
-    }
+	visit(tree, (node) => {
+		if (node.type === "definition") {
+			addDefinitionReplacement(node, content, context, replacements)
+			return
+		}
 
-    if (node.type === 'link' || node.type === 'image') {
-      addInlineReplacement(node, content, context, replacements)
-    }
-  })
+		if (node.type === "link" || node.type === "image") {
+			addInlineReplacement(node, content, context, replacements)
+		}
+	})
 
-  if (replacements.length === 0) {
-    return content
-  }
+	if (replacements.length === 0) {
+		return content
+	}
 
-  replacements.sort((a, b) => a.start - b.start)
-  let cursor = 0
-  let result = ''
+	replacements.sort((a, b) => a.start - b.start)
+	let cursor = 0
+	let result = ""
 
-  for (const replacement of replacements) {
-    if (replacement.start < cursor) {
-      continue
-    }
+	for (const replacement of replacements) {
+		if (replacement.start < cursor) {
+			continue
+		}
 
-    result += content.slice(cursor, replacement.start)
-    result += replacement.text
-    cursor = replacement.end
-  }
+		result += content.slice(cursor, replacement.start)
+		result += replacement.text
+		cursor = replacement.end
+	}
 
-  result += content.slice(cursor)
+	result += content.slice(cursor)
 
-  return result
+	return result
 }
 
 function addInlineReplacement(
-  node: Link | Image,
-  source: string,
-  context: RewriteContext,
-  replacements: Replacement[]
+	node: Link | Image,
+	source: string,
+	context: RewriteContext,
+	replacements: Replacement[],
 ) {
-  const targetSlice = extractInlineTargetSlice(node, source)
-  if (!targetSlice) {
-    return
-  }
+	const targetSlice = extractInlineTargetSlice(node, source)
+	if (!targetSlice) {
+		return
+	}
 
-  const replacement = buildReplacementForTarget(targetSlice.rawTarget, context)
+	const replacement = buildReplacementForTarget(targetSlice.rawTarget, context)
 
-  if (replacement && replacement !== targetSlice.rawTarget) {
-    replacements.push({
-      start: targetSlice.start,
-      end: targetSlice.end,
-      text: replacement,
-    })
-  }
+	if (replacement && replacement !== targetSlice.rawTarget) {
+		replacements.push({
+			start: targetSlice.start,
+			end: targetSlice.end,
+			text: replacement,
+		})
+	}
 }
 
 function addDefinitionReplacement(
-  node: Definition,
-  source: string,
-  context: RewriteContext,
-  replacements: Replacement[]
+	node: Definition,
+	source: string,
+	context: RewriteContext,
+	replacements: Replacement[],
 ) {
-  const position = node.position
-  if (!position?.start || !position.end) {
-    return
-  }
+	const position = node.position
+	if (!position?.start || !position.end) {
+		return
+	}
 
-  const startOffset = position.start.offset
-  const endOffset = position.end.offset
+	const startOffset = position.start.offset
+	const endOffset = position.end.offset
 
-  if (startOffset == null || endOffset == null) {
-    return
-  }
+	if (startOffset == null || endOffset == null) {
+		return
+	}
 
-  const rawNode = source.slice(startOffset, endOffset)
-  const targetStart = findDefinitionTargetStart(rawNode)
+	const rawNode = source.slice(startOffset, endOffset)
+	const targetStart = findDefinitionTargetStart(rawNode)
 
-  if (targetStart === -1) {
-    return
-  }
+	if (targetStart === -1) {
+		return
+	}
 
-  const absoluteTargetStart = startOffset + targetStart
-  const rawTarget = source.slice(absoluteTargetStart, endOffset)
-  const replacement = buildReplacementForTarget(rawTarget, context)
+	const absoluteTargetStart = startOffset + targetStart
+	const rawTarget = source.slice(absoluteTargetStart, endOffset)
+	const replacement = buildReplacementForTarget(rawTarget, context)
 
-  if (replacement && replacement !== rawTarget) {
-    replacements.push({
-      start: absoluteTargetStart,
-      end: endOffset,
-      text: replacement,
-    })
-  }
+	if (replacement && replacement !== rawTarget) {
+		replacements.push({
+			start: absoluteTargetStart,
+			end: endOffset,
+			text: replacement,
+		})
+	}
 }
 
 function extractInlineTargetSlice(
-  node: Link | Image,
-  source: string
+	node: Link | Image,
+	source: string,
 ): InlineTargetSlice | null {
-  const position = node.position
-  if (!position?.start || !position.end) {
-    return null
-  }
+	const position = node.position
+	if (!position?.start || !position.end) {
+		return null
+	}
 
-  const startOffset = position.start.offset
-  const endOffset = position.end.offset
+	const startOffset = position.start.offset
+	const endOffset = position.end.offset
 
-  if (startOffset == null || endOffset == null) {
-    return null
-  }
+	if (startOffset == null || endOffset == null) {
+		return null
+	}
 
-  const rawNode = source.slice(startOffset, endOffset)
+	const rawNode = source.slice(startOffset, endOffset)
 
-  if (rawNode.startsWith('<') && rawNode.endsWith('>')) {
-    const targetStart = startOffset + 1
-    const targetEnd = endOffset - 1
-    const rawTarget = source.slice(targetStart, targetEnd)
-    return {
-      start: targetStart,
-      end: targetEnd,
-      rawTarget,
-    }
-  }
+	if (rawNode.startsWith("<") && rawNode.endsWith(">")) {
+		const targetStart = startOffset + 1
+		const targetEnd = endOffset - 1
+		const rawTarget = source.slice(targetStart, targetEnd)
+		return {
+			start: targetStart,
+			end: targetEnd,
+			rawTarget,
+		}
+	}
 
-  const bracketIndex = findFirstSquareBracket(rawNode)
-  if (bracketIndex === -1) {
-    return null
-  }
+	const bracketIndex = findFirstSquareBracket(rawNode)
+	if (bracketIndex === -1) {
+		return null
+	}
 
-  const closingBracket = findClosingSquareBracket(rawNode, bracketIndex)
-  if (closingBracket === -1) {
-    return null
-  }
+	const closingBracket = findClosingSquareBracket(rawNode, bracketIndex)
+	if (closingBracket === -1) {
+		return null
+	}
 
-  const openParenIndex = closingBracket + 1
-  if (rawNode[openParenIndex] !== '(') {
-    return null
-  }
+	const openParenIndex = closingBracket + 1
+	if (rawNode[openParenIndex] !== "(") {
+		return null
+	}
 
-  const closingParenIndex = findClosingParenthesis(rawNode, openParenIndex)
-  if (closingParenIndex === -1) {
-    return null
-  }
+	const closingParenIndex = findClosingParenthesis(rawNode, openParenIndex)
+	if (closingParenIndex === -1) {
+		return null
+	}
 
-  const targetStartInNode = openParenIndex + 1
-  const targetEndInNode = closingParenIndex
+	const targetStartInNode = openParenIndex + 1
+	const targetEndInNode = closingParenIndex
 
-  return {
-    start: startOffset + targetStartInNode,
-    end: startOffset + targetEndInNode,
-    rawTarget: rawNode.slice(targetStartInNode, targetEndInNode),
-  }
+	return {
+		start: startOffset + targetStartInNode,
+		end: startOffset + targetEndInNode,
+		rawTarget: rawNode.slice(targetStartInNode, targetEndInNode),
+	}
 }
 
 function buildReplacementForTarget(rawTarget: string, context: RewriteContext) {
-  const parsedTarget = splitTarget(rawTarget)
+	const parsedTarget = splitTarget(rawTarget)
 
-  if (!parsedTarget) {
-    return null
-  }
+	if (!parsedTarget) {
+		return null
+	}
 
-  const unwrappedDestination = decodeDestination(parsedTarget.destination)
-  const { path: destinationPath, suffix } =
-    splitDestinationSuffix(unwrappedDestination)
+	const unwrappedDestination = decodeDestination(parsedTarget.destination)
+	const { path: destinationPath, suffix } =
+		splitDestinationSuffix(unwrappedDestination)
 
-  if (!destinationPath || !shouldRewrite(destinationPath)) {
-    return null
-  }
+	if (!destinationPath || !shouldRewrite(destinationPath)) {
+		return null
+	}
 
-  const normalizedTargetPath = normalizeForComputation(destinationPath)
-  const absoluteTarget = normalizeToPosix(
-    resolve(context.fromDir, normalizedTargetPath)
-  )
-  const stillValidFromNewLocation =
-    absoluteTarget ===
-    normalizeToPosix(resolve(context.toDir, normalizedTargetPath))
+	const normalizedTargetPath = normalizeForComputation(destinationPath)
+	const absoluteTarget = normalizeToPosix(
+		resolve(context.fromDir, normalizedTargetPath),
+	)
+	const stillValidFromNewLocation =
+		absoluteTarget ===
+		normalizeToPosix(resolve(context.toDir, normalizedTargetPath))
 
-  if (stillValidFromNewLocation) {
-    return null
-  }
+	if (stillValidFromNewLocation) {
+		return null
+	}
 
-  let relativePathToTarget = relative(context.toDir, absoluteTarget)
-  if (!relativePathToTarget) {
-    relativePathToTarget = '.'
-  }
+	let relativePathToTarget = relative(context.toDir, absoluteTarget)
+	if (!relativePathToTarget) {
+		relativePathToTarget = "."
+	}
 
-  const preferredBackslash =
-    !parsedTarget.wrappedWithAngles &&
-    shouldUseBackslash(parsedTarget.destination)
+	const preferredBackslash =
+		!parsedTarget.wrappedWithAngles &&
+		shouldUseBackslash(parsedTarget.destination)
 
-  const formattedRelativePath = preferredBackslash
-    ? relativePathToTarget.replace(/\//g, '\\')
-    : toForwardSlash(relativePathToTarget)
+	const formattedRelativePath = preferredBackslash
+		? relativePathToTarget.replace(/\//g, "\\")
+		: toForwardSlash(relativePathToTarget)
 
-  const newDestinationValue = formattedRelativePath + suffix
-  const formattedDestination = parsedTarget.wrappedWithAngles
-    ? `<${newDestinationValue}>`
-    : escapeDestination(newDestinationValue)
+	const newDestinationValue = formattedRelativePath + suffix
+	const formattedDestination = parsedTarget.wrappedWithAngles
+		? `<${newDestinationValue}>`
+		: escapeDestination(newDestinationValue)
 
-  return parsedTarget.leading + formattedDestination + parsedTarget.trailing
+	return parsedTarget.leading + formattedDestination + parsedTarget.trailing
 }
 
 function findDefinitionTargetStart(value: string) {
-  const closingLabelIndex = value.indexOf(']:')
-  if (closingLabelIndex === -1) {
-    return -1
-  }
+	const closingLabelIndex = value.indexOf("]:")
+	if (closingLabelIndex === -1) {
+		return -1
+	}
 
-  let index = closingLabelIndex + 2
+	let index = closingLabelIndex + 2
 
-  while (index < value.length && WHITESPACE_REGEX.test(value[index]!)) {
-    index += 1
-  }
+	while (index < value.length && WHITESPACE_REGEX.test(value[index]!)) {
+		index += 1
+	}
 
-  return index
+	return index
 }
 
 function findFirstSquareBracket(value: string) {
-  for (let i = 0; i < value.length; i += 1) {
-    if (value[i] === '[') {
-      return i
-    }
-  }
-  return -1
+	for (let i = 0; i < value.length; i += 1) {
+		if (value[i] === "[") {
+			return i
+		}
+	}
+	return -1
 }
 
 function splitDestinationSuffix(destination: string) {
-  let path = destination
-  let hash = ''
-  let query = ''
+	let path = destination
+	let hash = ""
+	let query = ""
 
-  const hashIndex = path.indexOf('#')
-  if (hashIndex !== -1) {
-    hash = path.slice(hashIndex)
-    path = path.slice(0, hashIndex)
-  }
+	const hashIndex = path.indexOf("#")
+	if (hashIndex !== -1) {
+		hash = path.slice(hashIndex)
+		path = path.slice(0, hashIndex)
+	}
 
-  const queryIndex = path.indexOf('?')
-  if (queryIndex !== -1) {
-    query = path.slice(queryIndex)
-    path = path.slice(0, queryIndex)
-  }
+	const queryIndex = path.indexOf("?")
+	if (queryIndex !== -1) {
+		query = path.slice(queryIndex)
+		path = path.slice(0, queryIndex)
+	}
 
-  return {
-    path,
-    suffix: query + hash,
-  }
+	return {
+		path,
+		suffix: query + hash,
+	}
 }
 
 function shouldRewrite(destinationPath: string) {
-  if (!destinationPath.trim()) {
-    return false
-  }
+	if (!destinationPath.trim()) {
+		return false
+	}
 
-  if (destinationPath.startsWith('#') || destinationPath.startsWith('//')) {
-    return false
-  }
+	if (destinationPath.startsWith("#") || destinationPath.startsWith("//")) {
+		return false
+	}
 
-  if (ABSOLUTE_PROTOCOL_REGEX.test(destinationPath)) {
-    return false
-  }
+	if (ABSOLUTE_PROTOCOL_REGEX.test(destinationPath)) {
+		return false
+	}
 
-  if (
-    destinationPath.startsWith('/') ||
-    destinationPath.startsWith('\\') ||
-    DRIVE_PATH_REGEX.test(destinationPath)
-  ) {
-    return false
-  }
+	if (
+		destinationPath.startsWith("/") ||
+		destinationPath.startsWith("\\") ||
+		DRIVE_PATH_REGEX.test(destinationPath)
+	) {
+		return false
+	}
 
-  return true
+	return true
 }
 
 type ParsedTarget = {
-  leading: string
-  destination: string
-  trailing: string
-  wrappedWithAngles: boolean
+	leading: string
+	destination: string
+	trailing: string
+	wrappedWithAngles: boolean
 }
 
 function splitTarget(rawTarget: string): ParsedTarget | null {
-  if (!rawTarget) {
-    return null
-  }
+	if (!rawTarget) {
+		return null
+	}
 
-  let leadingEnd = 0
-  while (
-    leadingEnd < rawTarget.length &&
-    WHITESPACE_REGEX.test(rawTarget[leadingEnd]!)
-  ) {
-    leadingEnd += 1
-  }
+	let leadingEnd = 0
+	while (
+		leadingEnd < rawTarget.length &&
+		WHITESPACE_REGEX.test(rawTarget[leadingEnd]!)
+	) {
+		leadingEnd += 1
+	}
 
-  const leading = rawTarget.slice(0, leadingEnd)
-  const remainder = rawTarget.slice(leadingEnd)
+	const leading = rawTarget.slice(0, leadingEnd)
+	const remainder = rawTarget.slice(leadingEnd)
 
-  if (!remainder) {
-    return null
-  }
+	if (!remainder) {
+		return null
+	}
 
-  if (remainder.startsWith('<')) {
-    const closing = findClosingAngleBracket(remainder)
-    if (closing === -1) {
-      return null
-    }
+	if (remainder.startsWith("<")) {
+		const closing = findClosingAngleBracket(remainder)
+		if (closing === -1) {
+			return null
+		}
 
-    return {
-      leading,
-      destination: remainder.slice(1, closing),
-      trailing: remainder.slice(closing + 1),
-      wrappedWithAngles: true,
-    }
-  }
+		return {
+			leading,
+			destination: remainder.slice(1, closing),
+			trailing: remainder.slice(closing + 1),
+			wrappedWithAngles: true,
+		}
+	}
 
-  let destinationEnd = 0
+	let destinationEnd = 0
 
-  while (destinationEnd < remainder.length) {
-    const char = remainder[destinationEnd]!
+	while (destinationEnd < remainder.length) {
+		const char = remainder[destinationEnd]!
 
-    if (char === '\\' && destinationEnd + 1 < remainder.length) {
-      const next = remainder[destinationEnd + 1]!
-      if (ESCAPABLE_CHARACTERS.has(next)) {
-        destinationEnd += 2
-        continue
-      }
-    }
+		if (char === "\\" && destinationEnd + 1 < remainder.length) {
+			const next = remainder[destinationEnd + 1]!
+			if (ESCAPABLE_CHARACTERS.has(next)) {
+				destinationEnd += 2
+				continue
+			}
+		}
 
-    if (WHITESPACE_REGEX.test(char)) {
-      break
-    }
+		if (WHITESPACE_REGEX.test(char)) {
+			break
+		}
 
-    destinationEnd += 1
-  }
+		destinationEnd += 1
+	}
 
-  const destination = remainder.slice(0, destinationEnd)
-  const trailing = remainder.slice(destinationEnd)
+	const destination = remainder.slice(0, destinationEnd)
+	const trailing = remainder.slice(destinationEnd)
 
-  if (!destination) {
-    return null
-  }
+	if (!destination) {
+		return null
+	}
 
-  return {
-    leading,
-    destination,
-    trailing,
-    wrappedWithAngles: false,
-  }
+	return {
+		leading,
+		destination,
+		trailing,
+		wrappedWithAngles: false,
+	}
 }
 
 function decodeDestination(destination: string) {
-  let result = ''
+	let result = ""
 
-  for (let i = 0; i < destination.length; i += 1) {
-    const char = destination[i]!
-    const next = destination[i + 1]
+	for (let i = 0; i < destination.length; i += 1) {
+		const char = destination[i]!
+		const next = destination[i + 1]
 
-    if (char === '\\' && next && ESCAPABLE_CHARACTERS.has(next)) {
-      result += next
-      i += 1
-      continue
-    }
+		if (char === "\\" && next && ESCAPABLE_CHARACTERS.has(next)) {
+			result += next
+			i += 1
+			continue
+		}
 
-    result += char
-  }
+		result += char
+	}
 
-  return result
+	return result
 }
 
 function escapeDestination(destination: string) {
-  return destination.replace(DESTINATION_ESCAPE_REGEX, (match) => `\\${match}`)
+	return destination.replace(DESTINATION_ESCAPE_REGEX, (match) => `\\${match}`)
 }
 
 function findClosingAngleBracket(value: string) {
-  for (let i = 1; i < value.length; i += 1) {
-    const char = value[i]!
-    const next = value[i + 1]
+	for (let i = 1; i < value.length; i += 1) {
+		const char = value[i]!
+		const next = value[i + 1]
 
-    if (char === '\\' && next && ESCAPABLE_CHARACTERS.has(next)) {
-      i += 1
-      continue
-    }
+		if (char === "\\" && next && ESCAPABLE_CHARACTERS.has(next)) {
+			i += 1
+			continue
+		}
 
-    if (char === '>') {
-      return i
-    }
-  }
+		if (char === ">") {
+			return i
+		}
+	}
 
-  return -1
+	return -1
 }
 
 function findClosingSquareBracket(content: string, startIndex: number) {
-  let depth = 0
+	let depth = 0
 
-  for (let i = startIndex; i < content.length; i += 1) {
-    const char = content[i]!
+	for (let i = startIndex; i < content.length; i += 1) {
+		const char = content[i]!
 
-    if (char === '\\') {
-      i += 1
-      continue
-    }
+		if (char === "\\") {
+			i += 1
+			continue
+		}
 
-    if (char === '[') {
-      depth += 1
-      continue
-    }
+		if (char === "[") {
+			depth += 1
+			continue
+		}
 
-    if (char === ']') {
-      depth -= 1
-      if (depth === 0) {
-        return i
-      }
-    }
-  }
+		if (char === "]") {
+			depth -= 1
+			if (depth === 0) {
+				return i
+			}
+		}
+	}
 
-  return -1
+	return -1
 }
 
 function findClosingParenthesis(content: string, openIndex: number) {
-  let depth = 0
-  let quoteChar: '"' | "'" | null = null
+	let depth = 0
+	let quoteChar: '"' | "'" | null = null
 
-  for (let i = openIndex; i < content.length; i += 1) {
-    const char = content[i]!
+	for (let i = openIndex; i < content.length; i += 1) {
+		const char = content[i]!
 
-    if (i === openIndex) {
-      depth = 1
-      continue
-    }
+		if (i === openIndex) {
+			depth = 1
+			continue
+		}
 
-    if (quoteChar) {
-      if (char === '\\' && content[i + 1] === quoteChar) {
-        i += 1
-        continue
-      }
+		if (quoteChar) {
+			if (char === "\\" && content[i + 1] === quoteChar) {
+				i += 1
+				continue
+			}
 
-      if (char === quoteChar) {
-        quoteChar = null
-      }
+			if (char === quoteChar) {
+				quoteChar = null
+			}
 
-      continue
-    }
+			continue
+		}
 
-    if (char === '\\') {
-      const next = content[i + 1]
-      if (next && ESCAPABLE_CHARACTERS.has(next)) {
-        i += 1
-      }
-      continue
-    }
+		if (char === "\\") {
+			const next = content[i + 1]
+			if (next && ESCAPABLE_CHARACTERS.has(next)) {
+				i += 1
+			}
+			continue
+		}
 
-    if (char === '"' || char === "'") {
-      quoteChar = char
-      continue
-    }
+		if (char === '"' || char === "'") {
+			quoteChar = char
+			continue
+		}
 
-    if (char === '(') {
-      depth += 1
-      continue
-    }
+		if (char === "(") {
+			depth += 1
+			continue
+		}
 
-    if (char === ')') {
-      depth -= 1
-      if (depth === 0) {
-        return i
-      }
-    }
-  }
+		if (char === ")") {
+			depth -= 1
+			if (depth === 0) {
+				return i
+			}
+		}
+	}
 
-  return -1
+	return -1
 }
 
 function shouldUseBackslash(destination: string) {
-  return destination.includes('\\') && !destination.includes('/')
+	return destination.includes("\\") && !destination.includes("/")
 }
 
 function normalizeToPosix(value: string) {
-  return toForwardSlash(normalize(value))
+	return toForwardSlash(normalize(value))
 }
 
 function normalizeForComputation(value: string) {
-  return toForwardSlash(value)
+	return toForwardSlash(value)
 }
 
 function toForwardSlash(value: string) {
-  return value.replace(/\\/g, '/')
+	return value.replace(/\\/g, "/")
 }

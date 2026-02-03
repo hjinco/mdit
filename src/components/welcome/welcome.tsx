@@ -1,39 +1,39 @@
-import { FolderOpenIcon } from 'lucide-react'
-import { useStore } from '@/store'
-import { Button } from '@/ui/button'
-import { isMac } from '@/utils/platform'
+import { FolderOpenIcon } from "lucide-react"
+import { useStore } from "@/store"
+import { Button } from "@/ui/button"
+import { isMac } from "@/utils/platform"
 
 export function Welcome() {
-  const openFolderPicker = useStore((state) => state.openFolderPicker)
+	const openFolderPicker = useStore((state) => state.openFolderPicker)
 
-  return (
-    <div className="w-full h-screen flex flex-col">
-      <div
-        className="w-full h-10"
-        {...(isMac() && { 'data-tauri-drag-region': '' })}
-      />
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="max-w-sm w-full">
-          <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-foreground">Welcome</h1>
-            <p className="text-muted-foreground leading-relaxed">
-              Organize notes in your folder.
-            </p>
-          </div>
+	return (
+		<div className="w-full h-screen flex flex-col">
+			<div
+				className="w-full h-10"
+				{...(isMac() && { "data-tauri-drag-region": "" })}
+			/>
+			<div className="flex-1 flex flex-col items-center justify-center">
+				<div className="max-w-sm w-full">
+					<div className="text-center space-y-2">
+						<h1 className="text-3xl font-bold text-foreground">Welcome</h1>
+						<p className="text-muted-foreground leading-relaxed">
+							Organize notes in your folder.
+						</p>
+					</div>
 
-          <div className="flex flex-col items-center mt-6">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="w-fit"
-              onClick={openFolderPicker}
-            >
-              <FolderOpenIcon />
-              Open Folder
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+					<div className="flex flex-col items-center mt-6">
+						<Button
+							variant="secondary"
+							size="sm"
+							className="w-fit"
+							onClick={openFolderPicker}
+						>
+							<FolderOpenIcon />
+							Open Folder
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	)
 }

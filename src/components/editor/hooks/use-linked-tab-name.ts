@@ -1,10 +1,10 @@
-import { KEYS, type Value } from 'platejs'
-import { useEffect, useRef } from 'react'
-import { useStore } from '@/store'
+import { KEYS, type Value } from "platejs"
+import { useEffect, useRef } from "react"
+import { useStore } from "@/store"
 import {
-  getFileNameWithoutExtension,
-  sanitizeFilename,
-} from '@/utils/path-utils'
+	getFileNameWithoutExtension,
+	sanitizeFilename,
+} from "@/utils/path-utils"
 
 const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 
@@ -13,57 +13,57 @@ const UNTITLED_PATTERN = /^Untitled( \d+)?$/
  * Prevents relinking after a manual rename; resets when the tab id changes.
  */
 export function useLinkedTabName(path: string, value: Value) {
-  const hasLinkedForTab = useRef(false)
-  const setLinkedTab = useStore((s) => s.setLinkedTab)
+	const hasLinkedForTab = useRef(false)
+	const setLinkedTab = useStore((s) => s.setLinkedTab)
 
-  // Link the tab name to the first heading on initial render if conditions match
-  useEffect(() => {
-    if (hasLinkedForTab.current) {
-      return
-    }
+	// Link the tab name to the first heading on initial render if conditions match
+	useEffect(() => {
+		if (hasLinkedForTab.current) {
+			return
+		}
 
-    const firstHeading = sanitizeFilename(getFirstHeadingText(value))
+		const firstHeading = sanitizeFilename(getFirstHeadingText(value))
 
-    const name = getFileNameWithoutExtension(path)
-    const isUntitled = UNTITLED_PATTERN.test(name)
-    const matchesHeading = firstHeading === name
+		const name = getFileNameWithoutExtension(path)
+		const isUntitled = UNTITLED_PATTERN.test(name)
+		const matchesHeading = firstHeading === name
 
-    if (!matchesHeading && !isUntitled) {
-      return
-    }
+		if (!matchesHeading && !isUntitled) {
+			return
+		}
 
-    setLinkedTab({ path, name: firstHeading || name })
-    hasLinkedForTab.current = true
-  }, [path, setLinkedTab, value])
+		setLinkedTab({ path, name: firstHeading || name })
+		hasLinkedForTab.current = true
+	}, [path, setLinkedTab, value])
 }
 
 function getFirstHeadingText(value: Value): string {
-  if (!Array.isArray(value) || value.length === 0) {
-    return ''
-  }
+	if (!Array.isArray(value) || value.length === 0) {
+		return ""
+	}
 
-  const firstBlock = value[0] as any
+	const firstBlock = value[0] as any
 
-  if (!firstBlock || typeof firstBlock.type !== 'string') {
-    return ''
-  }
+	if (!firstBlock || typeof firstBlock.type !== "string") {
+		return ""
+	}
 
-  if (!KEYS.heading.includes(firstBlock.type)) {
-    return ''
-  }
+	if (!KEYS.heading.includes(firstBlock.type)) {
+		return ""
+	}
 
-  return extractTextFromNode(firstBlock)
+	return extractTextFromNode(firstBlock)
 }
 
 function extractTextFromNode(node: any): string {
-  if (typeof node === 'string') {
-    return node
-  }
-  if (node?.text) {
-    return node.text
-  }
-  if (Array.isArray(node?.children)) {
-    return node.children.map(extractTextFromNode).join('')
-  }
-  return ''
+	if (typeof node === "string") {
+		return node
+	}
+	if (node?.text) {
+		return node.text
+	}
+	if (Array.isArray(node?.children)) {
+		return node.children.map(extractTextFromNode).join("")
+	}
+	return ""
 }

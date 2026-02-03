@@ -1,4 +1,4 @@
-import { isMac } from './platform'
+import { isMac } from "./platform"
 
 /**
  * Returns the platform-appropriate modifier key symbol for keyboard shortcuts.
@@ -11,5 +11,5 @@ import { isMac } from './platform'
  * getModifierKey() // "⌘" on macOS, "Ctrl" on Windows/Linux
  */
 export function getModifierKey(): string {
-  return isMac() ? '⌘' : 'Ctrl'
+	return isMac() ? "⌘" : "Ctrl"
 }

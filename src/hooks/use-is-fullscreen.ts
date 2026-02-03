@@ -1,6 +1,6 @@
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useEffect, useState } from 'react'
-import { isMac } from '@/utils/platform'
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { useEffect, useState } from "react"
+import { isMac } from "@/utils/platform"
 
 /**
  * Hook to detect if the window is currently in fullscreen mode.
@@ -19,56 +19,56 @@ import { isMac } from '@/utils/platform'
  * ```
  */
 export function useIsFullscreen(debounceMs = 600) {
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const isMacOS = isMac()
+	const [isFullscreen, setIsFullscreen] = useState(false)
+	const isMacOS = isMac()
 
-  useEffect(() => {
-    // Only check fullscreen on macOS
-    if (!isMacOS) {
-      setIsFullscreen(false)
-      return
-    }
+	useEffect(() => {
+		// Only check fullscreen on macOS
+		if (!isMacOS) {
+			setIsFullscreen(false)
+			return
+		}
 
-    const currentWindow = getCurrentWindow()
-    let debounceTimer: NodeJS.Timeout | null = null
+		const currentWindow = getCurrentWindow()
+		let debounceTimer: NodeJS.Timeout | null = null
 
-    /**
-     * Checks the current fullscreen status from Tauri window API
-     */
-    const checkFullscreen = async () => {
-      try {
-        const fullscreen = await currentWindow.isFullscreen()
-        setIsFullscreen(fullscreen)
-      } catch (error) {
-        console.error('Failed to check fullscreen status:', error)
-      }
-    }
+		/**
+		 * Checks the current fullscreen status from Tauri window API
+		 */
+		const checkFullscreen = async () => {
+			try {
+				const fullscreen = await currentWindow.isFullscreen()
+				setIsFullscreen(fullscreen)
+			} catch (error) {
+				console.error("Failed to check fullscreen status:", error)
+			}
+		}
 
-    /**
-     * Debounced resize handler to avoid excessive API calls
-     */
-    const handleResize = () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer)
-      }
-      debounceTimer = setTimeout(() => {
-        checkFullscreen()
-      }, debounceMs)
-    }
+		/**
+		 * Debounced resize handler to avoid excessive API calls
+		 */
+		const handleResize = () => {
+			if (debounceTimer) {
+				clearTimeout(debounceTimer)
+			}
+			debounceTimer = setTimeout(() => {
+				checkFullscreen()
+			}, debounceMs)
+		}
 
-    // Check initial fullscreen status immediately
-    checkFullscreen()
+		// Check initial fullscreen status immediately
+		checkFullscreen()
 
-    // Listen to window resize events
-    window.addEventListener('resize', handleResize)
+		// Listen to window resize events
+		window.addEventListener("resize", handleResize)
 
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      if (debounceTimer) {
-        clearTimeout(debounceTimer)
-      }
-    }
-  }, [isMacOS, debounceMs])
+		return () => {
+			window.removeEventListener("resize", handleResize)
+			if (debounceTimer) {
+				clearTimeout(debounceTimer)
+			}
+		}
+	}, [isMacOS, debounceMs])
 
-  return isFullscreen
+	return isFullscreen
 }

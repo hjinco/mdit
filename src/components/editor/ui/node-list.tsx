@@ -1,94 +1,94 @@
-import { isOrderedList } from '@platejs/list'
+import { isOrderedList } from "@platejs/list"
 import {
-  useTodoListElement,
-  useTodoListElementState,
-} from '@platejs/list/react'
-import type { CheckedState } from '@radix-ui/react-checkbox'
-import type { TListElement } from 'platejs'
-import { KEYS } from 'platejs'
+	useTodoListElement,
+	useTodoListElementState,
+} from "@platejs/list/react"
+import type { CheckedState } from "@radix-ui/react-checkbox"
+import type { TListElement } from "platejs"
+import { KEYS } from "platejs"
 import {
-  type PlateElementProps,
-  type RenderNodeWrapper,
-  useReadOnly,
-} from 'platejs/react'
-import { useCallback } from 'react'
-import { cn } from '@/lib/utils'
-import { Checkbox } from '@/ui/checkbox'
+	type PlateElementProps,
+	type RenderNodeWrapper,
+	useReadOnly,
+} from "platejs/react"
+import { useCallback } from "react"
+import { cn } from "@/lib/utils"
+import { Checkbox } from "@/ui/checkbox"
 
 const config: Record<
-  string,
-  {
-    Li: React.FC<PlateElementProps>
-    Marker: React.FC<PlateElementProps>
-  }
+	string,
+	{
+		Li: React.FC<PlateElementProps>
+		Marker: React.FC<PlateElementProps>
+	}
 > = {
-  [KEYS.listTodo]: {
-    Li: TodoLi,
-    Marker: TodoMarker,
-  },
+	[KEYS.listTodo]: {
+		Li: TodoLi,
+		Marker: TodoMarker,
+	},
 }
 
 export const BlockList: RenderNodeWrapper = (props) => {
-  if (!props.element.listStyleType) return
+	if (!props.element.listStyleType) return
 
-  return (props) => <List {...props} />
+	return (props) => <List {...props} />
 }
 
 function List(props: PlateElementProps) {
-  const { listStart, listStyleType } = props.element as TListElement
-  const { Li, Marker } = config[listStyleType] ?? {}
-  const List = isOrderedList(props.element) ? 'ol' : 'ul'
+	const { listStart, listStyleType } = props.element as TListElement
+	const { Li, Marker } = config[listStyleType] ?? {}
+	const List = isOrderedList(props.element) ? "ol" : "ul"
 
-  return (
-    <List
-      className="relative m-0 p-0"
-      style={{ listStyleType }}
-      start={listStart}
-    >
-      {Marker && <Marker {...props} />}
-      {Li ? <Li {...props} /> : <li>{props.children}</li>}
-    </List>
-  )
+	return (
+		<List
+			className="relative m-0 p-0"
+			style={{ listStyleType }}
+			start={listStart}
+		>
+			{Marker && <Marker {...props} />}
+			{Li ? <Li {...props} /> : <li>{props.children}</li>}
+		</List>
+	)
 }
 
 function TodoMarker(props: PlateElementProps) {
-  const state = useTodoListElementState({ element: props.element })
-  const { checkboxProps } = useTodoListElement(state)
-  const readOnly = useReadOnly()
-  const { onCheckedChange, ...restCheckboxProps } = checkboxProps
+	const state = useTodoListElementState({ element: props.element })
+	const { checkboxProps } = useTodoListElement(state)
+	const readOnly = useReadOnly()
+	const { onCheckedChange, ...restCheckboxProps } = checkboxProps
 
-  const handleCheckedChange = useCallback(
-    (value: CheckedState) => {
-      if (value === 'indeterminate') return
-      onCheckedChange(value)
-    },
-    [onCheckedChange]
-  )
+	const handleCheckedChange = useCallback(
+		(value: CheckedState) => {
+			if (value === "indeterminate") return
+			onCheckedChange(value)
+		},
+		[onCheckedChange],
+	)
 
-  return (
-    <div contentEditable={false}>
-      <Checkbox
-        className={cn(
-          'absolute top-1 -left-6',
-          readOnly && 'pointer-events-none'
-        )}
-        onCheckedChange={handleCheckedChange}
-        {...restCheckboxProps}
-      />
-    </div>
-  )
+	return (
+		<div contentEditable={false}>
+			<Checkbox
+				className={cn(
+					"absolute top-1 -left-6",
+					readOnly && "pointer-events-none",
+				)}
+				onCheckedChange={handleCheckedChange}
+				{...restCheckboxProps}
+			/>
+		</div>
+	)
 }
 
 function TodoLi(props: PlateElementProps) {
-  return (
-    <li
-      className={cn(
-        'list-none',
-        (props.element.checked as boolean) &&
-          'text-muted-foreground line-through'
-      )}
-    >
-      {props.children}
-    </li>
-  )
+	return (
+		<li
+			className={cn(
+				"list-none",
+				(props.element.checked as boolean) &&
+					"text-muted-foreground line-through",
+			)}
+		>
+			{props.children}
+		</li>
+	)
 }

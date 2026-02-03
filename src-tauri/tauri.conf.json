@@ -1,68 +1,68 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Mdit",
-  "version": "0.5.3",
-  "identifier": "app.mdit",
-  "build": {
-    "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-    "macOSPrivateApi": true,
-    "windows": [
-      {
-        "title": "Mdit",
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "dragDropEnabled": true,
-        "transparent": true,
-        "windowEffects": {
-          "effects": ["hudWindow"]
-        },
-        "trafficLightPosition": {
-          "x": 18,
-          "y": 22
-        }
-      }
-    ],
-    "security": {
-      "assetProtocol": {
-        "enable": true,
-        "scope": ["*/**"]
-      },
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["dmg", "app", "msi", "appimage"],
-    "createUpdaterArtifacts": true,
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "fileAssociations": [
-      {
-        "name": "Markdown Document",
-        "ext": ["md", "markdown"],
-        "role": "Editor",
-        "rank": "Owner",
-        "contentTypes": ["net.daringfireball.markdown"]
-      }
-    ],
-    "resources": ["icons/trayTemplate.png"]
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBMEQ4QjFFMERCQ0NCQTYKUldTbXk3d05Ib3NOeW1EaElLZmFCSnBscStTR0tYOTZBZHRmbExKMWNuWkZuNTJnekwrZGZuVm0K",
-      "endpoints": [
-        "https://github.com/hjinco/mdit/releases/latest/download/latest.json"
-      ]
-    }
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "Mdit",
+	"version": "0.5.3",
+	"identifier": "app.mdit",
+	"build": {
+		"beforeDevCommand": "pnpm dev",
+		"devUrl": "http://localhost:1420",
+		"beforeBuildCommand": "pnpm build",
+		"frontendDist": "../dist"
+	},
+	"app": {
+		"macOSPrivateApi": true,
+		"windows": [
+			{
+				"title": "Mdit",
+				"titleBarStyle": "Overlay",
+				"hiddenTitle": true,
+				"dragDropEnabled": true,
+				"transparent": true,
+				"windowEffects": {
+					"effects": ["hudWindow"]
+				},
+				"trafficLightPosition": {
+					"x": 18,
+					"y": 22
+				}
+			}
+		],
+		"security": {
+			"assetProtocol": {
+				"enable": true,
+				"scope": ["*/**"]
+			},
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": ["dmg", "app", "msi", "appimage"],
+		"createUpdaterArtifacts": true,
+		"icon": [
+			"icons/32x32.png",
+			"icons/128x128.png",
+			"icons/128x128@2x.png",
+			"icons/icon.icns",
+			"icons/icon.ico"
+		],
+		"fileAssociations": [
+			{
+				"name": "Markdown Document",
+				"ext": ["md", "markdown"],
+				"role": "Editor",
+				"rank": "Owner",
+				"contentTypes": ["net.daringfireball.markdown"]
+			}
+		],
+		"resources": ["icons/trayTemplate.png"]
+	},
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBMEQ4QjFFMERCQ0NCQTYKUldTbXk3d05Ib3NOeW1EaElLZmFCSnBscStTR0tYOTZBZHRmbExKMWNuWkZuNTJnekwrZGZuVm0K",
+			"endpoints": [
+				"https://github.com/hjinco/mdit/releases/latest/download/latest.json"
+			]
+		}
+	}
 }

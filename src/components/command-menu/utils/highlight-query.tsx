@@ -1,50 +1,50 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react"
 
 const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 // Highlight occurrences of the query using <mark> nodes while preserving the original text structure.
 export const highlightQuery = (text: string, query: string): ReactNode => {
-  if (!query) {
-    return text
-  }
+	if (!query) {
+		return text
+	}
 
-  try {
-    const regex = new RegExp(escapeRegExp(query), 'gi')
-    const fragments: ReactNode[] = []
-    let lastIndex = 0
-    let match: RegExpExecArray | null = regex.exec(text)
+	try {
+		const regex = new RegExp(escapeRegExp(query), "gi")
+		const fragments: ReactNode[] = []
+		let lastIndex = 0
+		let match: RegExpExecArray | null = regex.exec(text)
 
-    while (match) {
-      if (match.index > lastIndex) {
-        fragments.push(text.slice(lastIndex, match.index))
-      }
+		while (match) {
+			if (match.index > lastIndex) {
+				fragments.push(text.slice(lastIndex, match.index))
+			}
 
-      fragments.push(
-        <mark
-          key={`${match.index}-${match[0]}`}
-          className="bg-transparent text-foreground"
-        >
-          {match[0]}
-        </mark>
-      )
+			fragments.push(
+				<mark
+					key={`${match.index}-${match[0]}`}
+					className="bg-transparent text-foreground"
+				>
+					{match[0]}
+				</mark>,
+			)
 
-      lastIndex = match.index + match[0].length
+			lastIndex = match.index + match[0].length
 
-      if (match[0].length === 0) {
-        regex.lastIndex += 1
-      }
+			if (match[0].length === 0) {
+				regex.lastIndex += 1
+			}
 
-      match = regex.exec(text)
-    }
+			match = regex.exec(text)
+		}
 
-    if (lastIndex < text.length) {
-      fragments.push(text.slice(lastIndex))
-    }
+		if (lastIndex < text.length) {
+			fragments.push(text.slice(lastIndex))
+		}
 
-    return fragments.length > 0 ? fragments : text
-  } catch {
-    // Fall back gracefully when the query cannot be turned into a RegExp (e.g. unmatched brackets).
-    return text
-  }
+		return fragments.length > 0 ? fragments : text
+	} catch {
+		// Fall back gracefully when the query cannot be turned into a RegExp (e.g. unmatched brackets).
+		return text
+	}
 }
