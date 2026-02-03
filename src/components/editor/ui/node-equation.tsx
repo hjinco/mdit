@@ -1,5 +1,5 @@
 import { useEquationInput } from "@platejs/math/react"
-import katex, { type KatexOptions } from "katex"
+import type { KatexOptions } from "katex"
 import { CornerDownLeftIcon, RadicalIcon } from "lucide-react"
 import type { TEquationElement } from "platejs"
 import { PathApi } from "platejs"
