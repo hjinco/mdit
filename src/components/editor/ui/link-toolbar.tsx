@@ -13,8 +13,8 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 import { cva } from "class-variance-authority"
 import {
 	Check,
-	ExternalLink,
 	FileIcon,
+	FileInput,
 	GlobeIcon,
 	Link,
 	Unlink,
@@ -115,7 +115,7 @@ export function LinkFloatingToolbar({
 	if (hidden) return null
 
 	const input = (
-		<div className="flex min-w-[330px] flex-col" {...inputProps}>
+		<div className="flex w-[360px] flex-col" {...inputProps}>
 			<LinkUrlInput />
 		</div>
 	)
@@ -786,10 +786,10 @@ function LinkUrlInput() {
 												}}
 												onClick={() => handleSelectSuggestion(file)}
 											>
-												<span className="text-sm font-medium whitespace-nowrap">
+												<span className="text-sm font-medium max-w-full truncate">
 													{file.displayName}
 												</span>
-												<span className="text-xs text-muted-foreground whitespace-nowrap">
+												<span className="text-xs text-muted-foreground max-w-full truncate">
 													{file.relativePath}
 												</span>
 											</div>
@@ -966,7 +966,7 @@ function LinkOpenButton() {
 		<button
 			type="button"
 			className={buttonVariants({
-				size: "sm",
+				size: "icon",
 				variant: "ghost",
 			})}
 			onMouseOver={(event) => {
@@ -977,7 +977,7 @@ function LinkOpenButton() {
 			}}
 			onClick={handleOpen}
 		>
-			<ExternalLink width={18} />
+			<FileInput />
 		</button>
 	)
 }
