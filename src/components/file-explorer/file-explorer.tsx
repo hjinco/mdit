@@ -21,6 +21,7 @@ import { RootNewFolderInput } from "./ui/root-new-folder-input"
 import { SettingsMenu } from "./ui/settings-menu"
 import { TopMenu } from "./ui/top-menu"
 import { TreeNode } from "./ui/tree-node"
+import { UpdateButton } from "./ui/update-button"
 import { WorkspaceDropdown } from "./ui/workspace-dropdown"
 
 export function FileExplorer() {
@@ -380,6 +381,7 @@ export function FileExplorer() {
 						</ul>
 					</div>
 					<footer className="px-2 pb-2 flex flex-col">
+						<UpdateButton />
 						<SettingsMenu />
 						<FeedbackButton />
 					</footer>

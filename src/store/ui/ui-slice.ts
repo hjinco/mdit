@@ -17,6 +17,10 @@ export type UISlice = {
 	setCommandMenuOpen: (isOpen: boolean) => void
 	openCommandMenu: () => void
 	closeCommandMenu: () => void
+	isUpdateReady: boolean
+	isUpdateDownloading: boolean
+	setUpdateReady: (ready: boolean) => void
+	setUpdateDownloading: (downloading: boolean) => void
 	imagePreviewPath: string | null
 	setImagePreviewPath: (path: string | null) => void
 	openImagePreview: (path: string) => void
@@ -76,6 +80,11 @@ export const prepareUISlice =
 		setCommandMenuOpen: (isOpen) => set({ isCommandMenuOpen: isOpen }),
 		openCommandMenu: () => set({ isCommandMenuOpen: true }),
 		closeCommandMenu: () => set({ isCommandMenuOpen: false }),
+		isUpdateReady: false,
+		isUpdateDownloading: false,
+		setUpdateReady: (ready) => set({ isUpdateReady: ready }),
+		setUpdateDownloading: (downloading) =>
+			set({ isUpdateDownloading: downloading }),
 		imagePreviewPath: null,
 		setImagePreviewPath: (path) => set({ imagePreviewPath: path }),
 		openImagePreview: (path) => set({ imagePreviewPath: path }),

@@ -1,55 +1,55 @@
-import { relaunch } from "@tauri-apps/plugin-process"
 import {
 	check,
 	type DownloadEvent,
 	type Update,
 } from "@tauri-apps/plugin-updater"
-import { useCallback, useEffect, useRef } from "react"
-import { toast } from "sonner"
+import { useCallback, useEffect } from "react"
+import { useShallow } from "zustand/react/shallow"
+import { useStore } from "@/store"
 
 export function Updater() {
 	const isDev = import.meta.env.DEV
-	const dismissedRef = useRef(false)
+	const {
+		isUpdateReady,
+		isUpdateDownloading,
+		setUpdateReady,
+		setUpdateDownloading,
+	} = useStore(
+		useShallow((state) => ({
+			isUpdateReady: state.isUpdateReady,
+			isUpdateDownloading: state.isUpdateDownloading,
+			setUpdateReady: state.setUpdateReady,
+			setUpdateDownloading: state.setUpdateDownloading,
+		})),
+	)
 
-	const downloadAndInstall = useCallback(async (update: Update) => {
-		try {
-			await update.downloadAndInstall((event: DownloadEvent) => {
-				switch (event.event) {
-					case "Started":
-					case "Progress":
-					case "Finished":
-						break
-					default:
-						break
-				}
-			})
-
-			toast.success("New version available", {
-				position: "bottom-left",
-				action: {
-					label: "Update now",
-					onClick: () => relaunch(),
-				},
-				cancel: {
-					label: "Later",
-					onClick: () => {
-						dismissedRef.current = true
-					},
-				},
-				duration: 10_000,
-				actionButtonStyle: { marginLeft: "0px" },
-				cancelButtonStyle: { backgroundColor: "transparent" },
-				onDismiss: () => {
-					dismissedRef.current = true
-				},
-			})
-		} catch (err) {
-			console.error("Failed to download and install update:", err)
-		}
-	}, [])
+	const downloadAndInstall = useCallback(
+		async (update: Update) => {
+			try {
+				setUpdateDownloading(true)
+				await update.downloadAndInstall((event: DownloadEvent) => {
+					switch (event.event) {
+						case "Started":
+						case "Progress":
+						case "Finished":
+							break
+						default:
+							break
+					}
+				})
+				setUpdateReady(true)
+			} catch (err) {
+				console.error("Failed to download and install update:", err)
+			} finally {
+				setUpdateDownloading(false)
+			}
+		},
+		[setUpdateDownloading, setUpdateReady],
+	)
 
 	const checkForUpdates = useCallback(async () => {
 		if (isDev) return
+		if (isUpdateReady || isUpdateDownloading) return
 
 		try {
 			const update = await check()
@@ -60,18 +60,14 @@ export function Updater() {
 		} catch (err) {
 			console.error("Failed to check for updates:", err)
 		}
-	}, [downloadAndInstall])
+	}, [downloadAndInstall, isUpdateDownloading, isUpdateReady])
 
 	useEffect(() => {
 		// Check immediately on mount
 		checkForUpdates()
 
-		// Then check every 5 minutes (only if not dismissed)
+		// Then check every 5 minutes
 		const intervalId = setInterval(() => {
-			if (dismissedRef.current) {
-				clearInterval(intervalId)
-				return
-			}
 			checkForUpdates()
 		}, 5 * 60_000)
 
