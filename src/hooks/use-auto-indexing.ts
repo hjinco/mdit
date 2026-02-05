@@ -100,5 +100,11 @@ export function useAutoIndexing(workspacePath: string | null) {
 				intervalRef.current = null
 			}
 		}
-	}, [config, indexWorkspace, isMigrationsComplete, ollamaModels])
+	}, [
+		workspacePath,
+		config,
+		indexWorkspace,
+		isMigrationsComplete,
+		ollamaModels,
+	])
 }
