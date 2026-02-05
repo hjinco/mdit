@@ -5,15 +5,23 @@ import { useStore } from "@/store"
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
-	const { getIndexingConfig, indexWorkspace, config, isMigrationsComplete } =
-		useStore(
-			useShallow((state) => ({
-				getIndexingConfig: state.getIndexingConfig,
-				indexWorkspace: state.indexWorkspace,
-				config: workspacePath ? state.configs[workspacePath] : null,
-				isMigrationsComplete: state.isMigrationsComplete,
-			})),
-		)
+	const {
+		getIndexingConfig,
+		indexWorkspace,
+		config,
+		isMigrationsComplete,
+		ollamaModels,
+		fetchOllamaModels,
+	} = useStore(
+		useShallow((state) => ({
+			getIndexingConfig: state.getIndexingConfig,
+			indexWorkspace: state.indexWorkspace,
+			config: workspacePath ? state.configs[workspacePath] : null,
+			isMigrationsComplete: state.isMigrationsComplete,
+			ollamaModels: state.ollamaModels,
+			fetchOllamaModels: state.fetchOllamaModels,
+		})),
+	)
 	const intervalRef = useRef<number | null>(null)
 
 	useEffect(() => {
@@ -24,6 +32,10 @@ export function useAutoIndexing(workspacePath: string | null) {
 		}
 	}, [workspacePath, getIndexingConfig])
 
+	useEffect(() => {
+		fetchOllamaModels()
+	}, [fetchOllamaModels])
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: we want to run the effect when config or migrations complete status changes
 	useEffect(() => {
 		// Clear any existing interval
@@ -33,12 +45,8 @@ export function useAutoIndexing(workspacePath: string | null) {
 		}
 
 		// Check if we should start auto-indexing
-		// Wait for migrations to complete before starting indexing
-		if (!workspacePath || !config || !isMigrationsComplete) {
-			return
-		}
-
-		if (!config.autoIndex) {
+		// Always auto-index once migrations complete (ignore config setting)
+		if (!workspacePath || !isMigrationsComplete) {
 			return
 		}
 
@@ -52,10 +60,22 @@ export function useAutoIndexing(workspacePath: string | null) {
 			}
 
 			try {
+				const provider = config?.embeddingProvider ?? ""
+				const model = config?.embeddingModel ?? ""
+				if (model && !provider) {
+					// Misconfigured state; do not attempt indexing.
+					return
+				}
+				if (model && provider && provider === "ollama") {
+					const isAvailable = ollamaModels.includes(model)
+					if (!isAvailable) {
+						return
+					}
+				}
 				await indexWorkspace(
 					workspacePath,
-					config.embeddingProvider,
-					config.embeddingModel,
+					provider,
+					model,
 					false, // forceReindex: false for incremental updates
 				)
 			} catch (error) {
@@ -80,5 +100,5 @@ export function useAutoIndexing(workspacePath: string | null) {
 				intervalRef.current = null
 			}
 		}
-	}, [config, indexWorkspace, isMigrationsComplete])
+	}, [config, indexWorkspace, isMigrationsComplete, ollamaModels])
 }

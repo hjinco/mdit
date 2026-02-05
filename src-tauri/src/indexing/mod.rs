@@ -166,9 +166,7 @@ fn clear_index(conn: &Connection) -> Result<usize> {
 fn count_indexed_docs(conn: &Connection) -> Result<usize> {
     let count: i64 = conn
         .query_row(
-            "SELECT COUNT(*) FROM doc d \
-             JOIN segment s ON s.doc_id = d.id AND s.ordinal = 0 \
-             JOIN embedding e ON e.segment_id = s.id",
+            "SELECT COUNT(*) FROM doc WHERE last_hash IS NOT NULL AND last_hash != ''",
             [],
             |row| row.get(0),
         )
@@ -315,6 +313,9 @@ pub fn get_backlinks(workspace_root: &Path, file_path: &Path) -> Result<Vec<Back
 
     Ok(backlinks)
 }
+
+#[cfg(test)]
+mod tests;
 
 #[tauri::command]
 pub async fn get_backlinks_command(
