@@ -162,14 +162,16 @@ export function IndexingTab() {
 			? `${embeddingProvider}|${embeddingModel}`
 			: null
 	const isIndexButtonDisabled =
-		!selectedEmbeddingModel || isIndexing || isMetaLoading
+		isIndexing ||
+		isMetaLoading ||
+		(isEmbeddingModelConfigured && !isEmbeddingModelAvailable)
 
 	const runIndex = async (forceReindex: boolean) => {
-		if (
-			!workspacePath ||
-			!selectedEmbeddingModel ||
-			!isEmbeddingModelAvailable
-		) {
+		if (!workspacePath) {
+			return
+		}
+
+		if (isEmbeddingModelConfigured && !isEmbeddingModelAvailable) {
 			return
 		}
 
