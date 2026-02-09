@@ -36,7 +36,6 @@ export function useAutoIndexing(workspacePath: string | null) {
 		fetchOllamaModels()
 	}, [fetchOllamaModels])
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: we want to run the effect when config or migrations complete status changes
 	useEffect(() => {
 		// Clear any existing interval
 		if (intervalRef.current !== null) {
