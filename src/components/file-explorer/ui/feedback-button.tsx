@@ -12,7 +12,7 @@ import { z } from "zod"
 import { useScreenCapture } from "@/contexts/screen-capture-context"
 import { Button } from "@/ui/button"
 import { Field, FieldGroup, FieldLabel } from "@/ui/field"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/ui/form"
+import { Form, FormControl, FormField, FormItem } from "@/ui/form"
 import { Input } from "@/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover"
 import { Textarea } from "@/ui/textarea"
@@ -39,6 +39,7 @@ export function FeedbackButton() {
 	const wasOpenBeforeCapture = useRef(false)
 	const form = useForm<FormValues>({
 		resolver: standardSchemaResolver(formSchema),
+		mode: "onChange",
 		defaultValues: {
 			message: "",
 			email: "",
@@ -133,67 +134,64 @@ export function FeedbackButton() {
 					<SendIcon className="size-4" /> Feedback
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-80" align="start">
+			<PopoverContent className="w-120" align="start">
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 						<FieldGroup className="gap-3">
 							<Field>
-								<FieldLabel>Email (optional)</FieldLabel>
+								<FieldLabel>Email</FieldLabel>
 								<FormField
 									control={form.control}
 									name="email"
-									render={({ field, fieldState }) => (
+									render={({ field }) => (
 										<FormItem>
 											<FormControl>
 												<Input
 													{...field}
 													type="email"
 													placeholder="your@email.com"
+													className="rounded"
 												/>
 											</FormControl>
-											{fieldState.error && (
-												<FormMessage>{fieldState.error.message}</FormMessage>
-											)}
 										</FormItem>
 									)}
 								/>
 							</Field>
 							<Field>
-								<FieldLabel>Feedback</FieldLabel>
+								<FieldLabel className="gap-1">
+									Feedback <span className="text-destructive">*</span>
+								</FieldLabel>
 								<FormField
 									control={form.control}
 									name="message"
-									render={({ field, fieldState }) => (
+									render={({ field }) => (
 										<FormItem>
 											<FormControl>
 												<Textarea
 													{...field}
 													placeholder="Share your feedback..."
-													className="h-32"
+													className="min-h-48 rounded"
 													spellCheck="false"
 												/>
 											</FormControl>
-											{fieldState.error && (
-												<FormMessage>{fieldState.error.message}</FormMessage>
-											)}
 										</FormItem>
 									)}
 								/>
 							</Field>
 							<Field>
-								<FieldLabel>Screenshot (optional)</FieldLabel>
+								<FieldLabel>Screenshot</FieldLabel>
 								<div className="space-y-2">
 									{screenshot ? (
 										<div className="relative">
 											<div
-												className="w-full rounded-md border max-h-48 min-h-32 bg-center bg-no-repeat bg-contain"
+												className="w-full rounded border max-h-48 min-h-32 bg-center bg-no-repeat bg-contain"
 												style={{ backgroundImage: `url(${screenshot})` }}
 											/>
 											<Button
 												type="button"
 												variant="ghost"
 												size="icon"
-												className="absolute top-2 right-2 size-6"
+												className="absolute top-2 right-2 size-6 rounded"
 												onClick={handleRemoveScreenshot}
 											>
 												<XIcon />
@@ -209,10 +207,10 @@ export function FeedbackButton() {
 												setOpen(false)
 												onStartCapture()
 											}}
-											className="w-full"
+											className="w-full rounded"
 										>
 											<CameraIcon />
-											Capture Screenshot
+											Capture
 										</Button>
 									)}
 								</div>
@@ -223,6 +221,7 @@ export function FeedbackButton() {
 								type="button"
 								variant="ghost"
 								size="sm"
+								className="rounded"
 								onClick={() => {
 									setOpen(false)
 									setTimeout(() => {
@@ -240,13 +239,16 @@ export function FeedbackButton() {
 							<Button
 								type="submit"
 								size="sm"
+								className="rounded"
 								variant={submitStatus === "error" ? "destructive" : "default"}
 								disabled={
-									submitStatus === "loading" || submitStatus === "success"
+									submitStatus === "loading" ||
+									submitStatus === "success" ||
+									!form.formState.isValid
 								}
 							>
 								{submitStatus === "loading" && (
-									<Loader2Icon className="size-4 animate-spin" />
+									<Loader2Icon className="size-4 animate-spin will-change-transform" />
 								)}
 								{submitStatus === "success" && <CheckIcon className="size-4" />}
 								{submitStatus === "loading"
@@ -254,7 +256,7 @@ export function FeedbackButton() {
 									: submitStatus === "success"
 										? "Sent!"
 										: submitStatus === "error"
-											? "Failed to send"
+											? "Try again"
 											: "Send"}
 							</Button>
 						</div>
