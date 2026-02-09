@@ -10,9 +10,6 @@ import {
 } from "@/services/git-service"
 import type { WorkspaceSlice } from "../workspace/workspace-slice"
 
-const POLL_INTERVAL_MS = 5000
-const AUTO_SYNC_INTERVAL_MS = 60_000 // 1 minute
-
 export type { SyncConfig } from "@/services/git-service"
 
 export type GitSyncState = {
@@ -21,9 +18,7 @@ export type GitSyncState = {
 	lastUpdated: number | null
 	error: string | null
 	workspacePath: string | null
-	// Interval IDs stored in state to avoid module-level singleton issues
-	pollIntervalId: ReturnType<typeof setInterval> | null
-	autoSyncIntervalId: ReturnType<typeof setInterval> | null
+	autoSyncEnabled: boolean
 }
 
 export type GitSyncSlice = {
@@ -32,7 +27,6 @@ export type GitSyncSlice = {
 
 	// Actions
 	initGitSync: (workspacePath: string) => Promise<void>
-	stopGitSync: () => void
 	refreshGitStatus: () => Promise<void>
 	performSync: () => Promise<void>
 	getSyncConfig: (workspacePath: string | null) => Promise<SyncConfig>
@@ -61,8 +55,7 @@ const buildInitialGitSyncState = (): GitSyncState => ({
 	lastUpdated: null,
 	error: null,
 	workspacePath: null,
-	pollIntervalId: null,
-	autoSyncIntervalId: null,
+	autoSyncEnabled: false,
 })
 
 export const prepareGitSyncSlice =
@@ -79,9 +72,6 @@ export const prepareGitSyncSlice =
 		gitSyncState: buildInitialGitSyncState(),
 
 		initGitSync: async (workspacePath: string) => {
-			// Clear any existing intervals first
-			get().stopGitSync()
-
 			if (!workspacePath) {
 				set({ gitSyncState: buildInitialGitSyncState() })
 				return
@@ -105,24 +95,7 @@ export const prepareGitSyncSlice =
 				await gitService.ensureGitignoreEntry()
 
 				const status = await gitService.detectSyncStatus()
-
-				// Start polling for status updates
-				const pollIntervalId = setInterval(() => {
-					get().refreshGitStatus()
-				}, POLL_INTERVAL_MS)
-
-				// Start auto-sync if enabled
-				let autoSyncIntervalId: ReturnType<typeof setInterval> | null = null
 				const config = await get().getSyncConfig(workspacePath)
-				if (config.autoSync) {
-					autoSyncIntervalId = setInterval(() => {
-						const currentState = get().gitSyncState
-						// Only auto-sync if unsynced and not already syncing
-						if (currentState.status === "unsynced") {
-							get().performSync()
-						}
-					}, AUTO_SYNC_INTERVAL_MS)
-				}
 
 				set({
 					gitSyncState: {
@@ -131,8 +104,7 @@ export const prepareGitSyncSlice =
 						lastUpdated: Date.now(),
 						error: null,
 						workspacePath,
-						pollIntervalId,
-						autoSyncIntervalId,
+						autoSyncEnabled: config.autoSync,
 					},
 				})
 			} catch (error) {
@@ -148,23 +120,6 @@ export const prepareGitSyncSlice =
 					},
 				})
 			}
-		},
-
-		stopGitSync: () => {
-			const { gitSyncState } = get()
-			if (gitSyncState.pollIntervalId) {
-				clearInterval(gitSyncState.pollIntervalId)
-			}
-			if (gitSyncState.autoSyncIntervalId) {
-				clearInterval(gitSyncState.autoSyncIntervalId)
-			}
-			set((state) => ({
-				gitSyncState: {
-					...state.gitSyncState,
-					pollIntervalId: null,
-					autoSyncIntervalId: null,
-				},
-			}))
 		},
 
 		refreshGitStatus: async () => {
@@ -334,33 +289,14 @@ export const prepareGitSyncSlice =
 				},
 			})
 
-			// Only manage the auto-sync interval, don't restart entire git sync
-			const { gitSyncState } = get()
-			if (gitSyncState.workspacePath !== workspacePath) {
+			if (get().gitSyncState.workspacePath !== workspacePath) {
 				return
-			}
-
-			// Clear existing auto-sync interval if any
-			if (gitSyncState.autoSyncIntervalId) {
-				clearInterval(gitSyncState.autoSyncIntervalId)
-			}
-
-			// Start new auto-sync interval if enabled
-			let autoSyncIntervalId: ReturnType<typeof setInterval> | null = null
-			if (autoSync) {
-				autoSyncIntervalId = setInterval(() => {
-					const currentState = get().gitSyncState
-					// Only auto-sync if unsynced and not already syncing
-					if (currentState.status === "unsynced") {
-						get().performSync()
-					}
-				}, AUTO_SYNC_INTERVAL_MS)
 			}
 
 			set((state) => ({
 				gitSyncState: {
 					...state.gitSyncState,
-					autoSyncIntervalId,
+					autoSyncEnabled: autoSync,
 				},
 			}))
 		},

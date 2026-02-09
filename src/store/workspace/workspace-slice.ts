@@ -544,9 +544,6 @@ export const prepareWorkspaceSlice =
 
 				if (!workspacePath) return
 
-				// Stop git sync before clearing workspace
-				get().stopGitSync()
-
 				await fileSystemRepository.moveToTrash(workspacePath)
 
 				if (tab) {
