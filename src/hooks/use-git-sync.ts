@@ -17,16 +17,12 @@ export function useGitSync(workspacePath: string | null) {
 			})),
 		)
 
-	// Use refs to avoid stale closures in intervals
+	// Use a ref for status to avoid stale closures in intervals
 	const statusRef = useRef(status)
-	const performSyncRef = useRef(performSync)
-	const refreshGitStatusRef = useRef(refreshGitStatus)
 
 	useEffect(() => {
 		statusRef.current = status
-		performSyncRef.current = performSync
-		refreshGitStatusRef.current = refreshGitStatus
-	}, [status, performSync, refreshGitStatus])
+	}, [status])
 
 	// Status Polling
 	useEffect(() => {
@@ -36,7 +32,7 @@ export function useGitSync(workspacePath: string | null) {
 
 		const checkAndRefresh = () => {
 			if (document.hasFocus()) {
-				refreshGitStatusRef.current()
+				refreshGitStatus()
 			}
 		}
 
@@ -46,7 +42,7 @@ export function useGitSync(workspacePath: string | null) {
 		const pollIntervalId = setInterval(checkAndRefresh, POLL_INTERVAL_MS)
 
 		const handleFocus = () => {
-			refreshGitStatusRef.current()
+			refreshGitStatus()
 		}
 
 		window.addEventListener("focus", handleFocus)
@@ -55,7 +51,7 @@ export function useGitSync(workspacePath: string | null) {
 			clearInterval(pollIntervalId)
 			window.removeEventListener("focus", handleFocus)
 		}
-	}, [workspacePath, isGitRepo])
+	}, [workspacePath, isGitRepo, refreshGitStatus])
 
 	// Auto Sync
 	useEffect(() => {
@@ -65,12 +61,12 @@ export function useGitSync(workspacePath: string | null) {
 
 		const autoSyncIntervalId = setInterval(() => {
 			if (document.hasFocus() && statusRef.current === "unsynced") {
-				performSyncRef.current()
+				performSync()
 			}
 		}, AUTO_SYNC_INTERVAL_MS)
 
 		return () => {
 			clearInterval(autoSyncIntervalId)
 		}
-	}, [workspacePath, isGitRepo, autoSyncEnabled])
+	}, [workspacePath, isGitRepo, autoSyncEnabled, performSync])
 }

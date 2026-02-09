@@ -289,6 +289,10 @@ export const prepareGitSyncSlice =
 				},
 			})
 
+			if (get().gitSyncState.workspacePath !== workspacePath) {
+				return
+			}
+
 			set((state) => ({
 				gitSyncState: {
 					...state.gitSyncState,

@@ -30,7 +30,11 @@ const checkGitInstalled = (() => {
 		}
 
 		try {
-			const command = Command.create("git", ["--version"])
+			const command = Command.create("git", [
+				"-c",
+				"protocol.ext.allow=never",
+				"--version",
+			])
 			const result = await command.execute()
 			gitInstalled = result.code === 0
 			return gitInstalled
@@ -293,7 +297,13 @@ export class GitService {
 	private async executeGit(
 		args: string[],
 	): Promise<{ code: number; stdout: string; stderr: string }> {
-		const command = Command.create("git", ["-C", this.workspacePath, ...args])
+		const command = Command.create("git", [
+			"-C",
+			this.workspacePath,
+			"-c",
+			"protocol.ext.allow=never",
+			...args,
+		])
 		const result = await command.execute()
 		return {
 			code: result.code === null ? 1 : result.code,
