@@ -1,5 +1,5 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react"
-import { ChevronDown, ChevronRight, PanelLeftIcon } from "lucide-react"
+import { ChevronRight, PanelLeftIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { cn } from "@/lib/utils"
@@ -355,11 +355,12 @@ export function TreeNode({
 								)}
 								aria-hidden="true"
 							>
-								{isExpanded ? (
-									<ChevronDown className="size-4" />
-								) : (
-									<ChevronRight className="size-4" />
-								)}
+								<ChevronRight
+									className={cn(
+										"size-4 transition-transform duration-150",
+										isExpanded && "rotate-90",
+									)}
+								/>
 							</div>
 							<div
 								className={cn(
