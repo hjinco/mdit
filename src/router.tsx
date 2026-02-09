@@ -7,7 +7,6 @@ import {
 	useSearch,
 	Router as WouterRouter,
 } from "wouter"
-import { useHashLocation } from "wouter/use-hash-location"
 import { App } from "@/app"
 import { EditNote } from "./components/quick-note/edit-note"
 import { QuickNote } from "./components/quick-note/quick-note"
@@ -56,7 +55,7 @@ function AppRouter() {
 
 export function Router() {
 	return (
-		<WouterRouter hook={useHashLocation}>
+		<WouterRouter>
 			<AppRouter />
 		</WouterRouter>
 	)
