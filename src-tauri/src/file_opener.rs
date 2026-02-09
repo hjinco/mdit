@@ -33,9 +33,9 @@ fn open_edit_window(app_handle: &tauri::AppHandle) {
 
     // Build the URL with hash route
     let url = if file_path.is_empty() {
-        "index.html#/edit".to_string()
+        "/edit".to_string()
     } else {
-        format!("index.html#/edit?path={}", urlencoding::encode(&file_path))
+        format!("/edit?path={}", urlencoding::encode(&file_path))
     };
 
     // Create the editor-only window on demand for file association opens (Finder, "Open with", etc.).
