@@ -41,15 +41,11 @@ export function useGitSync(workspacePath: string | null) {
 
 		const pollIntervalId = setInterval(checkAndRefresh, POLL_INTERVAL_MS)
 
-		const handleFocus = () => {
-			refreshGitStatus()
-		}
-
-		window.addEventListener("focus", handleFocus)
+		window.addEventListener("focus", refreshGitStatus)
 
 		return () => {
 			clearInterval(pollIntervalId)
-			window.removeEventListener("focus", handleFocus)
+			window.removeEventListener("focus", refreshGitStatus)
 		}
 	}, [workspacePath, isGitRepo, refreshGitStatus])
 
