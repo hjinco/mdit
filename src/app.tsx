@@ -13,6 +13,7 @@ import { Welcome } from "./components/welcome/welcome"
 import { ScreenCaptureProvider } from "./contexts/screen-capture-context"
 import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
+import { useGitSync } from "./hooks/use-git-sync"
 import { useStore } from "./store"
 import { isLinux, isWindows10 } from "./utils/platform"
 
@@ -34,6 +35,7 @@ export function App() {
 	)
 	useFontScale()
 	useAutoIndexing(workspacePath)
+	useGitSync(workspacePath)
 
 	const mutedBgClass = isWindows10() || isLinux() ? "bg-muted" : "bg-muted/70"
 
