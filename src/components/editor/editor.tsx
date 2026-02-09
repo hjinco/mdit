@@ -62,7 +62,6 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 				onTypingProgress={handleTypingProgress}
 				destroyOnClose={destroyOnClose}
 			/>
-			<SelectionAreaCursor />
 		</div>
 	)
 }
@@ -213,6 +212,7 @@ function EditorContent({
 					}}
 				/>
 			</PlateContainer>
+			<SelectionAreaCursor />
 		</Plate>
 	)
 }
