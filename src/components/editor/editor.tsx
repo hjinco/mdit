@@ -23,6 +23,7 @@ import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useLinkedTabName } from "./hooks/use-linked-tab-name"
 import { EditorKit } from "./plugins/editor-kit"
+import { SelectionAreaCursor } from "./ui/selection-area-cursor"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 	const tab = useStore((s) => s.tab)
@@ -61,6 +62,7 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 				onTypingProgress={handleTypingProgress}
 				destroyOnClose={destroyOnClose}
 			/>
+			<SelectionAreaCursor />
 		</div>
 	)
 }
