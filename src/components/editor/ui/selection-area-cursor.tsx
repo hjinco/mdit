@@ -9,9 +9,9 @@ export function SelectionAreaCursor() {
 	)
 
 	useEffect(() => {
-		if (isSelectionAreaVisible) {
-			document.body.style.cursor = "default"
-		} else {
+		if (!isSelectionAreaVisible) return
+		document.body.style.cursor = "default"
+		return () => {
 			document.body.style.cursor = ""
 		}
 	}, [isSelectionAreaVisible])
