@@ -116,6 +116,7 @@ export type WorkspaceSlice = {
 		destinationDirPath: string
 		newPath: string
 		isDirectory: boolean
+		refreshContent?: boolean
 	}) => Promise<void>
 	entryImported: (input: {
 		destinationDirPath: string
@@ -338,9 +339,22 @@ export const prepareWorkspaceSlice =
 			},
 
 			entriesDeleted: async ({ paths }) => {
-				const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
-					get()
+				const {
+					workspacePath,
+					entries,
+					expandedDirectories,
+					pinnedDirectories,
+					tab,
+				} = get()
 				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				if (tab && paths.includes(tab.path)) {
+					get().closeTab(tab.path)
+				}
+
+				for (const path of paths) {
+					get().removePathFromHistory(path)
+				}
 
 				get().updateEntries(removeEntriesFromState(entries, paths))
 
@@ -375,6 +389,9 @@ export const prepareWorkspaceSlice =
 					pinnedDirectories,
 				} = get()
 				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				await get().renameTab(oldPath, newPath)
+				get().updateHistoryPath(oldPath, newPath)
 
 				get().updateEntries(
 					updateEntryInState(entries, oldPath, newPath, newName),
@@ -418,10 +435,20 @@ export const prepareWorkspaceSlice =
 				destinationDirPath,
 				newPath,
 				isDirectory,
+				refreshContent = false,
 			}) => {
-				const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
-					get()
+				const {
+					workspacePath,
+					entries,
+					expandedDirectories,
+					pinnedDirectories,
+				} = get()
 				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				await get().renameTab(sourcePath, newPath, {
+					refreshContent,
+				})
+				get().updateHistoryPath(sourcePath, newPath)
 
 				get().updateEntries(
 					moveEntryInState(

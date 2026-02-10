@@ -308,7 +308,6 @@ export const prepareWorkspaceFsSlice =
 
 				if (activeTabPath && paths.includes(activeTabPath)) {
 					await waitForUnsavedTabToSettle(activeTabPath, get)
-					get().closeTab(activeTabPath)
 				}
 
 				if (paths.length === 1) {
@@ -317,11 +316,6 @@ export const prepareWorkspaceFsSlice =
 					await fileSystemRepository.moveManyToTrash(paths)
 				}
 				get().recordFsOperation()
-
-				// Remove deleted paths from history
-				for (const path of paths) {
-					get().removePathFromHistory(path)
-				}
 
 				await get().entriesDeleted({ paths })
 			},
@@ -420,9 +414,6 @@ export const prepareWorkspaceFsSlice =
 
 				await fileSystemRepository.rename(entry.path, nextPath)
 				get().recordFsOperation()
-
-				await get().renameTab(entry.path, nextPath)
-				get().updateHistoryPath(entry.path, nextPath)
 
 				if (get().isEditMode) {
 					return nextPath
@@ -533,17 +524,12 @@ export const prepareWorkspaceFsSlice =
 						}
 					}
 
-					// Update tab path if the moved file is currently open
-					await get().renameTab(sourcePath, newPath, {
-						refreshContent: shouldRefreshTab,
-					})
-					get().updateHistoryPath(sourcePath, newPath)
-
 					await get().entryMoved({
 						sourcePath,
 						destinationDirPath: destinationPath,
 						newPath,
 						isDirectory,
+						refreshContent: shouldRefreshTab,
 					})
 
 					return true

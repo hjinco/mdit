@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-	createWorkspaceFsTestStore,
-	makeDir,
-} from "./workspace-fs-slice-test-harness"
+import { createWorkspaceFsTestStore } from "./workspace-fs-slice-test-harness"
 
 describe("workspace-fs-slice copy/moveExternal", () => {
 	it("copyEntry rejects destinations outside the workspace", async () => {
@@ -59,10 +56,6 @@ describe("workspace-fs-slice copy/moveExternal", () => {
 
 	it("moveExternalEntry moves directories into workspace and delegates import action", async () => {
 		const { store, fileSystemRepository } = createWorkspaceFsTestStore()
-		store.setState({
-			entries: [makeDir("/ws/existing", "existing")],
-			expandedDirectories: ["/ws/existing"],
-		})
 		fileSystemRepository.stat
 			.mockResolvedValueOnce({
 				isDirectory: true,

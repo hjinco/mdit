@@ -39,14 +39,6 @@ describe("workspace-fs-slice rename/move", () => {
 			"/ws/folder",
 			"/ws/renamed",
 		)
-		expect(store.getState().renameTab).toHaveBeenCalledWith(
-			"/ws/folder",
-			"/ws/renamed",
-		)
-		expect(store.getState().updateHistoryPath).toHaveBeenCalledWith(
-			"/ws/folder",
-			"/ws/renamed",
-		)
 		expect(store.getState().entryRenamed).toHaveBeenCalledWith({
 			oldPath: "/ws/folder",
 			newPath: "/ws/renamed",
@@ -71,11 +63,10 @@ describe("workspace-fs-slice rename/move", () => {
 		store.setState({
 			entries: [
 				makeDir("/ws/a", "a", [makeFile("/ws/a/note.md", "note.md")]),
-				makeDir("/ws/b", "b", []),
+				makeDir("/ws/b", "b"),
 			],
-			tab: { path: "/ws/a/note.md" },
-			isSaved: true,
 		})
+
 		fileSystemRepository.readTextFile.mockResolvedValueOnce(
 			"Link [asset](./asset.png)",
 		)
@@ -91,20 +82,12 @@ describe("workspace-fs-slice rename/move", () => {
 			"/ws/b/note.md",
 			"Link [asset](../a/asset.png)",
 		)
-		expect(store.getState().renameTab).toHaveBeenCalledWith(
-			"/ws/a/note.md",
-			"/ws/b/note.md",
-			{ refreshContent: true },
-		)
-		expect(store.getState().updateHistoryPath).toHaveBeenCalledWith(
-			"/ws/a/note.md",
-			"/ws/b/note.md",
-		)
 		expect(store.getState().entryMoved).toHaveBeenCalledWith({
 			sourcePath: "/ws/a/note.md",
 			destinationDirPath: "/ws/b",
 			newPath: "/ws/b/note.md",
 			isDirectory: false,
+			refreshContent: true,
 		})
 	})
 

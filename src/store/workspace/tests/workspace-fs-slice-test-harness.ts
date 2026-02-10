@@ -1,5 +1,6 @@
 import { vi } from "vitest"
 import { createStore } from "zustand/vanilla"
+import type { StoreState } from "@/store"
 import {
 	type AiRenameUtils,
 	type FrontmatterUtils,
@@ -13,8 +14,6 @@ type EntryLike = {
 	isDirectory: boolean
 	children?: EntryLike[]
 }
-
-type EntriesUpdater = EntryLike[] | ((entries: EntryLike[]) => EntryLike[])
 
 export const makeFile = (path: string, name: string): EntryLike => ({
 	path,
@@ -93,19 +92,21 @@ export function createWorkspaceFsTestStore() {
 		aiRenameUtils,
 	})
 
-	const store = createStore<any>()((set, get, api) => {
-		const updateEntries = vi.fn((entriesOrAction: EntriesUpdater) => {
+	// @ts-expect-error - todo
+	const store = createStore<StoreState>()((set, get, api) => {
+		const slice = createSlice(set, get, api)
+		const updateEntries = vi.fn((entriesOrAction) => {
 			const nextEntries =
 				typeof entriesOrAction === "function"
-					? entriesOrAction(get().entries)
+					? entriesOrAction(get().entries ?? [])
 					: entriesOrAction
 			set({ entries: nextEntries })
 		})
 
-		const slice = createSlice(set, get, api)
-
 		return {
+			...slice,
 			workspacePath: "/ws",
+			entries: [],
 			updateEntries,
 			entryCreated: vi.fn(),
 			entriesDeleted: vi.fn(),
@@ -122,7 +123,6 @@ export function createWorkspaceFsTestStore() {
 			setSelectedEntryPaths: vi.fn(),
 			setSelectionAnchorPath: vi.fn(),
 			refreshCollectionEntries: vi.fn(),
-			...slice,
 		}
 	})
 

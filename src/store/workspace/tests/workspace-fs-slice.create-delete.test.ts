@@ -79,15 +79,6 @@ describe("workspace-fs-slice create/delete", () => {
 	it("deleteEntries trashes target paths and delegates tree deletion", async () => {
 		const { store, fileSystemRepository } = createWorkspaceFsTestStore()
 
-		store.setState({
-			tab: { path: "/ws/delete.md" },
-			isSaved: true,
-			entries: [
-				makeFile("/ws/delete.md", "delete.md"),
-				makeFile("/ws/keep.md", "keep.md"),
-			],
-		})
-
 		await store.getState().deleteEntries(["/ws/delete.md"])
 
 		expect(fileSystemRepository.moveToTrash).toHaveBeenCalledWith(
@@ -96,8 +87,6 @@ describe("workspace-fs-slice create/delete", () => {
 		expect(fileSystemRepository.moveManyToTrash).not.toHaveBeenCalled()
 
 		const state = store.getState()
-		expect(state.closeTab).toHaveBeenCalledWith("/ws/delete.md")
-		expect(state.removePathFromHistory).toHaveBeenCalledWith("/ws/delete.md")
 		expect(state.entriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/delete.md"],
 		})
@@ -125,7 +114,6 @@ describe("workspace-fs-slice create/delete", () => {
 		expect(store.getState().entriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/a.md", "/ws/b.md"],
 		})
-		expect(store.getState().removePathFromHistory).toHaveBeenCalledTimes(2)
 	})
 
 	it("updateEntryModifiedDate swallows stat failures", async () => {
@@ -157,8 +145,8 @@ describe("workspace-fs-slice create/delete", () => {
 		const [updated] = store.getState().entries
 		expect(updated.createdAt).toBeInstanceOf(Date)
 		expect(updated.modifiedAt).toBeInstanceOf(Date)
-		expect(updated.createdAt.getTime()).toBe(1000)
-		expect(updated.modifiedAt.getTime()).toBe(2000)
+		expect(updated.createdAt?.getTime()).toBe(1000)
+		expect(updated.modifiedAt?.getTime()).toBe(2000)
 	})
 
 	it("recordFsOperation sets lastFsOperationTime", () => {
