@@ -15,8 +15,19 @@ import {
 import type { CollectionSlice } from "../collection/collection-slice"
 import type { GitSyncSlice } from "../git-sync/git-sync-slice"
 import type { TabSlice } from "../tab/tab-slice"
-import { buildWorkspaceEntries, findEntryByPath } from "./utils/entry-utils"
 import {
+	addEntryToState,
+	buildWorkspaceEntries,
+	findEntryByPath,
+	moveEntryInState,
+	removeEntriesFromState,
+	sortWorkspaceEntries,
+	updateEntryInState,
+} from "./utils/entry-utils"
+import {
+	addExpandedDirectories,
+	removeExpandedDirectories,
+	renameExpandedDirectories,
 	syncExpandedDirectoriesWithEntries,
 	toggleExpandedDirectory,
 } from "./utils/expanded-directories-utils"
@@ -24,6 +35,8 @@ import {
 	filterPinsForWorkspace,
 	filterPinsWithEntries,
 	normalizePinnedDirectoriesList,
+	removePinsForPaths,
+	renamePinnedDirectories,
 } from "./utils/pinned-directories-utils"
 
 const MAX_HISTORY_LENGTH = 5
@@ -85,10 +98,29 @@ export type WorkspaceSlice = {
 			| WorkspaceEntry[]
 			| ((entries: WorkspaceEntry[]) => WorkspaceEntry[]),
 	) => void
-	applyWorkspaceUpdate: (update: {
-		entries?: WorkspaceEntry[]
-		expandedDirectories?: string[]
-		pinnedDirectories?: string[]
+	entryCreated: (input: {
+		parentPath: string
+		entry: WorkspaceEntry
+		expandParent?: boolean
+		expandNewDirectory?: boolean
+	}) => Promise<void>
+	entriesDeleted: (input: { paths: string[] }) => Promise<void>
+	entryRenamed: (input: {
+		oldPath: string
+		newPath: string
+		isDirectory: boolean
+		newName: string
+	}) => Promise<void>
+	entryMoved: (input: {
+		sourcePath: string
+		destinationDirPath: string
+		newPath: string
+		isDirectory: boolean
+	}) => Promise<void>
+	entryImported: (input: {
+		destinationDirPath: string
+		entry: WorkspaceEntry
+		expandIfDirectory?: boolean
 	}) => Promise<void>
 	initializeWorkspace: () => Promise<void>
 	setWorkspace: (path: string) => Promise<void>
@@ -266,44 +298,203 @@ export const prepareWorkspaceSlice =
 				get().refreshCollectionEntries()
 			},
 
-			applyWorkspaceUpdate: async (update) => {
-				const { workspacePath, expandedDirectories, pinnedDirectories } = get()
+			entryCreated: async ({
+				parentPath,
+				entry,
+				expandParent = false,
+				expandNewDirectory = false,
+			}) => {
+				const { workspacePath, entries, expandedDirectories } = get()
 				if (!workspacePath) throw new Error("Workspace path is not set")
 
-				const shouldUpdate =
-					update.entries ||
-					update.expandedDirectories ||
-					update.pinnedDirectories
+				const nextEntries =
+					parentPath === workspacePath
+						? sortWorkspaceEntries([...entries, entry])
+						: addEntryToState(entries, parentPath, entry)
+				get().updateEntries(nextEntries)
+				get().onEntryCreated({
+					parentPath,
+					entry,
+					expandParent,
+					expandNewDirectory,
+				})
 
-				if (shouldUpdate) {
-					if (update.entries) {
-						get().updateEntries(update.entries)
-					}
-					set((state) => ({
-						expandedDirectories:
-							update.expandedDirectories ?? state.expandedDirectories,
-						pinnedDirectories:
-							update.pinnedDirectories ?? state.pinnedDirectories,
-					}))
+				if (!expandParent && !expandNewDirectory) {
+					return
 				}
 
-				if (
-					update.expandedDirectories &&
-					!areStringArraysEqual(expandedDirectories, update.expandedDirectories)
-				) {
+				const nextExpanded = addExpandedDirectories(expandedDirectories, [
+					...(expandParent ? [parentPath] : []),
+					...(expandNewDirectory ? [entry.path] : []),
+				])
+
+				if (!areStringArraysEqual(expandedDirectories, nextExpanded)) {
+					set({ expandedDirectories: nextExpanded })
 					await settingsRepository.persistExpandedDirectories(
 						workspacePath,
-						update.expandedDirectories,
+						nextExpanded,
+					)
+				}
+			},
+
+			entriesDeleted: async ({ paths }) => {
+				const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
+					get()
+				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				get().updateEntries(removeEntriesFromState(entries, paths))
+
+				const nextExpanded = removeExpandedDirectories(
+					expandedDirectories,
+					paths,
+				)
+				if (!areStringArraysEqual(expandedDirectories, nextExpanded)) {
+					set({ expandedDirectories: nextExpanded })
+					await settingsRepository.persistExpandedDirectories(
+						workspacePath,
+						nextExpanded,
 					)
 				}
 
-				if (
-					update.pinnedDirectories &&
-					!areStringArraysEqual(pinnedDirectories, update.pinnedDirectories)
-				) {
+				const nextPinned = removePinsForPaths(pinnedDirectories, paths)
+				if (!areStringArraysEqual(pinnedDirectories, nextPinned)) {
+					set({ pinnedDirectories: nextPinned })
 					await settingsRepository.persistPinnedDirectories(
 						workspacePath,
-						update.pinnedDirectories,
+						nextPinned,
+					)
+				}
+				get().onEntriesDeleted({ paths })
+			},
+
+			entryRenamed: async ({ oldPath, newPath, isDirectory, newName }) => {
+				const {
+					workspacePath,
+					entries,
+					expandedDirectories,
+					pinnedDirectories,
+				} = get()
+				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				get().updateEntries(
+					updateEntryInState(entries, oldPath, newPath, newName),
+				)
+
+				if (!isDirectory) {
+					return
+				}
+
+				const nextExpanded = renameExpandedDirectories(
+					expandedDirectories,
+					oldPath,
+					newPath,
+				)
+				if (!areStringArraysEqual(expandedDirectories, nextExpanded)) {
+					set({ expandedDirectories: nextExpanded })
+					await settingsRepository.persistExpandedDirectories(
+						workspacePath,
+						nextExpanded,
+					)
+				}
+
+				const nextPinned = renamePinnedDirectories(
+					pinnedDirectories,
+					oldPath,
+					newPath,
+				)
+				if (!areStringArraysEqual(pinnedDirectories, nextPinned)) {
+					set({ pinnedDirectories: nextPinned })
+					await settingsRepository.persistPinnedDirectories(
+						workspacePath,
+						nextPinned,
+					)
+				}
+
+				get().onEntryRenamed({ oldPath, newPath, isDirectory, newName })
+			},
+
+			entryMoved: async ({
+				sourcePath,
+				destinationDirPath,
+				newPath,
+				isDirectory,
+			}) => {
+				const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
+					get()
+				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				get().updateEntries(
+					moveEntryInState(
+						entries,
+						sourcePath,
+						destinationDirPath,
+						workspacePath,
+					),
+				)
+
+				if (isDirectory) {
+					const nextExpanded = renameExpandedDirectories(
+						expandedDirectories,
+						sourcePath,
+						newPath,
+					)
+					if (!areStringArraysEqual(expandedDirectories, nextExpanded)) {
+						set({ expandedDirectories: nextExpanded })
+						await settingsRepository.persistExpandedDirectories(
+							workspacePath,
+							nextExpanded,
+						)
+					}
+
+					const nextPinned = renamePinnedDirectories(
+						pinnedDirectories,
+						sourcePath,
+						newPath,
+					)
+					if (!areStringArraysEqual(pinnedDirectories, nextPinned)) {
+						set({ pinnedDirectories: nextPinned })
+						await settingsRepository.persistPinnedDirectories(
+							workspacePath,
+							nextPinned,
+						)
+					}
+				}
+
+				get().onEntryMoved({
+					sourcePath,
+					destinationDirPath,
+					newPath,
+					isDirectory,
+				})
+			},
+
+			entryImported: async ({
+				destinationDirPath,
+				entry,
+				expandIfDirectory = false,
+			}) => {
+				const { workspacePath, entries, expandedDirectories } = get()
+				if (!workspacePath) throw new Error("Workspace path is not set")
+
+				const nextEntries =
+					destinationDirPath === workspacePath
+						? sortWorkspaceEntries([...entries, entry])
+						: addEntryToState(entries, destinationDirPath, entry)
+				get().updateEntries(nextEntries)
+
+				if (!entry.isDirectory || !expandIfDirectory) {
+					return
+				}
+
+				const nextExpanded = addExpandedDirectories(expandedDirectories, [
+					destinationDirPath,
+					entry.path,
+				])
+				if (!areStringArraysEqual(expandedDirectories, nextExpanded)) {
+					set({ expandedDirectories: nextExpanded })
+					await settingsRepository.persistExpandedDirectories(
+						workspacePath,
+						nextExpanded,
 					)
 				}
 			},
