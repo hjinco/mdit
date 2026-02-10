@@ -69,6 +69,11 @@ export function FloatingToolbar({
 		ref: floatingRef,
 	} = useFloatingToolbar(floatingToolbarState)
 
+	const side = (() => {
+		const [rawSide] = floatingToolbarState.floating.placement.split("-")
+		return rawSide === "top" || rawSide === "bottom" ? rawSide : "top"
+	})()
+
 	const ref = useComposedRef<HTMLDivElement>(props.ref, floatingRef)
 
 	if (hidden) return null
@@ -79,8 +84,10 @@ export function FloatingToolbar({
 				{...props}
 				{...rootProps}
 				ref={ref}
+				data-side={side}
 				className={cn(
 					"absolute z-50 scrollbar-hide overflow-x-auto rounded-md border bg-popover/90 backdrop-blur-xs p-0.5 whitespace-nowrap opacity-100 shadow-md print:hidden",
+					"animate-in fade-in-0 zoom-in-95 data-[side=top]:slide-in-from-bottom-2 data-[side=bottom]:slide-in-from-top-2 motion-reduce:animate-none",
 					"max-w-[80vw]",
 					className,
 				)}

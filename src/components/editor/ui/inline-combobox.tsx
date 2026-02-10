@@ -18,6 +18,7 @@ import {
 	useHTMLInputCursorState,
 } from "@platejs/combobox/react"
 import { cva } from "class-variance-authority"
+import { motion } from "motion/react"
 import type { Point, TElement } from "platejs"
 import { useComposedRef, useEditorRef } from "platejs/react"
 import {
@@ -272,6 +273,15 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
 	className,
 	...props
 }) => {
+	const store = useComboboxContext()!
+	const currentPlacement = store.useState("currentPlacement")
+	const side = currentPlacement?.split("-")[0]
+	const isTop = side === "top"
+	const yOffset = isTop ? 4 : -4
+
+	const hiddenState = { opacity: 0, scale: 0.96, x: -6, y: yOffset }
+	const visibleState = { opacity: 1, scale: 1, x: 0, y: 0 }
+
 	// Portal prevents CSS from leaking into popover
 	return (
 		<Portal>
@@ -280,6 +290,14 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
 					"z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-md bg-popover shadow-lg border",
 					className,
 				)}
+				render={
+					<motion.div
+						key={side ?? "bottom"}
+						initial={hiddenState}
+						animate={visibleState}
+						transition={{ duration: 0.14, ease: "easeOut" as const }}
+					/>
+				}
 				{...props}
 			/>
 		</Portal>
