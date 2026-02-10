@@ -23,25 +23,11 @@ import {
 	extractAndSanitizeName,
 } from "./utils/ai-rename-utils"
 import {
-	addEntryToState,
 	buildWorkspaceEntries,
 	findEntryByPath,
-	moveEntryInState,
-	removeEntriesFromState,
-	sortWorkspaceEntries,
-	updateEntryInState,
 	updateEntryMetadata,
 } from "./utils/entry-utils"
-import {
-	addExpandedDirectories,
-	removeExpandedDirectories,
-	renameExpandedDirectories,
-} from "./utils/expanded-directories-utils"
 import { rewriteMarkdownRelativeLinks } from "./utils/markdown-link-utils"
-import {
-	removePinsForPaths,
-	renamePinnedDirectories,
-} from "./utils/pinned-directories-utils"
 import { waitForUnsavedTabToSettle } from "./utils/tab-save-utils"
 import { generateUniqueFileName } from "./utils/unique-filename-utils"
 import type { WorkspaceFileSelectionSlice } from "./workspace-file-selection-slice"
@@ -206,12 +192,6 @@ export const prepareWorkspaceFsSlice =
 			},
 
 			createFolder: async (directoryPath: string, folderName: string) => {
-				const { workspacePath, entries, expandedDirectories } = get()
-
-				if (!workspacePath) {
-					return null
-				}
-
 				// Remove path separators to prevent directory traversal
 				const trimmedName = folderName.trim().replace(/[/\\]/g, "")
 				if (!trimmedName) {
@@ -243,21 +223,13 @@ export const prepareWorkspaceFsSlice =
 						modifiedAt: undefined,
 					}
 
-					const updatedEntries =
-						directoryPath === workspacePath
-							? sortWorkspaceEntries([...entries, newFolderEntry])
-							: addEntryToState(entries, directoryPath, newFolderEntry)
-
-					const updatedExpanded = addExpandedDirectories(expandedDirectories, [
-						directoryPath,
-						folderPath,
-					])
-					await get().applyWorkspaceUpdate({
-						entries: updatedEntries,
-						expandedDirectories: updatedExpanded,
+					await get().entryCreated({
+						parentPath: directoryPath,
+						entry: newFolderEntry,
+						expandParent: true,
+						expandNewDirectory: true,
 					})
 
-					get().setCurrentCollectionPath(folderPath)
 					get().setSelectedEntryPaths(new Set([folderPath]))
 					get().setSelectionAnchorPath(folderPath)
 
@@ -269,12 +241,6 @@ export const prepareWorkspaceFsSlice =
 			},
 
 			createNote: async (directoryPath, options) => {
-				const { workspacePath } = get()
-
-				if (!workspacePath) {
-					throw new Error("Workspace path is not set")
-				}
-
 				const baseName = `${options?.initialName ?? "Untitled"}.md`
 				const { fileName, fullPath: filePath } = await generateUniqueFileName(
 					baseName,
@@ -300,11 +266,10 @@ export const prepareWorkspaceFsSlice =
 					modifiedAt: now,
 				}
 
-				get().updateEntries((entries) =>
-					directoryPath === workspacePath
-						? sortWorkspaceEntries([...entries, newFileEntry])
-						: addEntryToState(entries, directoryPath, newFileEntry),
-				)
+				await get().entryCreated({
+					parentPath: directoryPath,
+					entry: newFileEntry,
+				})
 
 				if (options?.openTab) {
 					await get().openTab(filePath)
@@ -343,7 +308,6 @@ export const prepareWorkspaceFsSlice =
 
 				if (activeTabPath && paths.includes(activeTabPath)) {
 					await waitForUnsavedTabToSettle(activeTabPath, get)
-					get().closeTab(activeTabPath)
 				}
 
 				if (paths.length === 1) {
@@ -353,42 +317,7 @@ export const prepareWorkspaceFsSlice =
 				}
 				get().recordFsOperation()
 
-				// Remove deleted paths from history
-				for (const path of paths) {
-					get().removePathFromHistory(path)
-				}
-
-				// Update currentCollectionPath and lastCollectionPath if they're being deleted
-				const { currentCollectionPath, lastCollectionPath } = get()
-				const shouldClearCurrentCollectionPath =
-					currentCollectionPath && paths.includes(currentCollectionPath)
-				const shouldClearLastCollectionPath =
-					lastCollectionPath && paths.includes(lastCollectionPath)
-
-				if (shouldClearCurrentCollectionPath || shouldClearLastCollectionPath) {
-					if (shouldClearCurrentCollectionPath) {
-						get().setCurrentCollectionPath(null)
-					}
-					if (shouldClearLastCollectionPath) {
-						get().clearLastCollectionPath()
-					}
-				}
-
-				// Remove deleted entries from state without full refresh
-				const { pinnedDirectories, expandedDirectories, entries } = get()
-
-				const filteredPins = removePinsForPaths(pinnedDirectories, paths)
-				const pinsChanged = filteredPins.length !== pinnedDirectories.length
-
-				const updatedExpanded = removeExpandedDirectories(
-					expandedDirectories,
-					paths,
-				)
-				await get().applyWorkspaceUpdate({
-					entries: removeEntriesFromState(entries, paths),
-					expandedDirectories: updatedExpanded,
-					...(pinsChanged ? { pinnedDirectories: filteredPins } : {}),
-				})
+				await get().entriesDeleted({ paths })
 			},
 
 			deleteEntry: async (path: string) => {
@@ -486,44 +415,16 @@ export const prepareWorkspaceFsSlice =
 				await fileSystemRepository.rename(entry.path, nextPath)
 				get().recordFsOperation()
 
-				await get().renameTab(entry.path, nextPath)
-				get().updateHistoryPath(entry.path, nextPath)
-
 				if (get().isEditMode) {
 					return nextPath
 				}
 
-				const { pinnedDirectories, expandedDirectories, entries } = get()
-
-				const updatedPins = entry.isDirectory
-					? renamePinnedDirectories(pinnedDirectories, entry.path, nextPath)
-					: pinnedDirectories
-				const pinsChanged =
-					updatedPins.length !== pinnedDirectories.length ||
-					updatedPins.some((path, index) => path !== pinnedDirectories[index])
-
-				const updatedExpanded = entry.isDirectory
-					? renameExpandedDirectories(expandedDirectories, entry.path, nextPath)
-					: expandedDirectories
-
-				await get().applyWorkspaceUpdate({
-					entries: updateEntryInState(
-						entries,
-						entry.path,
-						nextPath,
-						trimmedName,
-					),
-					expandedDirectories: updatedExpanded,
-					...(pinsChanged ? { pinnedDirectories: updatedPins } : {}),
+				await get().entryRenamed({
+					oldPath: entry.path,
+					newPath: nextPath,
+					isDirectory: entry.isDirectory,
+					newName: trimmedName,
 				})
-
-				// Update currentCollectionPath if the renamed entry is a directory and matches the current collection path
-				if (entry.isDirectory) {
-					const { currentCollectionPath } = get()
-					if (currentCollectionPath === entry.path) {
-						get().setCurrentCollectionPath(nextPath)
-					}
-				}
 
 				return nextPath
 			},
@@ -623,55 +524,13 @@ export const prepareWorkspaceFsSlice =
 						}
 					}
 
-					// Update tab path if the moved file is currently open
-					await get().renameTab(sourcePath, newPath, {
+					await get().entryMoved({
+						sourcePath,
+						destinationDirPath: destinationPath,
+						newPath,
+						isDirectory,
 						refreshContent: shouldRefreshTab,
 					})
-					get().updateHistoryPath(sourcePath, newPath)
-
-					const { currentCollectionPath } = get()
-
-					// Update currentCollectionPath if it's being moved
-					const shouldUpdateCollectionPath =
-						currentCollectionPath === sourcePath
-
-					const { entries, expandedDirectories, pinnedDirectories } = get()
-
-					// Use unified moveEntryInState for both root and subdirectory moves
-					const updatedEntries = moveEntryInState(
-						entries,
-						sourcePath,
-						destinationPath,
-						workspacePath,
-					)
-
-					const updatedExpanded = isDirectory
-						? renameExpandedDirectories(
-								expandedDirectories,
-								sourcePath,
-								newPath,
-							)
-						: expandedDirectories
-
-					const updatedPinned = isDirectory
-						? renamePinnedDirectories(pinnedDirectories, sourcePath, newPath)
-						: pinnedDirectories
-					const pinsChanged =
-						updatedPinned.length !== pinnedDirectories.length ||
-						updatedPinned.some(
-							(path, index) => path !== pinnedDirectories[index],
-						)
-
-					await get().applyWorkspaceUpdate({
-						entries: updatedEntries,
-						expandedDirectories: updatedExpanded,
-						...(pinsChanged ? { pinnedDirectories: updatedPinned } : {}),
-					})
-
-					// Update currentCollectionPath if it's being moved
-					if (shouldUpdateCollectionPath) {
-						get().setCurrentCollectionPath(newPath)
-					}
 
 					return true
 				} catch (error) {
@@ -784,31 +643,11 @@ export const prepareWorkspaceFsSlice =
 					modifiedAt: fileMetadata.modifiedAt,
 				}
 
-				if (!isDirectory) {
-					get().updateEntries((entries) =>
-						destinationPath === workspacePath
-							? sortWorkspaceEntries([...entries, newFileEntry])
-							: addEntryToState(entries, destinationPath, newFileEntry),
-					)
-				}
-
-				if (isDirectory) {
-					const { entries, expandedDirectories } = get()
-					const updatedEntries =
-						destinationPath === workspacePath
-							? sortWorkspaceEntries([...entries, newFileEntry])
-							: addEntryToState(entries, destinationPath, newFileEntry)
-
-					const updatedExpanded = addExpandedDirectories(expandedDirectories, [
-						destinationPath,
-						newPath,
-					])
-
-					await get().applyWorkspaceUpdate({
-						entries: updatedEntries,
-						expandedDirectories: updatedExpanded,
-					})
-				}
+				await get().entryImported({
+					destinationDirPath: destinationPath,
+					entry: newFileEntry,
+					expandIfDirectory: isDirectory,
+				})
 
 				return true
 			},
@@ -884,23 +723,10 @@ export const prepareWorkspaceFsSlice =
 					modifiedAt: fileMetadata.modifiedAt,
 				}
 
-				const { entries, expandedDirectories } = get()
-
-				const updatedEntries =
-					destinationPath === workspacePath
-						? sortWorkspaceEntries([...entries, newFileEntry])
-						: addEntryToState(entries, destinationPath, newFileEntry)
-
-				const updatedExpanded = isDirectory
-					? addExpandedDirectories(expandedDirectories, [
-							destinationPath,
-							newPath,
-						])
-					: undefined
-
-				await get().applyWorkspaceUpdate({
-					entries: updatedEntries,
-					...(updatedExpanded && { expandedDirectories: updatedExpanded }),
+				await get().entryImported({
+					destinationDirPath: destinationPath,
+					entry: newFileEntry,
+					expandIfDirectory: isDirectory,
 				})
 
 				return true
