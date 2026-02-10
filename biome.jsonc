@@ -1,14 +1,9 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.3.13/schema.json",
-	"files": {
-		"includes": [
-			"**/*.{ts,tsx,js,json,jsonc}",
-			"!node_modules",
-			"!dist",
-			"!target",
-			"!.pnpm-store",
-			"!src-tauri/target"
-		]
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
 	},
 	"javascript": {
 		"formatter": {
@@ -63,6 +58,11 @@
 				"noImgElement": "off",
 				"noBarrelFile": "off"
 			}
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	}
 }
