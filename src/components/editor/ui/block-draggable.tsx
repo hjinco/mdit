@@ -1,20 +1,21 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
-import { GripVertical } from "lucide-react"
-import { KEYS } from "platejs"
+import { GripVertical, Plus } from "lucide-react"
+import { KEYS, PathApi } from "platejs"
 import { type PlateElementProps, usePluginOption } from "platejs/react"
+import type { MouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import { DATABASE_KEY } from "../plugins/database-kit"
 import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 
 const headingTopMap: Record<string, string> = {
-	[KEYS.h1]: "top-11",
-	[KEYS.h2]: "top-6.5",
-	[KEYS.h3]: "top-5",
-	[KEYS.h4]: "top-3.5",
-	[KEYS.h5]: "top-5",
-	[KEYS.h6]: "top-6",
+	[KEYS.h1]: "top-13",
+	[KEYS.h2]: "top-7",
+	[KEYS.h3]: "top-5.25",
+	[KEYS.h4]: "top-3.75",
+	[KEYS.h5]: "top-3.75",
+	[KEYS.h6]: "top-3",
 }
 
 const otherTypeTopMap: Record<string, string> = {
@@ -24,6 +25,13 @@ const otherTypeTopMap: Record<string, string> = {
 	[KEYS.blockquote]: "top-0.5",
 	[KEYS.callout]: "top-0",
 	[DATABASE_KEY]: "top-4.5",
+}
+
+const getTopClass = (type: string, isFirstChild: boolean) => {
+	if (isFirstChild && headingTopMap[type]) {
+		return "top-1"
+	}
+	return headingTopMap[type] || otherTypeTopMap[type] || ""
 }
 
 export function DragHandle({
@@ -36,25 +44,21 @@ export function DragHandle({
 	type: string
 	isFirstChild: boolean
 	setNodeRef: (node: HTMLDivElement) => void
-	onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
+	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
 }) {
 	const isFocusMode = useStore((s) => s.isFocusMode)
-
-	const topClass =
-		isFirstChild && headingTopMap[type]
-			? "top-0.75"
-			: headingTopMap[type] || otherTypeTopMap[type] || ""
+	const topClass = getTopClass(type, isFirstChild)
 
 	return (
 		<div
 			ref={setNodeRef}
 			className={cn(
-				"absolute -left-7 flex py-1 rounded-xs",
+				"absolute -left-7 flex py-0.75 rounded",
 				"opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]",
 				"cursor-grab active:cursor-grabbing",
-				"text-muted-foreground/80 hover:text-foreground hover:bg-accent/50 z-50",
+				"text-muted-foreground/80 hover:bg-accent/50 z-50",
 				isFocusMode && "opacity-0 group-hover:opacity-0",
-				"top-0.75",
+				"top-1.25",
 				topClass,
 			)}
 			contentEditable={false}
@@ -65,7 +69,43 @@ export function DragHandle({
 			onMouseDown={onMouseDown}
 			{...props}
 		>
-			<GripVertical className="size-5 stroke-[1.4]!" />
+			<GripVertical className="size-4.5 stroke-[1.4]!" />
+		</div>
+	)
+}
+
+export function InsertHandle({
+	type,
+	isFirstChild,
+	onMouseDown,
+	onClick,
+	...props
+}: {
+	type: string
+	isFirstChild: boolean
+	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
+	onClick: (e: MouseEvent<HTMLDivElement>) => void
+}) {
+	const isFocusMode = useStore((s) => s.isFocusMode)
+	const topClass = getTopClass(type, isFirstChild)
+
+	return (
+		<div
+			className={cn(
+				"absolute -left-13 flex p-0.75 rounded",
+				"opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]",
+				"cursor-pointer",
+				"text-muted-foreground/80 hover:bg-accent/50 z-50",
+				isFocusMode && "opacity-0 group-hover:opacity-0",
+				"top-1.25",
+				topClass,
+			)}
+			contentEditable={false}
+			onMouseDown={onMouseDown}
+			onClick={onClick}
+			{...props}
+		>
+			<Plus className="size-4.5 stroke-[1.8]!" />
 		</div>
 	)
 }
@@ -108,6 +148,30 @@ export function Draggable(props: PlateElementProps) {
 		return <>{props.children}</>
 	}
 
+	const handleInsertBelowSlash = () => {
+		const entry = props.editor.api.node({
+			at: [],
+			block: true,
+			match: (node) => node.id === elementId,
+		})
+		if (!entry) return
+
+		const [, currentPath] = entry
+		if (currentPath.length !== 1) return
+
+		const insertPath = PathApi.next(currentPath)
+		props.editor.tf.insertNodes(
+			props.editor.api.create.block({
+				type: props.editor.getType(KEYS.p),
+				children: [{ text: "" }],
+			}),
+			{ at: insertPath },
+		)
+		props.editor.tf.select(insertPath, { edge: "start" })
+		props.editor.tf.focus()
+		props.editor.tf.insertText("/")
+	}
+
 	return (
 		<div
 			className={cn(
@@ -115,6 +179,20 @@ export function Draggable(props: PlateElementProps) {
 				isDragging && !isBlockSelected && "opacity-30",
 			)}
 		>
+			<InsertHandle
+				type={props.element.type}
+				isFirstChild={isFirstChild}
+				onMouseDown={(e) => {
+					e.preventDefault()
+					e.stopPropagation()
+				}}
+				onClick={(e) => {
+					e.preventDefault()
+					e.stopPropagation()
+					handleInsertBelowSlash()
+				}}
+				data-plate-prevent-deselect
+			/>
 			<DragHandle
 				type={props.element.type}
 				isFirstChild={isFirstChild}
