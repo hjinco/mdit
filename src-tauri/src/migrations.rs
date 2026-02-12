@@ -13,16 +13,33 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::sqlite_vec_ext;
 
 #[tauri::command]
-pub fn apply_appdata_migrations(app_handle: AppHandle) -> Result<(), String> {
-    run_app_migrations(&app_handle)
-        .map(|_| ())
-        .map_err(|error| error.to_string())
+pub fn apply_appdata_migrations(
+    app_handle: AppHandle,
+    workspace_path: Option<String>,
+) -> Result<(), String> {
+    run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
+
+    if let Some(workspace_path) = workspace_path {
+        let trimmed = workspace_path.trim();
+        if !trimmed.is_empty() {
+            if let Err(error) = cleanup_legacy_workspace_index_db(Path::new(trimmed)) {
+                eprintln!(
+                    "Failed to clean up legacy workspace DB at {}: {}",
+                    trimmed, error
+                );
+            }
+        }
+    }
+
+    Ok(())
 }
 
 static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
 const DB_FILE_NAME: &str = "appdata.db";
 const MIGRATIONS_TABLE: &str = "__migrations";
+const WORKSPACE_STATE_DIR_NAME: &str = ".mdit";
+const LEGACY_WORKSPACE_DB_FILE_NAME: &str = "db.sqlite";
 
 struct MigrationFile {
     tag: String,
@@ -181,4 +198,118 @@ fn split_statements(sql: &str) -> Vec<String> {
         .filter(|chunk| !chunk.is_empty())
         .map(|chunk| chunk.to_string())
         .collect()
+}
+
+fn cleanup_legacy_workspace_index_db(workspace_root: &Path) -> Result<()> {
+    let legacy_db_path = workspace_root
+        .join(WORKSPACE_STATE_DIR_NAME)
+        .join(LEGACY_WORKSPACE_DB_FILE_NAME);
+
+    if !legacy_db_path.exists() {
+        return Ok(());
+    }
+
+    let metadata = fs::metadata(&legacy_db_path).with_context(|| {
+        format!(
+            "Failed to read metadata for legacy workspace DB at {}",
+            legacy_db_path.display()
+        )
+    })?;
+
+    if !metadata.is_file() {
+        return Ok(());
+    }
+
+    fs::remove_file(&legacy_db_path).with_context(|| {
+        format!(
+            "Failed to remove legacy workspace DB at {}",
+            legacy_db_path.display()
+        )
+    })?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cleanup_legacy_workspace_index_db;
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
+
+    struct TempWorkspace {
+        root: PathBuf,
+    }
+
+    impl TempWorkspace {
+        fn new(prefix: &str) -> Self {
+            let mut root = std::env::temp_dir();
+            root.push(format!("{prefix}-{}", unique_id()));
+            fs::create_dir_all(&root).expect("failed to create temp workspace");
+            Self { root }
+        }
+
+        fn root(&self) -> &Path {
+            &self.root
+        }
+    }
+
+    impl Drop for TempWorkspace {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn given_legacy_db_file_when_cleanup_runs_then_db_file_is_removed() {
+        let workspace = TempWorkspace::new("mdit-migrations-cleanup-remove");
+        let state_dir = workspace.root().join(".mdit");
+        fs::create_dir_all(&state_dir).expect("failed to create .mdit directory");
+
+        let legacy_db_path = state_dir.join("db.sqlite");
+        fs::write(&legacy_db_path, b"legacy").expect("failed to write legacy db");
+
+        cleanup_legacy_workspace_index_db(workspace.root())
+            .expect("cleanup should remove legacy db");
+
+        assert!(!legacy_db_path.exists());
+    }
+
+    #[test]
+    fn given_missing_legacy_db_when_cleanup_runs_then_it_succeeds() {
+        let workspace = TempWorkspace::new("mdit-migrations-cleanup-missing");
+        let state_dir = workspace.root().join(".mdit");
+        fs::create_dir_all(&state_dir).expect("failed to create .mdit directory");
+
+        cleanup_legacy_workspace_index_db(workspace.root())
+            .expect("cleanup should succeed when db is absent");
+    }
+
+    #[test]
+    fn given_workspace_settings_file_when_cleanup_runs_then_settings_file_is_preserved() {
+        let workspace = TempWorkspace::new("mdit-migrations-cleanup-preserve");
+        let state_dir = workspace.root().join(".mdit");
+        fs::create_dir_all(&state_dir).expect("failed to create .mdit directory");
+
+        let legacy_db_path = state_dir.join("db.sqlite");
+        let workspace_settings_path = state_dir.join("workspace.json");
+        fs::write(&legacy_db_path, b"legacy").expect("failed to write legacy db");
+        fs::write(&workspace_settings_path, b"{}").expect("failed to write settings file");
+
+        cleanup_legacy_workspace_index_db(workspace.root())
+            .expect("cleanup should remove only legacy db");
+
+        assert!(!legacy_db_path.exists());
+        assert!(workspace_settings_path.exists());
+    }
+
+    fn unique_id() -> u128 {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos()
+    }
 }

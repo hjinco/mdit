@@ -47,7 +47,7 @@ type OpenDialog = (options: {
 	title?: string
 }) => Promise<string | null>
 
-type ApplyWorkspaceMigrations = () => Promise<void>
+type ApplyWorkspaceMigrations = (workspacePath: string) => Promise<void>
 
 type WorkspaceSliceDependencies = {
 	fileSystemRepository: FileSystemRepository
@@ -182,7 +182,7 @@ export const prepareWorkspaceSlice =
 			let migrationsComplete = false
 
 			try {
-				await applyWorkspaceMigrations()
+				await applyWorkspaceMigrations(workspacePath)
 				migrationsComplete = true
 			} catch (error) {
 				console.error("Failed to apply workspace migrations:", error)
@@ -795,5 +795,6 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 		const result = await open(options)
 		return typeof result === "string" ? result : null
 	},
-	applyWorkspaceMigrations: () => invoke<void>('apply_appdata_migrations'),
+	applyWorkspaceMigrations: (workspacePath: string) =>
+		invoke<void>('apply_appdata_migrations', { workspacePath }),
 })
