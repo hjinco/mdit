@@ -126,7 +126,7 @@
 	}
 
 	body {
-		@apply text-foreground overscroll-none antialiased;
+		@apply text-foreground overflow-hidden overscroll-none antialiased;
 	}
 }
 
