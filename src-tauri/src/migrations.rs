@@ -8,66 +8,68 @@ use std::{
 use anyhow::{anyhow, Context, Result};
 use include_dir::{include_dir, Dir};
 use rusqlite::Connection;
-use serde::Deserialize;
+use tauri::{AppHandle, Manager, Runtime};
+
+use crate::sqlite_vec_ext;
 
 #[tauri::command]
-pub fn apply_workspace_migrations(workspace_path: String) -> Result<(), String> {
-    let workspace_path = PathBuf::from(workspace_path);
-    run_workspace_migrations(&workspace_path)
+pub fn apply_appdata_migrations(app_handle: AppHandle) -> Result<(), String> {
+    run_app_migrations(&app_handle)
         .map(|_| ())
         .map_err(|error| error.to_string())
 }
 
-static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/db/migrations");
+static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
-const WORKSPACE_STATE_DIR: &str = ".mdit";
-const DB_FILE_NAME: &str = "db.sqlite";
-const MIGRATIONS_TABLE: &str = "__drizzle_migrations";
-
-#[derive(Debug, Deserialize)]
-struct Journal {
-    entries: Vec<JournalEntry>,
-}
-
-#[derive(Debug, Deserialize)]
-struct JournalEntry {
-    idx: u32,
-    tag: String,
-}
+const DB_FILE_NAME: &str = "appdata.db";
+const MIGRATIONS_TABLE: &str = "__migrations";
 
 struct MigrationFile {
     tag: String,
-    idx: u32,
     sql: String,
 }
 
-pub fn run_workspace_migrations(workspace_root: &Path) -> Result<PathBuf> {
-    if !workspace_root.exists() {
-        return Err(anyhow!(
-            "Workspace path does not exist: {}",
-            workspace_root.display()
-        ));
-    }
+pub fn resolve_appdata_db_path<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .with_context(|| "Failed to resolve app data directory for appdata database")?;
 
-    let db_dir = workspace_root.join(WORKSPACE_STATE_DIR);
-    fs::create_dir_all(&db_dir).with_context(|| {
+    Ok(app_data_dir.join(DB_FILE_NAME))
+}
+
+pub fn run_app_migrations<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
+    let db_path = resolve_appdata_db_path(app_handle)?;
+    run_migrations_at(&db_path)?;
+    Ok(db_path)
+}
+
+pub fn run_migrations_at(db_path: &Path) -> Result<()> {
+    sqlite_vec_ext::register_auto_extension()?;
+
+    let db_dir = db_path.parent().ok_or_else(|| {
+        anyhow!(
+            "Failed to resolve database directory from path {}",
+            db_path.display()
+        )
+    })?;
+
+    fs::create_dir_all(db_dir).with_context(|| {
         format!(
-            "Failed to create workspace metadata directory at {}",
+            "Failed to create appdata metadata directory at {}",
             db_dir.display()
         )
     })?;
 
-    let db_path = db_dir.join(DB_FILE_NAME);
-    let mut conn = Connection::open(&db_path)
-        .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
+    let mut conn = Connection::open(db_path)
+        .with_context(|| format!("Failed to open appdata database at {}", db_path.display()))?;
 
-    conn.pragma_update(None, "foreign_keys", &1)
-        .context("Failed to enable foreign keys for workspace database")?;
+    conn.pragma_update(None, "foreign_keys", 1)
+        .context("Failed to enable foreign keys for appdata database")?;
 
     ensure_migrations_table(&conn)?;
     let applied = load_applied_migrations(&conn)?;
-    let mut migrations = load_available_migrations()?;
-    migrations.sort_by_key(|migration| migration.idx);
+    let migrations = load_available_migrations()?;
 
     for migration in migrations {
         if applied.contains(&migration.tag) {
@@ -77,7 +79,7 @@ pub fn run_workspace_migrations(workspace_root: &Path) -> Result<PathBuf> {
         apply_single_migration(&mut conn, &migration)?;
     }
 
-    Ok(db_path)
+    Ok(())
 }
 
 fn ensure_migrations_table(conn: &Connection) -> Result<()> {
@@ -112,31 +114,32 @@ fn load_applied_migrations(conn: &Connection) -> Result<HashSet<String>> {
 }
 
 fn load_available_migrations() -> Result<Vec<MigrationFile>> {
-    let journal_file = MIGRATIONS_DIR
-        .get_file("meta/_journal.json")
-        .ok_or_else(|| anyhow!("Failed to read migration journal metadata"))?;
+    let mut migrations = Vec::new();
 
-    let journal: Journal = serde_json::from_slice(journal_file.contents())
-        .context("Failed to parse migration journal metadata")?;
+    for file in MIGRATIONS_DIR.files() {
+        let path = file.path();
+        let Some(ext) = path.extension().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        if !ext.eq_ignore_ascii_case("sql") {
+            continue;
+        }
 
-    let mut migrations = Vec::with_capacity(journal.entries.len());
-
-    for entry in journal.entries {
-        let filename = format!("{}.sql", entry.tag);
-        let file = MIGRATIONS_DIR
-            .get_file(&filename)
-            .ok_or_else(|| anyhow!("Missing SQL file for migration {}", entry.tag))?;
+        let Some(tag) = path.file_stem().and_then(|value| value.to_str()) else {
+            continue;
+        };
 
         let sql = str::from_utf8(file.contents())
-            .with_context(|| format!("Migration file {} contains invalid UTF-8", filename))?
+            .with_context(|| format!("Migration file {} contains invalid UTF-8", path.display()))?
             .to_string();
 
         migrations.push(MigrationFile {
-            tag: entry.tag,
-            idx: entry.idx,
+            tag: tag.to_string(),
             sql,
         });
     }
+
+    migrations.sort_by(|lhs, rhs| lhs.tag.cmp(&rhs.tag));
 
     Ok(migrations)
 }

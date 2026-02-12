@@ -3,8 +3,10 @@ mod database;
 mod file_opener;
 mod image_processing;
 mod indexing;
+mod markdown_text;
 mod migrations;
 mod preview;
+mod sqlite_vec_ext;
 mod trash;
 
 use tauri::Manager;
@@ -50,7 +52,7 @@ pub fn run() {
             trash::move_to_trash,
             trash::move_many_to_trash,
             preview::get_note_preview,
-            migrations::apply_workspace_migrations,
+            migrations::apply_appdata_migrations,
             indexing::index_workspace_command,
             indexing::index_note_command,
             indexing::get_indexing_meta_command,

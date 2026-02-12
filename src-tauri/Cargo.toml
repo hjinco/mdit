@@ -33,6 +33,7 @@ tauri-plugin-os = "2"
 include_dir = "0.7.4"
 anyhow = "1"
 rusqlite = { version = "0.31", features = ["bundled"] }
+sqlite-vec = "0.1.6"
 walkdir = "2"
 blake3 = "1"
 ollama-rs = "0.3.2"

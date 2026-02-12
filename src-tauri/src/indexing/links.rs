@@ -11,11 +11,6 @@ use super::files::MarkdownFile;
 pub(crate) struct ResolvedLink {
     pub(crate) target_doc_id: Option<i64>,
     pub(crate) target_path: String,
-    pub(crate) target_anchor: Option<String>,
-    pub(crate) alias: Option<String>,
-    pub(crate) is_embed: bool,
-    pub(crate) is_wiki: bool,
-    pub(crate) is_external: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -28,8 +23,6 @@ enum LinkKind {
 struct LinkCandidate {
     kind: LinkKind,
     raw_target: String,
-    alias: Option<String>,
-    is_embed: bool,
 }
 
 #[derive(Debug)]
@@ -71,12 +64,7 @@ impl LinkResolver {
         }
     }
 
-    pub(crate) fn resolve_links(
-        &self,
-        source: &MarkdownFile,
-        source_doc_id: i64,
-        contents: &str,
-    ) -> Vec<ResolvedLink> {
+    pub(crate) fn resolve_links(&self, source: &MarkdownFile, contents: &str) -> Vec<ResolvedLink> {
         let mut candidates = extract_markdown_candidates(contents);
         candidates.extend(extract_wiki_candidates(contents));
 
@@ -85,10 +73,8 @@ impl LinkResolver {
 
         for candidate in candidates {
             let resolved = match candidate.kind {
-                LinkKind::Wiki => self.resolve_wiki_candidate(source, source_doc_id, candidate),
-                LinkKind::Markdown => {
-                    self.resolve_markdown_candidate(source, source_doc_id, candidate)
-                }
+                LinkKind::Wiki => self.resolve_wiki_candidate(candidate),
+                LinkKind::Markdown => self.resolve_markdown_candidate(source, candidate),
             };
 
             if let Some(link) = resolved {
@@ -102,12 +88,7 @@ impl LinkResolver {
         results
     }
 
-    fn resolve_wiki_candidate(
-        &self,
-        source: &MarkdownFile,
-        source_doc_id: i64,
-        candidate: LinkCandidate,
-    ) -> Option<ResolvedLink> {
+    fn resolve_wiki_candidate(&self, candidate: LinkCandidate) -> Option<ResolvedLink> {
         let trimmed = candidate.raw_target.trim();
         if trimmed.is_empty() {
             return None;
@@ -116,24 +97,10 @@ impl LinkResolver {
             return None;
         }
 
-        let (path_part, anchor) = split_wiki_target(trimmed);
-        let anchor = normalize_anchor(anchor);
-        let alias = normalize_alias(candidate.alias);
+        let path_part = strip_wiki_anchor(trimmed);
 
         if path_part.is_empty() {
-            if anchor.is_none() {
-                return None;
-            }
-
-            return Some(ResolvedLink {
-                target_doc_id: Some(source_doc_id),
-                target_path: source.rel_path.clone(),
-                target_anchor: anchor,
-                alias,
-                is_embed: candidate.is_embed,
-                is_wiki: true,
-                is_external: false,
-            });
+            return None;
         }
 
         if path_part.contains('/') || path_part.contains('\\') {
@@ -146,11 +113,6 @@ impl LinkResolver {
             return Some(ResolvedLink {
                 target_doc_id,
                 target_path: normalized,
-                target_anchor: anchor,
-                alias,
-                is_embed: candidate.is_embed,
-                is_wiki: true,
-                is_external: false,
             });
         }
 
@@ -165,11 +127,6 @@ impl LinkResolver {
                 return Some(ResolvedLink {
                     target_doc_id,
                     target_path: target_path.clone(),
-                    target_anchor: anchor,
-                    alias,
-                    is_embed: candidate.is_embed,
-                    is_wiki: true,
-                    is_external: false,
                 });
             }
         }
@@ -178,18 +135,12 @@ impl LinkResolver {
         Some(ResolvedLink {
             target_doc_id: None,
             target_path: unresolved,
-            target_anchor: anchor,
-            alias,
-            is_embed: candidate.is_embed,
-            is_wiki: true,
-            is_external: false,
         })
     }
 
     fn resolve_markdown_candidate(
         &self,
         source: &MarkdownFile,
-        source_doc_id: i64,
         candidate: LinkCandidate,
     ) -> Option<ResolvedLink> {
         let trimmed = candidate.raw_target.trim();
@@ -201,24 +152,10 @@ impl LinkResolver {
             return None;
         }
 
-        let (path_part, anchor) = split_anchor(trimmed);
-        let anchor = normalize_anchor(anchor);
-        let alias = normalize_alias(candidate.alias);
+        let path_part = strip_markdown_anchor(trimmed);
 
         if path_part.is_empty() {
-            if anchor.is_none() {
-                return None;
-            }
-
-            return Some(ResolvedLink {
-                target_doc_id: Some(source_doc_id),
-                target_path: source.rel_path.clone(),
-                target_anchor: anchor,
-                alias,
-                is_embed: candidate.is_embed,
-                is_wiki: false,
-                is_external: false,
-            });
+            return None;
         }
 
         let source_dir = source
@@ -239,36 +176,19 @@ impl LinkResolver {
         Some(ResolvedLink {
             target_doc_id,
             target_path: rel_path,
-            target_anchor: anchor,
-            alias,
-            is_embed: candidate.is_embed,
-            is_wiki: false,
-            is_external: false,
         })
     }
 }
 
 #[derive(Hash, PartialEq, Eq)]
 struct LinkKey {
-    target_doc_id: Option<i64>,
     target_path: String,
-    target_anchor: Option<String>,
-    alias: Option<String>,
-    is_embed: bool,
-    is_wiki: bool,
-    is_external: bool,
 }
 
 impl From<&ResolvedLink> for LinkKey {
     fn from(link: &ResolvedLink) -> Self {
         Self {
-            target_doc_id: link.target_doc_id,
             target_path: link.target_path.clone(),
-            target_anchor: link.target_anchor.clone(),
-            alias: link.alias.clone(),
-            is_embed: link.is_embed,
-            is_wiki: link.is_wiki,
-            is_external: link.is_external,
         }
     }
 }
@@ -276,45 +196,20 @@ impl From<&ResolvedLink> for LinkKey {
 fn extract_markdown_candidates(contents: &str) -> Vec<LinkCandidate> {
     let parser = Parser::new(contents);
     let mut candidates = Vec::new();
-    let mut active: Option<ActiveMarkdownLink> = None;
+    let mut active_dest_url: Option<String> = None;
 
     for event in parser {
         match event {
             Event::Start(Tag::Link { dest_url, .. }) => {
-                active = Some(ActiveMarkdownLink {
-                    dest_url: dest_url.to_string(),
-                    alias: String::new(),
-                    is_embed: false,
-                });
+                active_dest_url = Some(dest_url.to_string());
             }
-            Event::Start(Tag::Image { dest_url, .. }) => {
-                active = Some(ActiveMarkdownLink {
-                    dest_url: dest_url.to_string(),
-                    alias: String::new(),
-                    is_embed: true,
-                });
-            }
-            Event::End(TagEnd::Link) | Event::End(TagEnd::Image) => {
-                if let Some(link) = active.take() {
-                    if !link.dest_url.trim().is_empty() {
+            Event::End(TagEnd::Link) => {
+                if let Some(dest_url) = active_dest_url.take() {
+                    if !dest_url.trim().is_empty() {
                         candidates.push(LinkCandidate {
                             kind: LinkKind::Markdown,
-                            raw_target: link.dest_url,
-                            alias: normalize_alias(Some(link.alias)),
-                            is_embed: link.is_embed,
+                            raw_target: dest_url,
                         });
-                    }
-                }
-            }
-            Event::Text(text) | Event::Code(text) => {
-                if let Some(link) = active.as_mut() {
-                    link.alias.push_str(&text);
-                }
-            }
-            Event::SoftBreak | Event::HardBreak => {
-                if let Some(link) = active.as_mut() {
-                    if !link.alias.ends_with(' ') {
-                        link.alias.push(' ');
                     }
                 }
             }
@@ -323,12 +218,6 @@ fn extract_markdown_candidates(contents: &str) -> Vec<LinkCandidate> {
     }
 
     candidates
-}
-
-struct ActiveMarkdownLink {
-    dest_url: String,
-    alias: String,
-    is_embed: bool,
 }
 
 fn extract_wiki_candidates(contents: &str) -> Vec<LinkCandidate> {
@@ -413,15 +302,15 @@ fn extract_wiki_candidates_from_line(line: &str, candidates: &mut Vec<LinkCandid
             let is_embed = i > 0 && bytes[i - 1] == b'!';
             let start = i + 2;
             if let Some(end) = find_closing_wiki(bytes, start) {
-                if let Some(raw) = line.get(start..end) {
-                    let (target, alias) = split_wiki_alias(raw);
-                    if !target.trim().is_empty() {
-                        candidates.push(LinkCandidate {
-                            kind: LinkKind::Wiki,
-                            raw_target: target.to_string(),
-                            alias: alias.map(|value| value.to_string()),
-                            is_embed,
-                        });
+                if !is_embed {
+                    if let Some(raw) = line.get(start..end) {
+                        let target = split_wiki_alias(raw);
+                        if !target.trim().is_empty() {
+                            candidates.push(LinkCandidate {
+                                kind: LinkKind::Wiki,
+                                raw_target: target.to_string(),
+                            });
+                        }
                     }
                 }
                 i = end + 2;
@@ -452,15 +341,15 @@ fn find_closing_wiki(bytes: &[u8], start: usize) -> Option<usize> {
     None
 }
 
-fn split_wiki_alias(raw: &str) -> (&str, Option<&str>) {
-    if let Some((target, alias)) = raw.split_once('|') {
-        (target.trim(), Some(alias.trim()))
+fn split_wiki_alias(raw: &str) -> &str {
+    if let Some((target, _alias)) = raw.split_once('|') {
+        target.trim()
     } else {
-        (raw.trim(), None)
+        raw.trim()
     }
 }
 
-fn split_wiki_target(raw: &str) -> (&str, Option<&str>) {
+fn strip_wiki_anchor(raw: &str) -> &str {
     let hash_index = raw.find('#');
     let block_index = raw.find('^');
 
@@ -472,39 +361,17 @@ fn split_wiki_target(raw: &str) -> (&str, Option<&str>) {
     };
 
     if let Some(index) = split_index {
-        let anchor = raw.get(index + 1..).unwrap_or("");
-        return (raw[..index].trim(), Some(anchor.trim()));
-    }
-
-    (raw.trim(), None)
-}
-
-fn split_anchor(raw: &str) -> (&str, Option<&str>) {
-    if let Some((path, anchor)) = raw.split_once('#') {
-        (path.trim(), Some(anchor.trim()))
+        raw[..index].trim()
     } else {
-        (raw.trim(), None)
+        raw.trim()
     }
 }
 
-fn normalize_anchor(anchor: Option<&str>) -> Option<String> {
-    let value = anchor.unwrap_or("").trim();
-    if value.is_empty() {
-        None
+fn strip_markdown_anchor(raw: &str) -> &str {
+    if let Some((path, _anchor)) = raw.split_once('#') {
+        path.trim()
     } else {
-        Some(value.to_string())
-    }
-}
-
-fn normalize_alias(alias: Option<String>) -> Option<String> {
-    let Some(value) = alias else {
-        return None;
-    };
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
+        raw.trim()
     }
 }
 
@@ -597,6 +464,3 @@ fn has_windows_drive_prefix(value: &str) -> bool {
     };
     letter.is_ascii_alphabetic() && colon == ':'
 }
-
-#[cfg(test)]
-mod tests;
