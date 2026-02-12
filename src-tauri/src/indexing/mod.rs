@@ -8,7 +8,10 @@
 //! 3. Deleted documents and surplus segments are removed to keep the database
 //!    tidy while the `IndexSummary` keeps track of everything that happened.
 
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{anyhow, Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
@@ -26,7 +29,7 @@ mod sync;
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
 pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
-use sync::sync_documents;
+use sync::{sync_documents, sync_documents_with_prune};
 
 const TARGET_CHUNKING_VERSION: i64 = 2;
 
@@ -68,6 +71,35 @@ pub(crate) struct EmbeddingContext {
     pub(crate) target_dim: i32,
 }
 
+fn create_embedding_context(
+    embedding_provider: &str,
+    embedding_model: &str,
+) -> Result<Option<EmbeddingContext>> {
+    let has_embedding_config =
+        !embedding_provider.trim().is_empty() && !embedding_model.trim().is_empty();
+
+    if !has_embedding_config {
+        return Ok(None);
+    }
+
+    // Resolve embedding dimension by generating a test embedding.
+    let target_dim = resolve_embedding_dimension(embedding_provider, embedding_model)?;
+
+    if target_dim <= 0 {
+        return Err(anyhow!(
+            "Target embedding dimension must be positive (received {})",
+            target_dim
+        ));
+    }
+
+    // Embedder handles communication with the chosen vector backend.
+    let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
+    Ok(Some(EmbeddingContext {
+        embedder,
+        target_dim,
+    }))
+}
+
 pub fn index_workspace(
     workspace_root: &Path,
     embedding_provider: &str,
@@ -81,29 +113,7 @@ pub fn index_workspace(
         ));
     }
 
-    let has_embedding_config =
-        !embedding_provider.trim().is_empty() && !embedding_model.trim().is_empty();
-
-    let embedding_context = if has_embedding_config {
-        // Resolve embedding dimension by generating a test embedding.
-        let target_dim = resolve_embedding_dimension(embedding_provider, embedding_model)?;
-
-        if target_dim <= 0 {
-            return Err(anyhow!(
-                "Target embedding dimension must be positive (received {})",
-                target_dim
-            ));
-        }
-
-        // Embedder handles communication with the chosen vector backend.
-        let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
-        Some(EmbeddingContext {
-            embedder,
-            target_dim,
-        })
-    } else {
-        None
-    };
+    let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
 
     let db_path = migrations::run_workspace_migrations(workspace_root)?;
     let mut conn = Connection::open(&db_path)
@@ -133,6 +143,92 @@ pub fn index_workspace(
         markdown_files,
         embedding_context.as_ref(),
         &mut summary,
+    )?;
+
+    Ok(summary)
+}
+
+fn is_markdown_path(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|ext| ext.to_str()),
+        Some(ext) if ext.eq_ignore_ascii_case("md")
+    )
+}
+
+fn normalize_rel_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn build_single_markdown_file(
+    workspace_root: &Path,
+    note_path: &Path,
+) -> Result<files::MarkdownFile> {
+    if !is_markdown_path(note_path) {
+        return Err(anyhow!(
+            "Note path must point to a markdown file (.md): {}",
+            note_path.display()
+        ));
+    }
+
+    let workspace_canonical = fs::canonicalize(workspace_root).with_context(|| {
+        format!(
+            "Failed to canonicalize workspace path {}",
+            workspace_root.display()
+        )
+    })?;
+    let note_canonical = fs::canonicalize(note_path)
+        .with_context(|| format!("Failed to canonicalize note path {}", note_path.display()))?;
+
+    if !note_canonical.is_file() {
+        return Err(anyhow!("Note path is not a file: {}", note_path.display()));
+    }
+
+    let rel_path = note_canonical
+        .strip_prefix(&workspace_canonical)
+        .map_err(|_| anyhow!("Note path is outside workspace: {}", note_path.display()))?;
+    let rel_path = normalize_rel_path(rel_path);
+
+    Ok(files::MarkdownFile {
+        abs_path: note_canonical,
+        rel_path,
+    })
+}
+
+pub fn index_note(
+    workspace_root: &Path,
+    note_path: &Path,
+    embedding_provider: &str,
+    embedding_model: &str,
+) -> Result<IndexSummary> {
+    if !workspace_root.exists() {
+        return Err(anyhow!(
+            "Workspace path does not exist: {}",
+            workspace_root.display()
+        ));
+    }
+
+    let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
+    let file = build_single_markdown_file(workspace_root, note_path)?;
+
+    let db_path = migrations::run_workspace_migrations(workspace_root)?;
+    let mut conn = Connection::open(&db_path)
+        .with_context(|| format!("Failed to open workspace database at {}", db_path.display()))?;
+
+    conn.pragma_update(None, "foreign_keys", &1)
+        .context("Failed to enable foreign keys for workspace database")?;
+
+    let mut summary = IndexSummary {
+        files_discovered: 1,
+        ..Default::default()
+    };
+
+    sync_documents_with_prune(
+        &mut conn,
+        workspace_root,
+        vec![file],
+        embedding_context.as_ref(),
+        &mut summary,
+        false,
     )?;
 
     Ok(summary)
@@ -202,6 +298,24 @@ pub async fn index_workspace_command(
     let model = embedding_model;
 
     run_blocking(move || index_workspace(&workspace_path, &provider, &model, force_reindex)).await
+}
+
+#[tauri::command]
+pub async fn index_note_command(
+    workspace_path: String,
+    note_path: String,
+    embedding_provider: Option<String>,
+    embedding_model: String,
+) -> Result<IndexSummary, String> {
+    let workspace_path = PathBuf::from(workspace_path);
+    let note_path = PathBuf::from(note_path);
+    let provider = match embedding_provider {
+        Some(value) if !value.trim().is_empty() => value,
+        _ => "ollama".to_string(),
+    };
+    let model = embedding_model;
+
+    run_blocking(move || index_note(&workspace_path, &note_path, &provider, &model)).await
 }
 
 #[tauri::command]

@@ -52,6 +52,7 @@ pub fn run() {
             preview::get_note_preview,
             migrations::apply_workspace_migrations,
             indexing::index_workspace_command,
+            indexing::index_note_command,
             indexing::get_indexing_meta_command,
             indexing::search_query_entries_command,
             indexing::get_backlinks_command,

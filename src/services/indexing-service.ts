@@ -36,4 +36,21 @@ export class IndexingService {
 		)
 		return result
 	}
+
+	async indexNote(
+		notePath: string,
+		embeddingProvider: string,
+		embeddingModel: string,
+	): Promise<WorkspaceIndexSummary> {
+		const result = await this.invoke<WorkspaceIndexSummary>(
+			"index_note_command",
+			{
+				workspacePath: this.workspacePath,
+				notePath,
+				embeddingProvider,
+				embeddingModel,
+			},
+		)
+		return result
+	}
 }

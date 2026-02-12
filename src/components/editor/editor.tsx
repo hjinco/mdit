@@ -79,10 +79,19 @@ function EditorContent({
 }) {
 	const isSaved = useRef(true)
 	const isInitializing = useRef(true)
-	const { setTabSaved, saveNoteContent } = useStore(
+	const {
+		setTabSaved,
+		saveNoteContent,
+		workspacePath,
+		getIndexingConfig,
+		indexNote,
+	} = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
 			saveNoteContent: s.saveNoteContent,
+			workspacePath: s.workspacePath,
+			getIndexingConfig: s.getIndexingConfig,
+			indexNote: s.indexNote,
 		})),
 	)
 	const resetFocusMode = useStore((s) => s.resetFocusMode)
@@ -94,20 +103,78 @@ function EditorContent({
 
 	const { handleRenameAfterSave } = useAutoRenameOnSave(path)
 
-	const handleSave = useCallback(async () => {
-		if (isSaved.current) return
-		await saveNoteContent(path, editor.api.markdown.serialize())
-			.then(() => {
-				isSaved.current = true
-				setTabSaved(true)
-				handleRenameAfterSave()
-			})
-			.catch(() => {
-				isSaved.current = false
-				setTabSaved(false)
-				toast.error("Failed to save note")
-			})
-	}, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent])
+	const runBlurIndexing = useCallback(
+		async (notePath: string) => {
+			if (!workspacePath) {
+				return
+			}
+
+			const state = useStore.getState()
+			let config: Awaited<ReturnType<typeof getIndexingConfig>> =
+				state.configs[workspacePath] ?? null
+
+			if (!config) {
+				try {
+					config = await getIndexingConfig(workspacePath)
+				} catch (error) {
+					console.error(
+						"Failed to load indexing config for blur indexing:",
+						error,
+					)
+					return
+				}
+			}
+
+			const provider = config?.embeddingProvider ?? ""
+			const model = config?.embeddingModel ?? ""
+			if (model && !provider) {
+				return
+			}
+
+			if (model && provider === "ollama") {
+				const isModelAvailable = state.ollamaModels.includes(model)
+				if (!isModelAvailable) {
+					return
+				}
+			}
+
+			await indexNote(workspacePath, notePath, provider, model)
+		},
+		[workspacePath, getIndexingConfig, indexNote],
+	)
+
+	const handleSave = useCallback(
+		async (options?: { triggerNoteIndexing?: boolean }) => {
+			if (isSaved.current) return
+			await saveNoteContent(path, editor.api.markdown.serialize())
+				.then(async () => {
+					isSaved.current = true
+					setTabSaved(true)
+					const finalPath = await handleRenameAfterSave()
+
+					if (options?.triggerNoteIndexing) {
+						try {
+							await runBlurIndexing(finalPath)
+						} catch (error) {
+							console.error("Failed to index note on blur:", error)
+						}
+					}
+				})
+				.catch(() => {
+					isSaved.current = false
+					setTabSaved(false)
+					toast.error("Failed to save note")
+				})
+		},
+		[
+			editor,
+			path,
+			setTabSaved,
+			handleRenameAfterSave,
+			saveNoteContent,
+			runBlurIndexing,
+		],
+	)
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow()
@@ -208,7 +275,7 @@ function EditorContent({
 					spellCheck={false}
 					disableDefaultStyles
 					onBlur={() => {
-						handleSave()
+						void handleSave({ triggerNoteIndexing: true })
 					}}
 				/>
 			</PlateContainer>

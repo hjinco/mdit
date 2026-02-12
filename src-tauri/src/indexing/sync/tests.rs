@@ -7,7 +7,7 @@ use crate::indexing::files::collect_markdown_files;
 use crate::indexing::IndexSummary;
 use crate::migrations;
 
-use super::sync_documents;
+use super::{sync_documents, sync_documents_with_prune};
 
 #[derive(Debug)]
 struct LinkRow {
@@ -234,4 +234,28 @@ fn refreshes_links_when_new_doc_is_added() {
     let doc_ids = load_doc_ids(&conn);
     let new_id = *doc_ids.get("new-doc.md").expect("missing new-doc id");
     assert_eq!(links[0].target_doc_id, Some(new_id));
+}
+
+#[test]
+fn keeps_existing_docs_when_prune_is_disabled() {
+    let root = temp_workspace();
+    write_file(&root, "a.md", "[[b]]\n");
+    write_file(&root, "b.md", "# B\n");
+
+    let mut conn = setup_db(&root);
+    let files = collect_files(&root);
+    let mut summary = IndexSummary::default();
+    sync_documents(&mut conn, &root, files, None, &mut summary).expect("initial sync failed");
+
+    std::fs::remove_file(root.join("b.md")).expect("failed to remove b.md");
+
+    let files = collect_files(&root);
+    let mut summary = IndexSummary::default();
+    sync_documents_with_prune(&mut conn, &root, files, None, &mut summary, false)
+        .expect("sync without prune failed");
+
+    let doc_ids = load_doc_ids(&conn);
+    assert!(doc_ids.contains_key("a.md"));
+    assert!(doc_ids.contains_key("b.md"));
+    assert_eq!(summary.docs_deleted, 0);
 }
