@@ -30,7 +30,7 @@ mod sync;
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
 pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
-use sync::{clear_segment_vectors_for_vault, ensure_segment_vec_table, sync_documents_with_prune};
+use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
 
 const TARGET_CHUNKING_VERSION: i64 = 1;
 
@@ -236,10 +236,6 @@ fn run_indexing_for_files(
     let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
     let mut conn = open_indexing_connection(db_path)?;
     let vault_id = ensure_vault(&conn, workspace_root)?;
-
-    if let Some(embedding) = embedding_context.as_ref() {
-        ensure_segment_vec_table(&conn, embedding.target_dim)?;
-    }
 
     if !force_reindex {
         if let Some(embedding) = embedding_context.as_ref() {

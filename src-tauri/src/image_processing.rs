@@ -24,7 +24,7 @@ pub async fn edit_image_command(
 #[cfg(target_os = "macos")]
 mod macos_heic {
     use core_foundation::{
-        base::{CFRelease, TCFType, CFType},
+        base::{CFRelease, CFType, TCFType},
         data::{CFData, CFDataRef},
         dictionary::{CFDictionary, CFDictionaryRef},
         number::CFNumber,

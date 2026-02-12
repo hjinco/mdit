@@ -33,6 +33,12 @@ CREATE TABLE `segment` (
 	FOREIGN KEY (`doc_id`) REFERENCES `doc`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `segment_vec` (
+	`rowid` integer PRIMARY KEY NOT NULL,
+	`embedding` blob NOT NULL,
+	FOREIGN KEY (`rowid`) REFERENCES `segment`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE UNIQUE INDEX `uniq_seg_doc_ord` ON `segment` (`doc_id`,`ordinal`);
 --> statement-breakpoint
 CREATE TABLE `link` (

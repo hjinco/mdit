@@ -198,7 +198,13 @@ fn load_vector_scores(
 
     let mut stmt = conn
         .prepare(
-            "SELECT d.id, d.rel_path, MAX(1.0 - vec_distance_cosine(sv.embedding, vec_f32(?4))) AS vector_score \
+            "SELECT d.id, d.rel_path, \
+                    MAX( \
+                        CASE \
+                            WHEN length(sv.embedding) = (?3 * 4) \
+                            THEN 1.0 - vec_distance_cosine(sv.embedding, vec_f32(?4)) \
+                        END \
+                    ) AS vector_score \
              FROM doc d \
              JOIN segment s ON s.doc_id = d.id \
              JOIN segment_vec sv ON sv.rowid = s.id \
@@ -412,4 +418,77 @@ fn system_time_to_millis(time: SystemTime) -> Option<i64> {
     time.duration_since(UNIX_EPOCH)
         .ok()
         .and_then(|duration| i64::try_from(duration.as_millis()).ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use rusqlite::{params, Connection};
+
+    use super::load_vector_scores;
+
+    fn embedding_bytes(dim: usize) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(dim * 4);
+        for index in 0..dim {
+            bytes.extend_from_slice(&((index as f32) + 1.0).to_le_bytes());
+        }
+        bytes
+    }
+
+    fn open_connection() -> Connection {
+        crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
+
+        let conn = Connection::open_in_memory().expect("failed to open in-memory db");
+        conn.pragma_update(None, "foreign_keys", 1)
+            .expect("failed to enable foreign keys");
+        conn.execute_batch(
+            "CREATE TABLE doc ( \
+                 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \
+                 vault_id INTEGER NOT NULL, \
+                 rel_path TEXT NOT NULL, \
+                 last_embedding_model TEXT, \
+                 last_embedding_dim INTEGER \
+             ); \
+             CREATE TABLE segment ( \
+                 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \
+                 doc_id INTEGER NOT NULL, \
+                 FOREIGN KEY (doc_id) REFERENCES doc(id) ON DELETE CASCADE \
+             ); \
+             CREATE TABLE segment_vec ( \
+                 rowid INTEGER PRIMARY KEY, \
+                 embedding BLOB NOT NULL, \
+                 FOREIGN KEY (rowid) REFERENCES segment(id) ON DELETE CASCADE \
+             );",
+        )
+        .expect("failed to create search tables");
+        conn
+    }
+
+    #[test]
+    fn given_mismatched_vector_length_when_loading_scores_then_rows_are_ignored_without_error() {
+        let conn = open_connection();
+        conn.execute(
+            "INSERT INTO doc (id, vault_id, rel_path, last_embedding_model, last_embedding_dim) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![1, 10, "note.md", "model-a", 3],
+        )
+        .expect("failed to insert doc");
+        conn.execute(
+            "INSERT INTO segment (id, doc_id) VALUES (?1, ?2)",
+            params![100, 1],
+        )
+        .expect("failed to insert segment");
+
+        let mismatched = embedding_bytes(2);
+        conn.execute(
+            "INSERT INTO segment_vec (rowid, embedding) VALUES (?1, vec_f32(?2))",
+            params![100, mismatched],
+        )
+        .expect("failed to insert mismatched embedding");
+
+        let query_embedding = embedding_bytes(3);
+        let results = load_vector_scores(&conn, 10, "model-a", 3, &query_embedding)
+            .expect("vector score loading should not fail");
+
+        assert!(results.is_empty());
+    }
 }

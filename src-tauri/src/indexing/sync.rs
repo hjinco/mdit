@@ -63,15 +63,6 @@ struct SegmentRecord {
     has_embedding: bool,
 }
 
-pub(super) fn ensure_segment_vec_table(conn: &Connection, target_dim: i32) -> Result<()> {
-    let statement = format!(
-        "CREATE VIRTUAL TABLE IF NOT EXISTS {SEGMENT_VEC_TABLE} USING vec0(embedding float[{target_dim}])"
-    );
-    conn.execute_batch(&statement)
-        .with_context(|| format!("Failed to ensure {} vec0 table", SEGMENT_VEC_TABLE))?;
-    Ok(())
-}
-
 pub(super) fn clear_segment_vectors_for_vault(conn: &Connection, vault_id: i64) -> Result<()> {
     if !segment_vec_table_exists(conn)? {
         return Ok(());
@@ -538,7 +529,28 @@ fn sync_segments_for_doc(
 
 #[cfg(test)]
 mod tests {
-    use super::{embedding_target_changed, DocRecord};
+    use rusqlite::{params, Connection};
+
+    use super::{embedding_target_changed, upsert_embedding, DocRecord, IndexSummary};
+
+    fn open_connection() -> Connection {
+        crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
+
+        let conn = Connection::open_in_memory().expect("failed to open in-memory db");
+        conn.pragma_update(None, "foreign_keys", 1)
+            .expect("failed to enable foreign keys");
+        conn.execute_batch("CREATE TABLE segment (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)")
+            .expect("failed to create segment table");
+        conn
+    }
+
+    fn embedding_bytes(dim: usize) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(dim * 4);
+        for index in 0..dim {
+            bytes.extend_from_slice(&((index as f32) + 1.0).to_le_bytes());
+        }
+        bytes
+    }
 
     fn make_doc(model: Option<&str>, dim: Option<i32>) -> DocRecord {
         DocRecord {
@@ -567,6 +579,52 @@ mod tests {
     fn embedding_target_changed_returns_true_when_metadata_missing() {
         let doc = make_doc(None, None);
         assert!(embedding_target_changed(&doc, "nomic-embed-text", 768));
+    }
+
+    #[test]
+    fn given_plain_segment_vec_when_upserting_different_dimensions_then_writes_succeed() {
+        let conn = open_connection();
+        conn.execute_batch(
+            "CREATE TABLE segment_vec ( \
+                 rowid INTEGER PRIMARY KEY, \
+                 embedding BLOB NOT NULL, \
+                 FOREIGN KEY (rowid) REFERENCES segment(id) ON DELETE CASCADE \
+             )",
+        )
+        .expect("failed to create segment_vec table");
+
+        conn.execute("INSERT INTO segment (id) VALUES (?1)", params![1])
+            .expect("failed to insert segment 1");
+        conn.execute("INSERT INTO segment (id) VALUES (?1)", params![2])
+            .expect("failed to insert segment 2");
+
+        let mut summary = IndexSummary::default();
+        let first_embedding = embedding_bytes(768);
+        let second_embedding = embedding_bytes(1024);
+
+        upsert_embedding(&conn, 1, &first_embedding, &mut summary)
+            .expect("failed to write first embedding");
+        upsert_embedding(&conn, 2, &second_embedding, &mut summary)
+            .expect("failed to write second embedding");
+
+        let first_len: i64 = conn
+            .query_row(
+                "SELECT length(embedding) FROM segment_vec WHERE rowid = ?1",
+                params![1],
+                |row| row.get(0),
+            )
+            .expect("failed to read first embedding length");
+        let second_len: i64 = conn
+            .query_row(
+                "SELECT length(embedding) FROM segment_vec WHERE rowid = ?1",
+                params![2],
+                |row| row.get(0),
+            )
+            .expect("failed to read second embedding length");
+
+        assert_eq!(first_len, (768 * 4) as i64);
+        assert_eq!(second_len, (1024 * 4) as i64);
+        assert_eq!(summary.embeddings_written, 2);
     }
 }
 
