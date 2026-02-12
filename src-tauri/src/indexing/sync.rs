@@ -64,14 +64,27 @@ pub(crate) fn sync_documents(
     embedding: Option<&EmbeddingContext>,
     summary: &mut IndexSummary,
 ) -> Result<()> {
+    sync_documents_with_prune(conn, workspace_root, files, embedding, summary, true)
+}
+
+pub(crate) fn sync_documents_with_prune(
+    conn: &mut Connection,
+    workspace_root: &Path,
+    files: Vec<MarkdownFile>,
+    embedding: Option<&EmbeddingContext>,
+    summary: &mut IndexSummary,
+    prune_deleted_docs: bool,
+) -> Result<()> {
     let mut existing_docs = load_docs(conn)?;
     let discovered: HashSet<String> = files.iter().map(|file| file.rel_path.clone()).collect();
 
-    // Remove rows for files that no longer exist before processing additions/updates.
-    remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
+    if prune_deleted_docs {
+        // Remove rows for files that no longer exist before processing additions/updates.
+        remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
+    }
 
     let inserted_docs = ensure_docs_for_files(conn, &files, &mut existing_docs, summary)?;
-    let refresh_all_links = inserted_docs > 0 || summary.docs_deleted > 0;
+    let refresh_all_links = inserted_docs > 0 || (prune_deleted_docs && summary.docs_deleted > 0);
     let docs_by_path = existing_docs
         .iter()
         .map(|(rel_path, doc)| (rel_path.clone(), doc.id))
