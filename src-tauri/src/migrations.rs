@@ -36,7 +36,8 @@ pub fn apply_appdata_migrations(
 
 static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
-const DB_FILE_NAME: &str = "appdata.db";
+const RELEASE_DB_FILE_NAME: &str = "appdata.db";
+const DEV_DB_FILE_NAME: &str = "appdata.dev.db";
 const MIGRATIONS_TABLE: &str = "__migrations";
 const WORKSPACE_STATE_DIR_NAME: &str = ".mdit";
 const LEGACY_WORKSPACE_DB_FILE_NAME: &str = "db.sqlite";
@@ -46,13 +47,21 @@ struct MigrationFile {
     sql: String,
 }
 
+fn appdata_db_file_name() -> &'static str {
+    if cfg!(debug_assertions) {
+        DEV_DB_FILE_NAME
+    } else {
+        RELEASE_DB_FILE_NAME
+    }
+}
+
 pub fn resolve_appdata_db_path<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
         .with_context(|| "Failed to resolve app data directory for appdata database")?;
 
-    Ok(app_data_dir.join(DB_FILE_NAME))
+    Ok(app_data_dir.join(appdata_db_file_name()))
 }
 
 pub fn run_app_migrations<R: Runtime>(app_handle: &AppHandle<R>) -> Result<PathBuf> {
@@ -232,7 +241,10 @@ fn cleanup_legacy_workspace_index_db(workspace_root: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::cleanup_legacy_workspace_index_db;
+    use super::{
+        appdata_db_file_name, cleanup_legacy_workspace_index_db, DEV_DB_FILE_NAME,
+        RELEASE_DB_FILE_NAME,
+    };
     use std::{
         fs,
         path::{Path, PathBuf},
@@ -302,6 +314,18 @@ mod tests {
 
         assert!(!legacy_db_path.exists());
         assert!(workspace_settings_path.exists());
+    }
+
+    #[test]
+    fn given_debug_build_when_resolving_appdata_db_file_name_then_dev_file_name_is_used() {
+        assert_eq!(appdata_db_file_name(), DEV_DB_FILE_NAME);
+    }
+
+    #[test]
+    fn given_release_build_when_resolving_appdata_db_file_name_then_release_file_name_is_used() {
+        if !cfg!(debug_assertions) {
+            assert_eq!(appdata_db_file_name(), RELEASE_DB_FILE_NAME);
+        }
     }
 
     fn unique_id() -> u128 {
