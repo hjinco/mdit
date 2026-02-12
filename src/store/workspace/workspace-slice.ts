@@ -796,5 +796,5 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 		return typeof result === "string" ? result : null
 	},
 	applyWorkspaceMigrations: (workspacePath: string) =>
-		invoke<void>('apply_appdata_migrations', { workspacePath }),
+		invoke<void>("apply_appdata_migrations", { workspacePath }),
 })
