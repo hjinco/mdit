@@ -9,7 +9,6 @@
 		"build": "tsc && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
-		"db:generate": "drizzle-kit generate",
 		"test": "vitest run",
 		"test:rust": "cd src-tauri && cargo test",
 		"lint": "biome check",
