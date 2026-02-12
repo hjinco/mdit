@@ -16,6 +16,8 @@ import { KEYS } from "platejs"
 import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
 import { KATEX_ENVIRONMENTS } from "../utils/katex"
 
+const WIKILINK_PLACEHOLDER = "Page Title"
+
 const autoformatMarks: AutoformatRule[] = [
 	{
 		match: "***",
@@ -246,6 +248,25 @@ const autoformatMathCustom: AutoformatRule[] = [
 	),
 ]
 
+const autoformatWikiCustom: AutoformatRule[] = [
+	{
+		match: "[[",
+		mode: "text",
+		format: (editor) => {
+			editor.tf.insertNodes(
+				{
+					type: KEYS.link,
+					url: "",
+					wiki: true,
+					wikiTarget: WIKILINK_PLACEHOLDER,
+					children: [{ text: WIKILINK_PLACEHOLDER }],
+				},
+				{ select: true },
+			)
+		},
+	},
+]
+
 export const AutoformatKit = [
 	AutoformatPlugin.configure({
 		options: {
@@ -260,6 +281,7 @@ export const AutoformatKit = [
 				...autoformatArrow,
 				...autoformatMath,
 				...autoformatMathCustom,
+				...autoformatWikiCustom,
 				...autoformatLists,
 			].map(
 				(rule): AutoformatRule => ({
