@@ -504,7 +504,7 @@ pub fn get_backlinks(
              SELECT source_doc_id \
              FROM link \
              WHERE target_doc_id = ?2 \
-             UNION \
+             UNION ALL \
              SELECT source_doc_id \
              FROM link \
              WHERE target_doc_id IS NULL AND target_path = ?3 \
