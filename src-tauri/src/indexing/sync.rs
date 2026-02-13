@@ -5,26 +5,44 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Row};
 
 use super::{
     chunking::{chunk_document, hash_content},
     embedding::{EmbeddingClient, EmbeddingVector},
     files::MarkdownFile,
-    links::{LinkResolver, ResolvedLink},
+    links::{LinkResolution, LinkResolver},
     EmbeddingContext, IndexSummary, TARGET_CHUNKING_VERSION,
 };
+
+const SEGMENT_VEC_TABLE: &str = "segment_vec";
 
 #[derive(Debug, Clone)]
 struct DocRecord {
     id: i64,
     chunking_version: i64,
     last_hash: Option<String>,
+    last_source_size: Option<i64>,
+    last_source_mtime_ns: Option<i64>,
     last_embedding_model: Option<String>,
     last_embedding_dim: Option<i32>,
 }
 
 impl DocRecord {
+    fn from_db_row(row: &Row<'_>) -> rusqlite::Result<(String, Self)> {
+        let rel_path = row.get::<_, String>(1)?;
+        let record = Self {
+            id: row.get::<_, i64>(0)?,
+            chunking_version: row.get::<_, i64>(2)?,
+            last_hash: row.get::<_, Option<String>>(3)?,
+            last_source_size: row.get::<_, Option<i64>>(4)?,
+            last_source_mtime_ns: row.get::<_, Option<i64>>(5)?,
+            last_embedding_model: row.get::<_, Option<String>>(6)?,
+            last_embedding_dim: row.get::<_, Option<i32>>(7)?,
+        };
+        Ok((rel_path, record))
+    }
+
     fn is_up_to_date(&self, doc_hash: &str, model: &str, target_dim: i32) -> bool {
         self.last_hash
             .as_deref()
@@ -47,44 +65,141 @@ impl DocRecord {
             .map(|hash| hash == doc_hash)
             .unwrap_or(false)
     }
+
+    fn source_stat_matches(&self, file: &MarkdownFile) -> bool {
+        matches!(
+            (
+                self.last_source_size,
+                self.last_source_mtime_ns,
+                file.last_source_size,
+                file.last_source_mtime_ns
+            ),
+            (Some(stored_size), Some(stored_mtime), Some(file_size), Some(file_mtime))
+                if stored_size == file_size && stored_mtime == file_mtime
+        )
+    }
+
+    fn update_source_stat(&mut self, file: &MarkdownFile) {
+        self.last_source_size = file.last_source_size;
+        self.last_source_mtime_ns = file.last_source_mtime_ns;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileSyncAction {
+    Skip,
+    Process { source_stat_changed: bool },
+}
+
+fn decide_file_sync_action(
+    doc_record: &DocRecord,
+    file: &MarkdownFile,
+    force_link_refresh_for_doc: bool,
+    embedding: Option<&EmbeddingContext>,
+) -> FileSyncAction {
+    let source_stat_changed = !doc_record.source_stat_matches(file);
+    if !force_link_refresh_for_doc
+        && !source_stat_changed
+        && doc_record.chunking_version == TARGET_CHUNKING_VERSION
+        && doc_record.last_hash.is_some()
+        && embedding_target_matches(doc_record, embedding)
+    {
+        return FileSyncAction::Skip;
+    }
+
+    FileSyncAction::Process {
+        source_stat_changed,
+    }
+}
+
+enum DocUpdate<'a> {
+    SourceStat {
+        file: &'a MarkdownFile,
+    },
+    HashAndContent {
+        doc_hash: &'a str,
+        indexed_content: &'a str,
+        file: &'a MarkdownFile,
+    },
+    FullMetadata {
+        doc_hash: &'a str,
+        indexed_content: &'a str,
+        file: &'a MarkdownFile,
+        model: &'a str,
+        target_dim: i32,
+    },
+}
+
+fn embedding_target_changed(doc_record: &DocRecord, model: &str, target_dim: i32) -> bool {
+    doc_record.last_embedding_model.as_deref() != Some(model)
+        || doc_record.last_embedding_dim != Some(target_dim)
+}
+
+fn embedding_target_matches(doc_record: &DocRecord, embedding: Option<&EmbeddingContext>) -> bool {
+    let Some(embedding) = embedding else {
+        return true;
+    };
+
+    doc_record.last_embedding_model.as_deref() == Some(embedding.embedder.model_name())
+        && doc_record.last_embedding_dim == Some(embedding.target_dim)
 }
 
 #[derive(Debug)]
 struct SegmentRecord {
     id: i64,
     last_hash: String,
-    embedding_model: Option<String>,
-    embedding_dim: Option<i32>,
+    has_embedding: bool,
 }
 
-pub(crate) fn sync_documents(
-    conn: &mut Connection,
-    workspace_root: &Path,
-    files: Vec<MarkdownFile>,
-    embedding: Option<&EmbeddingContext>,
-    summary: &mut IndexSummary,
-) -> Result<()> {
-    sync_documents_with_prune(conn, workspace_root, files, embedding, summary, true)
+pub(super) fn clear_segment_vectors_for_vault(conn: &Connection, vault_id: i64) -> Result<()> {
+    if !segment_vec_table_exists(conn)? {
+        return Ok(());
+    }
+
+    conn.execute(
+        "DELETE FROM segment_vec \
+         WHERE rowid IN ( \
+             SELECT s.id \
+             FROM segment s \
+             JOIN doc d ON d.id = s.doc_id \
+             WHERE d.vault_id = ?1 \
+         )",
+        params![vault_id],
+    )
+    .with_context(|| format!("Failed to clear vectors for vault {}", vault_id))?;
+
+    Ok(())
 }
 
 pub(crate) fn sync_documents_with_prune(
     conn: &mut Connection,
     workspace_root: &Path,
+    vault_id: i64,
     files: Vec<MarkdownFile>,
     embedding: Option<&EmbeddingContext>,
     summary: &mut IndexSummary,
     prune_deleted_docs: bool,
 ) -> Result<()> {
-    let mut existing_docs = load_docs(conn)?;
+    let mut existing_docs = load_docs(conn, vault_id)?;
     let discovered: HashSet<String> = files.iter().map(|file| file.rel_path.clone()).collect();
 
-    if prune_deleted_docs {
+    let deleted_rel_paths = if prune_deleted_docs {
         // Remove rows for files that no longer exist before processing additions/updates.
-        remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
-    }
+        remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?
+    } else {
+        Vec::new()
+    };
 
-    let inserted_docs = ensure_docs_for_files(conn, &files, &mut existing_docs, summary)?;
-    let refresh_all_links = inserted_docs > 0 || (prune_deleted_docs && summary.docs_deleted > 0);
+    let inserted_docs = ensure_docs_for_files(conn, vault_id, &files, &mut existing_docs, summary)?;
+    bind_unresolved_links_for_inserted_docs(conn, &inserted_docs)?;
+    let mut affected_query_keys = collect_query_keys_for_paths(&deleted_rel_paths);
+    for (rel_path, _doc_id) in &inserted_docs {
+        for key in rel_path_query_keys(rel_path) {
+            affected_query_keys.insert(key);
+        }
+    }
+    let forced_link_refresh_doc_ids =
+        load_forced_link_refresh_doc_ids(conn, vault_id, &affected_query_keys)?;
     let docs_by_path = existing_docs
         .iter()
         .map(|(rel_path, doc)| (rel_path.clone(), doc.id))
@@ -92,12 +207,16 @@ pub(crate) fn sync_documents_with_prune(
     let link_resolver = LinkResolver::new(workspace_root, docs_by_path);
 
     for file in files {
+        let force_link_refresh_for_doc = existing_docs
+            .get(&file.rel_path)
+            .map(|doc| forced_link_refresh_doc_ids.contains(&doc.id))
+            .unwrap_or(false);
         match process_file(
             conn,
             &file,
             &mut existing_docs,
             &link_resolver,
-            refresh_all_links,
+            force_link_refresh_for_doc,
             embedding,
             summary,
         ) {
@@ -113,58 +232,26 @@ pub(crate) fn sync_documents_with_prune(
     Ok(())
 }
 
-fn load_docs(conn: &Connection) -> Result<HashMap<String, DocRecord>> {
+fn load_docs(conn: &Connection, vault_id: i64) -> Result<HashMap<String, DocRecord>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim FROM doc",
+            "SELECT id, rel_path, chunking_version, last_hash, last_source_size, last_source_mtime_ns, \
+                    last_embedding_model, last_embedding_dim \
+             FROM doc WHERE vault_id = ?1",
         )
         .context("Failed to prepare statement to load documents")?;
 
     let rows = stmt
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
-                row.get::<_, i32>(5)?,
-            ))
-        })
+        .query_map(params![vault_id], DocRecord::from_db_row)
         .context("Failed to read documents")?;
 
     let mut docs = HashMap::new();
     for row in rows {
-        let (id, rel_path, chunking_version, last_hash, last_model, last_dim) = row?;
-        docs.insert(
-            rel_path,
-            DocRecord {
-                id,
-                chunking_version,
-                last_hash: option_from_string(last_hash),
-                last_embedding_model: option_from_string(last_model),
-                last_embedding_dim: option_from_dim(last_dim),
-            },
-        );
+        let (rel_path, doc) = row?;
+        docs.insert(rel_path, doc);
     }
 
     Ok(docs)
-}
-
-fn option_from_string(value: String) -> Option<String> {
-    if value.trim().is_empty() {
-        None
-    } else {
-        Some(value)
-    }
-}
-
-fn option_from_dim(value: i32) -> Option<i32> {
-    if value <= 0 {
-        None
-    } else {
-        Some(value)
-    }
 }
 
 fn remove_deleted_docs(
@@ -172,51 +259,66 @@ fn remove_deleted_docs(
     docs: &mut HashMap<String, DocRecord>,
     discovered: &HashSet<String>,
     summary: &mut IndexSummary,
-) -> Result<()> {
+) -> Result<Vec<String>> {
     let to_delete: Vec<String> = docs
         .keys()
         .filter(|rel_path| !discovered.contains(*rel_path))
         .cloned()
         .collect();
 
-    for rel_path in to_delete {
-        if let Some(doc) = docs.remove(&rel_path) {
+    for rel_path in &to_delete {
+        if let Some(doc) = docs.remove(rel_path) {
             conn.execute("DELETE FROM doc WHERE id = ?1", params![doc.id])
                 .with_context(|| format!("Failed to delete doc for rel_path {}", rel_path))?;
             summary.docs_deleted += 1;
         }
     }
 
-    Ok(())
+    Ok(to_delete)
 }
 
 fn ensure_docs_for_files(
     conn: &Connection,
+    vault_id: i64,
     files: &[MarkdownFile],
     docs: &mut HashMap<String, DocRecord>,
     summary: &mut IndexSummary,
-) -> Result<usize> {
-    let mut inserted = 0usize;
+) -> Result<Vec<(String, i64)>> {
+    let mut inserted = Vec::new();
     for file in files {
         if docs.contains_key(&file.rel_path) {
             continue;
         }
 
         conn.execute(
-            "INSERT INTO doc (rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![file.rel_path, TARGET_CHUNKING_VERSION, "", "", 0],
+            "INSERT INTO doc (vault_id, rel_path, chunking_version, last_hash, last_source_size, \
+                              last_source_mtime_ns, last_embedding_model, last_embedding_dim, content) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                vault_id,
+                file.rel_path,
+                TARGET_CHUNKING_VERSION,
+                Option::<String>::None,
+                Option::<i64>::None,
+                Option::<i64>::None,
+                Option::<String>::None,
+                Option::<i32>::None,
+                ""
+            ],
         )
         .with_context(|| format!("Failed to insert doc for {}", file.rel_path))?;
 
         let doc_id = conn.last_insert_rowid();
         summary.docs_inserted += 1;
-        inserted += 1;
+        inserted.push((file.rel_path.clone(), doc_id));
         docs.insert(
             file.rel_path.clone(),
             DocRecord {
                 id: doc_id,
                 chunking_version: TARGET_CHUNKING_VERSION,
                 last_hash: None,
+                last_source_size: None,
+                last_source_mtime_ns: None,
                 last_embedding_model: None,
                 last_embedding_dim: None,
             },
@@ -226,35 +328,176 @@ fn ensure_docs_for_files(
     Ok(inserted)
 }
 
+fn bind_unresolved_links_for_inserted_docs(
+    conn: &Connection,
+    inserted_docs: &[(String, i64)],
+) -> Result<()> {
+    for (rel_path, doc_id) in inserted_docs {
+        conn.execute(
+            "UPDATE link SET target_doc_id = ?1 \
+             WHERE target_doc_id IS NULL AND target_path = ?2",
+            params![doc_id, rel_path],
+        )
+        .with_context(|| {
+            format!(
+                "Failed to bind unresolved links for inserted doc {} ({})",
+                doc_id, rel_path
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
+fn collect_query_keys_for_paths(paths: &[String]) -> HashSet<String> {
+    let mut keys = HashSet::new();
+    for rel_path in paths {
+        for key in rel_path_query_keys(rel_path) {
+            keys.insert(key);
+        }
+    }
+    keys
+}
+
+fn rel_path_query_keys(rel_path: &str) -> HashSet<String> {
+    let Some(no_ext_lower) = rel_path_no_ext_lower(rel_path) else {
+        return HashSet::new();
+    };
+
+    let segments = no_ext_lower
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>();
+    if segments.is_empty() {
+        return HashSet::new();
+    }
+
+    let mut keys = HashSet::new();
+    for suffix_len in 1..=segments.len() {
+        let key = segments[segments.len() - suffix_len..].join("/");
+        if !key.is_empty() {
+            keys.insert(key);
+        }
+    }
+
+    keys
+}
+
+fn rel_path_no_ext_lower(rel_path: &str) -> Option<String> {
+    let normalized = rel_path.replace('\\', "/").trim().to_string();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let lower = normalized.to_lowercase();
+    if lower.ends_with(".mdx") {
+        return normalized
+            .get(..normalized.len().saturating_sub(4))
+            .map(|value| value.to_lowercase());
+    }
+    if lower.ends_with(".md") {
+        return normalized
+            .get(..normalized.len().saturating_sub(3))
+            .map(|value| value.to_lowercase());
+    }
+
+    Path::new(&normalized)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .map(|value| value.trim().to_lowercase())
+}
+
+fn load_forced_link_refresh_doc_ids(
+    conn: &Connection,
+    vault_id: i64,
+    query_keys: &HashSet<String>,
+) -> Result<HashSet<i64>> {
+    if query_keys.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let mut result = HashSet::new();
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT wr.source_doc_id \
+             FROM wiki_link_ref wr \
+             JOIN doc d ON d.id = wr.source_doc_id \
+             WHERE d.vault_id = ?1 AND wr.query_key = ?2",
+        )
+        .context("Failed to prepare forced link refresh query")?;
+
+    for query_key in query_keys {
+        let rows = stmt
+            .query_map(params![vault_id, query_key], |row| row.get::<_, i64>(0))
+            .with_context(|| {
+                format!(
+                    "Failed to query docs requiring forced link refresh for query key '{}'",
+                    query_key
+                )
+            })?;
+
+        for row in rows {
+            result.insert(row?);
+        }
+    }
+
+    Ok(result)
+}
+
 fn process_file(
     conn: &mut Connection,
     file: &MarkdownFile,
     docs: &mut HashMap<String, DocRecord>,
     link_resolver: &LinkResolver,
-    refresh_all_links: bool,
+    force_link_refresh_for_doc: bool,
     embedding: Option<&EmbeddingContext>,
     summary: &mut IndexSummary,
 ) -> Result<()> {
-    let contents = fs::read_to_string(&file.abs_path)
-        .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
-    let doc_hash = hash_content(&contents);
-
     let doc_record = docs
         .get_mut(&file.rel_path)
         .ok_or_else(|| anyhow!("Missing document row for {} during indexing", file.rel_path))?;
+    let source_stat_changed =
+        match decide_file_sync_action(doc_record, file, force_link_refresh_for_doc, embedding) {
+            FileSyncAction::Skip => return Ok(()),
+            FileSyncAction::Process {
+                source_stat_changed,
+            } => source_stat_changed,
+        };
+
+    let contents = fs::read_to_string(&file.abs_path)
+        .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
+    let doc_hash = hash_content(&contents);
+    let indexed_content = crate::markdown_text::format_indexing_text(&contents);
 
     let doc_id = doc_record.id;
+    let hash_changed = !doc_record.links_up_to_date(&doc_hash);
 
-    if refresh_all_links || !doc_record.links_up_to_date(&doc_hash) {
-        let links = link_resolver.resolve_links(file, doc_id, &contents);
-        replace_links_for_doc(conn, doc_id, &links, summary)?;
-        // Update last_hash after link processing to prevent re-processing on next sync
-        update_doc_hash_only(conn, doc_record, &doc_hash)?;
+    if force_link_refresh_for_doc || hash_changed {
+        let resolution = link_resolver.resolve_links_with_dependencies(file, &contents);
+        replace_links_for_doc(conn, doc_id, &resolution, summary)?;
     }
 
     let Some(embedding) = embedding else {
+        if hash_changed {
+            apply_doc_update(
+                conn,
+                doc_record,
+                DocUpdate::HashAndContent {
+                    doc_hash: &doc_hash,
+                    indexed_content: &indexed_content,
+                    file,
+                },
+            )?;
+        } else if source_stat_changed {
+            apply_doc_update(conn, doc_record, DocUpdate::SourceStat { file })?;
+        }
         return Ok(());
     };
+    let embedding_target_changed = embedding_target_changed(
+        doc_record,
+        embedding.embedder.model_name(),
+        embedding.target_dim,
+    );
 
     if doc_record.chunking_version != TARGET_CHUNKING_VERSION {
         let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
@@ -264,6 +507,8 @@ fn process_file(
             conn,
             doc_record,
             &doc_hash,
+            &indexed_content,
+            file,
             &embedding.embedder,
             embedding.target_dim,
         )?;
@@ -275,23 +520,28 @@ fn process_file(
         embedding.embedder.model_name(),
         embedding.target_dim,
     ) {
+        if source_stat_changed {
+            apply_doc_update(conn, doc_record, DocUpdate::SourceStat { file })?;
+        }
         return Ok(());
     }
 
     let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
-    // Fast path: only touch segments whose hash/model/dim drifted.
+    // Fast path: only touch segments whose hash/vector drifted, unless model target changed.
     sync_segments_for_doc(
         conn,
         doc_id,
         &chunks,
         &embedding.embedder,
-        embedding.target_dim,
+        embedding_target_changed,
         summary,
     )?;
     update_doc_metadata(
         conn,
         doc_record,
         &doc_hash,
+        &indexed_content,
+        file,
         &embedding.embedder,
         embedding.target_dim,
     )
@@ -301,42 +551,97 @@ fn update_doc_metadata(
     conn: &Connection,
     doc_record: &mut DocRecord,
     doc_hash: &str,
+    indexed_content: &str,
+    file: &MarkdownFile,
     embedder: &EmbeddingClient,
     target_dim: i32,
 ) -> Result<()> {
-    let model = embedder.model_name();
-    conn.execute(
-        "UPDATE doc SET chunking_version = ?1, last_hash = ?2, last_embedding_model = ?3, last_embedding_dim = ?4 WHERE id = ?5",
-        params![
-            TARGET_CHUNKING_VERSION,
+    apply_doc_update(
+        conn,
+        doc_record,
+        DocUpdate::FullMetadata {
             doc_hash,
-            model,
+            indexed_content,
+            file,
+            model: embedder.model_name(),
             target_dim,
-            doc_record.id
-        ],
+        },
     )
-    .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
-
-    doc_record.chunking_version = TARGET_CHUNKING_VERSION;
-    doc_record.last_hash = Some(doc_hash.to_string());
-    doc_record.last_embedding_model = Some(model.to_string());
-    doc_record.last_embedding_dim = Some(target_dim);
-
-    Ok(())
 }
 
-fn update_doc_hash_only(
+fn apply_doc_update(
     conn: &Connection,
     doc_record: &mut DocRecord,
-    doc_hash: &str,
+    update: DocUpdate<'_>,
 ) -> Result<()> {
-    conn.execute(
-        "UPDATE doc SET last_hash = ?1 WHERE id = ?2",
-        params![doc_hash, doc_record.id],
-    )
-    .with_context(|| format!("Failed to update doc hash {}", doc_record.id))?;
+    match update {
+        DocUpdate::SourceStat { file } => {
+            conn.execute(
+                "UPDATE doc SET last_source_size = ?1, last_source_mtime_ns = ?2 WHERE id = ?3",
+                params![
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc source stat {}", doc_record.id))?;
 
-    doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+        }
+        DocUpdate::HashAndContent {
+            doc_hash,
+            indexed_content,
+            file,
+        } => {
+            conn.execute(
+                "UPDATE doc \
+                 SET last_hash = ?1, last_source_size = ?2, last_source_mtime_ns = ?3, content = ?4 \
+                 WHERE id = ?5",
+                params![
+                    doc_hash,
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    indexed_content,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc hash {}", doc_record.id))?;
+
+            doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+        }
+        DocUpdate::FullMetadata {
+            doc_hash,
+            indexed_content,
+            file,
+            model,
+            target_dim,
+        } => {
+            conn.execute(
+                "UPDATE doc \
+                 SET chunking_version = ?1, last_hash = ?2, last_source_size = ?3, last_source_mtime_ns = ?4, \
+                     last_embedding_model = ?5, last_embedding_dim = ?6, content = ?7 \
+                 WHERE id = ?8",
+                params![
+                    TARGET_CHUNKING_VERSION,
+                    doc_hash,
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    model,
+                    target_dim,
+                    indexed_content,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
+
+            doc_record.chunking_version = TARGET_CHUNKING_VERSION;
+            doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+            doc_record.last_embedding_model = Some(model.to_string());
+            doc_record.last_embedding_dim = Some(target_dim);
+        }
+    }
 
     Ok(())
 }
@@ -344,7 +649,7 @@ fn update_doc_hash_only(
 fn replace_links_for_doc(
     conn: &mut Connection,
     doc_id: i64,
-    links: &[ResolvedLink],
+    resolution: &LinkResolution,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let tx = conn
@@ -355,25 +660,45 @@ fn replace_links_for_doc(
         .execute("DELETE FROM link WHERE source_doc_id = ?1", params![doc_id])
         .with_context(|| format!("Failed to clear links for doc {}", doc_id))?;
     summary.links_deleted += deleted as usize;
+    tx.execute(
+        "DELETE FROM wiki_link_ref WHERE source_doc_id = ?1",
+        params![doc_id],
+    )
+    .with_context(|| format!("Failed to clear wiki link refs for doc {}", doc_id))?;
 
     {
-        let mut stmt = tx.prepare(
-            "INSERT INTO link (source_doc_id, target_doc_id, target_path, target_anchor, alias, is_embed, is_wiki, is_external) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        ).with_context(|| format!("Failed to prepare link insert for doc {}", doc_id))?;
-        for link in links {
+        let mut stmt = tx
+            .prepare(
+                "INSERT INTO link (source_doc_id, target_doc_id, target_path) \
+             VALUES (?1, ?2, ?3)",
+            )
+            .with_context(|| format!("Failed to prepare link insert for doc {}", doc_id))?;
+        for link in &resolution.links {
             stmt.execute(params![
                 doc_id,
                 link.target_doc_id,
                 link.target_path.as_str(),
-                link.target_anchor.as_deref(),
-                link.alias.as_deref(),
-                bool_to_int(link.is_embed),
-                bool_to_int(link.is_wiki),
-                bool_to_int(link.is_external),
             ])
             .with_context(|| format!("Failed to insert link for doc {}", doc_id))?;
             summary.links_written += 1;
+        }
+    }
+    {
+        let mut stmt = tx
+            .prepare(
+                "INSERT INTO wiki_link_ref (source_doc_id, query_key) \
+             VALUES (?1, ?2)",
+            )
+            .with_context(|| {
+                format!("Failed to prepare wiki link ref insert for doc {}", doc_id)
+            })?;
+        for query_key in &resolution.wiki_query_keys {
+            stmt.execute(params![doc_id, query_key]).with_context(|| {
+                format!(
+                    "Failed to insert wiki link ref '{}' for doc {}",
+                    query_key, doc_id
+                )
+            })?;
         }
     }
 
@@ -382,17 +707,6 @@ fn replace_links_for_doc(
 
     Ok(())
 }
-
-fn bool_to_int(value: bool) -> i32 {
-    if value {
-        1
-    } else {
-        0
-    }
-}
-
-#[cfg(test)]
-mod tests;
 
 fn rebuild_doc_chunks(
     conn: &mut Connection,
@@ -433,14 +747,7 @@ fn rebuild_doc_chunks(
     for prepared in &prepared_segments {
         let segment_id = insert_segment(&tx, doc_id, prepared.ordinal, &prepared.hash)?;
         summary.segments_created += 1;
-        upsert_embedding(
-            &tx,
-            segment_id,
-            embedder.model_name(),
-            prepared.vector.dim,
-            &prepared.vector.bytes,
-            summary,
-        )?;
+        upsert_embedding(&tx, segment_id, &prepared.vector.bytes, summary)?;
     }
 
     tx.commit()
@@ -459,7 +766,7 @@ fn sync_segments_for_doc(
     doc_id: i64,
     chunks: &[String],
     embedder: &EmbeddingClient,
-    target_dim: i32,
+    force_reembed_all: bool,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let existing = load_segments_for_doc(conn, doc_id)?;
@@ -469,19 +776,10 @@ fn sync_segments_for_doc(
         let ordinal_key = ordinal as i64;
         if let Some(segment) = existing.get(&ordinal_key) {
             let hash_changed = segment.last_hash != hash;
-            let mut needs_embedding = hash_changed;
+            let mut needs_embedding = force_reembed_all || hash_changed;
             if !needs_embedding {
-                // Re-embed if the stored metadata indicates a different model/dimension.
-                let model_mismatch = segment
-                    .embedding_model
-                    .as_deref()
-                    .map(|model| model != embedder.model_name())
-                    .unwrap_or(true);
-                let dim_mismatch = segment
-                    .embedding_dim
-                    .map(|dim| dim != target_dim)
-                    .unwrap_or(true);
-                needs_embedding = model_mismatch || dim_mismatch;
+                // Re-embed if the segment is missing a stored vector.
+                needs_embedding = !segment.has_embedding;
             }
 
             if needs_embedding {
@@ -504,8 +802,14 @@ fn sync_segments_for_doc(
                 write_embedding_for_segment(conn, segment_id, chunk, embedder, summary)
             {
                 // Best-effort cleanup keeps the database consistent if embedding generation fails.
-                let cleanup_result =
-                    conn.execute("DELETE FROM segment WHERE id = ?1", params![segment_id]);
+                let cleanup_result: Result<()> = (|| {
+                    delete_vector_for_segment(conn, segment_id)?;
+                    conn.execute("DELETE FROM segment WHERE id = ?1", params![segment_id])
+                        .with_context(|| {
+                            format!("Failed to delete segment {} during cleanup", segment_id)
+                        })?;
+                    Ok(())
+                })();
                 if let Err(cleanup_err) = cleanup_result {
                     return Err(error).context(anyhow!(
                         "Failed to clean up segment {} after embedding error: {}",
@@ -522,12 +826,115 @@ fn sync_segments_for_doc(
     prune_extra_segments(conn, doc_id, chunks.len())
 }
 
+#[cfg(test)]
+mod tests {
+    use rusqlite::{params, Connection};
+
+    use super::{embedding_target_changed, upsert_embedding, DocRecord, IndexSummary};
+
+    fn open_connection() -> Connection {
+        crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
+
+        let conn = Connection::open_in_memory().expect("failed to open in-memory db");
+        conn.pragma_update(None, "foreign_keys", 1)
+            .expect("failed to enable foreign keys");
+        conn.execute_batch("CREATE TABLE segment (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)")
+            .expect("failed to create segment table");
+        conn
+    }
+
+    fn embedding_bytes(dim: usize) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(dim * 4);
+        for index in 0..dim {
+            bytes.extend_from_slice(&((index as f32) + 1.0).to_le_bytes());
+        }
+        bytes
+    }
+
+    fn make_doc(model: Option<&str>, dim: Option<i32>) -> DocRecord {
+        DocRecord {
+            id: 1,
+            chunking_version: 2,
+            last_hash: Some("hash".to_string()),
+            last_source_size: Some(10),
+            last_source_mtime_ns: Some(20),
+            last_embedding_model: model.map(|value| value.to_string()),
+            last_embedding_dim: dim,
+        }
+    }
+
+    #[test]
+    fn embedding_target_unchanged_returns_false() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
+        assert!(!embedding_target_changed(&doc, "nomic-embed-text", 768));
+    }
+
+    #[test]
+    fn embedding_target_changed_returns_true_for_model_or_dim_drift() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
+        assert!(embedding_target_changed(&doc, "other-model", 768));
+        assert!(embedding_target_changed(&doc, "nomic-embed-text", 1024));
+    }
+
+    #[test]
+    fn embedding_target_changed_returns_true_when_metadata_missing() {
+        let doc = make_doc(None, None);
+        assert!(embedding_target_changed(&doc, "nomic-embed-text", 768));
+    }
+
+    #[test]
+    fn given_plain_segment_vec_when_upserting_different_dimensions_then_writes_succeed() {
+        let conn = open_connection();
+        conn.execute_batch(
+            "CREATE TABLE segment_vec ( \
+                 rowid INTEGER PRIMARY KEY, \
+                 embedding BLOB NOT NULL, \
+                 FOREIGN KEY (rowid) REFERENCES segment(id) ON DELETE CASCADE \
+             )",
+        )
+        .expect("failed to create segment_vec table");
+
+        conn.execute("INSERT INTO segment (id) VALUES (?1)", params![1])
+            .expect("failed to insert segment 1");
+        conn.execute("INSERT INTO segment (id) VALUES (?1)", params![2])
+            .expect("failed to insert segment 2");
+
+        let mut summary = IndexSummary::default();
+        let first_embedding = embedding_bytes(768);
+        let second_embedding = embedding_bytes(1024);
+
+        upsert_embedding(&conn, 1, &first_embedding, &mut summary)
+            .expect("failed to write first embedding");
+        upsert_embedding(&conn, 2, &second_embedding, &mut summary)
+            .expect("failed to write second embedding");
+
+        let first_len: i64 = conn
+            .query_row(
+                "SELECT length(embedding) FROM segment_vec WHERE rowid = ?1",
+                params![1],
+                |row| row.get(0),
+            )
+            .expect("failed to read first embedding length");
+        let second_len: i64 = conn
+            .query_row(
+                "SELECT length(embedding) FROM segment_vec WHERE rowid = ?1",
+                params![2],
+                |row| row.get(0),
+            )
+            .expect("failed to read second embedding length");
+
+        assert_eq!(first_len, (768 * 4) as i64);
+        assert_eq!(second_len, (1024 * 4) as i64);
+        assert_eq!(summary.embeddings_written, 2);
+    }
+}
+
 fn load_segments_for_doc(conn: &Connection, doc_id: i64) -> Result<HashMap<i64, SegmentRecord>> {
     let mut stmt = conn
         .prepare(
-            "SELECT s.id, s.ordinal, s.last_hash, e.model, e.dim \
+            "SELECT s.id, s.ordinal, s.last_hash, sv.rowid \
              FROM segment s \
-             LEFT JOIN embedding e ON e.segment_id = s.id \
+             LEFT JOIN segment_vec sv ON sv.rowid = s.id \
              WHERE s.doc_id = ?1",
         )
         .with_context(|| format!("Failed to prepare segment load for doc {}", doc_id))?;
@@ -538,22 +945,20 @@ fn load_segments_for_doc(conn: &Connection, doc_id: i64) -> Result<HashMap<i64, 
                 row.get::<_, i64>(0)?,
                 row.get::<_, i64>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<i32>>(4)?,
+                row.get::<_, Option<i64>>(3)?.is_some(),
             ))
         })
         .with_context(|| format!("Failed to load segments for doc {}", doc_id))?;
 
     let mut segments = HashMap::new();
     for row in rows {
-        let (id, ordinal, last_hash, embedding_model, embedding_dim) = row?;
+        let (id, ordinal, last_hash, has_embedding) = row?;
         segments.insert(
             ordinal,
             SegmentRecord {
                 id,
                 last_hash,
-                embedding_model,
-                embedding_dim,
+                has_embedding,
             },
         );
     }
@@ -590,31 +995,46 @@ fn write_embedding_for_segment(
 ) -> Result<()> {
     // Embedding is computed outside SQL so we only persist the binary payload.
     let embedding = embedder.generate(contents)?;
-    upsert_embedding(
-        conn,
-        segment_id,
-        embedder.model_name(),
-        embedding.dim,
-        &embedding.bytes,
-        summary,
-    )
+    upsert_embedding(conn, segment_id, &embedding.bytes, summary)
 }
 
 fn upsert_embedding(
     conn: &Connection,
     segment_id: i64,
-    model: &str,
-    dim: i32,
     embedding_bytes: &[u8],
     summary: &mut IndexSummary,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO embedding (segment_id, model, dim, vec) VALUES (?1, ?2, ?3, ?4) \
-         ON CONFLICT(segment_id) DO UPDATE SET model = excluded.model, dim = excluded.dim, vec = excluded.vec",
-        params![segment_id, model, dim, embedding_bytes],
+        "INSERT OR REPLACE INTO segment_vec (rowid, embedding) VALUES (?1, vec_f32(?2))",
+        params![segment_id, embedding_bytes],
     )
     .with_context(|| format!("Failed to upsert embedding for segment {}", segment_id))?;
 
     summary.embeddings_written += 1;
+    Ok(())
+}
+
+fn segment_vec_table_exists(conn: &Connection) -> Result<bool> {
+    let exists: i64 = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
+            params![SEGMENT_VEC_TABLE],
+            |row| row.get(0),
+        )
+        .context("Failed to check segment_vec table existence")?;
+
+    Ok(exists != 0)
+}
+
+fn delete_vector_for_segment(conn: &Connection, segment_id: i64) -> Result<()> {
+    if !segment_vec_table_exists(conn)? {
+        return Ok(());
+    }
+
+    conn.execute(
+        "DELETE FROM segment_vec WHERE rowid = ?1",
+        params![segment_id],
+    )
+    .with_context(|| format!("Failed to delete vector for segment {}", segment_id))?;
     Ok(())
 }

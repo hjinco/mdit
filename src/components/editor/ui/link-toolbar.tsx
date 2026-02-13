@@ -9,6 +9,7 @@ import {
 	useFloatingLinkInsertState,
 	useFloatingLinkUrlInputState,
 } from "@platejs/link/react"
+import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { cva } from "class-variance-authority"
 import {
@@ -173,9 +174,30 @@ type WorkspaceFileOption = {
 
 type LinkMode = "wiki" | "markdown"
 
+type ResolveWikiLinkResult = {
+	canonicalTarget: string
+	resolvedRelPath?: string | null
+	matchCount: number
+	disambiguated: boolean
+	unresolved: boolean
+}
+
+type ResolveWikiLinkParams = {
+	workspacePath: string
+	currentNotePath?: string | null
+	rawTarget: string
+	workspaceRelPaths?: string[]
+}
+
 const backslashRegex = /\\/g
 const multipleSlashesRegex = /\/{2,}/g
 const trailingSlashesRegex = /\/+$/
+
+async function resolveWikiLinkViaInvoke(
+	params: ResolveWikiLinkParams,
+): Promise<ResolveWikiLinkResult> {
+	return invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", params)
+}
 
 function LinkUrlInput() {
 	const { ref } = useFloatingLinkUrlInputState()
@@ -418,15 +440,44 @@ function LinkUrlInput() {
 
 	const handleSelectSuggestion = useCallback(
 		(file: WorkspaceFileOption) => {
-			if (linkMode === "wiki") {
-				const displayValue = normalizeWikiTargetForDisplay(file.relativePath)
-				setValue(displayValue)
-				applyUrlToEditor(displayValue)
-				setHighlightedIndex(-1)
-
+			const focusInput = () => {
 				requestAnimationFrame(() => {
 					ref.current?.focus()
 				})
+			}
+
+			if (linkMode === "wiki") {
+				const fallbackValue = normalizeWikiTargetForDisplay(file.relativePath)
+				const applySelection = (nextValue: string) => {
+					setValue(nextValue)
+					applyUrlToEditor(nextValue)
+					setHighlightedIndex(-1)
+					focusInput()
+				}
+
+				if (!workspacePath) {
+					applySelection(fallbackValue)
+					return
+				}
+
+				void resolveWikiLinkViaInvoke({
+					workspacePath,
+					currentNotePath: currentTabPath,
+					rawTarget: file.relativePath,
+				})
+					.then((result) => {
+						const canonical = normalizeWikiTargetForDisplay(
+							result.canonicalTarget,
+						)
+						applySelection(canonical || fallbackValue)
+					})
+					.catch((error) => {
+						console.warn(
+							"Failed to resolve wiki suggestion via invoke; using fallback:",
+							error,
+						)
+						applySelection(fallbackValue)
+					})
 				return
 			}
 
@@ -451,11 +502,9 @@ function LinkUrlInput() {
 			applyUrlToEditor(displayValue)
 			setHighlightedIndex(-1)
 
-			requestAnimationFrame(() => {
-				ref.current?.focus()
-			})
+			focusInput()
 		},
-		[applyUrlToEditor, currentTabPath, linkMode, ref],
+		[applyUrlToEditor, currentTabPath, linkMode, ref, workspacePath],
 	)
 
 	const handleBlur = useCallback(() => {
@@ -477,7 +526,7 @@ function LinkUrlInput() {
 		!hasExactMatch &&
 		filteredSuggestions.length === 0
 
-	const confirmLink = useCallback(() => {
+	const confirmLink = useCallback(async () => {
 		if (!trimmedValue) {
 			requestAnimationFrame(() => {
 				ref.current?.focus()
@@ -495,16 +544,40 @@ function LinkUrlInput() {
 				workspacePath,
 				currentTabPath,
 			})
+			const fallbackTarget = normalizedTarget
+				? normalizedTarget
+				: normalizeWikiTargetForDisplay(trimmedValue)
 
-			if (normalizedTarget) {
-				nextUrl = normalizedTarget
-				nextWikiTarget = normalizedTarget
-			} else {
-				const fallbackTarget = normalizeWikiTargetForDisplay(trimmedValue)
-				if (fallbackTarget) {
-					nextUrl = fallbackTarget
-					nextWikiTarget = fallbackTarget
+			if (workspacePath) {
+				try {
+					const resolved = await resolveWikiLinkViaInvoke({
+						workspacePath,
+						currentNotePath: currentTabPath,
+						rawTarget: trimmedValue,
+					})
+					const canonicalTarget = normalizeWikiTargetForDisplay(
+						resolved.canonicalTarget,
+					)
+					const preferredTarget = resolved.unresolved
+						? fallbackTarget || canonicalTarget
+						: canonicalTarget || fallbackTarget
+					if (preferredTarget) {
+						nextUrl = preferredTarget
+						nextWikiTarget = preferredTarget
+					}
+				} catch (error) {
+					console.warn(
+						"Failed to resolve wiki link via invoke; using fallback:",
+						error,
+					)
+					if (fallbackTarget) {
+						nextUrl = fallbackTarget
+						nextWikiTarget = fallbackTarget
+					}
 				}
+			} else if (fallbackTarget) {
+				nextUrl = fallbackTarget
+				nextWikiTarget = fallbackTarget
 			}
 		}
 
@@ -603,7 +676,7 @@ function LinkUrlInput() {
 					return
 				}
 
-				confirmLink()
+				void confirmLink()
 				return
 			}
 
@@ -666,7 +739,7 @@ function LinkUrlInput() {
 			event.stopPropagation()
 			event.nativeEvent.stopImmediatePropagation?.()
 
-			confirmLink()
+			void confirmLink()
 		},
 		[confirmLink],
 	)
@@ -844,20 +917,23 @@ function LinkOpenButton() {
 
 		if (!entry) {
 			return {
-				element: null as (TLinkElement & { wikiTarget?: string }) | null,
+				element: null as
+					| (TLinkElement & { wiki?: boolean; wikiTarget?: string })
+					| null,
 			}
 		}
 
 		const [node] = entry
 
 		return {
-			element: node as TLinkElement & { wikiTarget?: string },
+			element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
 		}
 	}, [selection])
 
 	const href = element?.url ?? ""
 	const decodedUrl = href ? safelyDecodeUrl(href) : ""
 	const isWebLink = startsWithHttpProtocol(decodedUrl)
+	const isWikiLink = Boolean(element?.wiki || element?.wikiTarget)
 	const workspaceFiles = useMemo(
 		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
 		[workspaceEntries, workspacePath],
@@ -884,8 +960,46 @@ function LinkOpenButton() {
 						return
 					}
 
-					let absolutePath: string | null = null
 					const rawTarget = element?.wikiTarget || targetUrl
+
+					if (isWikiLink) {
+						try {
+							const resolved = await resolveWikiLinkViaInvoke({
+								workspacePath,
+								currentNotePath: currentTab?.path ?? null,
+								rawTarget,
+							})
+							if (resolved.resolvedRelPath) {
+								const absoluteResolved = resolve(
+									workspacePath,
+									resolved.resolvedRelPath,
+								)
+								const normalizedWorkspaceRoot =
+									normalizeWorkspaceRoot(workspacePath)
+								const normalizedAbsolute =
+									normalizePathSeparators(absoluteResolved)
+								if (
+									normalizedAbsolute !== normalizedWorkspaceRoot &&
+									!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
+								) {
+									console.warn(
+										"Workspace link outside of root blocked:",
+										normalizedAbsolute,
+									)
+									return
+								}
+								await openTab(absoluteResolved)
+							}
+							return
+						} catch (error) {
+							console.warn(
+								"Failed to resolve wiki link via invoke while opening; using fallback:",
+								error,
+							)
+						}
+					}
+
+					let absolutePath: string | null = null
 					const { rawPath, target } = parseInternalLinkTarget(rawTarget)
 					const resolvedPath = resolveInternalLinkPath({
 						rawPath,
@@ -955,6 +1069,7 @@ function LinkOpenButton() {
 			decodedUrl,
 			element?.url,
 			element?.wikiTarget,
+			isWikiLink,
 			isWebLink,
 			openTab,
 			workspaceFiles,
