@@ -1,7 +1,5 @@
 import { Monitor, Moon, Sun } from "lucide-react"
 import { useShallow } from "zustand/shallow"
-import { useTheme } from "@/contexts/theme-context"
-import { useStore } from "@/store"
 import {
 	Field,
 	FieldContent,
@@ -10,15 +8,17 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/ui/field"
+} from "@/components/ui/field"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/ui/select"
-import { Switch } from "@/ui/switch"
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { useTheme } from "@/contexts/theme-context"
+import { useStore } from "@/store"
 
 export function PreferencesTab() {
 	const { theme, setTheme } = useTheme()

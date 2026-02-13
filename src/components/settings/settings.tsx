@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useStore } from "@/store"
-import { Dialog, DialogContent } from "@/ui/dialog"
 import { AITab } from "./ui/ai-tab"
 import { IndexingTab } from "./ui/indexing-tab"
 import { LicenseTab } from "./ui/license-tab"

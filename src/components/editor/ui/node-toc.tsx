@@ -3,7 +3,7 @@ import { cva } from "class-variance-authority"
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
 
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 
 const headingItemVariants = cva(
 	"block h-auto w-full cursor-pointer truncate rounded-none px-0.5 py-1.5 text-left font-medium text-muted-foreground underline decoration-[0.5px] underline-offset-4 hover:bg-accent hover:text-muted-foreground",

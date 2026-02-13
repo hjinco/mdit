@@ -1,10 +1,7 @@
 import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
-import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-utils"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	Field,
 	FieldContent,
@@ -13,14 +10,17 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/ui/field"
+} from "@/components/ui/field"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/ui/select"
+} from "@/components/ui/select"
+import { useStore } from "@/store"
+import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-utils"
+import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 
 export function IndexingTab() {

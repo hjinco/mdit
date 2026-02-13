@@ -16,7 +16,7 @@ import {
 import { NodeApi } from "platejs"
 import { type PlateEditor, useEditorRef } from "platejs/react"
 import { useEffect, useMemo, useState } from "react"
-import { CommandGroup, CommandItem } from "@/ui/command"
+import { CommandGroup, CommandItem } from "@/components/ui/command"
 import type { Command } from "../hooks/use-ai-commands"
 import { DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP } from "./ai-default-commands"
 

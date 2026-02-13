@@ -1,7 +1,7 @@
 import { relaunch } from "@tauri-apps/plugin-process"
 import { ArrowDownToLineIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
 
 export function UpdateButton() {
 	const isUpdateReady = useStore((state) => state.isUpdateReady)

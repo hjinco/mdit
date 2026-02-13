@@ -1,6 +1,6 @@
 import { FolderOpenIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
 import { isMac } from "@/utils/platform"
 
 export function Welcome() {

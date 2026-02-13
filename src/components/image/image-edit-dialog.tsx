@@ -4,25 +4,25 @@ import { basename } from "pathe"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
-import { Button } from "@/ui/button"
-import { Checkbox } from "@/ui/checkbox"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/ui/dialog"
-import { Label } from "@/ui/label"
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/ui/select"
-import { Separator } from "@/ui/separator"
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { useStore } from "@/store"
 import { formatFileSize } from "@/utils/format-utils"
 import {
 	getBasePathAndExtension,

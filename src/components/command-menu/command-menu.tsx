@@ -2,9 +2,6 @@ import { motion } from "motion/react"
 import { useCallback, useEffect, useState } from "react"
 import useMeasure from "react-use-measure"
 import { useShallow } from "zustand/shallow"
-import { useDebounce } from "@/hooks/use-debounce"
-import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
-import { useStore } from "@/store"
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -12,7 +9,10 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@/ui/command"
+} from "@/components/ui/command"
+import { useDebounce } from "@/hooks/use-debounce"
+import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
+import { useStore } from "@/store"
 import { getFileNameFromPath } from "@/utils/path-utils"
 import { useCommandMenuHotkey } from "./hooks/use-command-menu-hotkey"
 import { useNoteContentSearch } from "./hooks/use-note-content-search"

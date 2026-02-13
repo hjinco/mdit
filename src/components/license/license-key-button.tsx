@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { useShallow } from "zustand/shallow"
+import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
-import { Button } from "../../ui/button"
-import { checkInternetConnectivity } from "../../utils/network-utils"
+import { checkInternetConnectivity } from "@/utils/network-utils"
 
 export function LicenseKeyButton() {
 	const { status, checkLicense, openSettingsWithTab } = useStore(

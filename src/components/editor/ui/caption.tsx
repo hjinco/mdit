@@ -7,8 +7,8 @@ import {
 import { createPrimitiveComponent } from "@udecode/cn"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Button } from "@/ui/button"
 
 const captionVariants = cva("max-w-full", {
 	defaultVariants: {

@@ -1,10 +1,14 @@
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from "lucide-react"
 import { useShallow } from "zustand/shallow"
+import { Button } from "@/components/ui/button"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
-import { Kbd, KbdGroup } from "@/ui/kbd"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 type Props = {

@@ -1,14 +1,14 @@
 import { Check, ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import { useShallow } from "zustand/shallow"
-import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
-import { cn } from "@/lib/utils"
-import { useStore } from "@/store"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
+import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
+import { cn } from "@/lib/utils"
+import { useStore } from "@/store"
 
 interface AIModelSelectorProps {
 	modelPopoverOpen: boolean

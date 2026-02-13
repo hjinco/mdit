@@ -1,6 +1,6 @@
 import { SettingsIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function SettingsMenu() {

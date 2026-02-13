@@ -48,11 +48,11 @@ import {
 } from "react"
 import { useShallow } from "zustand/shallow"
 import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
+import { buttonVariants } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { buttonVariants } from "@/ui/button"
-import { Separator } from "@/ui/separator"
 
 const popoverVariants = cva(
 	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",

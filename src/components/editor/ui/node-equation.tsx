@@ -17,8 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import TextareaAutosize, {
 	type TextareaAutosizeProps,
 } from "react-textarea-autosize"
-import { cn } from "@/lib/utils"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	Command,
 	CommandEmpty,
@@ -26,8 +25,13 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover"
+} from "@/components/ui/command"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { KATEX_ENVIRONMENTS } from "../utils/katex"
 
 let katexJsPromise: Promise<typeof import("katex")> | null = null

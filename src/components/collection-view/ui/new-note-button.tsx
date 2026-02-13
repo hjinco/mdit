@@ -1,8 +1,12 @@
 import { SquarePenIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
-import { Kbd, KbdGroup } from "@/ui/kbd"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function NewNoteButton({

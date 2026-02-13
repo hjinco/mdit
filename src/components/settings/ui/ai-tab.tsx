@@ -2,8 +2,7 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink } from "lucide-react"
 import { useEffect, useMemo, useRef } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	Field,
 	FieldContent,
@@ -12,16 +11,17 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/ui/field"
-import { Input } from "@/ui/input"
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/ui/select"
-import { Switch } from "@/ui/switch"
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { useStore } from "@/store"
 
 const PROVIDER_LABELS: Record<string, string> = {
 	google: "Google Generative AI",

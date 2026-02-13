@@ -17,9 +17,9 @@ import {
 	useSelected,
 } from "platejs/react"
 import { useEffect } from "react"
-import { Button } from "@/ui/button"
-import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover"
-import { Separator } from "@/ui/separator"
+import { Button } from "@/components/ui/button"
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
 import { CaptionButton } from "./caption"
 
 const inputVariants = cva(

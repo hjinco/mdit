@@ -34,7 +34,7 @@ import {
 	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 import { ToolbarButton, ToolbarGroup } from "./toolbar"
 

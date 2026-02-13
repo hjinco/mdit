@@ -24,9 +24,7 @@ import { PlateElement, useEditorRef } from "platejs/react"
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -34,7 +32,9 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
+import { useStore } from "@/store"
+import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import {
 	convertValueToType,
 	datePattern,

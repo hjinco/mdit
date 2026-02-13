@@ -3,14 +3,14 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cva, type VariantProps } from "class-variance-authority"
 import { ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
 import {
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuSeparator,
-} from "@/ui/dropdown-menu"
-import { Separator } from "@/ui/separator"
-import { TooltipTrigger } from "@/ui/tooltip"
+} from "@/components/ui/dropdown-menu"
+import { Separator } from "@/components/ui/separator"
+import { TooltipTrigger } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 export function Toolbar({
 	className,

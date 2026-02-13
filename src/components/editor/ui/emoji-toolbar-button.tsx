@@ -26,14 +26,14 @@ import {
 	XIcon,
 } from "lucide-react"
 import { memo, useCallback } from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/ui/tooltip"
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import { ToolbarButton } from "./toolbar"
 
 export function EmojiToolbarButton({

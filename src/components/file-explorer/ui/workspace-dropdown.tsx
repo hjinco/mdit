@@ -1,17 +1,21 @@
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { ChevronDown, InboxIcon } from "lucide-react"
 import { type MouseEvent, useCallback } from "react"
-import { useStore } from "@/store"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
-import { Kbd, KbdGroup } from "@/ui/kbd"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip"
+} from "@/components/ui/dropdown-menu"
+import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { useStore } from "@/store"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 import { getFolderNameFromPath } from "@/utils/path-utils"
 

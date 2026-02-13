@@ -1,7 +1,5 @@
 import { RefreshCw, Settings } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useStore } from "@/store"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -9,8 +7,14 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip"
+} from "@/components/ui/dropdown-menu"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
+import { useStore } from "@/store"
 
 export function GitSyncStatus() {
 	const gitSyncState = useStore((state) => state.gitSyncState)

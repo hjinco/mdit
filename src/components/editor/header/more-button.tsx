@@ -5,10 +5,14 @@ import { useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
+import { Button } from "@/components/ui/button"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
 import { useStore } from "@/store"
-import { Button } from "@/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover"
-import { Separator } from "@/ui/separator"
 
 const WORD_SPLIT_REGEX = /\s+/
 

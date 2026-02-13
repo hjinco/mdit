@@ -20,7 +20,6 @@ import {
 import { KEYS } from "platejs"
 import { useEditorPlugin, usePlateState } from "platejs/react"
 import { useCallback, useState } from "react"
-import { useIsTouchDevice } from "@/hooks/use-is-touch-device"
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -30,7 +29,8 @@ import {
 	ContextMenuSubContent,
 	ContextMenuSubTrigger,
 	ContextMenuTrigger,
-} from "@/ui/context-menu"
+} from "@/components/ui/context-menu"
+import { useIsTouchDevice } from "@/hooks/use-is-touch-device"
 
 type Value = "askAI" | null
 

@@ -12,7 +12,7 @@ import {
 	type LucideIcon,
 } from "lucide-react"
 import { useState } from "react"
-import { Button } from "@/ui/button"
+import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -20,8 +20,12 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/ui/dropdown-menu"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip"
+} from "@/components/ui/dropdown-menu"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { SortDirection, SortOption } from "../hooks/use-collection-sort"
 
 const SORT_LABELS: Record<SortOption, string> = {
