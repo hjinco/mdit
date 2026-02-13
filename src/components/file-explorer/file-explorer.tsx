@@ -16,6 +16,7 @@ import { useEntryPrimaryAction } from "./hooks/use-entry-primary-action"
 import { useFolderDropZone } from "./hooks/use-folder-drop-zone"
 import { FeedbackButton } from "./ui/feedback-button"
 import { GitSyncStatus } from "./ui/git-sync-status"
+import { GraphViewOpenButton } from "./ui/graph-view-open-button"
 import { PinnedList } from "./ui/pinned-list"
 import { RootNewFolderInput } from "./ui/root-new-folder-input"
 import { SettingsMenu } from "./ui/settings-menu"
@@ -382,6 +383,7 @@ export function FileExplorer() {
 					</div>
 					<footer className="px-2 pb-2 flex flex-col">
 						<UpdateButton />
+						<GraphViewOpenButton disabled={!workspacePath} />
 						<SettingsMenu />
 						<FeedbackButton />
 					</footer>

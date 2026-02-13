@@ -9,6 +9,7 @@
 //!    tidy while the `IndexSummary` keeps track of everything that happened.
 
 use std::{
+    collections::{HashMap, HashSet},
     ffi::OsStr,
     fs,
     path::{Component, Path, PathBuf},
@@ -574,6 +575,30 @@ pub struct BacklinkEntry {
     pub file_name: String,
 }
 
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphViewData {
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphNode {
+    pub id: String,
+    pub rel_path: String,
+    pub file_name: String,
+    pub unresolved: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphEdge {
+    pub source: String,
+    pub target: String,
+    pub unresolved: bool,
+}
+
 /// Get all documents that link to the specified document (backlinks).
 ///
 /// Queries the link table for entries where the target is the given document.
@@ -657,6 +682,124 @@ pub fn get_backlinks(
     Ok(backlinks)
 }
 
+fn graph_node_name(rel_path: &str) -> String {
+    Path::new(rel_path)
+        .file_stem()
+        .map(|segment| segment.to_string_lossy().to_string())
+        .unwrap_or_else(|| rel_path.to_string())
+}
+
+pub(crate) fn get_graph_view_data(workspace_root: &Path, db_path: &Path) -> Result<GraphViewData> {
+    let _ = canonicalize_workspace_root(workspace_root)?;
+    let conn = open_indexing_connection(db_path)?;
+
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(GraphViewData::default());
+    };
+
+    let mut nodes = Vec::new();
+    let mut doc_node_id_by_doc_id: HashMap<i64, String> = HashMap::new();
+    let mut unresolved_node_id_by_target_path: HashMap<String, String> = HashMap::new();
+
+    let mut node_stmt = conn
+        .prepare(
+            "SELECT id, rel_path \
+             FROM doc \
+             WHERE vault_id = ?1 AND last_hash IS NOT NULL \
+             ORDER BY rel_path",
+        )
+        .context("Failed to prepare graph node query")?;
+
+    let node_rows = node_stmt
+        .query_map(params![vault_id], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })
+        .context("Failed to execute graph node query")?;
+
+    for row in node_rows {
+        let (doc_id, rel_path) = row?;
+        let node_id = format!("doc:{doc_id}");
+        doc_node_id_by_doc_id.insert(doc_id, node_id.clone());
+        nodes.push(GraphNode {
+            id: node_id,
+            rel_path: rel_path.clone(),
+            file_name: graph_node_name(&rel_path),
+            unresolved: false,
+        });
+    }
+
+    let mut edges = Vec::new();
+    let mut seen_edges: HashSet<(String, String)> = HashSet::new();
+
+    let mut edge_stmt = conn
+        .prepare(
+            "SELECT l.source_doc_id, td.id, l.target_path \
+             FROM link l \
+             JOIN doc sd ON sd.id = l.source_doc_id \
+             LEFT JOIN doc td \
+                    ON td.id = l.target_doc_id \
+                   AND td.vault_id = ?1 \
+                   AND td.last_hash IS NOT NULL \
+             WHERE sd.vault_id = ?1 \
+               AND sd.last_hash IS NOT NULL \
+             ORDER BY l.source_doc_id, l.target_path",
+        )
+        .context("Failed to prepare graph edge query")?;
+
+    let edge_rows = edge_stmt
+        .query_map(params![vault_id], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, Option<i64>>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
+        .context("Failed to execute graph edge query")?;
+
+    for row in edge_rows {
+        let (source_doc_id, target_indexed_doc_id, target_path) = row?;
+        let Some(source_node_id) = doc_node_id_by_doc_id.get(&source_doc_id).cloned() else {
+            continue;
+        };
+
+        let (target_node_id, unresolved) = match target_indexed_doc_id {
+            Some(target_doc_id) => {
+                let target_node_id = doc_node_id_by_doc_id
+                    .get(&target_doc_id)
+                    .cloned()
+                    .unwrap_or_else(|| format!("doc:{target_doc_id}"));
+                (target_node_id, false)
+            }
+            None => {
+                let target_node_id = unresolved_node_id_by_target_path
+                    .entry(target_path.clone())
+                    .or_insert_with(|| {
+                        let id = format!("unresolved:{target_path}");
+                        nodes.push(GraphNode {
+                            id: id.clone(),
+                            rel_path: target_path.clone(),
+                            file_name: graph_node_name(&target_path),
+                            unresolved: true,
+                        });
+                        id
+                    })
+                    .clone();
+                (target_node_id, true)
+            }
+        };
+
+        if seen_edges.insert((source_node_id.clone(), target_node_id.clone())) {
+            edges.push(GraphEdge {
+                source: source_node_id,
+                target: target_node_id,
+                unresolved,
+            });
+        }
+    }
+
+    Ok(GraphViewData { nodes, edges })
+}
+
 #[cfg(test)]
 mod tests;
 
@@ -671,4 +814,15 @@ pub async fn get_backlinks_command(
     let file_path = PathBuf::from(file_path);
 
     run_blocking(move || get_backlinks(&workspace_path, &db_path, &file_path)).await
+}
+
+#[tauri::command]
+pub async fn get_graph_view_data_command(
+    app_handle: AppHandle,
+    workspace_path: String,
+) -> Result<GraphViewData, String> {
+    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
+    let workspace_path = PathBuf::from(workspace_path);
+
+    run_blocking(move || get_graph_view_data(&workspace_path, &db_path)).await
 }
