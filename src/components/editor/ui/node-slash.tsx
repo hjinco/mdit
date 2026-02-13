@@ -5,7 +5,6 @@ import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import {
 	CalendarIcon,
 	Code2,
-	Database,
 	FileText,
 	Heading1Icon,
 	Heading2Icon,
@@ -30,7 +29,7 @@ import { PlateElement } from "platejs/react"
 import YAML from "yaml"
 import { useStore } from "@/store"
 import { datePattern, type ValueType } from "@/utils/frontmatter-value-utils"
-import { DATABASE_KEY } from "../plugins/database-kit"
+// import { DATABASE_KEY } from "../plugins/database-kit"
 import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
 import { buildImageLinkData } from "../utils/image-link"
@@ -397,12 +396,12 @@ const groups: Group[] = [
 	{
 		group: "Advanced blocks",
 		items: [
-			{
-				icon: <TableOfContentsIcon />,
-				keywords: ["toc"],
-				label: "Table of contents",
-				value: KEYS.toc,
-			},
+			// {
+			// 	icon: <TableOfContentsIcon />,
+			// 	keywords: ["toc"],
+			// 	label: "Table of contents",
+			// 	value: KEYS.toc,
+			// },
 			// {
 			//   icon: <Columns3Icon />,
 			//   label: '3 columns',
@@ -414,13 +413,13 @@ const groups: Group[] = [
 				label: "Equation",
 				value: KEYS.equation,
 			},
-			{
-				focusEditor: false,
-				icon: <Database />,
-				keywords: ["database", "db", "데이터베이스"],
-				label: "Database",
-				value: DATABASE_KEY,
-			},
+			// {
+			// 	focusEditor: false,
+			// 	icon: <Database />,
+			// 	keywords: ["database", "db", "데이터베이스"],
+			// 	label: "Database",
+			// 	value: DATABASE_KEY,
+			// },
 		].map((item) => ({
 			...item,
 			onSelect: (editor, value) => {
@@ -509,7 +508,6 @@ export function SlashInputElement(
 	props: PlateElementProps<TComboboxInputElement>,
 ) {
 	const { editor, element } = props
-	const isMDXEnabled = useStore((state) => state.isMDXEnabled)
 
 	const elementPath = editor.api.findPath(element)
 	const beforePoint = elementPath ? editor.api.before(elementPath) : null
@@ -541,21 +539,11 @@ export function SlashInputElement(
 							return !shouldHide?.(editor)
 						})
 						.map(({ group, items }) => {
-							const filteredItems = items.filter((item) => {
-								if (isMDXEnabled) {
-									return true
-								}
-								if (item.value === KEYS.callout || item.value === KEYS.toc) {
-									return false
-								}
-								return true
-							})
-
 							return (
 								<InlineComboboxGroup key={group}>
 									<InlineComboboxGroupLabel>{group}</InlineComboboxGroupLabel>
 
-									{filteredItems.map(
+									{items.map(
 										({
 											focusEditor,
 											icon,

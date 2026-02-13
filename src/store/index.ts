@@ -21,10 +21,6 @@ import {
 	type IndexingSlice,
 } from "./indexing/indexing-slice"
 import { createLicenseSlice, type LicenseSlice } from "./license/license-slice"
-import {
-	createMDXSettingsSlice,
-	type MDXSettingsSlice,
-} from "./mdx-settings/mdx-settings-slice"
 import { createTabSlice, type TabSlice } from "./tab/tab-slice"
 import { createUISlice, type UISlice } from "./ui/ui-slice"
 import {
@@ -41,7 +37,6 @@ export type StoreState = WorkspaceSlice &
 	ImageEditSlice &
 	IndexingSlice &
 	LicenseSlice &
-	MDXSettingsSlice &
 	UISlice
 
 export const useStore = create<StoreState>()((...a) => ({
@@ -54,6 +49,5 @@ export const useStore = create<StoreState>()((...a) => ({
 	...createImageEditSlice(...a),
 	...createIndexingSlice(...a),
 	...createLicenseSlice(...a),
-	...createMDXSettingsSlice(...a),
 	...createUISlice(...a),
 }))

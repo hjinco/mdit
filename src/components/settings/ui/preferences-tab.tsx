@@ -1,5 +1,4 @@
 import { Monitor, Moon, Sun } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import {
 	Field,
 	FieldContent,
@@ -16,18 +15,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { useTheme } from "@/contexts/theme-context"
-import { useStore } from "@/store"
 
 export function PreferencesTab() {
 	const { theme, setTheme } = useTheme()
-	const { isMDXEnabled, setMDXEnabled } = useStore(
-		useShallow((state) => ({
-			isMDXEnabled: state.isMDXEnabled,
-			setMDXEnabled: state.setMDXEnabled,
-		})),
-	)
 
 	const themeOptions: Array<{
 		value: "light" | "dark" | "system"
@@ -70,16 +61,6 @@ export function PreferencesTab() {
 								))}
 							</SelectContent>
 						</Select>
-					</Field>
-					<Field orientation="horizontal">
-						<FieldContent>
-							<FieldLabel>MDX Mode</FieldLabel>
-							<FieldDescription>
-								Enable JSX blocks like callouts and table of contents. Add them
-								using slash commands.
-							</FieldDescription>
-						</FieldContent>
-						<Switch checked={isMDXEnabled} onCheckedChange={setMDXEnabled} />
 					</Field>
 				</FieldGroup>
 			</FieldSet>
