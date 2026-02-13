@@ -43,8 +43,7 @@ export function useAutoIndexing(workspacePath: string | null) {
 			intervalRef.current = null
 		}
 
-		// Check if we should start auto-indexing
-		// Always auto-index once migrations complete (ignore config setting)
+		// Start auto-indexing once workspace and migrations are ready.
 		if (!workspacePath || !isMigrationsComplete) {
 			return
 		}

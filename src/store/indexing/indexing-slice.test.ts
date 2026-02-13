@@ -1,16 +1,37 @@
 import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
+import type { WorkspaceSettings } from "@/lib/settings-utils"
 import {
 	IndexingService,
 	type InvokeFunction,
 } from "@/services/indexing-service"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
-function createIndexingStore(invoke: InvokeFunction) {
+type LoadSettingsFn = (workspacePath: string) => Promise<WorkspaceSettings>
+type SaveSettingsFn = (
+	workspacePath: string,
+	settings: WorkspaceSettings,
+) => Promise<void>
+
+const createLoadSettingsMock = (resolved: WorkspaceSettings = {}) =>
+	vi.fn<LoadSettingsFn>().mockResolvedValue(resolved)
+
+const createSaveSettingsMock = () =>
+	vi.fn<SaveSettingsFn>().mockResolvedValue(undefined)
+
+function createIndexingStore({
+	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
+	loadSettings = createLoadSettingsMock(),
+	saveSettings = createSaveSettingsMock(),
+}: {
+	invoke?: InvokeFunction
+	loadSettings?: LoadSettingsFn
+	saveSettings?: SaveSettingsFn
+} = {}) {
 	const createSlice = prepareIndexingSlice({
 		invoke,
-		loadSettings: vi.fn().mockResolvedValue({}),
-		saveSettings: vi.fn().mockResolvedValue(undefined),
+		loadSettings,
+		saveSettings,
 		createIndexingService: (invokeFn, workspacePath) =>
 			new IndexingService(invokeFn, workspacePath),
 		timerUtils: {
@@ -20,10 +41,64 @@ function createIndexingStore(invoke: InvokeFunction) {
 		},
 	})
 
-	return createStore<IndexingSlice>()((set, get, api) =>
+	const store = createStore<IndexingSlice>()((set, get, api) =>
 		createSlice(set, get, api),
 	)
+
+	return { store, loadSettings, saveSettings, invoke }
 }
+
+describe("indexing-slice config", () => {
+	it("loads embedding config from settings", async () => {
+		const { store } = createIndexingStore({
+			loadSettings: createLoadSettingsMock({
+				indexing: {
+					embeddingProvider: "ollama",
+					embeddingModel: "mxbai-embed-large",
+				} as WorkspaceSettings["indexing"],
+			}),
+		})
+
+		const config = await store.getState().getIndexingConfig("/ws")
+
+		expect(config).toEqual({
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
+		})
+		expect(store.getState().configs["/ws"]).toEqual({
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
+		})
+	})
+
+	it("persists embedding config", async () => {
+		const { store, saveSettings } = createIndexingStore({
+			loadSettings: createLoadSettingsMock({
+				pinnedDirectories: ["notes"],
+				indexing: {
+					embeddingProvider: "ollama",
+					embeddingModel: "old-model",
+				} as WorkspaceSettings["indexing"],
+			}),
+		})
+
+		await store
+			.getState()
+			.setIndexingConfig("/ws", "ollama", "mxbai-embed-large")
+
+		expect(saveSettings).toHaveBeenCalledWith("/ws", {
+			pinnedDirectories: ["notes"],
+			indexing: {
+				embeddingProvider: "ollama",
+				embeddingModel: "mxbai-embed-large",
+			},
+		})
+		expect(store.getState().configs["/ws"]).toEqual({
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
+		})
+	})
+})
 
 describe("indexing-slice indexNote", () => {
 	it("skips new note indexing request when workspace indexing is already running", async () => {
@@ -34,7 +109,7 @@ describe("indexing-slice indexNote", () => {
 					resolveInvoke = () => resolve({})
 				}),
 		) as unknown as InvokeFunction
-		const store = createIndexingStore(invoke)
+		const { store } = createIndexingStore({ invoke })
 
 		const firstRequest = store
 			.getState()
@@ -53,7 +128,7 @@ describe("indexing-slice indexNote", () => {
 
 	it("sends expected invoke payload for note indexing", async () => {
 		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
-		const store = createIndexingStore(invoke)
+		const { store } = createIndexingStore({ invoke })
 
 		const result = await store
 			.getState()
@@ -75,7 +150,7 @@ describe("indexing-slice indexNote", () => {
 			.mockRejectedValue(
 				new Error("indexing failed"),
 			) as unknown as InvokeFunction
-		const store = createIndexingStore(invoke)
+		const { store } = createIndexingStore({ invoke })
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		const result = await store

@@ -18,7 +18,6 @@ import {
 export type IndexingConfig = {
 	embeddingProvider: string
 	embeddingModel: string
-	autoIndex?: boolean
 }
 
 type IndexingState = Record<string, boolean>
@@ -58,7 +57,6 @@ export type IndexingSlice = {
 		workspacePath: string,
 		embeddingProvider: string,
 		embeddingModel: string,
-		autoIndex?: boolean,
 	) => Promise<void>
 	indexWorkspace: (
 		workspacePath: string,
@@ -153,7 +151,6 @@ export const prepareIndexingSlice = ({
 				const config: IndexingConfig = {
 					embeddingProvider: indexing.embeddingProvider ?? "",
 					embeddingModel: indexing.embeddingModel ?? "",
-					autoIndex: indexing.autoIndex ?? false,
 				}
 
 				set((state) => ({
@@ -173,20 +170,12 @@ export const prepareIndexingSlice = ({
 			workspacePath: string,
 			embeddingProvider: string,
 			embeddingModel: string,
-			autoIndex?: boolean,
 		) => {
 			const settings = await loadSettings(workspacePath)
-			const existingIndexing = settings.indexing
-
-			const newAutoIndex =
-				autoIndex !== undefined
-					? autoIndex
-					: (existingIndexing?.autoIndex ?? false)
 
 			const newConfig: IndexingConfig = {
 				embeddingProvider,
 				embeddingModel,
-				autoIndex: newAutoIndex,
 			}
 
 			await saveSettings(workspacePath, {
@@ -369,7 +358,7 @@ export const prepareIndexingSlice = ({
 			}
 
 			// No warning needed, update model directly
-			await get().setIndexingConfig(workspacePath, provider, model, false)
+			await get().setIndexingConfig(workspacePath, provider, model)
 		},
 
 		confirmModelChange: async (
@@ -384,7 +373,7 @@ export const prepareIndexingSlice = ({
 			const { provider, model } = pending
 
 			// Update model first
-			await get().setIndexingConfig(workspacePath, provider, model, false)
+			await get().setIndexingConfig(workspacePath, provider, model)
 
 			// Then run indexing if needed
 			if (forceReindex) {

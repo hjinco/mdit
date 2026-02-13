@@ -18,7 +18,6 @@ export type WorkspaceSettings = {
 	indexing?: {
 		embeddingProvider: string
 		embeddingModel: string
-		autoIndex?: boolean
 	}
 	pinnedDirectories?: string[]
 	lastOpenedNotePath?: string
