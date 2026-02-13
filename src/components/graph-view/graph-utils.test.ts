@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
 	buildNodeDegreeMap,
+	getGraphDegradeProfile,
 	getNodeOpenAction,
 	getNodeVisualState,
+	sampleEdgesForRender,
 	toRenderNodes,
 } from "./graph-utils"
-import type { GraphViewData } from "./types"
+import type { GraphEdge, GraphViewData } from "./types"
 
 const fixture: GraphViewData = {
 	nodes: [
@@ -81,5 +83,60 @@ describe("getNodeOpenAction", () => {
 			type: "unresolved",
 			relPath: "missing.md",
 		})
+	})
+})
+
+describe("getGraphDegradeProfile", () => {
+	it("keeps default profile for small graphs", () => {
+		const profile = getGraphDegradeProfile(100, 200)
+		expect(profile).toEqual({
+			isDegraded: false,
+			simulationTickCap: 220,
+			edgeRenderLimit: 200,
+			labelVisibleScale: 0.5,
+		})
+	})
+
+	it("reduces simulation and edge count for large graphs", () => {
+		const profile = getGraphDegradeProfile(400, 1500)
+		expect(profile).toEqual({
+			isDegraded: true,
+			simulationTickCap: 185,
+			edgeRenderLimit: 800,
+			labelVisibleScale: 0.95,
+		})
+	})
+})
+
+describe("sampleEdgesForRender", () => {
+	it("prioritizes unresolved edges and respects the limit", () => {
+		const edges: GraphEdge[] = [
+			{
+				source: "doc:1",
+				target: "doc:2",
+				unresolved: false,
+			},
+			{
+				source: "doc:2",
+				target: "unresolved:foo.md",
+				unresolved: true,
+			},
+			{
+				source: "doc:3",
+				target: "doc:4",
+				unresolved: false,
+			},
+			{
+				source: "doc:5",
+				target: "unresolved:bar.md",
+				unresolved: true,
+			},
+		]
+
+		expect(sampleEdgesForRender(edges, 3)).toEqual([
+			edges[1],
+			edges[3],
+			edges[0],
+		])
 	})
 })
