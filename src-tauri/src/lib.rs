@@ -59,6 +59,7 @@ pub fn run() {
             indexing::search_query_entries_command,
             indexing::resolve_wiki_link_command,
             indexing::get_backlinks_command,
+            indexing::get_graph_view_data_command,
             image_processing::get_image_properties_command,
             image_processing::edit_image_command
         ])
