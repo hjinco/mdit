@@ -7,6 +7,7 @@ export function WindowMenu() {
 	const {
 		createAndOpenNote,
 		openFolderPicker,
+		workspacePath,
 		toggleCollectionView,
 		goBack,
 		goForward,
@@ -14,6 +15,7 @@ export function WindowMenu() {
 		useShallow((s) => ({
 			createAndOpenNote: s.createAndOpenNote,
 			openFolderPicker: s.openFolderPicker,
+			workspacePath: s.workspacePath,
 			toggleCollectionView: s.toggleCollectionView,
 			goBack: s.goBack,
 			goForward: s.goForward,
@@ -23,6 +25,7 @@ export function WindowMenu() {
 	const {
 		toggleFileExplorer,
 		openCommandMenu,
+		openGraphViewDialog,
 		toggleSettingsDialogOpen,
 		zoomIn,
 		zoomOut,
@@ -31,6 +34,7 @@ export function WindowMenu() {
 		useShallow((s) => ({
 			toggleFileExplorer: s.toggleFileExplorerOpen,
 			openCommandMenu: s.openCommandMenu,
+			openGraphViewDialog: s.openGraphViewDialog,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
 			zoomIn: s.increaseFontScale,
 			zoomOut: s.decreaseFontScale,
@@ -48,6 +52,12 @@ export function WindowMenu() {
 			zoomOut,
 			resetZoom,
 			openCommandMenu,
+			openGraphView: () => {
+				if (!workspacePath) {
+					return
+				}
+				openGraphViewDialog()
+			},
 			goBack,
 			goForward,
 			toggleSettings: toggleSettingsDialogOpen,
@@ -55,12 +65,14 @@ export function WindowMenu() {
 	}, [
 		createAndOpenNote,
 		openFolderPicker,
+		workspacePath,
 		toggleFileExplorer,
 		toggleCollectionView,
 		zoomIn,
 		zoomOut,
 		resetZoom,
 		openCommandMenu,
+		openGraphViewDialog,
 		goBack,
 		goForward,
 		toggleSettingsDialogOpen,

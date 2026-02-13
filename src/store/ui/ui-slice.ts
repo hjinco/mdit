@@ -10,6 +10,7 @@ export type UISlice = {
 	toggleFileExplorerOpen: () => void
 	isGraphViewDialogOpen: boolean
 	setGraphViewDialogOpen: (isOpen: boolean) => void
+	openGraphViewDialog: () => void
 	toggleGraphViewDialogOpen: () => void
 	isSettingsDialogOpen: boolean
 	setSettingsDialogOpen: (isOpen: boolean) => void
@@ -71,6 +72,7 @@ export const prepareUISlice =
 			}),
 		isGraphViewDialogOpen: false,
 		setGraphViewDialogOpen: (isOpen) => set({ isGraphViewDialogOpen: isOpen }),
+		openGraphViewDialog: () => set({ isGraphViewDialogOpen: true }),
 		toggleGraphViewDialogOpen: () =>
 			set((state) => ({
 				isGraphViewDialogOpen: !state.isGraphViewDialogOpen,

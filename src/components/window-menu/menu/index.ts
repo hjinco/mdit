@@ -16,6 +16,7 @@ export async function installWindowMenu({
 	zoomOut,
 	resetZoom,
 	openCommandMenu,
+	openGraphView,
 	goBack,
 	goForward,
 	toggleSettings,
@@ -28,6 +29,7 @@ export async function installWindowMenu({
 	zoomOut: () => void
 	resetZoom: () => void
 	openCommandMenu: () => void
+	openGraphView: () => void
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	toggleSettings: () => void
@@ -47,6 +49,7 @@ export async function installWindowMenu({
 				zoomOut,
 				resetZoom,
 				openCommandMenu,
+				openGraphView,
 			}),
 			await createHistoryMenu({
 				goBack,

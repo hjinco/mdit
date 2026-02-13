@@ -7,6 +7,7 @@ export async function createViewMenu({
 	zoomOut,
 	resetZoom,
 	openCommandMenu,
+	openGraphView,
 }: {
 	toggleFileExplorer: () => void
 	toggleCollectionView: () => void
@@ -14,6 +15,7 @@ export async function createViewMenu({
 	zoomOut: () => void
 	resetZoom: () => void
 	openCommandMenu: () => void
+	openGraphView: () => void
 }) {
 	return await Submenu.new({
 		text: "View",
@@ -23,6 +25,12 @@ export async function createViewMenu({
 				text: "Command Menu…",
 				accelerator: "CmdOrCtrl+K",
 				action: () => openCommandMenu(),
+			}),
+			await MenuItem.new({
+				id: "graph-view",
+				text: "Graph View…",
+				accelerator: "CmdOrCtrl+G",
+				action: () => openGraphView(),
 			}),
 			await PredefinedMenuItem.new({
 				text: "Separator",

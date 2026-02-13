@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
 
 export function GraphViewOpenButton({ disabled }: { disabled: boolean }) {
-	const setGraphViewDialogOpen = useStore((s) => s.setGraphViewDialogOpen)
+	const openGraphViewDialog = useStore((s) => s.openGraphViewDialog)
 
 	return (
 		<Button
@@ -11,7 +11,7 @@ export function GraphViewOpenButton({ disabled }: { disabled: boolean }) {
 			variant="ghost"
 			size="sm"
 			className="text-foreground/80 justify-start hover:bg-background/40 px-1.5!"
-			onClick={() => setGraphViewDialogOpen(true)}
+			onClick={openGraphViewDialog}
 			disabled={disabled}
 		>
 			<GitBranchIcon className="size-4" /> Graph View
