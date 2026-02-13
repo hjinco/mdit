@@ -17,7 +17,12 @@ import {
 	type WheelEvent,
 } from "react"
 import { cn } from "@/lib/utils"
-import { getNodeOpenAction, toRenderNodes } from "./graph-utils"
+import {
+	getGraphDegradeProfile,
+	getNodeOpenAction,
+	sampleEdgesForRender,
+	toRenderNodes,
+} from "./graph-utils"
 import type {
 	GraphEdge,
 	GraphNodeOpenAction,
@@ -48,7 +53,6 @@ const DEFAULT_HEIGHT = 640
 const MIN_SCALE = 0.2
 const MAX_SCALE = 3.2
 const FIT_PADDING = 56
-const LABEL_VISIBLE_SCALE = 0.5
 const WHEEL_ZOOM_SENSITIVITY = 0.0016
 const VIEW_INTERPOLATION = 0.24
 
@@ -231,6 +235,11 @@ export function GraphCanvas({
 		return map
 	}, [nodes])
 
+	const degradeProfile = useMemo(
+		() => getGraphDegradeProfile(data.nodes.length, data.edges.length),
+		[data.edges.length, data.nodes.length],
+	)
+
 	useEffect(() => {
 		const target = containerRef.current
 		if (!target) {
@@ -307,7 +316,12 @@ export function GraphCanvas({
 			}
 		})
 
-		const links: SimLink[] = data.edges.map((edge) => ({
+		const edgesToRender = sampleEdgesForRender(
+			data.edges,
+			degradeProfile.edgeRenderLimit,
+		)
+
+		const links: SimLink[] = edgesToRender.map((edge) => ({
 			source: edge.source,
 			target: edge.target,
 			unresolved: edge.unresolved,
@@ -331,7 +345,7 @@ export function GraphCanvas({
 			.force("center", forceCenter(centerX, centerY))
 			.stop()
 
-		for (let index = 0; index < 220; index += 1) {
+		for (let index = 0; index < degradeProfile.simulationTickCap; index += 1) {
 			simulation.tick()
 		}
 
@@ -342,11 +356,11 @@ export function GraphCanvas({
 		}))
 
 		setNodes(nextNodes)
-		setEdges(data.edges)
+		setEdges(edgesToRender)
 		stopViewAnimation()
 		setViewState(getFittedView(nextNodes, size.width, size.height))
 		simulation.stop()
-	}, [data, setViewState, size, stopViewAnimation])
+	}, [data, degradeProfile, setViewState, size, stopViewAnimation])
 
 	const toWorldPoint = (clientX: number, clientY: number) => {
 		const rect = svgRef.current?.getBoundingClientRect()
@@ -589,7 +603,8 @@ export function GraphCanvas({
 						{nodes.map((node) => {
 							const isFocused =
 								hoveredNodeId === node.id || selectedNodeId === node.id
-							const showLabel = isFocused || view.scale >= LABEL_VISIBLE_SCALE
+							const showLabel =
+								isFocused || view.scale >= degradeProfile.labelVisibleScale
 							const radius = getNodeRadius(node)
 							const labelScale = 1 / view.scale
 							const labelOffsetX = radius * view.scale + 6
