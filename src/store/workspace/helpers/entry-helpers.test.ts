@@ -12,7 +12,7 @@ import {
 	updateChildPathsForMove,
 	updateEntryInState,
 	updateEntryMetadata,
-} from "./entry-utils"
+} from "./entry-helpers"
 
 const makeFile = (
 	path: string,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { rewriteMarkdownRelativeLinks } from "./markdown-link-utils"
+import { rewriteMarkdownRelativeLinks } from "./markdown-link-helpers"
 
 describe("rewriteMarkdownRelativeLinks", () => {
 	it("rewrites inline relative links when a file moves between sibling directories", () => {

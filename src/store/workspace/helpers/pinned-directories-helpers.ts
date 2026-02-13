@@ -4,7 +4,7 @@ import {
 	normalizePathSeparators,
 } from "@/utils/path-utils"
 import type { WorkspaceEntry } from "../workspace-slice"
-import { collectDirectoryPaths } from "./expanded-directories-utils"
+import { collectDirectoryPaths } from "./expanded-directories-helpers"
 
 export function normalizePinnedDirectoriesList(paths: unknown[]): string[] {
 	const normalizedSet = new Set<string>()
