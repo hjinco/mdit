@@ -92,29 +92,25 @@ export function sampleEdgesForRender(
 		return []
 	}
 
-	const sampled: GraphEdge[] = []
-
-	for (const edge of edges) {
-		if (!edge.unresolved) {
-			continue
-		}
-		sampled.push(edge)
-		if (sampled.length >= safeLimit) {
-			return sampled
-		}
-	}
+	const unresolved: GraphEdge[] = []
+	const resolved: GraphEdge[] = []
 
 	for (const edge of edges) {
 		if (edge.unresolved) {
+			unresolved.push(edge)
+			if (unresolved.length >= safeLimit) {
+				return unresolved
+			}
 			continue
 		}
-		sampled.push(edge)
-		if (sampled.length >= safeLimit) {
-			return sampled
-		}
+		resolved.push(edge)
 	}
 
-	return sampled
+	if (unresolved.length >= safeLimit) {
+		return unresolved
+	}
+
+	return unresolved.concat(resolved.slice(0, safeLimit - unresolved.length))
 }
 
 export function getNodeVisualState(node: GraphNode): "resolved" | "unresolved" {
