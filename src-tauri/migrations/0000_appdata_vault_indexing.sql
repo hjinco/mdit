@@ -2,7 +2,7 @@ CREATE TABLE `vault` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`workspace_root` text NOT NULL,
 	`created_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-	`updated_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+	`last_opened_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `vault_workspace_root_unique` ON `vault` (`workspace_root`);

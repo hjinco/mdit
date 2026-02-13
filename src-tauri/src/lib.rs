@@ -8,6 +8,7 @@ mod migrations;
 mod preview;
 mod sqlite_vec_ext;
 mod trash;
+mod vault;
 
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
@@ -60,6 +61,9 @@ pub fn run() {
             indexing::resolve_wiki_link_command,
             indexing::get_backlinks_command,
             indexing::get_graph_view_data_command,
+            vault::list_vault_workspaces_command,
+            vault::touch_vault_workspace_command,
+            vault::remove_vault_workspace_command,
             image_processing::get_image_properties_command,
             image_processing::edit_image_command
         ])

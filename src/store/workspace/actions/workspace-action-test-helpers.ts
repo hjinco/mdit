@@ -29,9 +29,9 @@ export function createWorkspaceActionTestContext() {
 			persistExpandedDirectories: vi.fn().mockResolvedValue(undefined),
 		},
 		historyRepository: {
-			readWorkspaceHistory: vi.fn().mockReturnValue([]),
-			writeWorkspaceHistory: vi.fn(),
-			removeFromWorkspaceHistory: vi.fn().mockReturnValue([]),
+			listWorkspacePaths: vi.fn().mockResolvedValue([]),
+			touchWorkspace: vi.fn().mockResolvedValue(undefined),
+			removeWorkspace: vi.fn().mockResolvedValue(undefined),
 		},
 		openDialog: vi.fn().mockResolvedValue(null),
 		applyWorkspaceMigrations: vi.fn().mockResolvedValue(undefined),

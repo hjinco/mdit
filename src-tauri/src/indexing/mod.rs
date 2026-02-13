@@ -152,10 +152,6 @@ fn canonicalize_workspace_root(workspace_root: &Path) -> Result<PathBuf> {
     })
 }
 
-fn normalize_workspace_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
-}
-
 fn is_markdown_or_mdx(path: &Path) -> bool {
     matches!(
         path.extension().and_then(OsStr::to_str),
@@ -222,34 +218,8 @@ fn sanitize_workspace_rel_paths(paths: Vec<String>) -> Vec<String> {
     sanitized
 }
 
-fn normalized_workspace_key(workspace_root: &Path) -> Result<String> {
-    let canonical_root = canonicalize_workspace_root(workspace_root)?;
-    Ok(normalize_workspace_path(&canonical_root))
-}
-
 pub(super) fn find_vault_id(conn: &Connection, workspace_root: &Path) -> Result<Option<i64>> {
-    let workspace_key = normalized_workspace_key(workspace_root)?;
-
-    conn.query_row(
-        "SELECT id FROM vault WHERE workspace_root = ?1",
-        params![workspace_key],
-        |row| row.get::<_, i64>(0),
-    )
-    .optional()
-    .context("Failed to resolve vault id")
-}
-
-pub(super) fn ensure_vault(conn: &Connection, workspace_root: &Path) -> Result<i64> {
-    let workspace_key = normalized_workspace_key(workspace_root)?;
-
-    conn.query_row(
-        "INSERT INTO vault (workspace_root) VALUES (?1)
-         ON CONFLICT(workspace_root) DO UPDATE SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-         RETURNING id",
-        params![workspace_key],
-        |row| row.get::<_, i64>(0),
-    )
-    .context("Failed to upsert vault row")
+    crate::vault::find_workspace_id(conn, workspace_root)
 }
 
 pub fn index_workspace(
@@ -319,7 +289,7 @@ fn run_indexing_for_files(
 ) -> Result<IndexSummary> {
     let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
     let mut conn = open_indexing_connection(db_path)?;
-    let vault_id = ensure_vault(&conn, workspace_root)?;
+    let vault_id = crate::vault::ensure_workspace_exists(&conn, workspace_root)?;
 
     if !force_reindex {
         if let Some(embedding) = embedding_context.as_ref() {
