@@ -33,9 +33,9 @@ export type WorkspaceSettingsRepositoryLike = Pick<
 >
 
 export type WorkspaceHistoryRepositoryLike = {
-	readWorkspaceHistory: () => string[]
-	writeWorkspaceHistory: (paths: string[]) => void
-	removeFromWorkspaceHistory: (path: string) => string[]
+	listWorkspacePaths: () => Promise<string[]>
+	touchWorkspace: (path: string) => Promise<void>
+	removeWorkspace: (path: string) => Promise<void>
 }
 
 export type FrontmatterUtils = {

@@ -11,8 +11,6 @@ import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceSlice } from "../workspace-slice"
 import { buildWorkspaceState } from "../workspace-state"
 
-const MAX_HISTORY_LENGTH = 5
-
 const resolveUnwatchFnForWorkspaceTransition = (
 	ctx: WorkspaceActionContext,
 	nextWorkspacePath: string | null,
@@ -156,22 +154,25 @@ export const createWorkspaceLifecycleActions = (
 	initializeWorkspace: async () => {
 		try {
 			const recentWorkspacePaths =
-				ctx.deps.historyRepository.readWorkspaceHistory()
+				await ctx.deps.historyRepository.listWorkspacePaths()
 			const validationResults = await Promise.all(
 				recentWorkspacePaths.map((path) =>
 					ctx.deps.fileSystemRepository.isExistingDirectory(path),
 				),
 			)
+			const missingWorkspacePaths = recentWorkspacePaths.filter(
+				(_, index) => !validationResults[index],
+			)
 			const nextRecentWorkspacePaths = recentWorkspacePaths.filter(
 				(_, index) => validationResults[index],
 			)
 
-			if (
-				!areStringArraysEqual(recentWorkspacePaths, nextRecentWorkspacePaths)
-			) {
-				ctx.deps.historyRepository.writeWorkspaceHistory(
-					nextRecentWorkspacePaths,
-				)
+			for (const missingPath of missingWorkspacePaths) {
+				try {
+					await ctx.deps.historyRepository.removeWorkspace(missingPath)
+				} catch (error) {
+					console.error("Failed to remove missing workspace from vault:", error)
+				}
 			}
 
 			const workspacePath = nextRecentWorkspacePaths[0] ?? null
@@ -212,8 +213,9 @@ export const createWorkspaceLifecycleActions = (
 	setWorkspace: async (path: string) => {
 		try {
 			if (!(await ctx.deps.fileSystemRepository.isExistingDirectory(path))) {
+				await ctx.deps.historyRepository.removeWorkspace(path)
 				const updatedHistory =
-					ctx.deps.historyRepository.removeFromWorkspaceHistory(path)
+					await ctx.deps.historyRepository.listWorkspacePaths()
 				ctx.set({ recentWorkspacePaths: updatedHistory })
 				ctx.deps.toast.error?.("Folder does not exist.", {
 					description: path,
@@ -230,14 +232,9 @@ export const createWorkspaceLifecycleActions = (
 
 			ctx.ports.tab.clearHistory()
 
-			const recentWorkspacePaths = ctx.get().recentWorkspacePaths
-
-			const updatedHistory = [
-				path,
-				...recentWorkspacePaths.filter((entry) => entry !== path),
-			].slice(0, MAX_HISTORY_LENGTH)
-
-			ctx.deps.historyRepository.writeWorkspaceHistory(updatedHistory)
+			await ctx.deps.historyRepository.touchWorkspace(path)
+			const updatedHistory =
+				await ctx.deps.historyRepository.listWorkspacePaths()
 			const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, path)
 
 			ctx.set(
@@ -284,12 +281,8 @@ export const createWorkspaceLifecycleActions = (
 			ctx.ports.tab.clearHistory()
 		}
 
-		const recentWorkspacePaths = ctx.get().recentWorkspacePaths
-		const updatedHistory = recentWorkspacePaths.filter(
-			(entryPath) => entryPath !== workspacePath,
-		)
-
-		ctx.deps.historyRepository.writeWorkspaceHistory(updatedHistory)
+		await ctx.deps.historyRepository.removeWorkspace(workspacePath)
+		const updatedHistory = await ctx.deps.historyRepository.listWorkspacePaths()
 		const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, null)
 
 		ctx.set(

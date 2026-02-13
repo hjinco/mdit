@@ -16,7 +16,8 @@ describe("workspace-lifecycle-actions", () => {
 	})
 
 	it("setWorkspace unwatches existing watcher when workspace path changes", async () => {
-		const { context, setState, getState } = createWorkspaceActionTestContext()
+		const { context, deps, setState, getState } =
+			createWorkspaceActionTestContext()
 		const actions = createWorkspaceLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -24,16 +25,23 @@ describe("workspace-lifecycle-actions", () => {
 			recentWorkspacePaths: ["/old"],
 			unwatchFn: unwatch,
 		})
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
+			"/new",
+			"/old",
+		])
 
 		await actions.setWorkspace("/new")
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
+		expect(deps.historyRepository.touchWorkspace).toHaveBeenCalledWith("/new")
+		expect(deps.historyRepository.listWorkspacePaths).toHaveBeenCalled()
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
 
 	it("setWorkspace preserves watcher when workspace path is unchanged", async () => {
-		const { context, setState, getState } = createWorkspaceActionTestContext()
+		const { context, deps, setState, getState } =
+			createWorkspaceActionTestContext()
 		const actions = createWorkspaceLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -41,16 +49,19 @@ describe("workspace-lifecycle-actions", () => {
 			recentWorkspacePaths: ["/same"],
 			unwatchFn: unwatch,
 		})
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/same"])
 
 		await actions.setWorkspace("/same")
 
 		expect(unwatch).not.toHaveBeenCalled()
+		expect(deps.historyRepository.touchWorkspace).toHaveBeenCalledWith("/same")
 		expect(getState().workspacePath).toBe("/same")
 		expect(getState().unwatchFn).toBe(unwatch)
 	})
 
 	it("clearWorkspace unwatches existing watcher", async () => {
-		const { context, setState, getState } = createWorkspaceActionTestContext()
+		const { context, deps, setState, getState } =
+			createWorkspaceActionTestContext()
 		const actions = createWorkspaceLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -58,10 +69,12 @@ describe("workspace-lifecycle-actions", () => {
 			recentWorkspacePaths: ["/old", "/other"],
 			unwatchFn: unwatch,
 		})
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/other"])
 
 		await actions.clearWorkspace()
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith("/old")
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -75,7 +88,7 @@ describe("workspace-lifecycle-actions", () => {
 			workspacePath: "/old",
 			unwatchFn: unwatch,
 		})
-		deps.historyRepository.readWorkspaceHistory.mockReturnValue(["/new"])
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/new"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
 
 		await actions.initializeWorkspace()
@@ -94,7 +107,7 @@ describe("workspace-lifecycle-actions", () => {
 			workspacePath: "/same",
 			unwatchFn: unwatch,
 		})
-		deps.historyRepository.readWorkspaceHistory.mockReturnValue(["/same"])
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/same"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
 
 		await actions.initializeWorkspace()
@@ -102,5 +115,38 @@ describe("workspace-lifecycle-actions", () => {
 		expect(unwatch).not.toHaveBeenCalled()
 		expect(getState().workspacePath).toBe("/same")
 		expect(getState().unwatchFn).toBe(unwatch)
+	})
+
+	it("initializeWorkspace removes missing workspace paths from vault history", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceLifecycleActions(context)
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
+			"/valid",
+			"/missing",
+		])
+		deps.fileSystemRepository.isExistingDirectory.mockImplementation(
+			async (path: string) => path === "/valid",
+		)
+
+		await actions.initializeWorkspace()
+
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
+			"/missing",
+		)
+		expect(getState().recentWorkspacePaths).toEqual(["/valid"])
+	})
+
+	it("setWorkspace removes missing path and refreshes workspace list", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceLifecycleActions(context)
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(false)
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/other"])
+
+		await actions.setWorkspace("/missing")
+
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
+			"/missing",
+		)
+		expect(getState().recentWorkspacePaths).toEqual(["/other"])
 	})
 })
