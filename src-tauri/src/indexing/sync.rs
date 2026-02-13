@@ -128,6 +128,12 @@ enum DocUpdate<'a> {
         model: &'a str,
         target_dim: i32,
     },
+    FullMetadataWithoutContent {
+        doc_hash: &'a str,
+        file: &'a MarkdownFile,
+        model: &'a str,
+        target_dim: i32,
+    },
 }
 
 fn embedding_target_changed(doc_record: &DocRecord, model: &str, target_dim: i32) -> bool {
@@ -511,6 +517,7 @@ fn process_file(
             file,
             &embedding.embedder,
             embedding.target_dim,
+            hash_changed,
         )?;
         return Ok(());
     }
@@ -544,6 +551,7 @@ fn process_file(
         file,
         &embedding.embedder,
         embedding.target_dim,
+        hash_changed,
     )
 }
 
@@ -555,18 +563,32 @@ fn update_doc_metadata(
     file: &MarkdownFile,
     embedder: &EmbeddingClient,
     target_dim: i32,
+    refresh_indexed_content: bool,
 ) -> Result<()> {
-    apply_doc_update(
-        conn,
-        doc_record,
-        DocUpdate::FullMetadata {
-            doc_hash,
-            indexed_content,
-            file,
-            model: embedder.model_name(),
-            target_dim,
-        },
-    )
+    if refresh_indexed_content {
+        apply_doc_update(
+            conn,
+            doc_record,
+            DocUpdate::FullMetadata {
+                doc_hash,
+                indexed_content,
+                file,
+                model: embedder.model_name(),
+                target_dim,
+            },
+        )
+    } else {
+        apply_doc_update(
+            conn,
+            doc_record,
+            DocUpdate::FullMetadataWithoutContent {
+                doc_hash,
+                file,
+                model: embedder.model_name(),
+                target_dim,
+            },
+        )
+    }
 }
 
 fn apply_doc_update(
@@ -630,6 +652,35 @@ fn apply_doc_update(
                     model,
                     target_dim,
                     indexed_content,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
+
+            doc_record.chunking_version = TARGET_CHUNKING_VERSION;
+            doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+            doc_record.last_embedding_model = Some(model.to_string());
+            doc_record.last_embedding_dim = Some(target_dim);
+        }
+        DocUpdate::FullMetadataWithoutContent {
+            doc_hash,
+            file,
+            model,
+            target_dim,
+        } => {
+            conn.execute(
+                "UPDATE doc \
+                 SET chunking_version = ?1, last_hash = ?2, last_source_size = ?3, last_source_mtime_ns = ?4, \
+                     last_embedding_model = ?5, last_embedding_dim = ?6 \
+                 WHERE id = ?7",
+                params![
+                    TARGET_CHUNKING_VERSION,
+                    doc_hash,
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    model,
+                    target_dim,
                     doc_record.id
                 ],
             )
@@ -828,9 +879,14 @@ fn sync_segments_for_doc(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use rusqlite::{params, Connection};
 
-    use super::{embedding_target_changed, upsert_embedding, DocRecord, IndexSummary};
+    use super::{
+        apply_doc_update, decide_file_sync_action, embedding_target_changed, upsert_embedding,
+        DocRecord, DocUpdate, FileSyncAction, IndexSummary, MarkdownFile, TARGET_CHUNKING_VERSION,
+    };
 
     fn open_connection() -> Connection {
         crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
@@ -863,6 +919,39 @@ mod tests {
         }
     }
 
+    fn make_file(size: i64, mtime_ns: i64) -> MarkdownFile {
+        MarkdownFile {
+            abs_path: PathBuf::from("/tmp/test.md"),
+            rel_path: "test.md".to_string(),
+            last_source_size: Some(size),
+            last_source_mtime_ns: Some(mtime_ns),
+        }
+    }
+
+    fn open_doc_update_connection() -> Connection {
+        let conn = Connection::open_in_memory().expect("failed to open in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE doc (
+                 id INTEGER PRIMARY KEY,
+                 chunking_version INTEGER NOT NULL,
+                 last_hash TEXT,
+                 last_source_size INTEGER,
+                 last_source_mtime_ns INTEGER,
+                 last_embedding_model TEXT,
+                 last_embedding_dim INTEGER,
+                 content TEXT NOT NULL
+             );
+             CREATE TABLE content_update_audit (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT
+             );
+             CREATE TRIGGER doc_content_au AFTER UPDATE OF content ON doc BEGIN
+                 INSERT INTO content_update_audit (id) VALUES (NULL);
+             END;",
+        )
+        .expect("failed to create doc update test schema");
+        conn
+    }
+
     #[test]
     fn embedding_target_unchanged_returns_false() {
         let doc = make_doc(Some("nomic-embed-text"), Some(768));
@@ -880,6 +969,114 @@ mod tests {
     fn embedding_target_changed_returns_true_when_metadata_missing() {
         let doc = make_doc(None, None);
         assert!(embedding_target_changed(&doc, "nomic-embed-text", 768));
+    }
+
+    #[test]
+    fn chunk_version_mismatch_forces_processing_even_when_other_metadata_matches() {
+        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
+        doc.chunking_version = TARGET_CHUNKING_VERSION + 1;
+        let file = make_file(10, 20);
+
+        let action = decide_file_sync_action(&doc, &file, false, None);
+
+        assert_eq!(
+            action,
+            FileSyncAction::Process {
+                source_stat_changed: false
+            }
+        );
+    }
+
+    #[test]
+    fn matching_chunk_version_allows_skip_when_everything_else_matches() {
+        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
+        doc.chunking_version = TARGET_CHUNKING_VERSION;
+        let file = make_file(10, 20);
+
+        let action = decide_file_sync_action(&doc, &file, false, None);
+
+        assert_eq!(action, FileSyncAction::Skip);
+    }
+
+    #[test]
+    fn full_metadata_without_content_does_not_trigger_content_update() {
+        let conn = open_doc_update_connection();
+        conn.execute(
+            "INSERT INTO doc (
+                id, chunking_version, last_hash, last_source_size, last_source_mtime_ns, last_embedding_model, last_embedding_dim, content
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![1, 1, "hash", 10, 20, "nomic-embed-text", 768, "original content"],
+        )
+        .expect("failed to insert doc");
+
+        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
+        doc.chunking_version = TARGET_CHUNKING_VERSION + 1;
+        let file = make_file(10, 20);
+
+        apply_doc_update(
+            &conn,
+            &mut doc,
+            DocUpdate::FullMetadataWithoutContent {
+                doc_hash: "hash",
+                file: &file,
+                model: "nomic-embed-text",
+                target_dim: 768,
+            },
+        )
+        .expect("failed to update metadata without content");
+
+        let audit_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM content_update_audit", [], |row| {
+                row.get(0)
+            })
+            .expect("failed to query audit count");
+        let content: String = conn
+            .query_row("SELECT content FROM doc WHERE id = 1", [], |row| row.get(0))
+            .expect("failed to read content");
+
+        assert_eq!(audit_count, 0);
+        assert_eq!(content, "original content");
+    }
+
+    #[test]
+    fn full_metadata_with_content_triggers_content_update() {
+        let conn = open_doc_update_connection();
+        conn.execute(
+            "INSERT INTO doc (
+                id, chunking_version, last_hash, last_source_size, last_source_mtime_ns, last_embedding_model, last_embedding_dim, content
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![1, 1, "hash", 10, 20, "nomic-embed-text", 768, "original content"],
+        )
+        .expect("failed to insert doc");
+
+        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
+        doc.chunking_version = TARGET_CHUNKING_VERSION + 1;
+        let file = make_file(10, 20);
+
+        apply_doc_update(
+            &conn,
+            &mut doc,
+            DocUpdate::FullMetadata {
+                doc_hash: "next-hash",
+                indexed_content: "changed content",
+                file: &file,
+                model: "nomic-embed-text",
+                target_dim: 768,
+            },
+        )
+        .expect("failed to update metadata with content");
+
+        let audit_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM content_update_audit", [], |row| {
+                row.get(0)
+            })
+            .expect("failed to query audit count");
+        let content: String = conn
+            .query_row("SELECT content FROM doc WHERE id = 1", [], |row| row.get(0))
+            .expect("failed to read content");
+
+        assert_eq!(audit_count, 1);
+        assert_eq!(content, "changed content");
     }
 
     #[test]
