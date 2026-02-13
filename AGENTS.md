@@ -17,7 +17,6 @@
 - `pnpm test` runs Vitest in CI mode.
 - `pnpm ts:check` runs TypeScript type checks only.
 - `pnpm lint` runs Biome checks; `pnpm lint:fix` auto-fixes.
-- `pnpm db:generate` generates Drizzle ORM migrations.
 
 ## Coding Style & Naming Conventions
 - Use 2-space indentation and single quotes in TS/TSX (match existing files).
