@@ -122,3 +122,123 @@ fn given_stale_source_stat_when_content_unchanged_then_reindex_updates_source_st
     assert_eq!(summary.links_deleted, 0);
     assert_eq!(refreshed_stat, original_stat);
 }
+
+#[test]
+fn given_unrelated_doc_insert_when_reindexing_then_unrelated_wiki_sources_are_not_refreshed() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-unrelated-insert");
+    harness.write_note("source.md", "[[target]]\n");
+    harness.write_note("target.md", "# Target\n");
+
+    harness.run_workspace_index();
+    harness.write_note("unrelated.md", "# Unrelated\n");
+
+    let summary = harness.run_workspace_index();
+
+    assert_eq!(summary.docs_inserted, 1);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(harness.link_targets_for("source.md"), vec!["target.md"]);
+}
+
+#[test]
+fn given_inserted_doc_matches_unresolved_markdown_target_path_then_target_doc_id_is_bound_without_source_refresh(
+) {
+    let harness = IndexingHarness::new("mdit-indexing-sync-markdown-bind");
+    harness.write_note("source.md", "[Go](new.md)\n");
+
+    harness.run_workspace_index();
+    let before = harness.link_rows_for("source.md");
+    assert_eq!(before, vec![("new.md".to_string(), None)]);
+
+    harness.write_note("new.md", "# New\n");
+    let summary = harness.run_workspace_index();
+
+    let inserted_doc_id = harness
+        .doc_id("new.md")
+        .expect("inserted doc id should exist");
+    let after = harness.link_rows_for("source.md");
+
+    assert_eq!(summary.docs_inserted, 1);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(after, vec![("new.md".to_string(), Some(inserted_doc_id))]);
+}
+
+#[test]
+fn given_wiki_basename_dependency_when_target_deleted_then_only_dependent_sources_rebind() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-dependency-target-delete");
+    harness.write_note("source-note.md", "[[note]]\n");
+    harness.write_note("source-other.md", "[[other]]\n");
+    harness.write_note("note.md", "# Note\n");
+    harness.write_note("other.md", "# Other\n");
+
+    harness.run_workspace_index();
+    harness.remove_note("note.md");
+
+    let summary = harness.run_workspace_index();
+
+    assert_eq!(summary.docs_deleted, 1);
+    assert_eq!(summary.links_deleted, 1);
+    assert_eq!(summary.links_written, 1);
+    assert_eq!(harness.link_targets_for("source-note.md"), vec!["note.md"]);
+    assert_eq!(
+        harness.link_targets_for("source-other.md"),
+        vec!["other.md"]
+    );
+}
+
+#[test]
+fn given_wiki_path_suffix_dependency_when_target_deleted_then_only_dependent_sources_rebind() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-query-key-path-delete");
+    harness.write_note("source-team.md", "[[team/note]]\n");
+    harness.write_note("source-other.md", "[[other/note]]\n");
+    harness.write_note("docs/team/note.md", "# Team Note\n");
+    harness.write_note("archive/other/note.md", "# Other Note\n");
+
+    harness.run_workspace_index();
+    harness.remove_note("docs/team/note.md");
+
+    let summary = harness.run_workspace_index();
+
+    assert_eq!(summary.docs_deleted, 1);
+    assert_eq!(summary.links_deleted, 1);
+    assert_eq!(summary.links_written, 1);
+    assert_eq!(
+        harness.link_targets_for("source-team.md"),
+        vec!["team/note.md"]
+    );
+    assert_eq!(
+        harness.link_targets_for("source-other.md"),
+        vec!["archive/other/note.md"]
+    );
+}
+
+#[test]
+fn given_source_links_changed_when_reindexing_then_wiki_link_ref_rows_are_replaced() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-wiki-ref-replace");
+    harness.write_note("source.md", "[[old]]\n");
+
+    harness.run_workspace_index();
+    assert_eq!(harness.wiki_ref_keys_for("source.md"), vec!["old"]);
+
+    harness.write_note("source.md", "[[new]]\n");
+    harness.run_workspace_index();
+
+    assert_eq!(harness.wiki_ref_keys_for("source.md"), vec!["new"]);
+}
+
+#[test]
+fn given_source_doc_deleted_then_wiki_link_ref_rows_are_cascaded() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-wiki-ref-cascade");
+    harness.write_note("source.md", "[[note]]\n");
+    harness.write_note("note.md", "# Note\n");
+
+    harness.run_workspace_index();
+    assert_eq!(harness.wiki_ref_keys_for("source.md"), vec!["note"]);
+
+    harness.remove_note("source.md");
+    let summary = harness.run_workspace_index();
+
+    assert_eq!(summary.docs_deleted, 1);
+    assert!(harness.wiki_ref_keys_for("source.md").is_empty());
+}

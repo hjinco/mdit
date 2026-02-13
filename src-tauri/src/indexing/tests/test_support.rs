@@ -103,6 +103,67 @@ impl IndexingHarness {
             .collect()
     }
 
+    pub(super) fn link_rows_for(&self, source_rel_path: &str) -> Vec<(String, Option<i64>)> {
+        let Some((conn, vault_id)) = self.open_vault_connection() else {
+            return Vec::new();
+        };
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT l.target_path, l.target_doc_id \
+                 FROM link l \
+                 JOIN doc d ON d.id = l.source_doc_id \
+                 WHERE d.vault_id = ?1 AND d.rel_path = ?2 \
+                 ORDER BY l.target_path",
+            )
+            .expect("failed to prepare link row query");
+
+        let rows = stmt
+            .query_map(params![vault_id, source_rel_path], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?))
+            })
+            .expect("failed to read link rows");
+
+        rows.map(|row| row.expect("failed to decode link row"))
+            .collect()
+    }
+
+    pub(super) fn wiki_ref_keys_for(&self, source_rel_path: &str) -> Vec<String> {
+        let Some((conn, vault_id)) = self.open_vault_connection() else {
+            return Vec::new();
+        };
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT wr.query_key \
+                 FROM wiki_link_ref wr \
+                 JOIN doc d ON d.id = wr.source_doc_id \
+                 WHERE d.vault_id = ?1 AND d.rel_path = ?2 \
+                 ORDER BY wr.query_key",
+            )
+            .expect("failed to prepare wiki ref query");
+
+        let rows = stmt
+            .query_map(params![vault_id, source_rel_path], |row| {
+                row.get::<_, String>(0)
+            })
+            .expect("failed to read wiki ref rows");
+
+        rows.map(|row| row.expect("failed to decode wiki ref row"))
+            .collect()
+    }
+
+    pub(super) fn doc_id(&self, rel_path: &str) -> Option<i64> {
+        let (conn, vault_id) = self.open_vault_connection()?;
+        conn.query_row(
+            "SELECT id FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .expect("failed to query doc id")
+    }
+
     pub(super) fn doc_content(&self, rel_path: &str) -> Option<String> {
         self.doc_queries().content(rel_path)
     }

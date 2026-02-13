@@ -11,7 +11,7 @@ use super::{
     chunking::{chunk_document, hash_content},
     embedding::{EmbeddingClient, EmbeddingVector},
     files::MarkdownFile,
-    links::{LinkResolver, ResolvedLink},
+    links::{LinkResolution, LinkResolver},
     EmbeddingContext, IndexSummary, TARGET_CHUNKING_VERSION,
 };
 
@@ -94,11 +94,11 @@ enum FileSyncAction {
 fn decide_file_sync_action(
     doc_record: &DocRecord,
     file: &MarkdownFile,
-    refresh_all_links: bool,
+    force_link_refresh_for_doc: bool,
     embedding: Option<&EmbeddingContext>,
 ) -> FileSyncAction {
     let source_stat_changed = !doc_record.source_stat_matches(file);
-    if !refresh_all_links
+    if !force_link_refresh_for_doc
         && !source_stat_changed
         && doc_record.chunking_version == TARGET_CHUNKING_VERSION
         && doc_record.last_hash.is_some()
@@ -183,13 +183,23 @@ pub(crate) fn sync_documents_with_prune(
     let mut existing_docs = load_docs(conn, vault_id)?;
     let discovered: HashSet<String> = files.iter().map(|file| file.rel_path.clone()).collect();
 
-    if prune_deleted_docs {
+    let deleted_rel_paths = if prune_deleted_docs {
         // Remove rows for files that no longer exist before processing additions/updates.
-        remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?;
-    }
+        remove_deleted_docs(conn, &mut existing_docs, &discovered, summary)?
+    } else {
+        Vec::new()
+    };
 
     let inserted_docs = ensure_docs_for_files(conn, vault_id, &files, &mut existing_docs, summary)?;
-    let refresh_all_links = inserted_docs > 0 || (prune_deleted_docs && summary.docs_deleted > 0);
+    bind_unresolved_links_for_inserted_docs(conn, &inserted_docs)?;
+    let mut affected_query_keys = collect_query_keys_for_paths(&deleted_rel_paths);
+    for (rel_path, _doc_id) in &inserted_docs {
+        for key in rel_path_query_keys(rel_path) {
+            affected_query_keys.insert(key);
+        }
+    }
+    let forced_link_refresh_doc_ids =
+        load_forced_link_refresh_doc_ids(conn, vault_id, &affected_query_keys)?;
     let docs_by_path = existing_docs
         .iter()
         .map(|(rel_path, doc)| (rel_path.clone(), doc.id))
@@ -197,12 +207,16 @@ pub(crate) fn sync_documents_with_prune(
     let link_resolver = LinkResolver::new(workspace_root, docs_by_path);
 
     for file in files {
+        let force_link_refresh_for_doc = existing_docs
+            .get(&file.rel_path)
+            .map(|doc| forced_link_refresh_doc_ids.contains(&doc.id))
+            .unwrap_or(false);
         match process_file(
             conn,
             &file,
             &mut existing_docs,
             &link_resolver,
-            refresh_all_links,
+            force_link_refresh_for_doc,
             embedding,
             summary,
         ) {
@@ -245,15 +259,15 @@ fn remove_deleted_docs(
     docs: &mut HashMap<String, DocRecord>,
     discovered: &HashSet<String>,
     summary: &mut IndexSummary,
-) -> Result<()> {
+) -> Result<Vec<String>> {
     let to_delete: Vec<String> = docs
         .keys()
         .filter(|rel_path| !discovered.contains(*rel_path))
         .cloned()
         .collect();
 
-    for rel_path in to_delete {
-        if let Some(doc) = docs.remove(&rel_path) {
+    for rel_path in &to_delete {
+        if let Some(doc) = docs.remove(rel_path) {
             delete_vectors_for_doc(conn, doc.id)?;
             conn.execute("DELETE FROM doc WHERE id = ?1", params![doc.id])
                 .with_context(|| format!("Failed to delete doc for rel_path {}", rel_path))?;
@@ -261,7 +275,7 @@ fn remove_deleted_docs(
         }
     }
 
-    Ok(())
+    Ok(to_delete)
 }
 
 fn ensure_docs_for_files(
@@ -270,8 +284,8 @@ fn ensure_docs_for_files(
     files: &[MarkdownFile],
     docs: &mut HashMap<String, DocRecord>,
     summary: &mut IndexSummary,
-) -> Result<usize> {
-    let mut inserted = 0usize;
+) -> Result<Vec<(String, i64)>> {
+    let mut inserted = Vec::new();
     for file in files {
         if docs.contains_key(&file.rel_path) {
             continue;
@@ -297,7 +311,7 @@ fn ensure_docs_for_files(
 
         let doc_id = conn.last_insert_rowid();
         summary.docs_inserted += 1;
-        inserted += 1;
+        inserted.push((file.rel_path.clone(), doc_id));
         docs.insert(
             file.rel_path.clone(),
             DocRecord {
@@ -315,12 +329,128 @@ fn ensure_docs_for_files(
     Ok(inserted)
 }
 
+fn bind_unresolved_links_for_inserted_docs(
+    conn: &Connection,
+    inserted_docs: &[(String, i64)],
+) -> Result<()> {
+    for (rel_path, doc_id) in inserted_docs {
+        conn.execute(
+            "UPDATE link SET target_doc_id = ?1 \
+             WHERE target_doc_id IS NULL AND target_path = ?2",
+            params![doc_id, rel_path],
+        )
+        .with_context(|| {
+            format!(
+                "Failed to bind unresolved links for inserted doc {} ({})",
+                doc_id, rel_path
+            )
+        })?;
+    }
+
+    Ok(())
+}
+
+fn collect_query_keys_for_paths(paths: &[String]) -> HashSet<String> {
+    let mut keys = HashSet::new();
+    for rel_path in paths {
+        for key in rel_path_query_keys(rel_path) {
+            keys.insert(key);
+        }
+    }
+    keys
+}
+
+fn rel_path_query_keys(rel_path: &str) -> HashSet<String> {
+    let Some(no_ext_lower) = rel_path_no_ext_lower(rel_path) else {
+        return HashSet::new();
+    };
+
+    let segments = no_ext_lower
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>();
+    if segments.is_empty() {
+        return HashSet::new();
+    }
+
+    let mut keys = HashSet::new();
+    for suffix_len in 1..=segments.len() {
+        let key = segments[segments.len() - suffix_len..].join("/");
+        if !key.is_empty() {
+            keys.insert(key);
+        }
+    }
+
+    keys
+}
+
+fn rel_path_no_ext_lower(rel_path: &str) -> Option<String> {
+    let normalized = rel_path.replace('\\', "/").trim().to_string();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let lower = normalized.to_lowercase();
+    if lower.ends_with(".mdx") {
+        return normalized
+            .get(..normalized.len().saturating_sub(4))
+            .map(|value| value.to_lowercase());
+    }
+    if lower.ends_with(".md") {
+        return normalized
+            .get(..normalized.len().saturating_sub(3))
+            .map(|value| value.to_lowercase());
+    }
+
+    Path::new(&normalized)
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .map(|value| value.trim().to_lowercase())
+}
+
+fn load_forced_link_refresh_doc_ids(
+    conn: &Connection,
+    vault_id: i64,
+    query_keys: &HashSet<String>,
+) -> Result<HashSet<i64>> {
+    if query_keys.is_empty() {
+        return Ok(HashSet::new());
+    }
+
+    let mut result = HashSet::new();
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT wr.source_doc_id \
+             FROM wiki_link_ref wr \
+             JOIN doc d ON d.id = wr.source_doc_id \
+             WHERE d.vault_id = ?1 AND wr.query_key = ?2",
+        )
+        .context("Failed to prepare forced link refresh query")?;
+
+    for query_key in query_keys {
+        let rows = stmt
+            .query_map(params![vault_id, query_key], |row| row.get::<_, i64>(0))
+            .with_context(|| {
+                format!(
+                    "Failed to query docs requiring forced link refresh for query key '{}'",
+                    query_key
+                )
+            })?;
+
+        for row in rows {
+            result.insert(row?);
+        }
+    }
+
+    Ok(result)
+}
+
 fn process_file(
     conn: &mut Connection,
     file: &MarkdownFile,
     docs: &mut HashMap<String, DocRecord>,
     link_resolver: &LinkResolver,
-    refresh_all_links: bool,
+    force_link_refresh_for_doc: bool,
     embedding: Option<&EmbeddingContext>,
     summary: &mut IndexSummary,
 ) -> Result<()> {
@@ -328,7 +458,7 @@ fn process_file(
         .get_mut(&file.rel_path)
         .ok_or_else(|| anyhow!("Missing document row for {} during indexing", file.rel_path))?;
     let source_stat_changed =
-        match decide_file_sync_action(doc_record, file, refresh_all_links, embedding) {
+        match decide_file_sync_action(doc_record, file, force_link_refresh_for_doc, embedding) {
             FileSyncAction::Skip => return Ok(()),
             FileSyncAction::Process {
                 source_stat_changed,
@@ -343,13 +473,13 @@ fn process_file(
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);
 
-    if refresh_all_links || hash_changed {
-        let links = link_resolver.resolve_links(file, &contents);
-        replace_links_for_doc(conn, doc_id, &links, summary)?;
+    if force_link_refresh_for_doc || hash_changed {
+        let resolution = link_resolver.resolve_links_with_dependencies(file, &contents);
+        replace_links_for_doc(conn, doc_id, &resolution, summary)?;
     }
 
     let Some(embedding) = embedding else {
-        if refresh_all_links || hash_changed {
+        if hash_changed {
             apply_doc_update(
                 conn,
                 doc_record,
@@ -520,7 +650,7 @@ fn apply_doc_update(
 fn replace_links_for_doc(
     conn: &mut Connection,
     doc_id: i64,
-    links: &[ResolvedLink],
+    resolution: &LinkResolution,
     summary: &mut IndexSummary,
 ) -> Result<()> {
     let tx = conn
@@ -531,6 +661,11 @@ fn replace_links_for_doc(
         .execute("DELETE FROM link WHERE source_doc_id = ?1", params![doc_id])
         .with_context(|| format!("Failed to clear links for doc {}", doc_id))?;
     summary.links_deleted += deleted as usize;
+    tx.execute(
+        "DELETE FROM wiki_link_ref WHERE source_doc_id = ?1",
+        params![doc_id],
+    )
+    .with_context(|| format!("Failed to clear wiki link refs for doc {}", doc_id))?;
 
     {
         let mut stmt = tx
@@ -539,7 +674,7 @@ fn replace_links_for_doc(
              VALUES (?1, ?2, ?3)",
             )
             .with_context(|| format!("Failed to prepare link insert for doc {}", doc_id))?;
-        for link in links {
+        for link in &resolution.links {
             stmt.execute(params![
                 doc_id,
                 link.target_doc_id,
@@ -547,6 +682,24 @@ fn replace_links_for_doc(
             ])
             .with_context(|| format!("Failed to insert link for doc {}", doc_id))?;
             summary.links_written += 1;
+        }
+    }
+    {
+        let mut stmt = tx
+            .prepare(
+                "INSERT INTO wiki_link_ref (source_doc_id, query_key) \
+             VALUES (?1, ?2)",
+            )
+            .with_context(|| {
+                format!("Failed to prepare wiki link ref insert for doc {}", doc_id)
+            })?;
+        for query_key in &resolution.wiki_query_keys {
+            stmt.execute(params![doc_id, query_key]).with_context(|| {
+                format!(
+                    "Failed to insert wiki link ref '{}' for doc {}",
+                    query_key, doc_id
+                )
+            })?;
         }
     }
 

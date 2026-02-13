@@ -9,14 +9,16 @@
 //!    tidy while the `IndexSummary` keeps track of everything that happened.
 
 use std::{
+    ffi::OsStr,
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use anyhow::{anyhow, Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
+use walkdir::WalkDir;
 
 use crate::migrations;
 
@@ -29,6 +31,7 @@ mod sync;
 
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
+use links::resolve_wiki_link_target;
 pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
 
@@ -65,6 +68,25 @@ pub struct IndexSummary {
 #[serde(rename_all = "camelCase")]
 pub struct IndexingMeta {
     pub indexed_doc_count: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveWikiLinkRequest {
+    pub workspace_path: String,
+    pub current_note_path: Option<String>,
+    pub raw_target: String,
+    pub workspace_rel_paths: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveWikiLinkResult {
+    pub canonical_target: String,
+    pub resolved_rel_path: Option<String>,
+    pub match_count: usize,
+    pub disambiguated: bool,
+    pub unresolved: bool,
 }
 
 pub(crate) struct EmbeddingContext {
@@ -131,6 +153,72 @@ fn canonicalize_workspace_root(workspace_root: &Path) -> Result<PathBuf> {
 
 fn normalize_workspace_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+fn is_markdown_or_mdx(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(OsStr::to_str),
+        Some(ext) if ext.eq_ignore_ascii_case("md") || ext.eq_ignore_ascii_case("mdx")
+    )
+}
+
+fn collect_workspace_rel_paths_for_wiki_resolution(workspace_root: &Path) -> Result<Vec<String>> {
+    let mut rel_paths = Vec::new();
+
+    for entry in WalkDir::new(workspace_root).follow_links(false) {
+        let entry = entry.with_context(|| "Failed to traverse workspace for wiki resolution")?;
+        if entry.file_type().is_dir() || !is_markdown_or_mdx(entry.path()) {
+            continue;
+        }
+
+        let rel = entry.path().strip_prefix(workspace_root).with_context(|| {
+            format!(
+                "Failed to compute relative path for {}",
+                entry.path().display()
+            )
+        })?;
+        rel_paths.push(files::normalize_rel_path(rel));
+    }
+
+    rel_paths.sort();
+    Ok(rel_paths)
+}
+
+fn sanitize_workspace_rel_path(path: &str) -> Option<String> {
+    let normalized = path.replace('\\', "/").trim().to_string();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let normalized = normalized.trim_start_matches('/').to_string();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let mut rebuilt = PathBuf::new();
+    for component in Path::new(&normalized).components() {
+        match component {
+            Component::CurDir => {}
+            Component::Normal(value) => rebuilt.push(value),
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+
+    if rebuilt.as_os_str().is_empty() {
+        return None;
+    }
+
+    Some(files::normalize_rel_path(&rebuilt))
+}
+
+fn sanitize_workspace_rel_paths(paths: Vec<String>) -> Vec<String> {
+    let mut sanitized = paths
+        .into_iter()
+        .filter_map(|path| sanitize_workspace_rel_path(&path))
+        .collect::<Vec<_>>();
+    sanitized.sort();
+    sanitized.dedup();
+    sanitized
 }
 
 fn normalized_workspace_key(workspace_root: &Path) -> Result<String> {
@@ -432,6 +520,46 @@ pub async fn search_query_entries_command(
             &embedding_provider,
             &embedding_model,
         )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn resolve_wiki_link_command(
+    workspace_path: String,
+    current_note_path: Option<String>,
+    raw_target: String,
+    workspace_rel_paths: Option<Vec<String>>,
+) -> Result<ResolveWikiLinkResult, String> {
+    let request = ResolveWikiLinkRequest {
+        workspace_path,
+        current_note_path,
+        raw_target,
+        workspace_rel_paths,
+    };
+
+    run_blocking(move || {
+        let workspace_root = canonicalize_workspace_root(Path::new(&request.workspace_path))?;
+
+        let rel_paths = match request.workspace_rel_paths {
+            Some(paths) if !paths.is_empty() => sanitize_workspace_rel_paths(paths),
+            _ => collect_workspace_rel_paths_for_wiki_resolution(&workspace_root)?,
+        };
+
+        let resolved = resolve_wiki_link_target(
+            &workspace_root,
+            request.current_note_path.as_deref(),
+            &request.raw_target,
+            &rel_paths,
+        );
+
+        Ok(ResolveWikiLinkResult {
+            canonical_target: resolved.canonical_target,
+            resolved_rel_path: resolved.resolved_rel_path,
+            match_count: resolved.match_count,
+            disambiguated: resolved.disambiguated,
+            unresolved: resolved.unresolved,
+        })
     })
     .await
 }

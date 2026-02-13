@@ -60,6 +60,16 @@ CREATE INDEX `idx_link_target_source` ON `link` (`target_doc_id`,`source_doc_id`
 --> statement-breakpoint
 CREATE INDEX `idx_link_unresolved_target_path_source` ON `link` (`target_path`,`source_doc_id`) WHERE `target_doc_id` IS NULL;
 --> statement-breakpoint
+CREATE TABLE `wiki_link_ref` (
+	`source_doc_id` integer NOT NULL,
+	`query_key` text NOT NULL,
+	FOREIGN KEY (`source_doc_id`) REFERENCES `doc`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `uniq_wiki_link_ref_source_query` ON `wiki_link_ref` (`source_doc_id`,`query_key`);
+--> statement-breakpoint
+CREATE INDEX `idx_wiki_link_ref_query_source` ON `wiki_link_ref` (`query_key`,`source_doc_id`);
+--> statement-breakpoint
 CREATE VIRTUAL TABLE `doc_fts` USING fts5(
 	`content`,
 	content='doc',
