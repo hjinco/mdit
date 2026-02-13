@@ -558,12 +558,12 @@ function LinkUrlInput() {
 					const canonicalTarget = normalizeWikiTargetForDisplay(
 						resolved.canonicalTarget,
 					)
-					if (canonicalTarget) {
-						nextUrl = canonicalTarget
-						nextWikiTarget = canonicalTarget
-					} else if (fallbackTarget) {
-						nextUrl = fallbackTarget
-						nextWikiTarget = fallbackTarget
+					const preferredTarget = resolved.unresolved
+						? fallbackTarget || canonicalTarget
+						: canonicalTarget || fallbackTarget
+					if (preferredTarget) {
+						nextUrl = preferredTarget
+						nextWikiTarget = preferredTarget
 					}
 				} catch (error) {
 					console.warn(

@@ -268,7 +268,6 @@ fn remove_deleted_docs(
 
     for rel_path in &to_delete {
         if let Some(doc) = docs.remove(rel_path) {
-            delete_vectors_for_doc(conn, doc.id)?;
             conn.execute("DELETE FROM doc WHERE id = ?1", params![doc.id])
                 .with_context(|| format!("Failed to delete doc for rel_path {}", rel_path))?;
             summary.docs_deleted += 1;
@@ -742,7 +741,6 @@ fn rebuild_doc_chunks(
     })?;
 
     // Start from a clean slate so we do not mix chunking versions in the same doc.
-    delete_vectors_for_doc(&tx, doc_id)?;
     tx.execute("DELETE FROM segment WHERE doc_id = ?1", params![doc_id])
         .with_context(|| format!("Failed to clear segments for doc {}", doc_id))?;
 
@@ -979,7 +977,6 @@ fn insert_segment(conn: &Connection, doc_id: i64, ordinal: i64, last_hash: &str)
 }
 
 fn prune_extra_segments(conn: &Connection, doc_id: i64, desired_segments: usize) -> Result<()> {
-    delete_vectors_for_pruned_segments(conn, doc_id, desired_segments as i64)?;
     conn.execute(
         "DELETE FROM segment WHERE doc_id = ?1 AND ordinal >= ?2",
         params![doc_id, desired_segments as i64],
@@ -1039,43 +1036,5 @@ fn delete_vector_for_segment(conn: &Connection, segment_id: i64) -> Result<()> {
         params![segment_id],
     )
     .with_context(|| format!("Failed to delete vector for segment {}", segment_id))?;
-    Ok(())
-}
-
-fn delete_vectors_for_doc(conn: &Connection, doc_id: i64) -> Result<()> {
-    if !segment_vec_table_exists(conn)? {
-        return Ok(());
-    }
-
-    conn.execute(
-        "DELETE FROM segment_vec \
-         WHERE rowid IN (SELECT id FROM segment WHERE doc_id = ?1)",
-        params![doc_id],
-    )
-    .with_context(|| format!("Failed to delete vectors for doc {}", doc_id))?;
-
-    Ok(())
-}
-
-fn delete_vectors_for_pruned_segments(
-    conn: &Connection,
-    doc_id: i64,
-    start_ordinal: i64,
-) -> Result<()> {
-    if !segment_vec_table_exists(conn)? {
-        return Ok(());
-    }
-
-    conn.execute(
-        "DELETE FROM segment_vec \
-         WHERE rowid IN ( \
-             SELECT id \
-             FROM segment \
-             WHERE doc_id = ?1 AND ordinal >= ?2 \
-         )",
-        params![doc_id, start_ordinal],
-    )
-    .with_context(|| format!("Failed to delete pruned vectors for doc {}", doc_id))?;
-
     Ok(())
 }
