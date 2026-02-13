@@ -190,10 +190,6 @@ fn is_markdown_path(path: &Path) -> bool {
     )
 }
 
-fn normalize_rel_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
-}
-
 fn build_single_markdown_file(
     workspace_root: &Path,
     note_path: &Path,
@@ -216,12 +212,11 @@ fn build_single_markdown_file(
     let rel_path = note_canonical
         .strip_prefix(&workspace_canonical)
         .map_err(|_| anyhow!("Note path is outside workspace: {}", note_path.display()))?;
-    let rel_path = normalize_rel_path(rel_path);
-
-    Ok(files::MarkdownFile {
-        abs_path: note_canonical,
+    let rel_path = files::normalize_rel_path(rel_path);
+    Ok(files::MarkdownFile::from_abs_and_rel(
+        note_canonical,
         rel_path,
-    })
+    ))
 }
 
 fn run_indexing_for_files(

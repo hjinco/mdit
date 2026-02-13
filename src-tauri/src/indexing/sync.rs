@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Row};
 
 use super::{
     chunking::{chunk_document, hash_content},
@@ -22,11 +22,27 @@ struct DocRecord {
     id: i64,
     chunking_version: i64,
     last_hash: Option<String>,
+    last_source_size: Option<i64>,
+    last_source_mtime_ns: Option<i64>,
     last_embedding_model: Option<String>,
     last_embedding_dim: Option<i32>,
 }
 
 impl DocRecord {
+    fn from_db_row(row: &Row<'_>) -> rusqlite::Result<(String, Self)> {
+        let rel_path = row.get::<_, String>(1)?;
+        let record = Self {
+            id: row.get::<_, i64>(0)?,
+            chunking_version: row.get::<_, i64>(2)?,
+            last_hash: row.get::<_, Option<String>>(3)?,
+            last_source_size: row.get::<_, Option<i64>>(4)?,
+            last_source_mtime_ns: row.get::<_, Option<i64>>(5)?,
+            last_embedding_model: row.get::<_, Option<String>>(6)?,
+            last_embedding_dim: row.get::<_, Option<i32>>(7)?,
+        };
+        Ok((rel_path, record))
+    }
+
     fn is_up_to_date(&self, doc_hash: &str, model: &str, target_dim: i32) -> bool {
         self.last_hash
             .as_deref()
@@ -49,11 +65,83 @@ impl DocRecord {
             .map(|hash| hash == doc_hash)
             .unwrap_or(false)
     }
+
+    fn source_stat_matches(&self, file: &MarkdownFile) -> bool {
+        matches!(
+            (
+                self.last_source_size,
+                self.last_source_mtime_ns,
+                file.last_source_size,
+                file.last_source_mtime_ns
+            ),
+            (Some(stored_size), Some(stored_mtime), Some(file_size), Some(file_mtime))
+                if stored_size == file_size && stored_mtime == file_mtime
+        )
+    }
+
+    fn update_source_stat(&mut self, file: &MarkdownFile) {
+        self.last_source_size = file.last_source_size;
+        self.last_source_mtime_ns = file.last_source_mtime_ns;
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileSyncAction {
+    Skip,
+    Process { source_stat_changed: bool },
+}
+
+fn decide_file_sync_action(
+    doc_record: &DocRecord,
+    file: &MarkdownFile,
+    refresh_all_links: bool,
+    embedding: Option<&EmbeddingContext>,
+) -> FileSyncAction {
+    let source_stat_changed = !doc_record.source_stat_matches(file);
+    if !refresh_all_links
+        && !source_stat_changed
+        && doc_record.chunking_version == TARGET_CHUNKING_VERSION
+        && doc_record.last_hash.is_some()
+        && embedding_target_matches(doc_record, embedding)
+    {
+        return FileSyncAction::Skip;
+    }
+
+    FileSyncAction::Process {
+        source_stat_changed,
+    }
+}
+
+enum DocUpdate<'a> {
+    SourceStat {
+        file: &'a MarkdownFile,
+    },
+    HashAndContent {
+        doc_hash: &'a str,
+        indexed_content: &'a str,
+        file: &'a MarkdownFile,
+    },
+    FullMetadata {
+        doc_hash: &'a str,
+        indexed_content: &'a str,
+        file: &'a MarkdownFile,
+        model: &'a str,
+        target_dim: i32,
+    },
 }
 
 fn embedding_target_changed(doc_record: &DocRecord, model: &str, target_dim: i32) -> bool {
     doc_record.last_embedding_model.as_deref() != Some(model)
         || doc_record.last_embedding_dim != Some(target_dim)
+}
+
+fn embedding_target_matches(doc_record: &DocRecord, embedding: Option<&EmbeddingContext>) -> bool {
+    let Some(embedding) = embedding else {
+        return true;
+    };
+
+    doc_record.last_embedding_model.as_deref() == Some(embedding.embedder.model_name())
+        && doc_record.last_embedding_dim == Some(embedding.target_dim)
 }
 
 #[derive(Debug)]
@@ -133,37 +221,20 @@ pub(crate) fn sync_documents_with_prune(
 fn load_docs(conn: &Connection, vault_id: i64) -> Result<HashMap<String, DocRecord>> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim \
+            "SELECT id, rel_path, chunking_version, last_hash, last_source_size, last_source_mtime_ns, \
+                    last_embedding_model, last_embedding_dim \
              FROM doc WHERE vault_id = ?1",
         )
         .context("Failed to prepare statement to load documents")?;
 
     let rows = stmt
-        .query_map(params![vault_id], |row| {
-            Ok((
-                row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, Option<String>>(3)?,
-                row.get::<_, Option<String>>(4)?,
-                row.get::<_, Option<i32>>(5)?,
-            ))
-        })
+        .query_map(params![vault_id], DocRecord::from_db_row)
         .context("Failed to read documents")?;
 
     let mut docs = HashMap::new();
     for row in rows {
-        let (id, rel_path, chunking_version, last_hash, last_model, last_dim) = row?;
-        docs.insert(
-            rel_path,
-            DocRecord {
-                id,
-                chunking_version,
-                last_hash,
-                last_embedding_model: last_model,
-                last_embedding_dim: last_dim,
-            },
-        );
+        let (rel_path, doc) = row?;
+        docs.insert(rel_path, doc);
     }
 
     Ok(docs)
@@ -207,13 +278,16 @@ fn ensure_docs_for_files(
         }
 
         conn.execute(
-            "INSERT INTO doc (vault_id, rel_path, chunking_version, last_hash, last_embedding_model, last_embedding_dim, content) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO doc (vault_id, rel_path, chunking_version, last_hash, last_source_size, \
+                              last_source_mtime_ns, last_embedding_model, last_embedding_dim, content) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 vault_id,
                 file.rel_path,
                 TARGET_CHUNKING_VERSION,
                 Option::<String>::None,
+                Option::<i64>::None,
+                Option::<i64>::None,
                 Option::<String>::None,
                 Option::<i32>::None,
                 ""
@@ -230,6 +304,8 @@ fn ensure_docs_for_files(
                 id: doc_id,
                 chunking_version: TARGET_CHUNKING_VERSION,
                 last_hash: None,
+                last_source_size: None,
+                last_source_mtime_ns: None,
                 last_embedding_model: None,
                 last_embedding_dim: None,
             },
@@ -248,14 +324,21 @@ fn process_file(
     embedding: Option<&EmbeddingContext>,
     summary: &mut IndexSummary,
 ) -> Result<()> {
+    let doc_record = docs
+        .get_mut(&file.rel_path)
+        .ok_or_else(|| anyhow!("Missing document row for {} during indexing", file.rel_path))?;
+    let source_stat_changed =
+        match decide_file_sync_action(doc_record, file, refresh_all_links, embedding) {
+            FileSyncAction::Skip => return Ok(()),
+            FileSyncAction::Process {
+                source_stat_changed,
+            } => source_stat_changed,
+        };
+
     let contents = fs::read_to_string(&file.abs_path)
         .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
     let doc_hash = hash_content(&contents);
     let indexed_content = crate::markdown_text::format_indexing_text(&contents);
-
-    let doc_record = docs
-        .get_mut(&file.rel_path)
-        .ok_or_else(|| anyhow!("Missing document row for {} during indexing", file.rel_path))?;
 
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);
@@ -267,7 +350,17 @@ fn process_file(
 
     let Some(embedding) = embedding else {
         if refresh_all_links || hash_changed {
-            update_doc_hash_and_content(conn, doc_record, &doc_hash, &indexed_content)?;
+            apply_doc_update(
+                conn,
+                doc_record,
+                DocUpdate::HashAndContent {
+                    doc_hash: &doc_hash,
+                    indexed_content: &indexed_content,
+                    file,
+                },
+            )?;
+        } else if source_stat_changed {
+            apply_doc_update(conn, doc_record, DocUpdate::SourceStat { file })?;
         }
         return Ok(());
     };
@@ -286,6 +379,7 @@ fn process_file(
             doc_record,
             &doc_hash,
             &indexed_content,
+            file,
             &embedding.embedder,
             embedding.target_dim,
         )?;
@@ -297,6 +391,9 @@ fn process_file(
         embedding.embedder.model_name(),
         embedding.target_dim,
     ) {
+        if source_stat_changed {
+            apply_doc_update(conn, doc_record, DocUpdate::SourceStat { file })?;
+        }
         return Ok(());
     }
 
@@ -315,6 +412,7 @@ fn process_file(
         doc_record,
         &doc_hash,
         &indexed_content,
+        file,
         &embedding.embedder,
         embedding.target_dim,
     )
@@ -325,46 +423,96 @@ fn update_doc_metadata(
     doc_record: &mut DocRecord,
     doc_hash: &str,
     indexed_content: &str,
+    file: &MarkdownFile,
     embedder: &EmbeddingClient,
     target_dim: i32,
 ) -> Result<()> {
-    let model = embedder.model_name();
-    conn.execute(
-        "UPDATE doc \
-         SET chunking_version = ?1, last_hash = ?2, last_embedding_model = ?3, last_embedding_dim = ?4, content = ?5 \
-         WHERE id = ?6",
-        params![
-            TARGET_CHUNKING_VERSION,
+    apply_doc_update(
+        conn,
+        doc_record,
+        DocUpdate::FullMetadata {
             doc_hash,
-            model,
-            target_dim,
             indexed_content,
-            doc_record.id
-        ],
+            file,
+            model: embedder.model_name(),
+            target_dim,
+        },
     )
-    .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
-
-    doc_record.chunking_version = TARGET_CHUNKING_VERSION;
-    doc_record.last_hash = Some(doc_hash.to_string());
-    doc_record.last_embedding_model = Some(model.to_string());
-    doc_record.last_embedding_dim = Some(target_dim);
-
-    Ok(())
 }
 
-fn update_doc_hash_and_content(
+fn apply_doc_update(
     conn: &Connection,
     doc_record: &mut DocRecord,
-    doc_hash: &str,
-    indexed_content: &str,
+    update: DocUpdate<'_>,
 ) -> Result<()> {
-    conn.execute(
-        "UPDATE doc SET last_hash = ?1, content = ?2 WHERE id = ?3",
-        params![doc_hash, indexed_content, doc_record.id],
-    )
-    .with_context(|| format!("Failed to update doc hash {}", doc_record.id))?;
+    match update {
+        DocUpdate::SourceStat { file } => {
+            conn.execute(
+                "UPDATE doc SET last_source_size = ?1, last_source_mtime_ns = ?2 WHERE id = ?3",
+                params![
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc source stat {}", doc_record.id))?;
 
-    doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+        }
+        DocUpdate::HashAndContent {
+            doc_hash,
+            indexed_content,
+            file,
+        } => {
+            conn.execute(
+                "UPDATE doc \
+                 SET last_hash = ?1, last_source_size = ?2, last_source_mtime_ns = ?3, content = ?4 \
+                 WHERE id = ?5",
+                params![
+                    doc_hash,
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    indexed_content,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc hash {}", doc_record.id))?;
+
+            doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+        }
+        DocUpdate::FullMetadata {
+            doc_hash,
+            indexed_content,
+            file,
+            model,
+            target_dim,
+        } => {
+            conn.execute(
+                "UPDATE doc \
+                 SET chunking_version = ?1, last_hash = ?2, last_source_size = ?3, last_source_mtime_ns = ?4, \
+                     last_embedding_model = ?5, last_embedding_dim = ?6, content = ?7 \
+                 WHERE id = ?8",
+                params![
+                    TARGET_CHUNKING_VERSION,
+                    doc_hash,
+                    file.last_source_size,
+                    file.last_source_mtime_ns,
+                    model,
+                    target_dim,
+                    indexed_content,
+                    doc_record.id
+                ],
+            )
+            .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
+
+            doc_record.chunking_version = TARGET_CHUNKING_VERSION;
+            doc_record.last_hash = Some(doc_hash.to_string());
+            doc_record.update_source_stat(file);
+            doc_record.last_embedding_model = Some(model.to_string());
+            doc_record.last_embedding_dim = Some(target_dim);
+        }
+    }
 
     Ok(())
 }
@@ -557,6 +705,8 @@ mod tests {
             id: 1,
             chunking_version: 2,
             last_hash: Some("hash".to_string()),
+            last_source_size: Some(10),
+            last_source_mtime_ns: Some(20),
             last_embedding_model: model.map(|value| value.to_string()),
             last_embedding_dim: dim,
         }

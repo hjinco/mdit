@@ -24,6 +24,8 @@ fn make_file(root: &Path, rel_path: &str) -> MarkdownFile {
     MarkdownFile {
         abs_path: root.join(rel_path),
         rel_path: rel_path.replace('\\', "/"),
+        last_source_size: None,
+        last_source_mtime_ns: None,
     }
 }
 

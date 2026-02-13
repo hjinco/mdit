@@ -14,6 +14,8 @@ CREATE TABLE `doc` (
 	`content` text NOT NULL,
 	`chunking_version` integer NOT NULL,
 	`last_hash` text,
+	`last_source_size` integer,
+	`last_source_mtime_ns` integer,
 	`last_embedding_model` text,
 	`last_embedding_dim` integer,
 	FOREIGN KEY (`vault_id`) REFERENCES `vault`(`id`) ON UPDATE no action ON DELETE cascade

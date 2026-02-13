@@ -75,3 +75,50 @@ fn given_content_changed_without_embeddings_when_reindexing_then_doc_content_is_
     assert!(!content.contains("Old Title"));
     assert!(!content.contains("Old body sentence."));
 }
+
+#[test]
+fn given_hash_missing_when_source_stat_matches_then_reindex_restores_hash() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-missing-hash");
+    harness.write_note("a.md", "# A\nBody\n");
+
+    harness.run_workspace_index();
+    harness.clear_doc_hash("a.md");
+
+    assert_eq!(harness.doc_hash("a.md"), None);
+
+    let summary = harness.run_workspace_index();
+
+    assert_eq!(summary.files_processed, 1);
+    assert!(harness.doc_hash("a.md").is_some());
+}
+
+#[test]
+fn given_stale_source_stat_when_content_unchanged_then_reindex_updates_source_stat() {
+    let harness = IndexingHarness::new("mdit-indexing-sync-source-stat-refresh");
+    harness.write_note("a.md", "# Stable\nBody\n");
+
+    harness.run_workspace_index();
+
+    let original_stat = harness
+        .doc_source_stat("a.md")
+        .expect("indexed source stat should exist");
+    let stale_size = original_stat
+        .0
+        .map(|value| value.saturating_add(1))
+        .or(Some(1));
+    let stale_mtime_ns = original_stat
+        .1
+        .map(|value| value.saturating_add(1))
+        .or(Some(1));
+
+    harness.set_doc_source_stat("a.md", stale_size, stale_mtime_ns);
+
+    let summary = harness.run_workspace_index();
+    let refreshed_stat = harness
+        .doc_source_stat("a.md")
+        .expect("refreshed source stat should exist");
+
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(refreshed_stat, original_stat);
+}

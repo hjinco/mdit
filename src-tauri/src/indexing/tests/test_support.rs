@@ -15,6 +15,14 @@ pub(super) struct IndexingHarness {
     db_path: PathBuf,
 }
 
+struct DocQueries<'a> {
+    harness: &'a IndexingHarness,
+}
+
+struct DocMutations<'a> {
+    harness: &'a IndexingHarness,
+}
+
 impl IndexingHarness {
     pub(super) fn new(prefix: &str) -> Self {
         let mut root = std::env::temp_dir();
@@ -71,9 +79,7 @@ impl IndexingHarness {
     }
 
     pub(super) fn link_targets_for(&self, source_rel_path: &str) -> Vec<String> {
-        let conn = self.open_connection();
-        let Some(vault_id) = find_vault_id(&conn, &self.root).expect("failed to find vault id")
-        else {
+        let Some((conn, vault_id)) = self.open_vault_connection() else {
             return Vec::new();
         };
 
@@ -98,19 +104,43 @@ impl IndexingHarness {
     }
 
     pub(super) fn doc_content(&self, rel_path: &str) -> Option<String> {
-        let conn = self.open_connection();
-        let Some(vault_id) = find_vault_id(&conn, &self.root).expect("failed to find vault id")
-        else {
-            return None;
-        };
+        self.doc_queries().content(rel_path)
+    }
 
-        conn.query_row(
-            "SELECT content FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
-            params![vault_id, rel_path],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .expect("failed to query doc content")
+    pub(super) fn doc_hash(&self, rel_path: &str) -> Option<String> {
+        self.doc_queries().hash(rel_path)
+    }
+
+    pub(super) fn clear_doc_hash(&self, rel_path: &str) {
+        self.doc_mutations().clear_hash(rel_path);
+    }
+
+    pub(super) fn doc_source_stat(&self, rel_path: &str) -> Option<(Option<i64>, Option<i64>)> {
+        self.doc_queries().source_stat(rel_path)
+    }
+
+    pub(super) fn set_doc_source_stat(
+        &self,
+        rel_path: &str,
+        size: Option<i64>,
+        mtime_ns: Option<i64>,
+    ) {
+        self.doc_mutations()
+            .set_source_stat(rel_path, size, mtime_ns);
+    }
+
+    fn doc_queries(&self) -> DocQueries<'_> {
+        DocQueries { harness: self }
+    }
+
+    fn doc_mutations(&self) -> DocMutations<'_> {
+        DocMutations { harness: self }
+    }
+
+    fn open_vault_connection(&self) -> Option<(Connection, i64)> {
+        let conn = self.open_connection();
+        let vault_id = find_vault_id(&conn, &self.root).expect("failed to find vault id")?;
+        Some((conn, vault_id))
     }
 
     fn open_connection(&self) -> Connection {
@@ -124,6 +154,69 @@ impl IndexingHarness {
 impl Drop for IndexingHarness {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.root);
+    }
+}
+
+impl DocQueries<'_> {
+    fn content(&self, rel_path: &str) -> Option<String> {
+        let (conn, vault_id) = self.harness.open_vault_connection()?;
+        conn.query_row(
+            "SELECT content FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .expect("failed to query doc content")
+    }
+
+    fn hash(&self, rel_path: &str) -> Option<String> {
+        let (conn, vault_id) = self.harness.open_vault_connection()?;
+        conn.query_row(
+            "SELECT last_hash FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()
+        .expect("failed to query doc hash")
+        .flatten()
+    }
+
+    fn source_stat(&self, rel_path: &str) -> Option<(Option<i64>, Option<i64>)> {
+        let (conn, vault_id) = self.harness.open_vault_connection()?;
+        conn.query_row(
+            "SELECT last_source_size, last_source_mtime_ns \
+             FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| Ok((row.get::<_, Option<i64>>(0)?, row.get::<_, Option<i64>>(1)?)),
+        )
+        .optional()
+        .expect("failed to query doc source stat")
+    }
+}
+
+impl DocMutations<'_> {
+    fn clear_hash(&self, rel_path: &str) {
+        let Some((conn, vault_id)) = self.harness.open_vault_connection() else {
+            return;
+        };
+        conn.execute(
+            "UPDATE doc SET last_hash = NULL WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+        )
+        .expect("failed to clear doc hash");
+    }
+
+    fn set_source_stat(&self, rel_path: &str, size: Option<i64>, mtime_ns: Option<i64>) {
+        let Some((conn, vault_id)) = self.harness.open_vault_connection() else {
+            return;
+        };
+        conn.execute(
+            "UPDATE doc \
+             SET last_source_size = ?1, last_source_mtime_ns = ?2 \
+             WHERE vault_id = ?3 AND rel_path = ?4",
+            params![size, mtime_ns, vault_id, rel_path],
+        )
+        .expect("failed to update doc source stat");
     }
 }
 
