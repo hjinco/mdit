@@ -102,14 +102,11 @@ pub(crate) fn list_workspaces(db_path: &Path) -> Result<Vec<String>> {
         .prepare("SELECT workspace_root FROM vault ORDER BY last_opened_at DESC, id DESC")
         .context("Failed to prepare vault workspace list query")?;
 
-    let rows = stmt
+    let workspaces = stmt
         .query_map([], |row| row.get::<_, String>(0))
-        .context("Failed to load vault workspaces")?;
-
-    let mut workspaces = Vec::new();
-    for row in rows {
-        workspaces.push(row?);
-    }
+        .context("Failed to load vault workspaces")?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .context("Failed to read vault workspace rows")?;
 
     Ok(workspaces)
 }
