@@ -13,6 +13,23 @@ import { buildWorkspaceState } from "../workspace-state"
 
 const MAX_HISTORY_LENGTH = 5
 
+const resolveUnwatchFnForWorkspaceTransition = (
+	ctx: WorkspaceActionContext,
+	nextWorkspacePath: string | null,
+): WorkspaceSlice["unwatchFn"] => {
+	const { workspacePath, unwatchFn } = ctx.get()
+	if (!unwatchFn) {
+		return null
+	}
+
+	if (workspacePath === nextWorkspacePath) {
+		return unwatchFn
+	}
+
+	unwatchFn()
+	return null
+}
+
 const restoreLastOpenedNoteFromSettings = async (
 	ctx: WorkspaceActionContext,
 	workspacePath: string,
@@ -158,12 +175,17 @@ export const createWorkspaceLifecycleActions = (
 			}
 
 			const workspacePath = nextRecentWorkspacePaths[0] ?? null
+			const unwatchFn = resolveUnwatchFnForWorkspaceTransition(
+				ctx,
+				workspacePath,
+			)
 
 			ctx.set(
 				buildWorkspaceState({
 					workspacePath,
 					recentWorkspacePaths: nextRecentWorkspacePaths,
 					isTreeLoading: Boolean(workspacePath),
+					unwatchFn,
 				}),
 			)
 			ctx.ports.collection.resetCollectionPath()
@@ -178,7 +200,11 @@ export const createWorkspaceLifecycleActions = (
 			}
 		} catch (error) {
 			console.error("Failed to initialize workspace:", error)
-			ctx.set(buildWorkspaceState())
+			ctx.set(
+				buildWorkspaceState({
+					unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, null),
+				}),
+			)
 			ctx.ports.collection.resetCollectionPath()
 		}
 	},
@@ -212,12 +238,14 @@ export const createWorkspaceLifecycleActions = (
 			].slice(0, MAX_HISTORY_LENGTH)
 
 			ctx.deps.historyRepository.writeWorkspaceHistory(updatedHistory)
+			const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, path)
 
 			ctx.set(
 				buildWorkspaceState({
 					workspacePath: path,
 					recentWorkspacePaths: updatedHistory,
 					isTreeLoading: true,
+					unwatchFn,
 				}),
 			)
 			ctx.ports.collection.resetCollectionPath()
@@ -262,11 +290,13 @@ export const createWorkspaceLifecycleActions = (
 		)
 
 		ctx.deps.historyRepository.writeWorkspaceHistory(updatedHistory)
+		const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, null)
 
 		ctx.set(
 			buildWorkspaceState({
 				recentWorkspacePaths: updatedHistory,
 				isMigrationsComplete: true,
+				unwatchFn,
 			}),
 		)
 		ctx.ports.collection.resetCollectionPath()

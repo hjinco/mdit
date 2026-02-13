@@ -19,7 +19,9 @@ describe("workspace-fs-transfer-actions", () => {
 			createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsTransferActions(context)
 		setState({ workspacePath: "/ws" })
-		deps.fileSystemRepository.copy.mockRejectedValueOnce(new Error("copy failed"))
+		deps.fileSystemRepository.copy.mockRejectedValueOnce(
+			new Error("copy failed"),
+		)
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		const result = await actions.copyEntry("/external/a.md", "/ws")

@@ -14,6 +14,65 @@ describe("workspace-fs-structure-actions", () => {
 		expect(getState().entryCreated).toHaveBeenCalled()
 	})
 
+	it("createNote sanitizes initialName separators before file creation", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryCreated = vi.fn().mockResolvedValue(undefined)
+
+		const createdPath = await actions.createNote("/ws", {
+			initialName: "../../etc/passwd",
+		})
+
+		expect(createdPath).toBe("/ws/....etcpasswd.md")
+		expect(deps.fileSystemRepository.writeTextFile).toHaveBeenCalledWith(
+			"/ws/....etcpasswd.md",
+			"",
+		)
+
+		const createdEntryName =
+			getState().entryCreated.mock.calls[0]?.[0]?.entry?.name
+		expect(createdEntryName).toBe("....etcpasswd.md")
+		expect(createdEntryName).not.toMatch(/[\\/]/)
+	})
+
+	it("createNote throws when sanitized initialName is empty", async () => {
+		const { context, deps } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+
+		await expect(
+			actions.createNote("/ws", { initialName: " / \\\\ " }),
+		).rejects.toThrow("Note name is empty after sanitization.")
+
+		expect(deps.fileSystemRepository.writeTextFile).not.toHaveBeenCalled()
+	})
+
+	it("renameEntry sanitizes separators from newName", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"a/b\\c",
+		)
+
+		expect(renamedPath).toBe("/ws/abc")
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/abc",
+		)
+		expect(getState().entryRenamed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				newPath: "/ws/abc",
+				newName: "abc",
+			}),
+		)
+	})
+
 	it("deleteEntries uses moveManyToTrash for multiple items", async () => {
 		const { context, deps, getState } = createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsStructureActions(context)

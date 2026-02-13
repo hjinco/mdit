@@ -60,7 +60,11 @@ const importTransferredEntry = async (
 ) => {
 	const fileMetadata = await readWorkspaceEntryMetadata(ctx, input.newPath)
 	const directoryChildren = input.isDirectory
-		? await loadDirectoryChildrenForTransfer(ctx, input.newPath, input.operation)
+		? await loadDirectoryChildrenForTransfer(
+				ctx,
+				input.newPath,
+				input.operation,
+			)
 		: undefined
 	const newFileName = getFileNameFromPath(input.newPath) ?? input.sourceFileName
 

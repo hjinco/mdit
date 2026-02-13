@@ -1,4 +1,5 @@
 import { dirname, join } from "pathe"
+import { sanitizeWorkspaceEntryName } from "../helpers/fs-entry-name-helpers"
 import { waitForUnsavedTabToSettle } from "../helpers/tab-save-helpers"
 import { generateUniqueFileName } from "../helpers/unique-filename-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
@@ -16,7 +17,7 @@ export const createWorkspaceFsStructureActions = (
 	| "renameEntry"
 > => ({
 	createFolder: async (directoryPath: string, folderName: string) => {
-		const trimmedName = folderName.trim().replace(/[/\\]/g, "")
+		const trimmedName = sanitizeWorkspaceEntryName(folderName)
 		if (!trimmedName) {
 			return null
 		}
@@ -62,7 +63,14 @@ export const createWorkspaceFsStructureActions = (
 	},
 
 	createNote: async (directoryPath, options) => {
-		const baseName = `${options?.initialName ?? "Untitled"}.md`
+		const sanitizedBaseName = sanitizeWorkspaceEntryName(
+			options?.initialName ?? "Untitled",
+		)
+		if (!sanitizedBaseName) {
+			throw new Error("Note name is empty after sanitization.")
+		}
+
+		const baseName = `${sanitizedBaseName}.md`
 		const { fileName, fullPath: filePath } = await generateUniqueFileName(
 			baseName,
 			directoryPath,
@@ -142,7 +150,7 @@ export const createWorkspaceFsStructureActions = (
 	},
 
 	renameEntry: async (entry, newName) => {
-		const trimmedName = newName.trim().replace(/[/\\]/g, "")
+		const trimmedName = sanitizeWorkspaceEntryName(newName)
 
 		if (!trimmedName || trimmedName === entry.name) {
 			return entry.path
