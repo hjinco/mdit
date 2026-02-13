@@ -762,30 +762,29 @@ pub(crate) fn get_graph_view_data(workspace_root: &Path, db_path: &Path) -> Resu
             continue;
         };
 
-        let (target_node_id, unresolved) = match target_indexed_doc_id {
-            Some(target_doc_id) => {
-                let target_node_id = doc_node_id_by_doc_id
-                    .get(&target_doc_id)
-                    .cloned()
-                    .unwrap_or_else(|| format!("doc:{target_doc_id}"));
+        let (target_node_id, unresolved) = if let Some(target_doc_id) = target_indexed_doc_id {
+            if let Some(target_node_id) = doc_node_id_by_doc_id.get(&target_doc_id).cloned() {
                 (target_node_id, false)
+            } else {
+                // A resolved target_doc_id from the query should exist in the node map.
+                // If not, skip the edge to keep node/edge data consistent.
+                continue;
             }
-            None => {
-                let target_node_id = unresolved_node_id_by_target_path
-                    .entry(target_path.clone())
-                    .or_insert_with(|| {
-                        let id = format!("unresolved:{target_path}");
-                        nodes.push(GraphNode {
-                            id: id.clone(),
-                            rel_path: target_path.clone(),
-                            file_name: graph_node_name(&target_path),
-                            unresolved: true,
-                        });
-                        id
-                    })
-                    .clone();
-                (target_node_id, true)
-            }
+        } else {
+            let target_node_id = unresolved_node_id_by_target_path
+                .entry(target_path.clone())
+                .or_insert_with(|| {
+                    let id = format!("unresolved:{target_path}");
+                    nodes.push(GraphNode {
+                        id: id.clone(),
+                        rel_path: target_path.clone(),
+                        file_name: graph_node_name(&target_path),
+                        unresolved: true,
+                    });
+                    id
+                })
+                .clone();
+            (target_node_id, true)
         };
 
         if seen_edges.insert((source_node_id.clone(), target_node_id.clone())) {
