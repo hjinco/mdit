@@ -1,4 +1,4 @@
-import { findEntryByPath } from "../../workspace/utils/entry-utils"
+import { findEntryByPath } from "../../workspace/helpers/entry-helpers"
 import type { WorkspaceEntry } from "../../workspace/workspace-slice"
 
 /**

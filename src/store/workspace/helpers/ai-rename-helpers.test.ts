@@ -7,7 +7,7 @@ import {
 	extractName,
 	sanitizeFileName,
 	stripExtension,
-} from "./ai-rename-utils"
+} from "./ai-rename-helpers"
 
 const makeEntry = (name: string, overrides?: Partial<DirEntry>): DirEntry => ({
 	name,

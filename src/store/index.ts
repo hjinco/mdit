@@ -28,28 +28,13 @@ import {
 import { createTabSlice, type TabSlice } from "./tab/tab-slice"
 import { createUISlice, type UISlice } from "./ui/ui-slice"
 import {
-	createWorkspaceFileSelectionSlice,
-	type WorkspaceFileSelectionSlice,
-} from "./workspace/workspace-file-selection-slice"
-import {
-	createWorkspaceFsSlice,
-	type WorkspaceFsSlice,
-} from "./workspace/workspace-fs-slice"
-import {
 	createWorkspaceSlice,
 	type WorkspaceSlice,
 } from "./workspace/workspace-slice"
-import {
-	createWorkspaceWatchSlice,
-	type WorkspaceWatchSlice,
-} from "./workspace/workspace-watch-slice"
 
 export type StoreState = WorkspaceSlice &
 	TabSlice &
 	CollectionSlice &
-	WorkspaceFsSlice &
-	WorkspaceFileSelectionSlice &
-	WorkspaceWatchSlice &
 	AISettingsSlice &
 	EditorSlice &
 	GitSyncSlice &
@@ -62,10 +47,7 @@ export type StoreState = WorkspaceSlice &
 export const useStore = create<StoreState>()((...a) => ({
 	...createCollectionSlice(...a),
 	...createTabSlice(...a),
-	...createWorkspaceFsSlice(...a),
 	...createWorkspaceSlice(...a),
-	...createWorkspaceFileSelectionSlice(...a),
-	...createWorkspaceWatchSlice(...a),
 	...createAISettingsSlice(...a),
 	...createEditorSlice(...a),
 	...createGitSyncSlice(...a),
