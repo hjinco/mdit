@@ -231,10 +231,7 @@ mod tests {
     fn rel_path_query_keys_returns_normalized_suffixes() {
         let keys = rel_path_query_keys("Docs\\Team/Note.MDX ");
 
-        assert_eq!(
-            keys,
-            string_set(&["note", "team/note", "docs/team/note"])
-        );
+        assert_eq!(keys, string_set(&["note", "team/note", "docs/team/note"]));
     }
 
     #[test]

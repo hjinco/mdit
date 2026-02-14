@@ -5,9 +5,9 @@ use tiktoken_rs::{cl100k_base, CoreBPE};
 
 // Default to a conservative chunk size until we can detect the embedding model's
 // context window dynamically.
-const MAX_TOKENS_PER_CHUNK_V1: usize = 512;
+const MAX_TOKENS_PER_CHUNK_V1: usize = 1024;
 // Enforce a floor to avoid generating noisy embeddings with ultra-short chunks.
-const MIN_TOKENS_PER_CHUNK_V1: usize = 64;
+const MIN_TOKENS_PER_CHUNK_V1: usize = 128;
 
 /// Dispatch to the correct chunker for the requested version.
 pub(crate) fn chunk_document(contents: &str, chunking_version: i64) -> Vec<String> {
@@ -47,7 +47,7 @@ fn chunk_markdown_v1(contents: &str) -> Vec<String> {
         }
     }
 
-    enforce_min_chunk_tokens(chunks, MIN_TOKENS_PER_CHUNK_V1)
+    enforce_min_chunk_tokens(chunks, MIN_TOKENS_PER_CHUNK_V1, MAX_TOKENS_PER_CHUNK_V1)
 }
 
 fn split_major_sections(contents: &str) -> Vec<String> {
@@ -66,7 +66,6 @@ fn split_major_sections(contents: &str) -> Vec<String> {
     let mut current_start = 0usize;
     let mut in_code_block = false;
     let mut code_block_start: Option<usize> = None;
-    let mut table_block_start: Option<usize> = None;
 
     for (event, range) in parser {
         match event {
@@ -81,22 +80,6 @@ fn split_major_sections(contents: &str) -> Vec<String> {
                     current_start = range.end;
                 }
                 in_code_block = false;
-            }
-            Event::Start(Tag::Table(_)) => {
-                push_section(contents, current_start, range.start, &mut sections);
-                table_block_start = Some(range.start);
-            }
-            Event::End(TagEnd::Table) => {
-                if let Some(start) = table_block_start.take() {
-                    let table_slice = &contents[start..range.end];
-                    let table_rows = split_table_rows(table_slice);
-                    if table_rows.is_empty() {
-                        push_section(contents, start, range.end, &mut sections);
-                    } else {
-                        sections.extend(table_rows);
-                    }
-                    current_start = range.end;
-                }
             }
             Event::Start(Tag::Heading { level, .. }) if is_major_heading(level) => {
                 push_section(contents, current_start, range.start, &mut sections);
@@ -133,10 +116,7 @@ fn push_section(contents: &str, start: usize, end: usize, sections: &mut Vec<Str
 }
 
 fn is_major_heading(level: HeadingLevel) -> bool {
-    matches!(
-        level,
-        HeadingLevel::H1 | HeadingLevel::H2 | HeadingLevel::H3
-    )
+    matches!(level, HeadingLevel::H1 | HeadingLevel::H2)
 }
 
 fn split_section_by_tokens(section: &str, max_tokens: usize) -> Vec<String> {
@@ -199,33 +179,29 @@ fn split_text_strict_by_tokens(text: &str, max_tokens: usize) -> Vec<String> {
 
     while start < tokens.len() {
         let mut end = usize::min(start + max_tokens, tokens.len());
+        let mut decoded_chunk: Option<String> = None;
 
-        loop {
-            if start >= end {
-                break;
-            }
-
+        while end <= tokens.len() {
             match tokenizer.decode(tokens[start..end].to_vec()) {
                 Ok(decoded) => {
-                    let trimmed = decoded.trim().to_string();
-                    if !trimmed.is_empty() {
-                        chunks.push(trimmed);
-                    }
+                    decoded_chunk = Some(decoded);
                     break;
                 }
-                Err(error) => {
-                    if end >= tokens.len() {
-                        println!(
-                            "[split_section_by_tokens] Failed to decode final chunk starting at token {}: {:?}",
-                            start,
-                            error
-                        );
-                        break;
-                    }
-
+                Err(_) if end < tokens.len() => {
+                    // Extend until we hit a valid UTF-8 boundary.
                     end += 1;
                 }
+                Err(_) => break,
             }
+        }
+
+        let Some(decoded) = decoded_chunk else {
+            break;
+        };
+
+        let trimmed = decoded.trim().to_string();
+        if !trimmed.is_empty() {
+            chunks.push(trimmed);
         }
 
         start = end;
@@ -271,77 +247,6 @@ fn split_paragraphs(section: &str) -> Vec<String> {
     } else {
         paragraphs
     }
-}
-
-fn split_table_rows(table_markdown: &str) -> Vec<String> {
-    let lines: Vec<&str> = table_markdown
-        .lines()
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-        .collect();
-
-    if lines.len() < 2 {
-        return Vec::new();
-    }
-
-    let header_line = lines[0];
-    let separator_line = lines[1];
-    if !is_table_separator_line(separator_line) {
-        return Vec::new();
-    }
-
-    let header_cells = parse_table_cells(header_line);
-    if header_cells.is_empty() {
-        return Vec::new();
-    }
-
-    let headers: Vec<String> = header_cells
-        .into_iter()
-        .enumerate()
-        .map(|(index, header)| {
-            let trimmed = header.trim();
-            if trimmed.is_empty() {
-                format!("Column {}", index + 1)
-            } else {
-                trimmed.to_string()
-            }
-        })
-        .collect();
-
-    let mut rows = Vec::new();
-    for row_line in lines.iter().skip(2).copied() {
-        if is_table_separator_line(row_line) {
-            continue;
-        }
-
-        let cells = parse_table_cells(row_line);
-        if cells.is_empty() {
-            continue;
-        }
-
-        let mut normalized = Vec::new();
-        for (index, header) in headers.iter().enumerate() {
-            let value = cells.get(index).map(|value| value.trim()).unwrap_or("");
-            if value.is_empty() {
-                continue;
-            }
-            normalized.push(format!("{}: {}", header, value));
-        }
-
-        for extra_index in headers.len()..cells.len() {
-            let value = cells[extra_index].trim();
-            if value.is_empty() {
-                continue;
-            }
-            normalized.push(format!("Column {}: {}", extra_index + 1, value));
-        }
-
-        if !normalized.is_empty() {
-            rows.push(normalized.join(" | "));
-        }
-    }
-
-    rows
 }
 
 fn is_atomic_block(section: &str) -> bool {
@@ -395,43 +300,11 @@ fn is_table_separator_line(line: &str) -> bool {
     has_dash
 }
 
-fn parse_table_cells(line: &str) -> Vec<String> {
-    let trimmed_line = line.trim();
-    if trimmed_line.is_empty() {
-        return Vec::new();
-    }
-
-    let inner = trimmed_line.trim_matches('|');
-    let mut cells = Vec::new();
-    let mut current = String::new();
-    let mut escaped = false;
-
-    for ch in inner.chars() {
-        if escaped {
-            current.push(ch);
-            escaped = false;
-            continue;
-        }
-
-        match ch {
-            '\\' => escaped = true,
-            '|' => {
-                cells.push(current.trim().to_string());
-                current.clear();
-            }
-            _ => current.push(ch),
-        }
-    }
-
-    if escaped {
-        current.push('\\');
-    }
-
-    cells.push(current.trim().to_string());
-    cells
-}
-
-fn enforce_min_chunk_tokens(mut chunks: Vec<String>, min_tokens: usize) -> Vec<String> {
+fn enforce_min_chunk_tokens(
+    mut chunks: Vec<String>,
+    min_tokens: usize,
+    max_tokens: usize,
+) -> Vec<String> {
     if chunks.len() < 2 || min_tokens == 0 {
         return chunks;
     }
@@ -447,49 +320,63 @@ fn enforce_min_chunk_tokens(mut chunks: Vec<String>, min_tokens: usize) -> Vec<S
             break;
         }
 
-        let mut attempts = 0;
-        let mut last_direction: Option<MergeDirection> = None;
         let mut merged_any = false;
 
-        while attempts < 2 && count_tokens(&chunks[index]) < min_tokens && chunks.len() > 1 {
-            let mut merged_this_round = false;
-
-            if attempts == 0 {
-                if index > 0 {
-                    index = merge_with_previous(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Previous);
-                    merged_this_round = true;
-                } else if index + 1 < chunks.len() {
-                    index = merge_with_next(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Next);
-                    merged_this_round = true;
+        while count_tokens(&chunks[index]) < min_tokens && chunks.len() > 1 {
+            let previous_candidate = if index > 0 {
+                let merged = merge_chunk_pair(&chunks[index - 1], &chunks[index]);
+                let token_count = count_tokens(&merged);
+                if token_count <= max_tokens {
+                    Some((MergeDirection::Previous, token_count, merged))
+                } else {
+                    None
                 }
             } else {
-                if last_direction != Some(MergeDirection::Previous) && index > 0 {
-                    index = merge_with_previous(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Previous);
-                    merged_this_round = true;
-                } else if last_direction != Some(MergeDirection::Next) && index + 1 < chunks.len() {
-                    index = merge_with_next(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Next);
-                    merged_this_round = true;
-                } else if index > 0 {
-                    index = merge_with_previous(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Previous);
-                    merged_this_round = true;
-                } else if index + 1 < chunks.len() {
-                    index = merge_with_next(&mut chunks, index);
-                    last_direction = Some(MergeDirection::Next);
-                    merged_this_round = true;
-                }
-            }
+                None
+            };
 
-            if !merged_this_round {
+            let next_candidate = if index + 1 < chunks.len() {
+                let merged = merge_chunk_pair(&chunks[index], &chunks[index + 1]);
+                let token_count = count_tokens(&merged);
+                if token_count <= max_tokens {
+                    Some((MergeDirection::Next, token_count, merged))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let selected = match (previous_candidate, next_candidate) {
+                (Some(prev), Some(next)) => {
+                    if prev.1 >= next.1 {
+                        Some(prev)
+                    } else {
+                        Some(next)
+                    }
+                }
+                (p, n) => p.or(n),
+            };
+
+            let Some((direction, _token_count, merged)) = selected else {
                 break;
+            };
+
+            match direction {
+                MergeDirection::Previous => {
+                    let previous_index = index - 1;
+                    chunks[previous_index] = merged;
+                    chunks.remove(index);
+                    index = previous_index;
+                }
+                MergeDirection::Next => {
+                    let next_index = index + 1;
+                    chunks[index] = merged;
+                    chunks.remove(next_index);
+                }
             }
 
             merged_any = true;
-            attempts += 1;
         }
 
         if !merged_any {
@@ -508,22 +395,6 @@ fn enforce_min_chunk_tokens(mut chunks: Vec<String>, min_tokens: usize) -> Vec<S
 enum MergeDirection {
     Previous,
     Next,
-}
-
-fn merge_with_previous(chunks: &mut Vec<String>, index: usize) -> usize {
-    let prev_index = index - 1;
-    let merged = merge_chunk_pair(&chunks[prev_index], &chunks[index]);
-    chunks[prev_index] = merged;
-    chunks.remove(index);
-    prev_index
-}
-
-fn merge_with_next(chunks: &mut Vec<String>, index: usize) -> usize {
-    let next_index = index + 1;
-    let merged = merge_chunk_pair(&chunks[index], &chunks[next_index]);
-    chunks[index] = merged;
-    chunks.remove(next_index);
-    index
 }
 
 fn merge_chunk_pair(left: &str, right: &str) -> String {
@@ -551,6 +422,7 @@ fn tokenizer() -> &'static CoreBPE {
 mod unit_tests {
     use super::{
         count_tokens, enforce_min_chunk_tokens, split_major_sections, split_section_by_tokens,
+        split_text_strict_by_tokens,
     };
 
     const GFM_MARKDOWN: &str = r#"---
@@ -598,9 +470,7 @@ Still content here
             "---\ntitle: Sample Doc\ntags:\n  - demo\n---",
             "# Overview\nWelcome to **Mdit**.",
             "## TODOs\n- [ ] Outline pulldown flow\n- [x] Wire chunk tests",
-            "# Data",
-            "Column: id | Type: number",
-            "Column: title | Type: text",
+            "# Data\n| Column | Type |\n| ------ | ---- |\n| id | number |\n| title | text |",
             "```rust\nfn main() {\n    println!(\"hello gfm\");\n}\n```",
         ]
         .into_iter()
@@ -627,7 +497,7 @@ Still content here
     }
 
     #[test]
-    fn splits_h3_headings_into_sections() {
+    fn keeps_h3_headings_in_same_major_section() {
         let markdown = r#"# Title
 
 Intro
@@ -640,10 +510,11 @@ Closing thoughts
 "#;
 
         let chunks = split_major_sections(markdown);
-        assert_eq!(chunks.len(), 3);
-        assert_eq!(chunks[0], "# Title\n\nIntro");
-        assert_eq!(chunks[1], "### Details\nMore data here");
-        assert_eq!(chunks[2], "### Extra\nClosing thoughts");
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(
+            chunks[0],
+            "# Title\n\nIntro\n\n### Details\nMore data here\n\n### Extra\nClosing thoughts"
+        );
     }
 
     #[test]
@@ -669,6 +540,22 @@ Closing thoughts
     }
 
     #[test]
+    fn token_split_preserves_utf8_without_replacement_chars() {
+        let section = "한글🙂테스트".repeat(120);
+        let chunks = split_text_strict_by_tokens(&section, 11);
+
+        assert!(
+            chunks.len() > 1,
+            "text should be split into multiple chunks"
+        );
+        assert!(
+            chunks.iter().all(|chunk| !chunk.contains('\u{FFFD}')),
+            "chunks must not contain UTF-8 replacement characters"
+        );
+        assert_eq!(chunks.join(""), section);
+    }
+
+    #[test]
     fn keeps_tables_together_even_with_blank_lines() {
         let section = "| Column | Type |\n| ------ | ---- |\n\n| id | number |\n| title | text |";
         let chunks = split_section_by_tokens(section, 200);
@@ -689,6 +576,7 @@ Closing thoughts
         let merged = enforce_min_chunk_tokens(
             vec![left.to_string(), short.to_string(), right.to_string()],
             min_tokens,
+            10_000,
         );
 
         assert_eq!(
@@ -719,6 +607,7 @@ Closing thoughts
                 trailing.to_string(),
             ],
             min_tokens,
+            10_000,
         );
 
         assert_eq!(
@@ -742,6 +631,7 @@ Closing thoughts
         let merged = enforce_min_chunk_tokens(
             vec![intro.to_string(), middle.to_string(), short.to_string()],
             min_tokens,
+            10_000,
         );
 
         assert_eq!(
@@ -753,5 +643,27 @@ Closing thoughts
         assert!(combined.contains(intro));
         assert!(combined.contains(middle));
         assert!(combined.contains(short));
+    }
+
+    #[test]
+    fn keeps_short_chunk_when_all_merges_would_exceed_max_tokens() {
+        let left = "alpha ".repeat(180);
+        let short = "tiny";
+        let right = "beta ".repeat(180);
+
+        let min_tokens = count_tokens(short) + 1;
+        let max_tokens = count_tokens(left.trim());
+        let chunks = enforce_min_chunk_tokens(
+            vec![left.clone(), short.to_string(), right.clone()],
+            min_tokens,
+            max_tokens,
+        );
+
+        assert_eq!(
+            chunks.len(),
+            3,
+            "short chunk should remain if no legal merge exists"
+        );
+        assert_eq!(chunks[1], short);
     }
 }
