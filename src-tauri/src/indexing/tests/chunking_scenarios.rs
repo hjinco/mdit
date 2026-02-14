@@ -43,7 +43,7 @@ fn given_rich_markdown_when_chunking_then_content_is_preserved_without_empty_chu
 
     let merged = chunks.join("\n\n");
     assert!(merged.contains("# Overview"));
-    assert!(merged.contains("Column: id | Type: number"));
+    assert!(merged.contains("| id | number |"));
     assert!(merged.contains("println!(\"hello gfm\");"));
 }
 
