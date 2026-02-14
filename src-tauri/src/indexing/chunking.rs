@@ -355,9 +355,7 @@ fn enforce_min_chunk_tokens(
                         Some(next)
                     }
                 }
-                (Some(prev), None) => Some(prev),
-                (None, Some(next)) => Some(next),
-                (None, None) => None,
+                (p, n) => p.or(n),
             };
 
             let Some((direction, _token_count, merged)) = selected else {
@@ -546,7 +544,10 @@ Closing thoughts
         let section = "한글🙂테스트".repeat(120);
         let chunks = split_text_strict_by_tokens(&section, 11);
 
-        assert!(chunks.len() > 1, "text should be split into multiple chunks");
+        assert!(
+            chunks.len() > 1,
+            "text should be split into multiple chunks"
+        );
         assert!(
             chunks.iter().all(|chunk| !chunk.contains('\u{FFFD}')),
             "chunks must not contain UTF-8 replacement characters"
