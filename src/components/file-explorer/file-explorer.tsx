@@ -339,17 +339,12 @@ export function FileExplorer() {
 							workspaceDropRef(node)
 							workspaceExternalDropRef(node)
 						}}
-						className={cn(
-							"flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom",
-							isOverWorkspace &&
-								"bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600",
-						)}
+						className="flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom"
 						onContextMenu={handleRootContextMenu}
 						onClick={() => {
 							setSelectedEntryPaths(new Set())
 						}}
 					>
-						{/* <TagList /> */}
 						<PinnedList />
 						<ul className="space-y-0.5 pb-4">
 							{pendingNewFolderPath === workspacePath && workspacePath && (
