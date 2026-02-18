@@ -64,6 +64,8 @@ pub fn run() {
             vault::list_vault_workspaces_command,
             vault::touch_vault_workspace_command,
             vault::remove_vault_workspace_command,
+            vault::get_vault_embedding_config_command,
+            vault::set_vault_embedding_config_command,
             image_processing::get_image_properties_command,
             image_processing::edit_image_command
         ])

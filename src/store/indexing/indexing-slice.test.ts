@@ -1,37 +1,18 @@
 import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
-import type { WorkspaceSettings } from "@/lib/settings-utils"
 import {
 	IndexingService,
 	type InvokeFunction,
 } from "@/services/indexing-service"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
-type LoadSettingsFn = (workspacePath: string) => Promise<WorkspaceSettings>
-type SaveSettingsFn = (
-	workspacePath: string,
-	settings: WorkspaceSettings,
-) => Promise<void>
-
-const createLoadSettingsMock = (resolved: WorkspaceSettings = {}) =>
-	vi.fn<LoadSettingsFn>().mockResolvedValue(resolved)
-
-const createSaveSettingsMock = () =>
-	vi.fn<SaveSettingsFn>().mockResolvedValue(undefined)
-
 function createIndexingStore({
 	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
-	loadSettings = createLoadSettingsMock(),
-	saveSettings = createSaveSettingsMock(),
 }: {
 	invoke?: InvokeFunction
-	loadSettings?: LoadSettingsFn
-	saveSettings?: SaveSettingsFn
 } = {}) {
 	const createSlice = prepareIndexingSlice({
 		invoke,
-		loadSettings,
-		saveSettings,
 		createIndexingService: (invokeFn, workspacePath) =>
 			new IndexingService(invokeFn, workspacePath),
 		timerUtils: {
@@ -45,18 +26,22 @@ function createIndexingStore({
 		createSlice(set, get, api),
 	)
 
-	return { store, loadSettings, saveSettings, invoke }
+	return { store, invoke }
 }
 
 describe("indexing-slice config", () => {
-	it("loads embedding config from settings", async () => {
-		const { store } = createIndexingStore({
-			loadSettings: createLoadSettingsMock({
-				indexing: {
+	it("loads embedding config from vault command", async () => {
+		const invoke = vi.fn().mockImplementation((command: string) => {
+			if (command === "get_vault_embedding_config_command") {
+				return Promise.resolve({
 					embeddingProvider: "ollama",
 					embeddingModel: "mxbai-embed-large",
-				} as WorkspaceSettings["indexing"],
-			}),
+				})
+			}
+			return Promise.resolve({})
+		}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({
+			invoke,
 		})
 
 		const config = await store.getState().getIndexingConfig("/ws")
@@ -69,29 +54,27 @@ describe("indexing-slice config", () => {
 			embeddingProvider: "ollama",
 			embeddingModel: "mxbai-embed-large",
 		})
+		expect(invoke).toHaveBeenCalledWith("get_vault_embedding_config_command", {
+			workspacePath: "/ws",
+		})
 	})
 
-	it("persists embedding config", async () => {
-		const { store, saveSettings } = createIndexingStore({
-			loadSettings: createLoadSettingsMock({
-				pinnedDirectories: ["notes"],
-				indexing: {
-					embeddingProvider: "ollama",
-					embeddingModel: "old-model",
-				} as WorkspaceSettings["indexing"],
-			}),
+	it("persists embedding config via vault command", async () => {
+		const invoke = vi
+			.fn()
+			.mockResolvedValue(undefined) as unknown as InvokeFunction
+		const { store } = createIndexingStore({
+			invoke,
 		})
 
 		await store
 			.getState()
 			.setIndexingConfig("/ws", "ollama", "mxbai-embed-large")
 
-		expect(saveSettings).toHaveBeenCalledWith("/ws", {
-			pinnedDirectories: ["notes"],
-			indexing: {
-				embeddingProvider: "ollama",
-				embeddingModel: "mxbai-embed-large",
-			},
+		expect(invoke).toHaveBeenCalledWith("set_vault_embedding_config_command", {
+			workspacePath: "/ws",
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
 		})
 		expect(store.getState().configs["/ws"]).toEqual({
 			embeddingProvider: "ollama",
