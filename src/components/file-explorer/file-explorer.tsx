@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
-import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import { addExpandedDirectory } from "@/store/workspace/helpers/expanded-directories-helpers"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
@@ -136,7 +135,7 @@ export function FileExplorer() {
 	const entryMap = useEntryMap(entries)
 
 	// Setup workspace root as a drop target (for internal dnd)
-	const { ref: workspaceDropRef, isDropTarget } = useDroppable({
+	const { ref: workspaceDropRef } = useDroppable({
 		id: `droppable-${workspacePath}`,
 		data: {
 			path: workspacePath,
@@ -147,14 +146,10 @@ export function FileExplorer() {
 	})
 
 	// Setup external file drop zone for workspace root
-	const { isOver: isOverWorkspaceExternal, ref: workspaceExternalDropRef } =
-		useFolderDropZone({
-			folderPath: workspacePath ?? null,
-			depth: -1,
-		})
-
-	// Combine both drop states for visual feedback
-	const isOverWorkspace = isDropTarget || isOverWorkspaceExternal
+	const { ref: workspaceExternalDropRef } = useFolderDropZone({
+		folderPath: workspacePath ?? null,
+		depth: -1,
+	})
 
 	const beginRenaming = useCallback((entry: WorkspaceEntry) => {
 		setRenamingEntryPath(entry.path)
