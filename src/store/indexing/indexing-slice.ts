@@ -1,10 +1,6 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core"
 import type { StateCreator } from "zustand"
 import {
-	loadSettings as loadSettingsFromFile,
-	saveSettings as saveSettingsToFile,
-} from "@/lib/settings-utils"
-import {
 	IndexingService,
 	type InvokeFunction,
 } from "@/services/indexing-service"
@@ -95,8 +91,6 @@ type TimerUtils = {
 
 type IndexingSliceDependencies = {
 	invoke: InvokeFunction
-	loadSettings: typeof loadSettingsFromFile
-	saveSettings: typeof saveSettingsToFile
 	createIndexingService: (
 		invoke: InvokeFunction,
 		path: string,
@@ -113,8 +107,6 @@ const defaultTimerUtils: TimerUtils = {
 
 export const prepareIndexingSlice = ({
 	invoke,
-	loadSettings,
-	saveSettings,
 	createIndexingService,
 	timerUtils = defaultTimerUtils,
 }: IndexingSliceDependencies): StateCreator<
@@ -144,13 +136,13 @@ export const prepareIndexingSlice = ({
 				return state.configs[workspacePath]
 			}
 
-			const settings = await loadSettings(workspacePath)
-			const indexing = settings.indexing
+			const service = createIndexingService(invoke, workspacePath)
+			const dbConfig = await service.getIndexingConfig()
 
-			if (indexing) {
+			if (dbConfig) {
 				const config: IndexingConfig = {
-					embeddingProvider: indexing.embeddingProvider ?? "",
-					embeddingModel: indexing.embeddingModel ?? "",
+					embeddingProvider: dbConfig.embeddingProvider ?? "",
+					embeddingModel: dbConfig.embeddingModel ?? "",
 				}
 
 				set((state) => ({
@@ -163,6 +155,12 @@ export const prepareIndexingSlice = ({
 				return config
 			}
 
+			set((state) => {
+				const nextConfigs = { ...state.configs }
+				delete nextConfigs[workspacePath]
+				return { configs: nextConfigs }
+			})
+
 			return null
 		},
 
@@ -171,17 +169,25 @@ export const prepareIndexingSlice = ({
 			embeddingProvider: string,
 			embeddingModel: string,
 		) => {
-			const settings = await loadSettings(workspacePath)
+			const service = createIndexingService(invoke, workspacePath)
+			await service.setIndexingConfig(embeddingProvider, embeddingModel)
+			const trimmedModel = embeddingModel.trim()
 
-			const newConfig: IndexingConfig = {
-				embeddingProvider,
-				embeddingModel,
+			if (!trimmedModel) {
+				set((state) => {
+					const nextConfigs = { ...state.configs }
+					delete nextConfigs[workspacePath]
+					return { configs: nextConfigs }
+				})
+				return
 			}
 
-			await saveSettings(workspacePath, {
-				...settings,
-				indexing: newConfig,
-			})
+			const trimmedProvider = embeddingProvider.trim()
+			const normalizedProvider = trimmedProvider || "ollama"
+			const newConfig: IndexingConfig = {
+				embeddingProvider: normalizedProvider,
+				embeddingModel: trimmedModel,
+			}
 
 			set((state) => ({
 				configs: {
@@ -402,8 +408,6 @@ export const prepareIndexingSlice = ({
 
 export const createIndexingSlice = prepareIndexingSlice({
 	invoke: tauriInvoke as InvokeFunction,
-	loadSettings: loadSettingsFromFile,
-	saveSettings: saveSettingsToFile,
 	createIndexingService: (invoke: InvokeFunction, workspacePath: string) =>
 		new IndexingService(invoke, workspacePath),
 })

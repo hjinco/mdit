@@ -20,6 +20,30 @@ export class IndexingService {
 		return meta
 	}
 
+	async getIndexingConfig(): Promise<{
+		embeddingProvider: string
+		embeddingModel: string
+	} | null> {
+		const config = await this.invoke<{
+			embeddingProvider: string
+			embeddingModel: string
+		} | null>("get_vault_embedding_config_command", {
+			workspacePath: this.workspacePath,
+		})
+		return config
+	}
+
+	async setIndexingConfig(
+		embeddingProvider: string,
+		embeddingModel: string,
+	): Promise<void> {
+		await this.invoke<void>("set_vault_embedding_config_command", {
+			workspacePath: this.workspacePath,
+			embeddingProvider,
+			embeddingModel,
+		})
+	}
+
 	async indexWorkspace(
 		embeddingProvider: string,
 		embeddingModel: string,

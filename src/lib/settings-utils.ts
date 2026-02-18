@@ -15,10 +15,6 @@ export type WorkspaceSettings = {
 		commitMessage: string
 		autoSync: boolean
 	}
-	indexing?: {
-		embeddingProvider: string
-		embeddingModel: string
-	}
 	pinnedDirectories?: string[]
 	lastOpenedNotePath?: string
 	expandedDirectories?: string[]
@@ -40,7 +36,6 @@ export const loadSettings = async (
 
 		const content = await readTextFile(configPath)
 		const config: WorkspaceSettings = JSON.parse(content)
-
 		return config
 	} catch (error) {
 		console.error("Failed to load settings from file:", error)
