@@ -25,7 +25,8 @@ export function WindowMenu() {
 	const {
 		toggleFileExplorer,
 		openCommandMenu,
-		openGraphViewDialog,
+		isGraphViewDialogOpen,
+		toggleGraphViewDialogOpen,
 		toggleSettingsDialogOpen,
 		zoomIn,
 		zoomOut,
@@ -34,7 +35,8 @@ export function WindowMenu() {
 		useShallow((s) => ({
 			toggleFileExplorer: s.toggleFileExplorerOpen,
 			openCommandMenu: s.openCommandMenu,
-			openGraphViewDialog: s.openGraphViewDialog,
+			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
+			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
 			zoomIn: s.increaseFontScale,
 			zoomOut: s.decreaseFontScale,
@@ -53,10 +55,10 @@ export function WindowMenu() {
 			resetZoom,
 			openCommandMenu,
 			openGraphView: () => {
-				if (!workspacePath) {
+				if (!workspacePath && !isGraphViewDialogOpen) {
 					return
 				}
-				openGraphViewDialog()
+				toggleGraphViewDialogOpen()
 			},
 			goBack,
 			goForward,
@@ -72,7 +74,8 @@ export function WindowMenu() {
 		zoomOut,
 		resetZoom,
 		openCommandMenu,
-		openGraphViewDialog,
+		isGraphViewDialogOpen,
+		toggleGraphViewDialogOpen,
 		goBack,
 		goForward,
 		toggleSettingsDialogOpen,
