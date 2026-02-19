@@ -82,6 +82,7 @@ export function createWorkspaceActionTestContext() {
 		tab: null,
 		currentCollectionPath: null,
 		renameConfig: null,
+		refreshCodexOAuthForTarget: vi.fn().mockResolvedValue(undefined),
 		updateEntries: vi.fn((entriesOrAction: any) => {
 			const nextEntries =
 				typeof entriesOrAction === "function"

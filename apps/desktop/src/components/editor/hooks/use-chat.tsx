@@ -2,9 +2,11 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
 import { type UseChatHelpers, useChat as useBaseChat } from "@ai-sdk/react"
+import { CODEX_BASE_URL } from "@mdit/ai-auth"
 import { replacePlaceholders } from "@platejs/ai"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { serializeMd } from "@platejs/markdown"
+import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import {
 	convertToModelMessages,
 	createUIMessageStream,
@@ -20,6 +22,7 @@ import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { aiChatPlugin } from "@/components/editor/plugins/ai-kit"
 import { EditorKit } from "@/components/editor/plugins/editor-kit"
+import { useStore } from "@/store"
 import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
 import { markdownJoinerTransform } from "../utils/markdown-joiner-transform"
 
@@ -187,42 +190,72 @@ const replaceMessagePlaceholders = (
 	return { ...message, parts }
 }
 
-export const useChat = (config: ChatConfig | null) => {
+const createModelFromConfig = (config: ChatConfig, sessionId: string) => {
+	switch (config.provider) {
+		case "anthropic":
+			return createAnthropic({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "google":
+			return createGoogleGenerativeAI({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "openai":
+			return createOpenAI({
+				apiKey: config.apiKey,
+			})(config.model)
+		case "codex_oauth": {
+			const headers: Record<string, string> = {
+				originator: "mdit",
+				"User-Agent": "mdit",
+				"session-id": sessionId,
+			}
+			if (config.accountId) {
+				headers["ChatGPT-Account-Id"] = config.accountId
+			}
+
+			return createOpenAI({
+				apiKey: config.apiKey,
+				baseURL: CODEX_BASE_URL,
+				headers,
+				fetch: tauriHttpFetch,
+			})(config.model)
+		}
+		case "ollama":
+			return ollama(config.model)
+		default:
+			throw new Error(`Unsupported provider: ${config.provider}`)
+	}
+}
+
+export const useChat = () => {
 	const editor = useEditorRef()
 	const options = usePluginOption(aiChatPlugin, "chatOptions")
-	const llmRef = useRef<any>(null)
+	const sessionIdRef = useRef(crypto.randomUUID())
 
-	useEffect(() => {
-		if (!config) return
-		switch (config.provider) {
-			case "anthropic":
-				llmRef.current = createAnthropic({
-					apiKey: config.apiKey,
-				})(config.model)
-				break
-			case "google":
-				llmRef.current = createGoogleGenerativeAI({
-					apiKey: config.apiKey,
-				})(config.model)
-				break
-			case "openai":
-				llmRef.current = createOpenAI({
-					apiKey: config.apiKey,
-				})(config.model)
-				break
-			case "ollama":
-				llmRef.current = ollama(config.model)
-				break
-			default:
-				throw new Error(`Unsupported provider: ${config.provider}`)
+	const resolveActiveConfig = async (): Promise<ChatConfig> => {
+		const currentConfig = useStore.getState().chatConfig
+		if (!currentConfig) {
+			throw new Error("LLM config not found")
 		}
-	}, [config])
+		if (currentConfig.provider !== "codex_oauth") {
+			return currentConfig
+		}
+
+		await useStore.getState().refreshCodexOAuthForTarget()
+		const refreshedConfig = useStore.getState().chatConfig
+		if (!refreshedConfig || refreshedConfig.provider !== "codex_oauth") {
+			throw new Error("Codex OAuth credential not found")
+		}
+		return refreshedConfig
+	}
 
 	const chat = useBaseChat<ChatMessage>({
 		id: "editor",
 		transport: new DefaultChatTransport({
 			fetch: async (_, init) => {
-				if (!llmRef.current) throw new Error("LLM not found")
+				const activeConfig = await resolveActiveConfig()
+				const model = createModelFromConfig(activeConfig, sessionIdRef.current)
 
 				const body = JSON.parse(init?.body?.toString() || "{}")
 				const { ctx, messages: messagesRaw } = body
@@ -263,6 +296,32 @@ export const useChat = (config: ChatConfig | null) => {
 
 						const toolName: ToolName =
 							toolNameParam ?? (isSelecting ? "edit" : "generate")
+						const modelMessages = await convertToModelMessages(messages)
+						const streamTextBaseOptions = {
+							messages: modelMessages,
+							model,
+							experimental_transform: markdownJoinerTransform(),
+							abortSignal,
+						}
+
+						const createStreamTextOptions = (systemPrompt: string) => {
+							if (activeConfig.provider === "codex_oauth") {
+								return {
+									...streamTextBaseOptions,
+									providerOptions: {
+										openai: {
+											store: false,
+											instructions: systemPrompt,
+										},
+									},
+								}
+							}
+
+							return {
+								...streamTextBaseOptions,
+								system: systemPrompt,
+							}
+						}
 
 						writer.write({
 							data: toolName,
@@ -275,14 +334,7 @@ export const useChat = (config: ChatConfig | null) => {
 								isSelecting ? generateSystemSelecting : generateSystemDefault,
 							)
 
-							const gen = streamText({
-								maxOutputTokens: 2048,
-								messages: await convertToModelMessages(messages),
-								model: llmRef.current,
-								system: generateSystem,
-								experimental_transform: markdownJoinerTransform(),
-								abortSignal,
-							})
+							const gen = streamText(createStreamTextOptions(generateSystem))
 
 							writer.merge(gen.toUIMessageStream({ sendFinish: false }))
 						}
@@ -296,14 +348,7 @@ export const useChat = (config: ChatConfig | null) => {
 								editSystemSelecting,
 							)
 
-							const edit = streamText({
-								maxOutputTokens: 2048,
-								messages: await convertToModelMessages(messages),
-								model: llmRef.current,
-								system: editSystem,
-								experimental_transform: markdownJoinerTransform(),
-								abortSignal,
-							})
+							const edit = streamText(createStreamTextOptions(editSystem))
 
 							writer.merge(edit.toUIMessageStream({ sendFinish: false }))
 						}

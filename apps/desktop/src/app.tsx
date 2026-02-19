@@ -23,6 +23,7 @@ export function App() {
 		workspacePath,
 		isLoading,
 		initializeWorkspace,
+		initializeAISettings,
 		watchWorkspace,
 		unwatchWorkspace,
 	} = useStore(
@@ -30,6 +31,7 @@ export function App() {
 			workspacePath: s.workspacePath,
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
+			initializeAISettings: s.initializeAISettings,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
 		})),
@@ -75,6 +77,10 @@ export function App() {
 	useEffect(() => {
 		initializeWorkspace()
 	}, [initializeWorkspace])
+
+	useEffect(() => {
+		void initializeAISettings()
+	}, [initializeAISettings])
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />
