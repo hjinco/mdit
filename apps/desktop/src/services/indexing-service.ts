@@ -44,35 +44,23 @@ export class IndexingService {
 		})
 	}
 
-	async indexWorkspace(
-		embeddingProvider: string,
-		embeddingModel: string,
-		forceReindex: boolean,
-	): Promise<WorkspaceIndexSummary> {
+	async indexWorkspace(forceReindex: boolean): Promise<WorkspaceIndexSummary> {
 		const result = await this.invoke<WorkspaceIndexSummary>(
 			"index_workspace_command",
 			{
 				workspacePath: this.workspacePath,
-				embeddingProvider,
-				embeddingModel,
 				forceReindex,
 			},
 		)
 		return result
 	}
 
-	async indexNote(
-		notePath: string,
-		embeddingProvider: string,
-		embeddingModel: string,
-	): Promise<WorkspaceIndexSummary> {
+	async indexNote(notePath: string): Promise<WorkspaceIndexSummary> {
 		const result = await this.invoke<WorkspaceIndexSummary>(
 			"index_note_command",
 			{
 				workspacePath: this.workspacePath,
 				notePath,
-				embeddingProvider,
-				embeddingModel,
 			},
 		)
 		return result

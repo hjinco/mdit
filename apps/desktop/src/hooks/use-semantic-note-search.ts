@@ -50,8 +50,6 @@ export function useSemanticNoteSearch(
 		invoke<QuerySearchEntry[]>("search_query_entries_command", {
 			workspacePath,
 			query: trimmedQuery,
-			embeddingProvider,
-			embeddingModel,
 		})
 			.then((entries) => {
 				if (requestIdRef.current !== requestId) {
@@ -82,7 +80,7 @@ export function useSemanticNoteSearch(
 				console.error("Failed to perform semantic search:", error)
 				setResults([])
 			})
-	}, [workspacePath, trimmedQuery, embeddingProvider, embeddingModel])
+	}, [workspacePath, trimmedQuery])
 
 	return {
 		results,

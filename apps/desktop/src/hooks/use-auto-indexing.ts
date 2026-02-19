@@ -8,17 +8,13 @@ export function useAutoIndexing(workspacePath: string | null) {
 	const {
 		getIndexingConfig,
 		indexWorkspace,
-		config,
 		isMigrationsComplete,
-		ollamaModels,
 		fetchOllamaModels,
 	} = useStore(
 		useShallow((state) => ({
 			getIndexingConfig: state.getIndexingConfig,
 			indexWorkspace: state.indexWorkspace,
-			config: workspacePath ? state.configs[workspacePath] : null,
 			isMigrationsComplete: state.isMigrationsComplete,
-			ollamaModels: state.ollamaModels,
 			fetchOllamaModels: state.fetchOllamaModels,
 		})),
 	)
@@ -58,24 +54,7 @@ export function useAutoIndexing(workspacePath: string | null) {
 			}
 
 			try {
-				const provider = config?.embeddingProvider ?? ""
-				const model = config?.embeddingModel ?? ""
-				if (model && !provider) {
-					// Misconfigured state; do not attempt indexing.
-					return
-				}
-				if (model && provider && provider === "ollama") {
-					const isAvailable = ollamaModels.includes(model)
-					if (!isAvailable) {
-						return
-					}
-				}
-				await indexWorkspace(
-					workspacePath,
-					provider,
-					model,
-					false, // forceReindex: false for incremental updates
-				)
+				await indexWorkspace(workspacePath, false)
 			} catch (error) {
 				// Silent failure - just log to console
 				console.error("Auto-indexing failed:", error)
@@ -98,11 +77,5 @@ export function useAutoIndexing(workspacePath: string | null) {
 				intervalRef.current = null
 			}
 		}
-	}, [
-		workspacePath,
-		config,
-		indexWorkspace,
-		isMigrationsComplete,
-		ollamaModels,
-	])
+	}, [workspacePath, indexWorkspace, isMigrationsComplete])
 }

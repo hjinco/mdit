@@ -79,18 +79,11 @@ function EditorContent({
 }) {
 	const isSaved = useRef(true)
 	const isInitializing = useRef(true)
-	const {
-		setTabSaved,
-		saveNoteContent,
-		workspacePath,
-		getIndexingConfig,
-		indexNote,
-	} = useStore(
+	const { setTabSaved, saveNoteContent, workspacePath, indexNote } = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
 			saveNoteContent: s.saveNoteContent,
 			workspacePath: s.workspacePath,
-			getIndexingConfig: s.getIndexingConfig,
 			indexNote: s.indexNote,
 		})),
 	)
@@ -109,38 +102,9 @@ function EditorContent({
 				return
 			}
 
-			const state = useStore.getState()
-			let config: Awaited<ReturnType<typeof getIndexingConfig>> =
-				state.configs[workspacePath] ?? null
-
-			if (!config) {
-				try {
-					config = await getIndexingConfig(workspacePath)
-				} catch (error) {
-					console.error(
-						"Failed to load indexing config for blur indexing:",
-						error,
-					)
-					return
-				}
-			}
-
-			const provider = config?.embeddingProvider ?? ""
-			const model = config?.embeddingModel ?? ""
-			if (model && !provider) {
-				return
-			}
-
-			if (model && provider === "ollama") {
-				const isModelAvailable = state.ollamaModels.includes(model)
-				if (!isModelAvailable) {
-					return
-				}
-			}
-
-			await indexNote(workspacePath, notePath, provider, model)
+			await indexNote(workspacePath, notePath)
 		},
-		[workspacePath, getIndexingConfig, indexNote],
+		[workspacePath, indexNote],
 	)
 
 	const handleSave = useCallback(

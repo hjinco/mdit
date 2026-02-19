@@ -19,26 +19,35 @@ where
         .map_err(|error| error.to_string())
 }
 
+fn resolve_embedding_for_workspace(
+    db_path: &Path,
+    workspace_path: &Path,
+) -> Result<(String, String), String> {
+    let embedding_config = app_storage::vault::get_embedding_config(db_path, workspace_path)
+        .map_err(|error| error.to_string())?;
+
+    match embedding_config {
+        Some(config) => Ok((config.embedding_provider, config.embedding_model)),
+        None => Ok((String::new(), String::new())),
+    }
+}
+
 #[tauri::command]
 pub async fn index_workspace_command(
     app_handle: tauri::AppHandle,
     workspace_path: String,
-    embedding_provider: Option<String>,
-    embedding_model: String,
     force_reindex: bool,
 ) -> Result<IndexSummary, String> {
     let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let workspace_path = PathBuf::from(workspace_path);
-    let provider = match embedding_provider {
-        Some(value) if !value.trim().is_empty() => value,
-        _ => "ollama".to_string(),
-    };
+    let (embedding_provider, embedding_model) =
+        resolve_embedding_for_workspace(&db_path, &workspace_path)?;
 
     run_blocking(move || {
         index_workspace(
             &workspace_path,
             &db_path,
-            &provider,
+            &embedding_provider,
             &embedding_model,
             force_reindex,
         )
@@ -51,23 +60,19 @@ pub async fn index_note_command(
     app_handle: tauri::AppHandle,
     workspace_path: String,
     note_path: String,
-    embedding_provider: Option<String>,
-    embedding_model: String,
 ) -> Result<IndexSummary, String> {
     let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let workspace_path = PathBuf::from(workspace_path);
     let note_path = PathBuf::from(note_path);
-    let provider = match embedding_provider {
-        Some(value) if !value.trim().is_empty() => value,
-        _ => "ollama".to_string(),
-    };
+    let (embedding_provider, embedding_model) =
+        resolve_embedding_for_workspace(&db_path, &workspace_path)?;
 
     run_blocking(move || {
         index_note(
             &workspace_path,
             &db_path,
             &note_path,
-            &provider,
+            &embedding_provider,
             &embedding_model,
         )
     })
@@ -88,11 +93,11 @@ pub async fn search_query_entries_command(
     app_handle: tauri::AppHandle,
     workspace_path: String,
     query: String,
-    embedding_provider: String,
-    embedding_model: String,
 ) -> Result<Vec<SemanticNoteEntry>, String> {
     let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let workspace_path = PathBuf::from(workspace_path);
+    let (embedding_provider, embedding_model) =
+        resolve_embedding_for_workspace(&db_path, &workspace_path)?;
 
     run_blocking(move || {
         search_notes_for_query(
