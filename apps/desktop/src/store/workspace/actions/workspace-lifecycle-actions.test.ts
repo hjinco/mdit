@@ -149,4 +149,44 @@ describe("workspace-lifecycle-actions", () => {
 		)
 		expect(getState().recentWorkspacePaths).toEqual(["/other"])
 	})
+
+	it("removeWorkspaceFromHistory updates recent workspace list", async () => {
+		const { context, deps, setState, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceLifecycleActions(context)
+		setState({
+			workspacePath: "/current",
+			recentWorkspacePaths: ["/current", "/other"],
+		})
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/current"])
+
+		await actions.removeWorkspaceFromHistory("/other")
+
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
+			"/other",
+		)
+		expect(getState().workspacePath).toBe("/current")
+		expect(getState().recentWorkspacePaths).toEqual(["/current"])
+	})
+
+	it("removeWorkspaceFromHistory keeps current workspace open", async () => {
+		const { context, deps, ports, setState, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceLifecycleActions(context)
+		setState({
+			workspacePath: "/current",
+			recentWorkspacePaths: ["/current", "/other"],
+		})
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/other"])
+
+		await actions.removeWorkspaceFromHistory("/current")
+
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
+			"/current",
+		)
+		expect(getState().workspacePath).toBe("/current")
+		expect(getState().recentWorkspacePaths).toEqual(["/other"])
+		expect(ports.tab.closeTab).not.toHaveBeenCalled()
+		expect(ports.tab.clearHistory).not.toHaveBeenCalled()
+	})
 })

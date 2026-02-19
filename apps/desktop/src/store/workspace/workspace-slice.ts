@@ -79,6 +79,7 @@ export type WorkspaceSlice = WorkspaceState & {
 	}) => Promise<void>
 	initializeWorkspace: () => Promise<void>
 	setWorkspace: (path: string) => Promise<void>
+	removeWorkspaceFromHistory: (path: string) => Promise<void>
 	openFolderPicker: () => Promise<void>
 	refreshWorkspaceEntries: () => Promise<void>
 	pinDirectory: (path: string) => Promise<void>

@@ -149,7 +149,11 @@ export const createWorkspaceLifecycleActions = (
 	ctx: WorkspaceActionContext,
 ): Pick<
 	WorkspaceSlice,
-	"initializeWorkspace" | "setWorkspace" | "openFolderPicker" | "clearWorkspace"
+	| "initializeWorkspace"
+	| "setWorkspace"
+	| "removeWorkspaceFromHistory"
+	| "openFolderPicker"
+	| "clearWorkspace"
 > => ({
 	initializeWorkspace: async () => {
 		try {
@@ -252,6 +256,17 @@ export const createWorkspaceLifecycleActions = (
 			await bootstrapWorkspace(ctx, path)
 		} catch (error) {
 			console.error("Failed to set workspace:", error)
+		}
+	},
+
+	removeWorkspaceFromHistory: async (path: string) => {
+		try {
+			await ctx.deps.historyRepository.removeWorkspace(path)
+			const updatedHistory =
+				await ctx.deps.historyRepository.listWorkspacePaths()
+			ctx.set({ recentWorkspacePaths: updatedHistory })
+		} catch (error) {
+			console.error("Failed to remove workspace from history:", error)
 		}
 	},
 
