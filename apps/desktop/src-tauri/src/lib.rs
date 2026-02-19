@@ -1,12 +1,11 @@
+mod appdata;
 mod copy;
 mod database;
 mod file_opener;
 mod image_processing;
-mod indexing;
-mod markdown_text;
+mod indexing_commands;
 mod migrations;
 mod preview;
-mod sqlite_vec_ext;
 mod trash;
 mod vault;
 
@@ -79,20 +78,20 @@ pub fn run() {
             trash::move_many_to_trash,
             preview::get_note_preview,
             migrations::apply_appdata_migrations,
-            indexing::index_workspace_command,
-            indexing::index_note_command,
-            indexing::get_indexing_meta_command,
-            indexing::search_query_entries_command,
-            indexing::resolve_wiki_link_command,
-            indexing::get_backlinks_command,
-            indexing::get_graph_view_data_command,
+            indexing_commands::index_workspace_command,
+            indexing_commands::index_note_command,
+            indexing_commands::get_indexing_meta_command,
+            indexing_commands::search_query_entries_command,
+            indexing_commands::resolve_wiki_link_command,
+            indexing_commands::get_backlinks_command,
+            indexing_commands::get_graph_view_data_command,
             vault::list_vault_workspaces_command,
             vault::touch_vault_workspace_command,
             vault::remove_vault_workspace_command,
             vault::get_vault_embedding_config_command,
             vault::set_vault_embedding_config_command,
-            image_processing::get_image_properties_command,
-            image_processing::edit_image_command
+            image_processing::get_image_properties,
+            image_processing::edit_image
         ])
         .manage(app_state)
         .build(tauri::generate_context!())

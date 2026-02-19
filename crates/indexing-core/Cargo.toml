@@ -1,0 +1,17 @@
+[package]
+name = 'indexing-core'
+version = '0.1.0'
+edition.workspace = true
+
+[dependencies]
+anyhow = '1'
+app-storage = { path = '../app-storage' }
+blake3 = '1'
+note-core = { path = '../note-core' }
+ollama-rs = '0.3.2'
+pulldown-cmark = { version = '0.13.0', default-features = false, features = ['simd'] }
+rusqlite = { version = '0.31', features = ['bundled'] }
+serde = { version = '1', features = ['derive'] }
+tiktoken-rs = '0.5'
+tokio = { version = '1', features = ['net', 'rt', 'time'] }
+walkdir = '2'

@@ -78,6 +78,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "app-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "include_dir",
+ "rusqlite",
+ "serde",
+ "sqlite-vec",
+]
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2287,6 +2298,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "image-core"
+version = "0.1.0"
+dependencies = [
+ "core-foundation 0.10.1",
+ "core-graphics",
+ "foreign-types 0.5.0",
+ "image",
+ "serde",
+ "webp",
+]
+
+[[package]]
 name = "image-webp"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2319,6 +2342,23 @@ checksum = "7cab85a7ed0bd5f0e76d93846e0147172bed2e2d3f859bcc33a8d9699cad1a75"
 dependencies = [
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "indexing-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-storage",
+ "blake3",
+ "note-core",
+ "ollama-rs",
+ "pulldown-cmark",
+ "rusqlite",
+ "serde",
+ "tiktoken-rs",
+ "tokio",
+ "walkdir",
 ]
 
 [[package]]
@@ -2782,19 +2822,12 @@ name = "mdit"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "blake3",
- "core-foundation 0.10.1",
- "core-graphics",
- "foreign-types 0.5.0",
- "image",
- "include_dir",
- "ollama-rs",
- "pulldown-cmark",
- "rusqlite",
+ "app-storage",
+ "image-core",
+ "indexing-core",
+ "note-core",
  "serde",
  "serde_json",
- "serde_yaml",
- "sqlite-vec",
  "tauri",
  "tauri-build",
  "tauri-plugin-clipboard",
@@ -2810,11 +2843,8 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
- "tiktoken-rs",
  "trash",
  "urlencoding",
- "walkdir",
- "webp",
 ]
 
 [[package]]
@@ -2983,6 +3013,16 @@ name = "noop_proc_macro"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0676bb32a98c1a483ce53e500a81ad9c3d5b3f7c920c28c24e9cb0980d0b5bc8"
+
+[[package]]
+name = "note-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "pulldown-cmark",
+ "serde_json",
+ "serde_yaml",
+]
 
 [[package]]
 name = "notify"

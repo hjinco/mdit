@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension};
 
-use crate::migrations;
+use app_storage::migrations;
 
 use super::super::{
     find_vault_id, get_backlinks, get_indexing_meta, index_note, index_workspace, BacklinkEntry,

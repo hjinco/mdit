@@ -18,10 +18,7 @@ use std::{
 use anyhow::{anyhow, Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
 use walkdir::WalkDir;
-
-use crate::migrations;
 
 mod chunking;
 mod embedding;
@@ -33,7 +30,7 @@ mod sync;
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
 use links::resolve_wiki_link_target;
-pub(crate) use search::{search_notes_for_query, SemanticNoteEntry};
+pub use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
 
 const TARGET_CHUNKING_VERSION: i64 = 1;
@@ -96,7 +93,7 @@ pub(crate) struct EmbeddingContext {
 }
 
 fn open_indexing_connection(db_path: &Path) -> Result<Connection> {
-    crate::sqlite_vec_ext::register_auto_extension()?;
+    app_storage::sqlite_ext::register_auto_extension()?;
 
     let conn = Connection::open(db_path)
         .with_context(|| format!("Failed to open indexing database at {}", db_path.display()))?;
@@ -219,7 +216,7 @@ fn sanitize_workspace_rel_paths(paths: Vec<String>) -> Vec<String> {
 }
 
 pub(super) fn find_vault_id(conn: &Connection, workspace_root: &Path) -> Result<Option<i64>> {
-    crate::vault::find_workspace_id(conn, workspace_root)
+    app_storage::vault::find_workspace_id(conn, workspace_root)
 }
 
 pub fn index_workspace(
@@ -289,7 +286,7 @@ fn run_indexing_for_files(
 ) -> Result<IndexSummary> {
     let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
     let mut conn = open_indexing_connection(db_path)?;
-    let vault_id = crate::vault::ensure_workspace_exists(&conn, workspace_root)?;
+    let vault_id = app_storage::vault::ensure_workspace_exists(&conn, workspace_root)?;
 
     if !force_reindex {
         if let Some(embedding) = embedding_context.as_ref() {
@@ -408,131 +405,28 @@ fn count_indexed_docs(conn: &Connection, vault_id: i64) -> Result<usize> {
     Ok(count as usize)
 }
 
-/// Helper function to run a blocking operation in a separate thread and convert errors to String.
-async fn run_blocking<F, T>(f: F) -> Result<T, String>
-where
-    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
-    T: Send + 'static,
-{
-    tauri::async_runtime::spawn_blocking(f)
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
-}
+pub fn resolve_wiki_link(request: ResolveWikiLinkRequest) -> Result<ResolveWikiLinkResult> {
+    let workspace_root = canonicalize_workspace_root(Path::new(&request.workspace_path))?;
 
-#[tauri::command]
-pub async fn index_workspace_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-    embedding_provider: Option<String>,
-    embedding_model: String,
-    force_reindex: bool,
-) -> Result<IndexSummary, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-    let provider = match embedding_provider {
-        Some(value) if !value.trim().is_empty() => value,
-        _ => "ollama".to_string(),
-    };
-    let model = embedding_model;
-
-    run_blocking(move || {
-        index_workspace(&workspace_path, &db_path, &provider, &model, force_reindex)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn index_note_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-    note_path: String,
-    embedding_provider: Option<String>,
-    embedding_model: String,
-) -> Result<IndexSummary, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-    let note_path = PathBuf::from(note_path);
-    let provider = match embedding_provider {
-        Some(value) if !value.trim().is_empty() => value,
-        _ => "ollama".to_string(),
-    };
-    let model = embedding_model;
-
-    run_blocking(move || index_note(&workspace_path, &db_path, &note_path, &provider, &model)).await
-}
-
-#[tauri::command]
-pub fn get_indexing_meta_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-) -> Result<IndexingMeta, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-    get_indexing_meta(&workspace_path, &db_path).map_err(|error| error.to_string())
-}
-
-#[tauri::command]
-pub async fn search_query_entries_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-    query: String,
-    embedding_provider: String,
-    embedding_model: String,
-) -> Result<Vec<SemanticNoteEntry>, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-
-    run_blocking(move || {
-        search_notes_for_query(
-            &workspace_path,
-            &db_path,
-            &query,
-            &embedding_provider,
-            &embedding_model,
-        )
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn resolve_wiki_link_command(
-    workspace_path: String,
-    current_note_path: Option<String>,
-    raw_target: String,
-    workspace_rel_paths: Option<Vec<String>>,
-) -> Result<ResolveWikiLinkResult, String> {
-    let request = ResolveWikiLinkRequest {
-        workspace_path,
-        current_note_path,
-        raw_target,
-        workspace_rel_paths,
+    let rel_paths = match request.workspace_rel_paths {
+        Some(paths) if !paths.is_empty() => sanitize_workspace_rel_paths(paths),
+        _ => collect_workspace_rel_paths_for_wiki_resolution(&workspace_root)?,
     };
 
-    run_blocking(move || {
-        let workspace_root = canonicalize_workspace_root(Path::new(&request.workspace_path))?;
+    let resolved = resolve_wiki_link_target(
+        &workspace_root,
+        request.current_note_path.as_deref(),
+        &request.raw_target,
+        &rel_paths,
+    );
 
-        let rel_paths = match request.workspace_rel_paths {
-            Some(paths) if !paths.is_empty() => sanitize_workspace_rel_paths(paths),
-            _ => collect_workspace_rel_paths_for_wiki_resolution(&workspace_root)?,
-        };
-
-        let resolved = resolve_wiki_link_target(
-            &workspace_root,
-            request.current_note_path.as_deref(),
-            &request.raw_target,
-            &rel_paths,
-        );
-
-        Ok(ResolveWikiLinkResult {
-            canonical_target: resolved.canonical_target,
-            resolved_rel_path: resolved.resolved_rel_path,
-            match_count: resolved.match_count,
-            disambiguated: resolved.disambiguated,
-            unresolved: resolved.unresolved,
-        })
+    Ok(ResolveWikiLinkResult {
+        canonical_target: resolved.canonical_target,
+        resolved_rel_path: resolved.resolved_rel_path,
+        match_count: resolved.match_count,
+        disambiguated: resolved.disambiguated,
+        unresolved: resolved.unresolved,
     })
-    .await
 }
 
 /// Represents a single backlink (a document that links to the target document).
@@ -659,7 +553,7 @@ fn graph_node_name(rel_path: &str) -> String {
         .unwrap_or_else(|| rel_path.to_string())
 }
 
-pub(crate) fn get_graph_view_data(workspace_root: &Path, db_path: &Path) -> Result<GraphViewData> {
+pub fn get_graph_view_data(workspace_root: &Path, db_path: &Path) -> Result<GraphViewData> {
     let _ = canonicalize_workspace_root(workspace_root)?;
     let conn = open_indexing_connection(db_path)?;
 
@@ -771,27 +665,3 @@ pub(crate) fn get_graph_view_data(workspace_root: &Path, db_path: &Path) -> Resu
 
 #[cfg(test)]
 mod tests;
-
-#[tauri::command]
-pub async fn get_backlinks_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-    file_path: String,
-) -> Result<Vec<BacklinkEntry>, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-    let file_path = PathBuf::from(file_path);
-
-    run_blocking(move || get_backlinks(&workspace_path, &db_path, &file_path)).await
-}
-
-#[tauri::command]
-pub async fn get_graph_view_data_command(
-    app_handle: AppHandle,
-    workspace_path: String,
-) -> Result<GraphViewData, String> {
-    let db_path = migrations::run_app_migrations(&app_handle).map_err(|error| error.to_string())?;
-    let workspace_path = PathBuf::from(workspace_path);
-
-    run_blocking(move || get_graph_view_data(&workspace_path, &db_path)).await
-}
