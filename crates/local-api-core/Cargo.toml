@@ -1,0 +1,10 @@
+[package]
+name = "local-api-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+app-storage = { path = "../app-storage" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"

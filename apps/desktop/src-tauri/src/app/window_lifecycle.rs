@@ -27,7 +27,7 @@ pub fn show_main_window(
     show_and_focus_main_window(window);
 }
 
-pub fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunEvent) {
+pub fn handle_run_event(app_handle: &tauri::AppHandle, event: &tauri::RunEvent) {
     match event {
         tauri::RunEvent::Ready { .. } => {
             if let Some(main_window) = app_handle.get_webview_window("main") {
@@ -48,7 +48,7 @@ pub fn handle_run_event(app_handle: &tauri::AppHandle, event: tauri::RunEvent) {
         }
         #[cfg(target_os = "macos")]
         tauri::RunEvent::Opened { urls } => {
-            file_opening::handle_opened_event(app_handle, urls);
+            file_opening::handle_opened_event(app_handle, urls.clone());
         }
         _ => {}
     }

@@ -15,6 +15,22 @@ pub struct VaultEmbeddingConfig {
     pub embedding_model: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultWorkspace {
+    pub id: i64,
+    pub workspace_root: String,
+    pub last_opened_at: String,
+}
+
+fn map_vault_workspace_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VaultWorkspace> {
+    Ok(VaultWorkspace {
+        id: row.get(0)?,
+        workspace_root: row.get(1)?,
+        last_opened_at: row.get(2)?,
+    })
+}
+
 fn open_vault_connection(db_path: &Path) -> Result<Connection> {
     let conn = Connection::open(db_path)
         .with_context(|| format!("Failed to open appdata database at {}", db_path.display()))?;
@@ -85,6 +101,34 @@ pub fn ensure_workspace_exists(conn: &Connection, workspace_root: &Path) -> Resu
         |row| row.get::<_, i64>(0),
     )
     .context("Failed to load vault id")
+}
+
+pub fn find_workspace_by_path(
+    db_path: &Path,
+    workspace_root: &Path,
+) -> Result<Option<VaultWorkspace>> {
+    let workspace_key = normalized_workspace_key(workspace_root)?;
+    let conn = open_vault_connection(db_path)?;
+
+    conn.query_row(
+        "SELECT id, workspace_root, last_opened_at FROM vault WHERE workspace_root = ?1",
+        params![workspace_key],
+        map_vault_workspace_row,
+    )
+    .optional()
+    .context("Failed to find vault workspace by path")
+}
+
+pub fn get_workspace_by_id(db_path: &Path, vault_id: i64) -> Result<Option<VaultWorkspace>> {
+    let conn = open_vault_connection(db_path)?;
+
+    conn.query_row(
+        "SELECT id, workspace_root, last_opened_at FROM vault WHERE id = ?1",
+        params![vault_id],
+        map_vault_workspace_row,
+    )
+    .optional()
+    .context("Failed to find vault workspace by id")
 }
 
 pub fn get_embedding_config(
@@ -175,13 +219,25 @@ pub fn touch_workspace(db_path: &Path, workspace_root: &Path) -> Result<()> {
 }
 
 pub fn list_workspaces(db_path: &Path) -> Result<Vec<String>> {
+    let workspaces = list_workspaces_with_meta(db_path)?
+        .into_iter()
+        .map(|workspace| workspace.workspace_root)
+        .collect();
+
+    Ok(workspaces)
+}
+
+pub fn list_workspaces_with_meta(db_path: &Path) -> Result<Vec<VaultWorkspace>> {
     let conn = open_vault_connection(db_path)?;
     let mut stmt = conn
-        .prepare("SELECT workspace_root FROM vault ORDER BY last_opened_at DESC, id DESC")
+        .prepare(
+            "SELECT id, workspace_root, last_opened_at \
+             FROM vault ORDER BY last_opened_at DESC, id DESC",
+        )
         .context("Failed to prepare vault workspace list query")?;
 
     let workspaces = stmt
-        .query_map([], |row| row.get::<_, String>(0))
+        .query_map([], map_vault_workspace_row)
         .context("Failed to load vault workspaces")?
         .collect::<rusqlite::Result<Vec<_>>>()
         .context("Failed to read vault workspace rows")?;
@@ -220,8 +276,9 @@ pub fn remove_workspace(db_path: &Path, workspace_path: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ensure_workspace_exists, get_embedding_config, list_workspaces, remove_workspace,
-        set_embedding_config, touch_workspace,
+        ensure_workspace_exists, find_workspace_by_path, get_embedding_config, get_workspace_by_id,
+        list_workspaces, list_workspaces_with_meta, remove_workspace, set_embedding_config,
+        touch_workspace,
     };
     use crate::migrations;
     use rusqlite::{params, Connection, OptionalExtension};
@@ -301,6 +358,46 @@ mod tests {
             )
             .expect("failed to count rows");
         assert_eq!(row_count, 1);
+    }
+
+    #[test]
+    fn given_touched_workspaces_when_listing_with_meta_then_rows_include_id_and_timestamps() {
+        let harness = VaultHarness::new("mdit-vault-list-meta");
+        let workspace_a = harness.create_workspace("a");
+        let workspace_b = harness.create_workspace("b");
+        let key_a = VaultHarness::workspace_key(&workspace_a);
+        let key_b = VaultHarness::workspace_key(&workspace_b);
+
+        touch_workspace(&harness.db_path, &workspace_a).expect("touch should succeed");
+        std::thread::sleep(Duration::from_millis(5));
+        touch_workspace(&harness.db_path, &workspace_b).expect("touch should succeed");
+
+        let rows = list_workspaces_with_meta(&harness.db_path).expect("listing should succeed");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].workspace_root, key_b);
+        assert_eq!(rows[1].workspace_root, key_a);
+        assert!(rows[0].id > 0);
+        assert!(rows[1].id > 0);
+        assert!(!rows[0].last_opened_at.is_empty());
+        assert!(!rows[1].last_opened_at.is_empty());
+    }
+
+    #[test]
+    fn given_workspace_id_when_loading_by_id_then_it_returns_matching_row() {
+        let harness = VaultHarness::new("mdit-vault-get-by-id");
+        let workspace = harness.create_workspace("a");
+        touch_workspace(&harness.db_path, &workspace).expect("touch should succeed");
+
+        let by_path = find_workspace_by_path(&harness.db_path, &workspace)
+            .expect("find by path should succeed")
+            .expect("workspace should exist");
+        let by_id = get_workspace_by_id(&harness.db_path, by_path.id)
+            .expect("find by id should succeed")
+            .expect("workspace should exist");
+
+        assert_eq!(by_id.id, by_path.id);
+        assert_eq!(by_id.workspace_root, by_path.workspace_root);
+        assert_eq!(by_id.last_opened_at, by_path.last_opened_at);
     }
 
     #[test]

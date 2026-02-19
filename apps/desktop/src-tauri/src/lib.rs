@@ -1,5 +1,6 @@
 mod app;
 mod commands;
+mod local_api;
 mod persistence;
 
 use tauri::Manager;
@@ -38,6 +39,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
+        .setup(|app| {
+            let runtime = local_api::start_local_api_server(&app.handle())?;
+            app.manage(runtime);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             app::window_lifecycle::show_main_window,
             commands::filesystem::copy,
@@ -66,6 +72,7 @@ pub fn run() {
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        app::window_lifecycle::handle_run_event(app_handle, event);
+        local_api::handle_run_event(app_handle, &event);
+        app::window_lifecycle::handle_run_event(app_handle, &event);
     });
 }
