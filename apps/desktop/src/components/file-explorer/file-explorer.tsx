@@ -47,6 +47,7 @@ export function FileExplorer() {
 		recentWorkspacePaths,
 		toggleDirectory,
 		setWorkspace,
+		removeWorkspaceFromHistory,
 		openFolderPicker,
 		pinnedDirectories,
 		pinDirectory,
@@ -74,6 +75,7 @@ export function FileExplorer() {
 			recentWorkspacePaths: state.recentWorkspacePaths,
 			toggleDirectory: state.toggleDirectory,
 			setWorkspace: state.setWorkspace,
+			removeWorkspaceFromHistory: state.removeWorkspaceFromHistory,
 			openFolderPicker: state.openFolderPicker,
 			pinnedDirectories: state.pinnedDirectories,
 			pinDirectory: state.pinDirectory,
@@ -325,6 +327,7 @@ export function FileExplorer() {
 							workspacePath={workspacePath}
 							recentWorkspacePaths={recentWorkspacePaths}
 							onWorkspaceSelect={setWorkspace}
+							onWorkspaceRemove={removeWorkspaceFromHistory}
 							onOpenFolderPicker={openFolderPicker}
 						/>
 						<GitSyncStatus />
