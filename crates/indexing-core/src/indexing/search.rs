@@ -22,7 +22,7 @@ const SEGMENT_VEC_TABLE: &str = "segment_vec";
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SemanticNoteEntry {
+pub struct SemanticNoteEntry {
     pub path: String,
     pub name: String,
     pub created_at: Option<i64>,
@@ -50,7 +50,7 @@ pub(super) struct RankedCandidate {
     pub(super) similarity: f32,
 }
 
-pub(crate) fn search_notes_for_query(
+pub fn search_notes_for_query(
     workspace_root: &Path,
     db_path: &Path,
     query: &str,
@@ -141,7 +141,7 @@ pub(crate) fn search_notes_for_query(
 }
 
 fn open_search_connection(db_path: &Path) -> Result<Connection> {
-    crate::sqlite_vec_ext::register_auto_extension()?;
+    app_storage::sqlite_ext::register_auto_extension()?;
 
     let conn = Connection::open(db_path)
         .with_context(|| format!("Failed to open indexing database at {}", db_path.display()))?;
@@ -446,7 +446,7 @@ mod tests {
     }
 
     fn open_connection() -> Connection {
-        crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
+        app_storage::sqlite_ext::register_auto_extension().expect("failed to register sqlite-vec");
 
         let conn = Connection::open_in_memory().expect("failed to open in-memory db");
         conn.pragma_update(None, "foreign_keys", 1)

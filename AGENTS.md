@@ -5,9 +5,14 @@
 - `apps/desktop/src/` contains the React + TypeScript frontend.
   - `apps/desktop/src/components/`, `apps/desktop/src/ui/`, `apps/desktop/src/hooks/`, `apps/desktop/src/contexts/`, `apps/desktop/src/store/`, `apps/desktop/src/services/` hold UI, state, and app logic.
   - `apps/desktop/src/db/` and `apps/desktop/src/repositories/` hold data access and persistence utilities.
-- `apps/desktop/src-tauri/` contains the Rust/Tauri desktop backend.
-- Build outputs are generated under `apps/desktop/dist/` (frontend) and `apps/desktop/src-tauri/target/` (Rust).
-- Tests live alongside code, e.g. `apps/desktop/src/**/**.test.ts`, plus Rust tests under `apps/desktop/src-tauri/src/**/tests.rs`.
+- `apps/desktop/src-tauri/` contains the Rust/Tauri app adapter layer (window lifecycle, plugin wiring, command registration).
+- Rust core logic is split into workspace crates under `crates/`:
+  - `crates/app-storage/` for SQLite extension, migrations, and vault persistence.
+  - `crates/note-core/` for markdown/frontmatter/preview processing.
+  - `crates/indexing-core/` for indexing, search, links, backlinks, and graph logic.
+  - `crates/image-core/` for image metadata/editing logic.
+- Build outputs are generated under `apps/desktop/dist/` (frontend), `target/` (workspace Rust builds), and `apps/desktop/src-tauri/target/` (Tauri packaging artifacts).
+- Tests live alongside code, e.g. `apps/desktop/src/**/**.test.ts`, plus Rust tests under `crates/**/src/**` and `apps/desktop/src-tauri/src/**`.
 
 ## Build, Test, and Development Commands
 - Run commands from the monorepo root unless noted. Root `desktop:*` scripts delegate to `apps/desktop`.
@@ -16,7 +21,7 @@
 - `pnpm desktop:preview` (or `pnpm -C apps/desktop preview`) serves the production build locally.
 - `pnpm desktop:tauri build` (or `pnpm -C apps/desktop tauri build`) builds the full desktop app (frontend + Rust).
 - `pnpm desktop:test` (or `pnpm -C apps/desktop test`) runs Vitest in CI mode.
-- `pnpm desktop:test:rust` (or `pnpm -C apps/desktop test:rust`) runs Rust tests.
+- `pnpm desktop:test:rust` (or `pnpm -C apps/desktop test:rust`) runs `cargo test --workspace --manifest-path ../../Cargo.toml`.
 - `pnpm desktop:ts:check` (or `pnpm -C apps/desktop ts:check`) runs TypeScript type checks only.
 - `pnpm lint` runs Biome checks; `pnpm lint:fix` auto-fixes.
 
@@ -25,11 +30,12 @@
 - Keep files and folders in kebab-case; React components in PascalCase.
 - Prefer colocating tests with their modules using `*.test.ts`.
 - Format and lint with Biome before pushing (`pnpm lint`).
+- After editing Rust code, run `cargo fmt --all --manifest-path Cargo.toml`.
 
 ## Testing Guidelines
 - Frontend tests use Vitest; name files `*.test.ts` and keep fixtures small.
-- Rust tests live in `apps/desktop/src-tauri` and are standard Rust `#[test]` functions.
-- Run `pnpm desktop:test` for JS/TS, and `cargo test` from `apps/desktop/src-tauri/` (or `pnpm desktop:test:rust`) when touching Rust.
+- Rust tests are standard `#[test]` functions and primarily live in workspace crates under `crates/` (with adapter tests in `apps/desktop/src-tauri`).
+- Run `pnpm desktop:test` for JS/TS, and run Rust tests with `cargo test --workspace --manifest-path Cargo.toml` (or `pnpm desktop:test:rust`) when touching Rust.
 
 ## Commit & Pull Request Guidelines
 - Commits follow a Conventional Commits style: `feat:`, `fix:`, `refactor:`, `chore:`, `ui:`, `ux:` (e.g., `fix: add overflow handling`).

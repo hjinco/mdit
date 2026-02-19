@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use rusqlite::ffi::{sqlite3_auto_extension, SQLITE_OK};
 use sqlite_vec::sqlite3_vec_init;
 
-pub(crate) fn register_auto_extension() -> Result<()> {
+pub fn register_auto_extension() -> Result<()> {
     static INIT: OnceLock<Result<(), String>> = OnceLock::new();
 
     let result = INIT.get_or_init(|| unsafe {

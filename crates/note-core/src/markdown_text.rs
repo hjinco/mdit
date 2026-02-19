@@ -4,7 +4,7 @@ use serde_yaml::Value;
 const BOM: char = '\u{FEFF}';
 const ZERO_WIDTH_SPACE: char = '\u{200B}';
 
-pub(crate) fn format_preview_text(raw: &str) -> String {
+pub fn format_preview_text(raw: &str) -> String {
     if raw.is_empty() {
         return String::new();
     }
@@ -98,7 +98,7 @@ pub(crate) fn format_preview_text(raw: &str) -> String {
     strip_reference_links(&collapsed)
 }
 
-pub(crate) fn format_indexing_text(raw: &str) -> String {
+pub fn format_indexing_text(raw: &str) -> String {
     if raw.is_empty() {
         return String::new();
     }

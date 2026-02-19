@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 
 use anyhow::{anyhow, Context, Result};
 use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
-use tauri::async_runtime;
 
 #[derive(Debug)]
 pub(crate) struct EmbeddingVector {
@@ -71,7 +70,12 @@ impl EmbeddingClient {
         let model = self.model.clone();
         let prompt = text.to_string();
 
-        let response = async_runtime::block_on(async {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .context("Failed to create async runtime for embedding request")?;
+
+        let response = runtime.block_on(async {
             let request = GenerateEmbeddingsRequest::new(model, prompt.into());
             ollama
                 .generate_embeddings(request)

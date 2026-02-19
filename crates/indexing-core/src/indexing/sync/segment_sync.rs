@@ -274,7 +274,7 @@ mod tests {
     use crate::indexing::IndexSummary;
 
     fn open_connection() -> Connection {
-        crate::sqlite_vec_ext::register_auto_extension().expect("failed to register sqlite-vec");
+        app_storage::sqlite_ext::register_auto_extension().expect("failed to register sqlite-vec");
 
         let conn = Connection::open_in_memory().expect("failed to open in-memory db");
         conn.pragma_update(None, "foreign_keys", 1)
