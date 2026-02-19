@@ -35,8 +35,7 @@ impl LocalApiRuntime {
 pub fn start_local_api_server<R: Runtime>(
     app_handle: &AppHandle<R>,
 ) -> Result<LocalApiRuntime, Box<dyn StdError>> {
-    let db_path = crate::persistence::run_app_migrations(app_handle)
-        .map_err(|error| io::Error::other(error.to_string()))?;
+    let db_path = crate::persistence::run_app_migrations_anyhow(app_handle)?;
     let router = router::build_router(router::LocalApiState { db_path });
 
     let bind_addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, LOCAL_API_PORT);
