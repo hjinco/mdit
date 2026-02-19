@@ -2,6 +2,7 @@ import {
 	AI_PROVIDER_DEFINITIONS,
 	type ApiKeyProviderId,
 	type ChatProviderId,
+	CREDENTIAL_PROVIDER_IDS,
 	type CredentialProviderId,
 } from "@mdit/ai-auth"
 import { openUrl } from "@tauri-apps/plugin-opener"
@@ -28,6 +29,15 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useStore } from "@/store"
+
+function isCredentialProviderId(value: string): value is CredentialProviderId {
+	return (
+		value === "google" ||
+		value === "openai" ||
+		value === "anthropic" ||
+		value === "codex_oauth"
+	)
+}
 
 export function AITab() {
 	const {
@@ -81,15 +91,21 @@ export function AITab() {
 		}
 	}
 
-	const providersMap = useMemo(() => {
-		return Object.entries(apiModels)
-			.map(([provider, models]) => {
-				return {
-					provider: provider as ChatProviderId,
-					models,
-				}
-			})
-			.concat({ provider: "ollama", models: ollamaModels })
+	const providersMap = useMemo((): Array<{
+		provider: ChatProviderId
+		models: string[]
+	}> => {
+		const credentialProviderModels = CREDENTIAL_PROVIDER_IDS.map((provider) => {
+			return {
+				provider,
+				models: apiModels[provider] ?? [],
+			}
+		})
+
+		return [
+			...credentialProviderModels,
+			{ provider: "ollama", models: ollamaModels },
+		]
 	}, [apiModels, ollamaModels])
 
 	const renameOptions = useMemo(() => {
@@ -131,16 +147,12 @@ export function AITab() {
 		: "__none__"
 
 	const hasConnectedProviders = useMemo(() => {
-		return (
-			Object.entries(apiModels).some(([provider]) =>
-				connectedProviders.includes(provider as CredentialProviderId),
-			) || ollamaModels.length > 0
-		)
-	}, [connectedProviders, apiModels, ollamaModels])
+		return connectedProviders.length > 0 || ollamaModels.length > 0
+	}, [connectedProviders, ollamaModels])
 
 	const credentialProviderDefinitions = useMemo(() => {
-		return Object.values(AI_PROVIDER_DEFINITIONS).filter(
-			(definition) => definition.id !== "ollama",
+		return CREDENTIAL_PROVIDER_IDS.map(
+			(providerId) => AI_PROVIDER_DEFINITIONS[providerId],
 		)
 	}, [])
 
@@ -156,9 +168,7 @@ export function AITab() {
 							const isConnected =
 								provider === "ollama"
 									? true
-									: connectedProviders.includes(
-											provider as CredentialProviderId,
-										)
+									: connectedProviders.includes(provider)
 
 							if (!isConnected) return null
 
@@ -228,7 +238,15 @@ export function AITab() {
 											clearRenameModel()
 											return
 										}
-										selectRenameModel(provider as ChatProviderId, model)
+										if (provider === "ollama") {
+											selectRenameModel(provider, model)
+											return
+										}
+										if (isCredentialProviderId(provider)) {
+											selectRenameModel(provider, model)
+											return
+										}
+										clearRenameModel()
 									}}
 								>
 									<SelectTrigger size="sm">
@@ -256,12 +274,11 @@ export function AITab() {
 				</FieldDescription>
 				<FieldGroup className="gap-2">
 					{credentialProviderDefinitions.map((definition) => {
-						const provider = definition.id as CredentialProviderId
-						const isConnected = connectedProviders.includes(provider)
-						const isBusy = Boolean(providerBusy[provider])
+						const isConnected = connectedProviders.includes(definition.id)
+						const isBusy = Boolean(providerBusy[definition.id])
 
 						return (
-							<Field key={provider}>
+							<Field key={definition.id}>
 								<FieldLabel
 									className={
 										definition.settingsUrl
@@ -288,12 +305,12 @@ export function AITab() {
 											disabled={isBusy}
 											onClick={() => {
 												if (isConnected) {
-													void runWithBusy(provider, async () => {
-														await disconnectProvider(provider)
+													void runWithBusy(definition.id, async () => {
+														await disconnectProvider(definition.id)
 													})
 													return
 												}
-												void runWithBusy(provider, async () => {
+												void runWithBusy(definition.id, async () => {
 													await connectCodexOAuth()
 												})
 											}}
@@ -307,7 +324,7 @@ export function AITab() {
 									</div>
 								) : (
 									<ConnectProvider
-										provider={provider as ApiKeyProviderId}
+										provider={definition.id}
 										isConnected={isConnected}
 										isBusy={isBusy}
 										onConnect={async (targetProvider, apiKey) => {
@@ -361,7 +378,7 @@ interface ConnectProviderProps {
 	isConnected: boolean
 	isBusy: boolean
 	onConnect: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
-	onDisconnect: (provider: CredentialProviderId) => Promise<void>
+	onDisconnect: (provider: ApiKeyProviderId) => Promise<void>
 }
 
 function ConnectProvider({

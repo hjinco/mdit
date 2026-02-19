@@ -10,17 +10,38 @@ export type ChatProviderId = CredentialProviderId | "ollama"
 
 export type ProviderAuthKind = "api_key" | "oauth" | "host_url"
 
-export type ProviderDefinition = {
-	id: ChatProviderId
+type BaseProviderDefinition = {
 	label: string
-	authKind: ProviderAuthKind
 	settingsUrl: string | null
 }
 
-export const AI_PROVIDER_DEFINITIONS: Record<
-	ChatProviderId,
-	ProviderDefinition
-> = {
+export type ApiKeyProviderDefinition = {
+	[K in ApiKeyProviderId]: BaseProviderDefinition & {
+		id: K
+		authKind: "api_key"
+	}
+}[ApiKeyProviderId]
+
+export type OAuthProviderDefinition = BaseProviderDefinition & {
+	id: "codex_oauth"
+	authKind: "oauth"
+}
+
+export type HostUrlProviderDefinition = BaseProviderDefinition & {
+	id: "ollama"
+	authKind: "host_url"
+}
+
+export type ProviderDefinition =
+	| ApiKeyProviderDefinition
+	| OAuthProviderDefinition
+	| HostUrlProviderDefinition
+
+type ProviderDefinitionMap = {
+	[K in ChatProviderId]: Extract<ProviderDefinition, { id: K }>
+}
+
+export const AI_PROVIDER_DEFINITIONS: ProviderDefinitionMap = {
 	google: {
 		id: "google",
 		label: "Google Generative AI",
