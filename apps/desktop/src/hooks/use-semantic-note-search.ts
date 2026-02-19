@@ -42,7 +42,7 @@ export function useSemanticNoteSearch(
 		const requestId = requestIdRef.current + 1
 		requestIdRef.current = requestId
 
-		if (!workspacePath || trimmedQuery.length === 0 || !hasEmbeddingConfig) {
+		if (!workspacePath || trimmedQuery.length === 0) {
 			setResults([])
 			return
 		}
@@ -82,13 +82,7 @@ export function useSemanticNoteSearch(
 				console.error("Failed to perform semantic search:", error)
 				setResults([])
 			})
-	}, [
-		workspacePath,
-		trimmedQuery,
-		hasEmbeddingConfig,
-		embeddingProvider,
-		embeddingModel,
-	])
+	}, [workspacePath, trimmedQuery, embeddingProvider, embeddingModel])
 
 	return {
 		results,
