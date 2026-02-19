@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 app-storage = { path = "../app-storage" }
+indexing-core = { path = "../indexing-core" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"

@@ -1,6 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
-use local_api_core::{CreateNoteInput, LocalApiError, LocalApiErrorKind};
+use local_api_core::{
+    CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNoteEntry, SearchNotesInput,
+};
 use rmcp::schemars;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -75,6 +77,22 @@ impl MditMcpServer {
             },
         }))
     }
+
+    #[tool(
+        name = "search_notes",
+        description = "Search markdown notes in a vault."
+    )]
+    async fn search_notes(
+        &self,
+        Parameters(input): Parameters<SearchNotesToolInput>,
+    ) -> Result<Json<SearchNotesToolOutput>, McpError> {
+        let output = local_api_core::search_notes(&self.db_path, input.into())
+            .map_err(local_api_error_to_mcp)?;
+
+        let results = output.results.into_iter().map(Into::into).collect();
+
+        Ok(Json(SearchNotesToolOutput { results }))
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -82,7 +100,8 @@ impl ServerHandler for MditMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-                "Expose vault listing and markdown note creation for local automation.".into(),
+                "Expose vault listing, markdown note creation, and note search for local automation."
+                    .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
@@ -129,6 +148,24 @@ pub struct CreateNoteToolInput {
     pub content: Option<String>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchNotesToolInput {
+    pub vault_id: i64,
+    pub query: String,
+    pub limit: Option<usize>,
+}
+
+impl From<SearchNotesToolInput> for SearchNotesInput {
+    fn from(value: SearchNotesToolInput) -> Self {
+        Self {
+            vault_id: value.vault_id,
+            query: value.query,
+            limit: value.limit,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ListVaultsToolOutput {
@@ -156,4 +193,32 @@ struct CreatedNoteTool {
     pub workspace_path: String,
     pub relative_path: String,
     pub absolute_path: String,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct SearchNotesToolOutput {
+    pub results: Vec<SearchResultToolEntry>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct SearchResultToolEntry {
+    pub path: String,
+    pub name: String,
+    pub created_at: Option<i64>,
+    pub modified_at: Option<i64>,
+    pub similarity: f32,
+}
+
+impl From<SearchNoteEntry> for SearchResultToolEntry {
+    fn from(value: SearchNoteEntry) -> Self {
+        Self {
+            path: value.path,
+            name: value.name,
+            created_at: value.created_at,
+            modified_at: value.modified_at,
+            similarity: value.similarity,
+        }
+    }
 }

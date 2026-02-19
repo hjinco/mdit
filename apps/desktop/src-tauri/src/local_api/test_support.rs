@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -42,6 +42,35 @@ impl Drop for Harness {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.root);
     }
+}
+
+pub(super) fn seed_search_fixture(harness: &Harness) {
+    fs::write(
+        harness.workspace_path.join("Nebula One.md"),
+        build_search_content("nebula"),
+    )
+    .expect("failed to write Nebula One.md");
+    fs::write(
+        harness.workspace_path.join("Nebula Two.md"),
+        build_search_content("nebula"),
+    )
+    .expect("failed to write Nebula Two.md");
+
+    indexing_core::index_workspace(
+        Path::new(&harness.workspace_path),
+        Path::new(&harness.db_path),
+        "",
+        "",
+        false,
+    )
+    .expect("failed to index workspace");
+}
+
+fn build_search_content(query: &str) -> String {
+    format!(
+        "# Search Fixture\n\n{query}\n\n{}\n",
+        "lorem ipsum ".repeat(40)
+    )
 }
 
 fn unique_id() -> u128 {
