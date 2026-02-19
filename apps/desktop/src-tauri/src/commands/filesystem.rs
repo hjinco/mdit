@@ -28,5 +28,19 @@ pub fn copy(source_path: String, destination_path: String) -> Result<(), String>
     let source = Path::new(&source_path);
     let destination = Path::new(&destination_path);
 
-    copy_recursive(source, destination).map_err(|e| format!("Failed to copy: {}", e))
+    copy_recursive(source, destination).map_err(|error| format!("Failed to copy: {}", error))
+}
+
+#[tauri::command]
+pub fn move_to_trash(path: String) -> Result<(), String> {
+    trash::delete(path).map_err(|error| format!("Failed to delete file: {}", error))
+}
+
+#[tauri::command]
+pub fn move_many_to_trash(paths: Vec<String>) -> Result<(), String> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+
+    trash::delete_all(paths).map_err(|error| format!("Failed to delete files: {}", error))
 }

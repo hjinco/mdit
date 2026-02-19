@@ -1,62 +1,30 @@
-mod appdata;
-mod copy;
-mod database;
-mod file_opener;
-mod image_processing;
-mod indexing_commands;
-mod migrations;
-mod preview;
-mod trash;
-mod vault;
+mod app;
+mod commands;
+mod persistence;
 
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
-fn show_and_focus_main_window(window: tauri::WebviewWindow) {
-    if let Err(e) = window.show() {
-        eprintln!("Failed to show window: {e}");
-    }
-    if let Err(e) = window.set_focus() {
-        eprintln!("Failed to focus window: {e}");
-    }
-}
-
-fn should_suppress_main_show(app_state: &file_opener::AppState) -> bool {
-    app_state.consume_suppress_next_main_show()
-}
-
-#[tauri::command]
-fn show_main_window(
-    window: tauri::WebviewWindow,
-    app_state: tauri::State<'_, file_opener::AppState>,
-) {
-    if should_suppress_main_show(&app_state) {
-        return;
-    }
-
-    show_and_focus_main_window(window);
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app_state = file_opener::AppState::default();
-    file_opener::initialize_opened_files(&app_state);
+    let app_state = app::file_opening::AppState::default();
+    app::file_opening::initialize_opened_files(&app_state);
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             #[cfg(not(target_os = "macos"))]
-            if file_opener::handle_single_instance_args(app, &_args) {
+            if app::file_opening::handle_single_instance_args(app, &_args) {
                 return;
             }
 
-            let app_state = app.state::<file_opener::AppState>();
-            if should_suppress_main_show(&app_state) {
+            let app_state = app.state::<app::file_opening::AppState>();
+            if app::window_lifecycle::should_suppress_main_show(&app_state) {
                 return;
             }
 
             if let Some(main_window) = app.get_webview_window("main") {
-                show_and_focus_main_window(main_window);
+                app::window_lifecycle::show_and_focus_main_window(main_window);
             }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -71,56 +39,33 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
         .invoke_handler(tauri::generate_handler![
-            show_main_window,
-            copy::copy,
-            database::get_file_frontmatter,
-            trash::move_to_trash,
-            trash::move_many_to_trash,
-            preview::get_note_preview,
-            migrations::apply_appdata_migrations,
-            indexing_commands::index_workspace_command,
-            indexing_commands::index_note_command,
-            indexing_commands::get_indexing_meta_command,
-            indexing_commands::search_query_entries_command,
-            indexing_commands::resolve_wiki_link_command,
-            indexing_commands::get_backlinks_command,
-            indexing_commands::get_graph_view_data_command,
-            vault::list_vault_workspaces_command,
-            vault::touch_vault_workspace_command,
-            vault::remove_vault_workspace_command,
-            vault::get_vault_embedding_config_command,
-            vault::set_vault_embedding_config_command,
-            image_processing::get_image_properties,
-            image_processing::edit_image
+            app::window_lifecycle::show_main_window,
+            commands::filesystem::copy,
+            commands::content::get_file_frontmatter,
+            commands::filesystem::move_to_trash,
+            commands::filesystem::move_many_to_trash,
+            commands::content::get_note_preview,
+            persistence::apply_appdata_migrations,
+            commands::vault_indexing::index_workspace_command,
+            commands::vault_indexing::index_note_command,
+            commands::vault_indexing::get_indexing_meta_command,
+            commands::vault_indexing::search_query_entries_command,
+            commands::vault_indexing::resolve_wiki_link_command,
+            commands::vault_indexing::get_backlinks_command,
+            commands::vault_indexing::get_graph_view_data_command,
+            commands::vault_indexing::list_vault_workspaces_command,
+            commands::vault_indexing::touch_vault_workspace_command,
+            commands::vault_indexing::remove_vault_workspace_command,
+            commands::vault_indexing::get_vault_embedding_config_command,
+            commands::vault_indexing::set_vault_embedding_config_command,
+            commands::image::get_image_properties,
+            commands::image::edit_image
         ])
         .manage(app_state)
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        match event {
-            tauri::RunEvent::Ready { .. } => {
-                if let Some(main_window) = app_handle.get_webview_window("main") {
-                    let _ = main_window.hide();
-                }
-                #[cfg(not(target_os = "macos"))]
-                {
-                    // Open edit window if files were passed as command line arguments
-                    file_opener::open_edit_window_if_files_exist(app_handle);
-                }
-            }
-            #[cfg(target_os = "macos")]
-            tauri::RunEvent::Reopen { .. } => {
-                // Show main window if it exists, otherwise create it
-                if let Some(main_window) = app_handle.get_webview_window("main") {
-                    show_and_focus_main_window(main_window);
-                }
-            }
-            #[cfg(target_os = "macos")]
-            tauri::RunEvent::Opened { urls } => {
-                file_opener::handle_opened_event(app_handle, urls);
-            }
-            _ => {}
-        }
+        app::window_lifecycle::handle_run_event(app_handle, event);
     });
 }
