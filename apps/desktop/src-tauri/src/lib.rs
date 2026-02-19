@@ -46,6 +46,11 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            #[cfg(not(target_os = "macos"))]
+            if file_opener::handle_single_instance_args(app, &_args) {
+                return;
+            }
+
             let app_state = app.state::<file_opener::AppState>();
             if should_suppress_main_show(&app_state) {
                 return;
@@ -106,15 +111,10 @@ pub fn run() {
                 }
             }
             #[cfg(target_os = "macos")]
-            tauri::RunEvent::Reopen {
-                has_visible_windows,
-                ..
-            } => {
+            tauri::RunEvent::Reopen { .. } => {
                 // Show main window if it exists, otherwise create it
-                if !has_visible_windows {
-                    if let Some(main_window) = app_handle.get_webview_window("main") {
-                        show_and_focus_main_window(main_window);
-                    }
+                if let Some(main_window) = app_handle.get_webview_window("main") {
+                    show_and_focus_main_window(main_window);
                 }
             }
             #[cfg(target_os = "macos")]

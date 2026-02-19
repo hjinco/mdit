@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tauri::Manager;
 
 #[cfg(not(target_os = "macos"))]
@@ -43,6 +43,23 @@ fn initialize_opened_files_with_paths(app_state: &AppState, file_paths: Vec<Stri
 pub fn initialize_opened_files(app_state: &AppState) {
     let file_paths = get_opened_files_from_args();
     initialize_opened_files_with_paths(app_state, file_paths);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn handle_single_instance_args(app_handle: &tauri::AppHandle, args: &[String]) -> bool {
+    let file_paths = get_opened_files_from_args_list(args.iter());
+    if file_paths.is_empty() {
+        return false;
+    }
+
+    let state = app_handle.state::<AppState>();
+    let mut opened_files = state.opened_files.lock().unwrap();
+    *opened_files = file_paths;
+    drop(opened_files);
+    state.mark_suppress_next_main_show();
+
+    open_edit_window(app_handle);
+    true
 }
 
 /// Opens or creates the edit window.
@@ -107,10 +124,6 @@ pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>)
     }
 
     open_edit_window(app_handle);
-
-    if let Some(main_window) = app_handle.get_webview_window("main") {
-        let _ = main_window.hide();
-    }
 }
 
 /// Opens the edit window if there are files in opened_files (for non-macOS platforms).
@@ -128,18 +141,23 @@ pub fn open_edit_window_if_files_exist(app_handle: &tauri::AppHandle) {
 #[cfg(not(target_os = "macos"))]
 fn get_opened_files_from_args() -> Vec<String> {
     let args: Vec<String> = std::env::args().collect();
-    args.iter()
-        .skip(1) // First argument is the executable path
-        .filter_map(|arg| {
-            let path = PathBuf::from(arg);
-            if path.exists() && path.is_file() && path.extension().map_or(false, |ext| ext == "md")
-            {
-                Some(path.to_string_lossy().to_string())
-            } else {
-                None
-            }
-        })
-        .collect()
+    get_opened_files_from_args_list(args.iter().skip(1))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn get_opened_files_from_args_list<'a, I>(args: I) -> Vec<String>
+where
+    I: Iterator<Item = &'a String>,
+{
+    args.filter_map(|arg| {
+        let path = PathBuf::from(arg);
+        if path.exists() && path.is_file() && path.extension().map_or(false, |ext| ext == "md") {
+            Some(path.to_string_lossy().to_string())
+        } else {
+            None
+        }
+    })
+    .collect()
 }
 
 /// Returns an empty vector on macOS (uses RunEvent::Opened instead).
