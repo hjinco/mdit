@@ -10,7 +10,7 @@
 		"preview": "vite preview",
 		"tauri": "tauri",
 		"test": "vitest run",
-		"test:rust": "cd src-tauri && cargo test",
+		"test:rust": "cargo test -p mdit --manifest-path ../../Cargo.toml",
 		"ci": "pnpm ts:check && pnpm test"
 	},
 	"dependencies": {
