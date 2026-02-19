@@ -8,6 +8,7 @@ use std::path::PathBuf;
 pub struct AppState {
     pub opened_files: Mutex<Vec<String>>,
     pub suppress_next_main_show: Mutex<bool>,
+    pub next_edit_window_id: Mutex<u64>,
 }
 
 impl AppState {
@@ -24,6 +25,13 @@ impl AppState {
         } else {
             false
         }
+    }
+
+    fn next_edit_window_label(&self) -> String {
+        let mut next_id = self.next_edit_window_id.lock().unwrap();
+        let label = format!("edit-{}", *next_id);
+        *next_id += 1;
+        label
     }
 }
 
@@ -54,39 +62,30 @@ pub fn handle_single_instance_args(app_handle: &tauri::AppHandle, args: &[String
 
     let state = app_handle.state::<AppState>();
     let mut opened_files = state.opened_files.lock().unwrap();
-    *opened_files = file_paths;
+    *opened_files = file_paths.clone();
     drop(opened_files);
     state.mark_suppress_next_main_show();
-
-    open_edit_window(app_handle);
+    drop(state);
+    open_edit_windows(app_handle, &file_paths);
     true
 }
 
-/// Opens or creates the edit window.
-fn open_edit_window(app_handle: &tauri::AppHandle) {
-    if let Some(edit_window) = app_handle.get_webview_window("edit") {
-        let _ = edit_window.show();
-        let _ = edit_window.set_focus();
-        return;
-    }
-
-    // Get the first opened file to include in the URL hash
+fn open_edit_window(app_handle: &tauri::AppHandle, file_path: &str) {
     let state = app_handle.state::<AppState>();
-    let opened_files = state.opened_files.lock().unwrap();
-    let file_path = opened_files.first().cloned().unwrap_or_default();
+    let label = state.next_edit_window_label();
 
     // Build the URL with hash route
     let url = if file_path.is_empty() {
         "/edit".to_string()
     } else {
-        format!("/edit?path={}", urlencoding::encode(&file_path))
+        format!("/edit?path={}", urlencoding::encode(file_path))
     };
 
-    // Create the editor-only window on demand for file association opens (Finder, "Open with", etc.).
-    // We clone the main window config so styling stays consistent with tauri.conf.json.
+    // Create an editor window on demand for file association opens (Finder, "Open with", etc.).
+    // Window labels are unique so multiple edit windows can coexist.
     let created = (|| -> Option<tauri::WebviewWindow> {
         let mut config = app_handle.config().app.windows.first()?.clone();
-        config.label = "edit".to_string();
+        config.label = label;
         config.visible = true;
         config.url = tauri::WebviewUrl::App(url.into());
 
@@ -99,6 +98,12 @@ fn open_edit_window(app_handle: &tauri::AppHandle) {
     if let Some(edit_window) = created {
         let _ = edit_window.show();
         let _ = edit_window.set_focus();
+    }
+}
+
+fn open_edit_windows(app_handle: &tauri::AppHandle, file_paths: &[String]) {
+    for file_path in file_paths {
+        open_edit_window(app_handle, file_path);
     }
 }
 
@@ -118,22 +123,21 @@ pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>)
     {
         let state = app_handle.state::<AppState>();
         let mut opened_files = state.opened_files.lock().unwrap();
-        *opened_files = file_paths;
+        *opened_files = file_paths.clone();
         drop(opened_files);
         state.mark_suppress_next_main_show();
+        open_edit_windows(app_handle, &file_paths);
     }
-
-    open_edit_window(app_handle);
 }
 
 /// Opens the edit window if there are files in opened_files (for non-macOS platforms).
 #[cfg(not(target_os = "macos"))]
 pub fn open_edit_window_if_files_exist(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<AppState>();
-    let opened_files = state.opened_files.lock().unwrap();
+    let opened_files = state.opened_files.lock().unwrap().clone();
 
     if !opened_files.is_empty() {
-        open_edit_window(app_handle);
+        open_edit_windows(app_handle, &opened_files);
     }
 }
 
@@ -192,5 +196,13 @@ mod tests {
         assert_eq!(opened_files, paths);
         assert!(state.consume_suppress_next_main_show());
         assert!(!state.consume_suppress_next_main_show());
+    }
+
+    #[test]
+    fn next_edit_window_labels_are_unique() {
+        let state = AppState::default();
+
+        assert_eq!(state.next_edit_window_label(), "edit-0");
+        assert_eq!(state.next_edit_window_label(), "edit-1");
     }
 }
