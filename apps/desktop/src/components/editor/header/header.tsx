@@ -1,4 +1,6 @@
 import { useShallow } from "zustand/shallow"
+import { WindowPinButton } from "@/components/quick-note/window-pin-button"
+import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
 import { useIsFullscreen } from "@/hooks/use-is-fullscreen"
 import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
@@ -23,6 +25,9 @@ export function Header() {
 	)
 	const isCollectionViewOpen = currentCollectionPath !== null
 	const isFullscreen = useIsFullscreen()
+	const windowLabel = useCurrentWindowLabel()
+	const showPin =
+		windowLabel?.startsWith("edit-") || windowLabel?.startsWith("quick-note-")
 
 	return (
 		<div
@@ -46,7 +51,8 @@ export function Header() {
 				<HistoryNavigation />
 			</div>
 			<Tab />
-			<div className="absolute right-0">
+			<div className="absolute right-0 flex items-center gap-0.5">
+				{showPin && <WindowPinButton />}
 				<MoreButton />
 			</div>
 		</div>
