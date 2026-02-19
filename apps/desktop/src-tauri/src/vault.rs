@@ -454,8 +454,8 @@ mod tests {
         set_embedding_config(&harness.db_path, &workspace, "openai", "")
             .expect("clear config should succeed");
 
-        let config = get_embedding_config(&harness.db_path, &workspace)
-            .expect("get config should succeed");
+        let config =
+            get_embedding_config(&harness.db_path, &workspace).expect("get config should succeed");
         assert!(config.is_none());
 
         let conn = harness.open_connection();
@@ -503,8 +503,13 @@ mod tests {
 
         set_embedding_config(&harness.db_path, &workspace_a, "ollama", "model-a")
             .expect("set config for workspace a should succeed");
-        set_embedding_config(&harness.db_path, &workspace_b, "openai", "text-embedding-3-small")
-            .expect("set config for workspace b should succeed");
+        set_embedding_config(
+            &harness.db_path,
+            &workspace_b,
+            "openai",
+            "text-embedding-3-small",
+        )
+        .expect("set config for workspace b should succeed");
 
         let config_a = get_embedding_config(&harness.db_path, &workspace_a)
             .expect("get config for workspace a should succeed")
