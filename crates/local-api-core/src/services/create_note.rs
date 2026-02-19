@@ -91,10 +91,6 @@ fn resolve_note_path(
             .unwrap_or(note_path.as_path()),
     );
 
-    if note_path.exists() {
-        return Err(LocalApiError::NoteAlreadyExists { relative_path });
-    }
-
     Ok(ResolvedNotePath {
         note_path,
         relative_path,
