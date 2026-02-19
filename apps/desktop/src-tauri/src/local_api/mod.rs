@@ -50,15 +50,19 @@ pub fn start_local_api_server<R: Runtime>(
         ))
     })?;
 
-    let listener = tokio::net::TcpListener::from_std(std_listener).map_err(|error| {
-        io::Error::other(format!(
-            "Failed to create async listener for local API server on {bind_addr}: {error}"
-        ))
-    })?;
-
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
     tauri::async_runtime::spawn(async move {
+        let listener = match tokio::net::TcpListener::from_std(std_listener) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!(
+                    "Failed to create async listener for local API server on {bind_addr}: {e}"
+                );
+                return;
+            }
+        };
+
         let server = axum::serve(listener, router).with_graceful_shutdown(async {
             let _ = shutdown_rx.await;
         });
