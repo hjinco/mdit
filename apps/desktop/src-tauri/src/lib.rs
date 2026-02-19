@@ -13,14 +13,29 @@ mod vault;
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStateBuilder;
 
-#[tauri::command]
-fn show_main_window(window: tauri::WebviewWindow) {
+fn show_and_focus_main_window(window: tauri::WebviewWindow) {
     if let Err(e) = window.show() {
         eprintln!("Failed to show window: {e}");
     }
     if let Err(e) = window.set_focus() {
         eprintln!("Failed to focus window: {e}");
     }
+}
+
+fn should_suppress_main_show(app_state: &file_opener::AppState) -> bool {
+    app_state.consume_suppress_next_main_show()
+}
+
+#[tauri::command]
+fn show_main_window(
+    window: tauri::WebviewWindow,
+    app_state: tauri::State<'_, file_opener::AppState>,
+) {
+    if should_suppress_main_show(&app_state) {
+        return;
+    }
+
+    show_and_focus_main_window(window);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -31,8 +46,18 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            #[cfg(not(target_os = "macos"))]
+            if file_opener::handle_single_instance_args(app, &_args) {
+                return;
+            }
+
+            let app_state = app.state::<file_opener::AppState>();
+            if should_suppress_main_show(&app_state) {
+                return;
+            }
+
             if let Some(main_window) = app.get_webview_window("main") {
-                show_main_window(main_window);
+                show_and_focus_main_window(main_window);
             }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -89,8 +114,7 @@ pub fn run() {
             tauri::RunEvent::Reopen { .. } => {
                 // Show main window if it exists, otherwise create it
                 if let Some(main_window) = app_handle.get_webview_window("main") {
-                    let _ = main_window.show();
-                    let _ = main_window.set_focus();
+                    show_and_focus_main_window(main_window);
                 }
             }
             #[cfg(target_os = "macos")]
