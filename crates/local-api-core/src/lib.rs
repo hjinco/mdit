@@ -2,6 +2,9 @@ pub mod services;
 
 pub use services::create_note::{create_note, CreateNoteInput, CreatedNote};
 pub use services::list_vaults::{list_vaults, VaultSummary};
+pub use services::search_notes::{
+    search_notes, SearchNoteEntry, SearchNotesInput, SearchNotesOutput,
+};
 
 use thiserror::Error;
 
@@ -24,6 +27,12 @@ pub enum LocalApiError {
     #[error("title is empty after sanitization")]
     InvalidTitle,
 
+    #[error("search query is empty")]
+    InvalidSearchQuery,
+
+    #[error("search limit must be between 1 and 100: {limit}")]
+    InvalidSearchLimit { limit: usize },
+
     #[error("directoryRelPath is invalid: {directory_rel_path}")]
     InvalidDirectoryPath { directory_rel_path: String },
 
@@ -44,9 +53,10 @@ impl LocalApiError {
             | Self::VaultWorkspaceUnavailable { .. }
             | Self::DirectoryNotFound { .. } => LocalApiErrorKind::NotFound,
             Self::NoteAlreadyExists { .. } => LocalApiErrorKind::Conflict,
-            Self::InvalidTitle | Self::InvalidDirectoryPath { .. } => {
-                LocalApiErrorKind::InvalidInput
-            }
+            Self::InvalidTitle
+            | Self::InvalidSearchQuery
+            | Self::InvalidSearchLimit { .. }
+            | Self::InvalidDirectoryPath { .. } => LocalApiErrorKind::InvalidInput,
             Self::Internal { .. } => LocalApiErrorKind::Internal,
         }
     }
@@ -56,6 +66,8 @@ impl LocalApiError {
             Self::VaultNotFound { .. } => "VAULT_NOT_FOUND",
             Self::VaultWorkspaceUnavailable { .. } => "VAULT_WORKSPACE_UNAVAILABLE",
             Self::InvalidTitle => "INVALID_NOTE_TITLE",
+            Self::InvalidSearchQuery => "INVALID_SEARCH_QUERY",
+            Self::InvalidSearchLimit { .. } => "INVALID_SEARCH_LIMIT",
             Self::InvalidDirectoryPath { .. } => "INVALID_DIRECTORY_REL_PATH",
             Self::DirectoryNotFound { .. } => "DIRECTORY_NOT_FOUND",
             Self::NoteAlreadyExists { .. } => "NOTE_ALREADY_EXISTS",

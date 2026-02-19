@@ -92,8 +92,159 @@ async fn create_note_returns_conflict_when_file_already_exists() {
     );
 }
 
+#[tokio::test]
+async fn search_notes_returns_results() {
+    let harness = Harness::new("local-api-rest-search-success");
+    seed_search_fixture(&harness);
+
+    let response = app(&harness)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/vaults/{}/search", harness.vault_id))
+                .method("POST")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "query": "nebula",
+                        "limit": 1
+                    })
+                    .to_string(),
+                ))
+                .expect("failed to build request"),
+        )
+        .await
+        .expect("request should succeed");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("failed to read response body");
+    let payload: Value = serde_json::from_slice(&body).expect("response should be json");
+
+    let results = payload
+        .get("results")
+        .and_then(Value::as_array)
+        .expect("results array should exist");
+    assert_eq!(results.len(), 1);
+    assert!(results[0]
+        .get("path")
+        .and_then(Value::as_str)
+        .expect("path should exist")
+        .ends_with(".md"));
+    assert!(results[0]
+        .get("name")
+        .and_then(Value::as_str)
+        .expect("name should exist")
+        .ends_with(".md"));
+    assert!(results[0]
+        .get("similarity")
+        .and_then(Value::as_f64)
+        .is_some());
+}
+
+#[tokio::test]
+async fn search_notes_returns_bad_request_for_empty_query() {
+    let harness = Harness::new("local-api-rest-search-empty-query");
+
+    let response = app(&harness)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/vaults/{}/search", harness.vault_id))
+                .method("POST")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "query": "   "
+                    })
+                    .to_string(),
+                ))
+                .expect("failed to build request"),
+        )
+        .await
+        .expect("request should succeed");
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("failed to read response body");
+    let payload: Value = serde_json::from_slice(&body).expect("response should be json");
+
+    assert_eq!(
+        payload
+            .get("error")
+            .and_then(|value| value.get("code"))
+            .and_then(Value::as_str),
+        Some("INVALID_SEARCH_QUERY")
+    );
+}
+
+#[tokio::test]
+async fn search_notes_returns_not_found_for_unknown_vault() {
+    let harness = Harness::new("local-api-rest-search-unknown-vault");
+
+    let response = app(&harness)
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/vaults/{}/search", harness.vault_id + 1000))
+                .method("POST")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "query": "nebula"
+                    })
+                    .to_string(),
+                ))
+                .expect("failed to build request"),
+        )
+        .await
+        .expect("request should succeed");
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("failed to read response body");
+    let payload: Value = serde_json::from_slice(&body).expect("response should be json");
+
+    assert_eq!(
+        payload
+            .get("error")
+            .and_then(|value| value.get("code"))
+            .and_then(Value::as_str),
+        Some("VAULT_NOT_FOUND")
+    );
+}
+
 fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+fn seed_search_fixture(harness: &Harness) {
+    fs::write(
+        harness.workspace_path.join("Nebula One.md"),
+        build_search_content("nebula"),
+    )
+    .expect("failed to write Nebula One.md");
+    fs::write(
+        harness.workspace_path.join("Nebula Two.md"),
+        build_search_content("nebula"),
+    )
+    .expect("failed to write Nebula Two.md");
+
+    indexing_core::index_workspace(
+        Path::new(&harness.workspace_path),
+        Path::new(&harness.db_path),
+        "",
+        "",
+        false,
+    )
+    .expect("failed to index workspace");
+}
+
+fn build_search_content(query: &str) -> String {
+    format!(
+        "# Search Fixture\n\n{query}\n\n{}\n",
+        "lorem ipsum ".repeat(40)
+    )
 }
 
 fn app(harness: &Harness) -> axum::Router {

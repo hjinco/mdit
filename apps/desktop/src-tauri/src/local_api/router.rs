@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use local_api_core::{CreateNoteInput, LocalApiError, LocalApiErrorKind};
+use local_api_core::{CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNotesInput};
 use serde::{Deserialize, Serialize};
 
 use super::mcp_sdk_server::build_mcp_service;
@@ -23,6 +23,10 @@ pub fn build_router(state: LocalApiState) -> Router {
         .route("/healthz", get(healthz_handler))
         .route("/api/v1/vaults", get(list_vaults_handler))
         .route("/api/v1/vaults/{vault_id}/notes", post(create_note_handler))
+        .route(
+            "/api/v1/vaults/{vault_id}/search",
+            post(search_notes_handler),
+        )
         .nest_service("/mcp", mcp_service)
         .with_state(state)
 }
@@ -51,6 +55,19 @@ pub struct CreateNoteRequest {
 #[serde(rename_all = "camelCase")]
 struct CreateNoteResponse {
     note: local_api_core::CreatedNote,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchNotesRequest {
+    pub query: String,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchNotesResponse {
+    results: Vec<local_api_core::SearchNoteEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -97,11 +114,41 @@ async fn create_note_handler(
     }
 }
 
+async fn search_notes_handler(
+    Path(vault_id): Path<i64>,
+    State(state): State<LocalApiState>,
+    Json(request): Json<SearchNotesRequest>,
+) -> ApiResult<SearchNotesResponse> {
+    match local_api_core::search_notes(
+        &state.db_path,
+        SearchNotesInput {
+            vault_id,
+            query: request.query,
+            limit: request.limit,
+        },
+    ) {
+        Ok(output) => Ok(Json(SearchNotesResponse {
+            results: output.results,
+        })),
+        Err(error) => Err(local_api_error_to_http_with_invalid_input_status(
+            error,
+            StatusCode::BAD_REQUEST,
+        )),
+    }
+}
+
 fn local_api_error_to_http(error: LocalApiError) -> (StatusCode, Json<ErrorResponse>) {
+    local_api_error_to_http_with_invalid_input_status(error, StatusCode::UNPROCESSABLE_ENTITY)
+}
+
+fn local_api_error_to_http_with_invalid_input_status(
+    error: LocalApiError,
+    invalid_input_status: StatusCode,
+) -> (StatusCode, Json<ErrorResponse>) {
     let status = match error.kind() {
         LocalApiErrorKind::NotFound => StatusCode::NOT_FOUND,
         LocalApiErrorKind::Conflict => StatusCode::CONFLICT,
-        LocalApiErrorKind::InvalidInput => StatusCode::UNPROCESSABLE_ENTITY,
+        LocalApiErrorKind::InvalidInput => invalid_input_status,
         LocalApiErrorKind::Internal => StatusCode::INTERNAL_SERVER_ERROR,
     };
 
