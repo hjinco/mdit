@@ -8,8 +8,6 @@ It focuses on:
 - Fast, minimal UI that feels good for writing
 - Optional AI features powered by your own API keys or local models
 
-> Note: Mdit is still under active development. APIs and behavior may change.
-
 ---
 
 ## Features
@@ -23,27 +21,6 @@ It focuses on:
 You can use it as a simple Markdown editor, or as a more powerful note system with search and AI.
 
 ---
-
-## Requirements
-
-Before you build Mdit, make sure you have:
-
-- **Node.js** (recommended: latest LTS)
-- **pnpm** package manager  
-  Install with: `npm install -g pnpm`
-- **Rust toolchain** (for Tauri)
-- **Tauri prerequisites** for your platform  
-  See the official Tauri docs for platform specific setup.
-
----
-
-## Build
-
-```bash
-pnpm tauri build
-```
-
-This command builds the frontend, compiles the Rust backend, and produces a packaged desktop application for your platform.
 
 ## License
 

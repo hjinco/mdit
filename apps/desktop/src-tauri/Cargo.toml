@@ -15,21 +15,21 @@ name = "mdit_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.5.5", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
-tauri-plugin-opener = "2"
+tauri = { version = "2.10.2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
+tauri-plugin-opener = "2.5.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
-tauri-plugin-dialog = "2"
-tauri-plugin-fs = { version = "2", features = ["watch"] }
+tauri-plugin-dialog = "2.6.0"
+tauri-plugin-fs = { version = "2.4.5", features = ["watch"] }
 tauri-plugin-keyring = "0.1.0"
-tauri-plugin-process = "2"
+tauri-plugin-process = "2.3.1"
 trash = "5.2.3"
-tauri-plugin-shell = "2"
-tauri-plugin-os = "2"
+tauri-plugin-shell = "2.3.5"
+tauri-plugin-os = "2.3.2"
 include_dir = "0.7.4"
 anyhow = "1"
 rusqlite = { version = "0.31", features = ["bundled"] }
@@ -39,12 +39,12 @@ blake3 = "1"
 ollama-rs = "0.3.2"
 tiktoken-rs = "0.5"
 tauri-plugin-clipboard = "2.1.11"
-tauri-plugin-window-state = "2"
-tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2.4.1"
+tauri-plugin-global-shortcut = "2.3.1"
 pulldown-cmark = { version = "0.13.0", default-features = false, features = ["simd"] }
 image = "0.25.9"
 webp = "0.3"
-tauri-plugin-http = "2"
+tauri-plugin-http = "2.5.7"
 urlencoding = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -53,6 +53,6 @@ core-foundation = "0.10"
 foreign-types = "0.5"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-global-shortcut = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2.3.1"
+tauri-plugin-updater = "2.10.0"
+tauri-plugin-single-instance = "2.4.0"

@@ -41,7 +41,7 @@ jobs:
       - name: Read current version
         id: read_version
         run: |
-          CURRENT_VERSION=$(grep '"version":' src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+          CURRENT_VERSION=$(grep '"version":' apps/desktop/src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
 
@@ -77,12 +77,12 @@ jobs:
       - name: Update tauri.conf.json version (for build only)
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          sed -i.tmp "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
-          rm -f src-tauri/tauri.conf.json.tmp
+          sed -i.tmp "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" apps/desktop/src-tauri/tauri.conf.json
+          rm -f apps/desktop/src-tauri/tauri.conf.json.tmp
           echo "Updated version to: $NEW_VERSION (for build only)"
           
           # Verify the change
-          grep '"version":' src-tauri/tauri.conf.json
+          grep '"version":' apps/desktop/src-tauri/tauri.conf.json
 
       - name: Import Apple Developer Certificate
         if: startsWith(matrix.platform, 'macos')
@@ -136,7 +136,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "./src-tauri -> target"
+          workspaces: "./apps/desktop/src-tauri -> target"
 
       - name: install frontend dependencies
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
@@ -158,7 +158,7 @@ jobs:
           VITE_POLAR_ORGANIZATION_ID: ${{ vars.VITE_POLAR_ORGANIZATION_ID }}
           VITE_FEEDBACK_API_URL: ${{ vars.VITE_FEEDBACK_API_URL }}
         with:
-          projectPath: ./
+          projectPath: ./apps/desktop
           tagName: v${{ steps.new_version.outputs.new_version }}
           releaseName: "v${{ steps.new_version.outputs.new_version }}"
           releaseBody: "See the assets to download this version and install."
@@ -191,7 +191,7 @@ jobs:
         if: steps.check_success.outputs.all_success == 'true'
         id: version_info
         run: |
-          CURRENT_VERSION=$(grep '"version":' src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+          CURRENT_VERSION=$(grep '"version":' apps/desktop/src-tauri/tauri.conf.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
           VERSION_TYPE="${{ github.event.inputs.version_type }}"
           
           # Parse current version
@@ -223,14 +223,14 @@ jobs:
           NEW_VERSION="${{ steps.version_info.outputs.new_version }}"
           
           # Update version in tauri.conf.json
-          sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
+          sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" apps/desktop/src-tauri/tauri.conf.json
           
           # Configure git
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           
           # Add and commit the updated file
-          git add src-tauri/tauri.conf.json
+          git add apps/desktop/src-tauri/tauri.conf.json
           git commit -m "chore: bump version to v$NEW_VERSION"
           
           # Push to main
