@@ -62,20 +62,17 @@ pub fn handle_single_instance_args(app_handle: &tauri::AppHandle, args: &[String
 
     let state = app_handle.state::<AppState>();
     let mut opened_files = state.opened_files.lock().unwrap();
-    *opened_files = file_paths;
+    *opened_files = file_paths.clone();
     drop(opened_files);
     state.mark_suppress_next_main_show();
-
-    let opened_files = state.opened_files.lock().unwrap().clone();
     drop(state);
-    open_edit_windows(app_handle, &opened_files);
+    open_edit_windows(app_handle, &file_paths);
     true
 }
 
 fn open_edit_window(app_handle: &tauri::AppHandle, file_path: &str) {
     let state = app_handle.state::<AppState>();
     let label = state.next_edit_window_label();
-    drop(state);
 
     // Build the URL with hash route
     let url = if file_path.is_empty() {
@@ -126,13 +123,10 @@ pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>)
     {
         let state = app_handle.state::<AppState>();
         let mut opened_files = state.opened_files.lock().unwrap();
-        *opened_files = file_paths;
+        *opened_files = file_paths.clone();
         drop(opened_files);
         state.mark_suppress_next_main_show();
-
-        let opened_files = state.opened_files.lock().unwrap().clone();
-        drop(state);
-        open_edit_windows(app_handle, &opened_files);
+        open_edit_windows(app_handle, &file_paths);
     }
 }
 
@@ -141,7 +135,6 @@ pub fn handle_opened_event(app_handle: &tauri::AppHandle, urls: Vec<tauri::Url>)
 pub fn open_edit_window_if_files_exist(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<AppState>();
     let opened_files = state.opened_files.lock().unwrap().clone();
-    drop(state);
 
     if !opened_files.is_empty() {
         open_edit_windows(app_handle, &opened_files);
