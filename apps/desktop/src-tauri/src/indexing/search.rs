@@ -320,15 +320,8 @@ fn normalize_metric(value: Option<f32>, bounds: Option<(f32, f32)>) -> f32 {
 
 pub(super) fn rank_score_inputs(inputs: Vec<ScoreInput>) -> Vec<RankedCandidate> {
     let bm25_bounds = metric_bounds(inputs.iter().filter_map(|input| input.bm25));
-    let has_vector_scores = inputs
-        .iter()
-        .filter_map(|input| input.vector)
-        .any(|value| value.is_finite());
-    let vector_bounds = if has_vector_scores {
-        metric_bounds(inputs.iter().filter_map(|input| input.vector))
-    } else {
-        None
-    };
+    let vector_bounds = metric_bounds(inputs.iter().filter_map(|input| input.vector));
+    let has_vector_scores = vector_bounds.is_some();
 
     let mut ranked = Vec::new();
     for input in inputs {
