@@ -13,6 +13,7 @@ import { useLocation } from "wouter"
 import { cn } from "@/lib/utils"
 import { isMac } from "@/utils/platform"
 import { EditorKit } from "../editor/plugins/editor-kit"
+import { WindowPinButton } from "./window-pin-button"
 
 export function QuickNote() {
 	const [, navigate] = useLocation()
@@ -66,6 +67,9 @@ export function QuickNote() {
 				className="fixed top-0 left-0 h-12 w-full z-50"
 				{...(isMac() && { "data-tauri-drag-region": "" })}
 			/>
+			<div className="fixed top-2 right-2 z-60">
+				<WindowPinButton />
+			</div>
 			<Plate editor={editor}>
 				<PlateContainer
 					className={cn(
