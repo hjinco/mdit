@@ -14,6 +14,7 @@
 		"ci": "pnpm ts:check && pnpm test"
 	},
 	"dependencies": {
+		"@mdit/ai-auth": "workspace:*",
 		"@ai-sdk/anthropic": "^2.0.39",
 		"@ai-sdk/google": "^2.0.20",
 		"@ai-sdk/openai": "^2.0.50",
@@ -23,6 +24,7 @@
 		"@dnd-kit/sortable": "^10.0.0",
 		"@dnd-kit/utilities": "^3.2.2",
 		"@emoji-mart/data": "^1.2.1",
+		"@fabianlars/tauri-plugin-oauth": "^2.0.0",
 		"@flowershow/remark-wiki-link": "^3.3.1",
 		"@hookform/resolvers": "^5.2.2",
 		"@platejs/ai": "^52.1.0",

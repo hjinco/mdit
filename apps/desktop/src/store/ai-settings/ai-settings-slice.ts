@@ -1,35 +1,57 @@
 import {
-	deletePassword as deletePasswordFromKeyring,
-	getPassword as getPasswordFromKeyring,
-	setPassword as setPasswordInKeyring,
-} from "tauri-plugin-keyring-api"
+	API_MODELS_MAP,
+	type ApiKeyProviderId,
+	type ChatProviderId,
+	type CodexOAuthCredential,
+	type CredentialProviderId,
+	deleteCredential as deleteCredentialFromStore,
+	getCredential as getCredentialFromStore,
+	isCodexCredentialExpiringSoon,
+	listCredentialProviders,
+	type ProviderCredential,
+	refreshCodexAccessToken,
+	setApiKeyCredential,
+	setCodexCredential,
+	startCodexBrowserOAuth,
+} from "@mdit/ai-auth"
 import type { StateCreator } from "zustand"
 import { fetchOllamaModels as fetchOllamaModelsFromApi } from "@/lib/ollama"
 
 export type ChatConfig = {
-	provider: string
+	provider: ChatProviderId
 	model: string
 	apiKey: string
+	accountId?: string
 }
 
-export type ApiModels = { [provider: string]: string[] }
-export type EnabledChatModels = { provider: string; model: string }[]
+export type ApiModels = Record<CredentialProviderId, string[]>
+export type EnabledChatModels = { provider: ChatProviderId; model: string }[]
+
+type PersistedModelConfig = {
+	provider: ChatProviderId
+	model: string
+}
+
+type ModelConfigStateKey = "chatConfig" | "renameConfig"
 
 export type AISettingsSlice = {
-	connectedProviders: string[]
+	connectedProviders: CredentialProviderId[]
 	chatConfig: ChatConfig | null
 	renameConfig: ChatConfig | null
 	apiModels: ApiModels
 	ollamaModels: string[]
 	enabledChatModels: EnabledChatModels
-	connectProvider: (provider: string, apiKey: string) => void
-	disconnectProvider: (provider: string) => void
+	initializeAISettings: () => Promise<void>
+	connectProvider: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
+	connectCodexOAuth: () => Promise<void>
+	disconnectProvider: (provider: CredentialProviderId) => Promise<void>
+	refreshCodexOAuthForTarget: () => Promise<void>
 	fetchOllamaModels: () => Promise<void>
-	selectModel: (provider: string, model: string) => Promise<void>
-	selectRenameModel: (provider: string, model: string) => Promise<void>
+	selectModel: (provider: ChatProviderId, model: string) => Promise<void>
+	selectRenameModel: (provider: ChatProviderId, model: string) => Promise<void>
 	clearRenameModel: () => void
 	toggleModelEnabled: (
-		provider: string,
+		provider: ChatProviderId,
 		model: string,
 		checked: boolean,
 	) => void
@@ -37,167 +59,476 @@ export type AISettingsSlice = {
 
 type AISettingsSliceDependencies = {
 	fetchOllamaModels: typeof fetchOllamaModelsFromApi
-	getPassword: typeof getPasswordFromKeyring
-	setPassword: typeof setPasswordInKeyring
-	deletePassword: typeof deletePasswordFromKeyring
+	listCredentialProviders: () => Promise<CredentialProviderId[]>
+	getCredential: (
+		providerId: CredentialProviderId,
+	) => Promise<ProviderCredential | null>
+	setApiKeyCredential: (
+		providerId: ApiKeyProviderId,
+		apiKey: string,
+	) => Promise<void>
+	setCodexCredential: (credential: CodexOAuthCredential) => Promise<void>
+	deleteCredential: (providerId: CredentialProviderId) => Promise<void>
+	startCodexBrowserOAuth: () => Promise<{
+		accessToken: string
+		refreshToken: string
+		expiresAt: number
+		accountId?: string
+	}>
+	refreshCodexAccessToken: (refreshToken: string) => Promise<{
+		accessToken: string
+		refreshToken: string
+		expiresAt: number
+		accountId?: string
+	}>
+	isCodexCredentialExpiringSoon: (
+		credential: Pick<CodexOAuthCredential, "expiresAt">,
+	) => boolean
 }
 
-const API_MODELS_MAP: Record<string, string[]> = {
-	google: [
-		"gemini-3-flash-preview",
-		"gemini-2.5-flash",
-		"gemini-2.5-flash-lite",
-	],
-	openai: ["gpt-5.2", "gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano"],
-	anthropic: ["claude-sonnet-4-5", "claude-haiku-4-5"],
-}
-
-const CONNECTED_PROVIDERS_KEY = "connected-providers"
 const CHAT_CONFIG_KEY = "chat-config"
 const RENAME_CONFIG_KEY = "rename-config"
 const ENABLED_CHAT_MODELS_KEY = "chat-enabled-models"
 
+function isCredentialProviderId(value: unknown): value is CredentialProviderId {
+	return (
+		value === "google" ||
+		value === "openai" ||
+		value === "anthropic" ||
+		value === "codex_oauth"
+	)
+}
+
+function isChatProviderId(value: unknown): value is ChatProviderId {
+	return value === "ollama" || isCredentialProviderId(value)
+}
+
+function isPersistedModelConfig(value: unknown): value is PersistedModelConfig {
+	if (typeof value !== "object" || value === null) {
+		return false
+	}
+	const candidate = value as { provider?: unknown; model?: unknown }
+	return (
+		isChatProviderId(candidate.provider) && typeof candidate.model === "string"
+	)
+}
+
+function toCodexCredential(
+	value: ProviderCredential | null,
+): CodexOAuthCredential | null {
+	if (!value || value.type !== "oauth") {
+		return null
+	}
+	return value
+}
+
+function toChatConfig(
+	provider: ChatProviderId,
+	model: string,
+	credential: ProviderCredential | null,
+): ChatConfig | null {
+	if (provider === "ollama") {
+		return {
+			provider,
+			model,
+			apiKey: "",
+		}
+	}
+	if (!credential) {
+		return null
+	}
+	if (credential.type === "api_key") {
+		return {
+			provider,
+			model,
+			apiKey: credential.apiKey,
+		}
+	}
+	return {
+		provider,
+		model,
+		apiKey: credential.accessToken,
+		accountId: credential.accountId,
+	}
+}
+
+function readPersistedModelConfig(
+	storageKey: string,
+): PersistedModelConfig | null {
+	const raw = localStorage.getItem(storageKey)
+	if (!raw) {
+		return null
+	}
+	try {
+		const parsed = JSON.parse(raw) as unknown
+		if (!isPersistedModelConfig(parsed)) {
+			return null
+		}
+		return {
+			provider: parsed.provider,
+			model: parsed.model,
+		}
+	} catch {
+		return null
+	}
+}
+
+function writePersistedModelConfig(
+	storageKey: string,
+	config: Pick<ChatConfig, "provider" | "model"> | null,
+) {
+	if (!config) {
+		localStorage.removeItem(storageKey)
+		return
+	}
+	localStorage.setItem(
+		storageKey,
+		JSON.stringify({ provider: config.provider, model: config.model }),
+	)
+}
+
+function isKnownModel(provider: ChatProviderId, model: string): boolean {
+	if (provider === "ollama") {
+		return true
+	}
+	return API_MODELS_MAP[provider]?.includes(model) ?? false
+}
+
+function readPersistedEnabledChatModels(): EnabledChatModels {
+	const raw = localStorage.getItem(ENABLED_CHAT_MODELS_KEY)
+	if (!raw) {
+		return []
+	}
+
+	try {
+		const parsed = JSON.parse(raw) as unknown
+		if (!Array.isArray(parsed)) {
+			return []
+		}
+
+		const models = parsed
+			.filter((value): value is { provider: unknown; model: unknown } => {
+				if (typeof value !== "object" || value === null) {
+					return false
+				}
+				const candidate = value as { provider?: unknown; model?: unknown }
+				return (
+					isChatProviderId(candidate.provider) &&
+					typeof candidate.model === "string"
+				)
+			})
+			.map(({ provider, model }) => ({
+				provider: provider as ChatProviderId,
+				model: model as string,
+			}))
+			.filter(({ provider, model }) => isKnownModel(provider, model))
+
+		return models
+	} catch {
+		return []
+	}
+}
+
 export const prepareAISettingsSlice =
 	({
 		fetchOllamaModels,
-		getPassword,
-		setPassword,
-		deletePassword,
+		listCredentialProviders,
+		getCredential,
+		setApiKeyCredential,
+		setCodexCredential,
+		deleteCredential,
+		startCodexBrowserOAuth,
+		refreshCodexAccessToken,
+		isCodexCredentialExpiringSoon,
 	}: AISettingsSliceDependencies): StateCreator<
 		AISettingsSlice,
 		[],
 		[],
 		AISettingsSlice
 	> =>
-	(set) => {
-		const loadPersistedSettings = () => {
-			const rawConnectedProviders = localStorage.getItem(
-				CONNECTED_PROVIDERS_KEY,
-			)
-			const rawChatConfig = localStorage.getItem(CHAT_CONFIG_KEY)
-			const rawRenameConfig = localStorage.getItem(RENAME_CONFIG_KEY)
-			const rawEnabledChatModels = localStorage.getItem(ENABLED_CHAT_MODELS_KEY)
-
-			let connectedProviders: string[] = []
-			let chatConfig: ChatConfig | null = null
-			let renameConfig: ChatConfig | null = null
-			let enabledChatModels: EnabledChatModels = []
-
-			if (rawConnectedProviders) {
-				try {
-					connectedProviders = JSON.parse(rawConnectedProviders) as string[]
-				} catch (error) {
-					console.error("Failed to parse connected providers:", error)
-				}
-			}
-			if (rawChatConfig) {
-				try {
-					chatConfig = JSON.parse(rawChatConfig) as ChatConfig
-				} catch (error) {
-					console.error("Failed to parse chat config:", error)
-				}
-			}
-			if (rawRenameConfig) {
-				try {
-					renameConfig = JSON.parse(rawRenameConfig) as ChatConfig
-				} catch (error) {
-					console.error("Failed to parse rename config:", error)
-				}
-			}
-			if (rawEnabledChatModels) {
-				try {
-					const parsedEnabledChatModels = JSON.parse(
-						rawEnabledChatModels,
-					) as EnabledChatModels
-
-					const filteredEnabledChatModels = parsedEnabledChatModels.filter(
-						({ provider, model }) => {
-							if (provider === "ollama") return true
-							return API_MODELS_MAP[provider]?.includes(model) ?? false
-						},
-					)
-
-					if (
-						filteredEnabledChatModels.length !== parsedEnabledChatModels.length
-					) {
-						localStorage.setItem(
-							ENABLED_CHAT_MODELS_KEY,
-							JSON.stringify(filteredEnabledChatModels),
-						)
-					}
-
-					enabledChatModels = filteredEnabledChatModels
-				} catch (error) {
-					console.error("Failed to parse enabled models:", error)
-				}
-			}
-			return {
-				connectedProviders,
-				chatConfig,
-				renameConfig,
-				enabledChatModels,
-			}
+	(set, get) => {
+		const withConnectedProvider = (
+			providers: CredentialProviderId[],
+			provider: CredentialProviderId,
+		): CredentialProviderId[] => {
+			return providers.includes(provider) ? providers : [...providers, provider]
 		}
 
-		const initialSettings = loadPersistedSettings()
+		const syncCredentialToConfigs = (
+			prev: AISettingsSlice,
+			provider: CredentialProviderId,
+			apiKey: string,
+			accountId?: string,
+		): Partial<AISettingsSlice> => {
+			const nextState: Partial<AISettingsSlice> = {
+				connectedProviders: withConnectedProvider(
+					prev.connectedProviders,
+					provider,
+				),
+			}
+
+			if (prev.chatConfig?.provider === provider) {
+				nextState.chatConfig = {
+					...prev.chatConfig,
+					apiKey,
+					accountId,
+				}
+			}
+
+			if (prev.renameConfig?.provider === provider) {
+				nextState.renameConfig = {
+					...prev.renameConfig,
+					apiKey,
+					accountId,
+				}
+			}
+
+			return nextState
+		}
+
+		const clearProviderState = (
+			prev: AISettingsSlice,
+			provider: CredentialProviderId,
+		): Partial<AISettingsSlice> => {
+			const connectedProviders = prev.connectedProviders.filter(
+				(item) => item !== provider,
+			)
+			const nextState: Partial<AISettingsSlice> = {
+				connectedProviders,
+			}
+
+			if (prev.chatConfig?.provider === provider) {
+				localStorage.removeItem(CHAT_CONFIG_KEY)
+				nextState.chatConfig = null
+			}
+			if (prev.renameConfig?.provider === provider) {
+				localStorage.removeItem(RENAME_CONFIG_KEY)
+				nextState.renameConfig = null
+			}
+
+			const enabledChatModels = prev.enabledChatModels.filter(
+				(item) => item.provider !== provider,
+			)
+			if (enabledChatModels.length !== prev.enabledChatModels.length) {
+				localStorage.setItem(
+					ENABLED_CHAT_MODELS_KEY,
+					JSON.stringify(enabledChatModels),
+				)
+				nextState.enabledChatModels = enabledChatModels
+			}
+
+			return nextState
+		}
+
+		const selectConfigModel = async (
+			configKey: ModelConfigStateKey,
+			storageKey: string,
+			provider: ChatProviderId,
+			model: string,
+		): Promise<void> => {
+			if (!isKnownModel(provider, model)) {
+				return
+			}
+
+			if (provider === "ollama") {
+				set((prev) => {
+					if (!prev.ollamaModels.includes(model)) {
+						return {}
+					}
+					const config: ChatConfig = {
+						provider,
+						model,
+						apiKey: "",
+					}
+					writePersistedModelConfig(storageKey, config)
+					return { [configKey]: config }
+				})
+				return
+			}
+
+			const credential = await getCredential(provider)
+			const config = toChatConfig(provider, model, credential)
+			if (!config) {
+				return
+			}
+			writePersistedModelConfig(storageKey, config)
+			set({ [configKey]: config })
+		}
 
 		return {
-			...initialSettings,
+			connectedProviders: [],
+			chatConfig: null,
+			renameConfig: null,
 			apiModels: API_MODELS_MAP,
 			ollamaModels: [],
+			enabledChatModels: readPersistedEnabledChatModels(),
 
-			connectProvider: (provider: string, apiKey: string) => {
-				set((prev) => {
-					const newConnectedProviders = [...prev.connectedProviders, provider]
-					localStorage.setItem(
-						CONNECTED_PROVIDERS_KEY,
-						JSON.stringify(newConnectedProviders),
+			initializeAISettings: async () => {
+				const connectedProviders = await listCredentialProviders()
+				const connectedProviderSet = new Set(connectedProviders)
+
+				const resolvePersistedConfig = async (
+					storageKey: string,
+				): Promise<ChatConfig | null> => {
+					const persisted = readPersistedModelConfig(storageKey)
+					if (!persisted) {
+						localStorage.removeItem(storageKey)
+						return null
+					}
+
+					if (persisted.provider === "ollama") {
+						return {
+							provider: "ollama",
+							model: persisted.model,
+							apiKey: "",
+						}
+					}
+
+					if (!connectedProviderSet.has(persisted.provider)) {
+						localStorage.removeItem(storageKey)
+						return null
+					}
+
+					const credential = await getCredential(persisted.provider)
+					const resolved = toChatConfig(
+						persisted.provider,
+						persisted.model,
+						credential,
 					)
-					setPassword(`app.mdit.ai.${provider}`, "mdit", apiKey)
-					return { connectedProviders: newConnectedProviders }
+					if (!resolved) {
+						localStorage.removeItem(storageKey)
+						return null
+					}
+
+					return resolved
+				}
+
+				const [chatConfig, renameConfig] = await Promise.all([
+					resolvePersistedConfig(CHAT_CONFIG_KEY),
+					resolvePersistedConfig(RENAME_CONFIG_KEY),
+				])
+
+				const persistedEnabled = readPersistedEnabledChatModels()
+				const filteredEnabled = persistedEnabled.filter(
+					({ provider, model }) => {
+						if (provider === "ollama") {
+							return true
+						}
+						return (
+							connectedProviderSet.has(provider) &&
+							isKnownModel(provider, model)
+						)
+					},
+				)
+				if (filteredEnabled.length !== persistedEnabled.length) {
+					localStorage.setItem(
+						ENABLED_CHAT_MODELS_KEY,
+						JSON.stringify(filteredEnabled),
+					)
+				}
+
+				set({
+					connectedProviders,
+					chatConfig,
+					renameConfig,
+					enabledChatModels: filteredEnabled,
 				})
 			},
 
-			disconnectProvider: (provider: string) => {
+			connectProvider: async (provider: ApiKeyProviderId, apiKey: string) => {
+				const normalizedApiKey = apiKey.trim()
+				if (!normalizedApiKey) {
+					return
+				}
+
+				await setApiKeyCredential(provider, normalizedApiKey)
+
 				set((prev) => {
-					const newConnectedProviders = prev.connectedProviders.filter(
-						(p) => p !== provider,
-					)
-					localStorage.setItem(
-						CONNECTED_PROVIDERS_KEY,
-						JSON.stringify(newConnectedProviders),
-					)
-					deletePassword(`app.mdit.ai.${provider}`, "mdit")
+					return syncCredentialToConfigs(prev, provider, normalizedApiKey)
+				})
+			},
 
-					const newState: {
-						connectedProviders: string[]
-						chatConfig?: ChatConfig | null
-						renameConfig?: ChatConfig | null
-						enabledChatModels?: EnabledChatModels
-					} = {
-						connectedProviders: newConnectedProviders,
-					}
-					if (prev.chatConfig?.provider === provider) {
-						localStorage.removeItem(CHAT_CONFIG_KEY)
-						newState.chatConfig = null
-					}
-					if (prev.renameConfig?.provider === provider) {
-						localStorage.removeItem(RENAME_CONFIG_KEY)
-						newState.renameConfig = null
-					}
+			connectCodexOAuth: async () => {
+				const result = await startCodexBrowserOAuth()
+				const credential: CodexOAuthCredential = {
+					type: "oauth",
+					accessToken: result.accessToken,
+					refreshToken: result.refreshToken,
+					expiresAt: result.expiresAt,
+					accountId: result.accountId,
+				}
+				await setCodexCredential(credential)
 
-					const newEnabledChatModels = prev.enabledChatModels.filter(
-						(m) => m.provider !== provider,
+				set((prev) => {
+					return syncCredentialToConfigs(
+						prev,
+						"codex_oauth",
+						credential.accessToken,
+						credential.accountId,
 					)
-					if (newEnabledChatModels.length !== prev.enabledChatModels.length) {
-						localStorage.setItem(
-							ENABLED_CHAT_MODELS_KEY,
-							JSON.stringify(newEnabledChatModels),
+				})
+			},
+
+			disconnectProvider: async (provider: CredentialProviderId) => {
+				await deleteCredential(provider)
+
+				set((prev) => {
+					return clearProviderState(prev, provider)
+				})
+			},
+
+			refreshCodexOAuthForTarget: async () => {
+				const currentState = get()
+				const hasCodexTarget =
+					currentState.chatConfig?.provider === "codex_oauth" ||
+					currentState.renameConfig?.provider === "codex_oauth"
+				if (!hasCodexTarget) {
+					return
+				}
+
+				const clearCodexState = () => {
+					set((prev) => {
+						return clearProviderState(prev, "codex_oauth")
+					})
+				}
+
+				const storedCredential = toCodexCredential(
+					await getCredential("codex_oauth"),
+				)
+				if (!storedCredential) {
+					clearCodexState()
+					return
+				}
+
+				let nextCredential = storedCredential
+				if (isCodexCredentialExpiringSoon(storedCredential)) {
+					try {
+						const refreshed = await refreshCodexAccessToken(
+							storedCredential.refreshToken,
 						)
-						newState.enabledChatModels = newEnabledChatModels
+						nextCredential = {
+							type: "oauth",
+							accessToken: refreshed.accessToken,
+							refreshToken: refreshed.refreshToken,
+							expiresAt: refreshed.expiresAt,
+							accountId: refreshed.accountId ?? storedCredential.accountId,
+						}
+						await setCodexCredential(nextCredential)
+					} catch (error) {
+						console.error("Failed to refresh Codex OAuth credential:", error)
+						await deleteCredential("codex_oauth")
+						clearCodexState()
+						return
 					}
+				}
 
-					return newState
+				set((prev) => {
+					return syncCredentialToConfigs(
+						prev,
+						"codex_oauth",
+						nextCredential.accessToken,
+						nextCredential.accountId,
+					)
 				})
 			},
 
@@ -206,156 +537,70 @@ export const prepareAISettingsSlice =
 				set({ ollamaModels: modelNames })
 			},
 
-			selectModel: async (provider: string, model: string) => {
-				if (provider === "ollama") {
-					set((prev) => {
-						if (!prev.ollamaModels.includes(model)) {
-							return {}
-						}
-
-						const newChatConfig: ChatConfig = {
-							provider,
-							model,
-							apiKey: "",
-						}
-
-						localStorage.setItem(CHAT_CONFIG_KEY, JSON.stringify(newChatConfig))
-						return { chatConfig: newChatConfig }
-					})
-					return
-				}
-
-				const apiKey = await getPassword(`app.mdit.ai.${provider}`, "mdit")
-				if (!apiKey) {
-					return
-				}
-
-				set((prev) => {
-					const prevProvider = prev.chatConfig?.provider
-					if (prevProvider === provider) {
-						const updatedChatConfig: ChatConfig = {
-							provider,
-							model,
-							apiKey: prev.chatConfig?.apiKey || apiKey,
-						}
-
-						localStorage.setItem(
-							CHAT_CONFIG_KEY,
-							JSON.stringify(updatedChatConfig),
-						)
-
-						return {
-							chatConfig: updatedChatConfig,
-						}
-					}
-
-					const newChatConfig: ChatConfig = {
-						provider,
-						model,
-						apiKey,
-					}
-
-					localStorage.setItem(CHAT_CONFIG_KEY, JSON.stringify(newChatConfig))
-					return { chatConfig: newChatConfig }
-				})
+			selectModel: async (provider: ChatProviderId, model: string) => {
+				await selectConfigModel("chatConfig", CHAT_CONFIG_KEY, provider, model)
 			},
 
-			selectRenameModel: async (provider: string, model: string) => {
-				if (provider === "ollama") {
-					set((prev) => {
-						if (!prev.ollamaModels.includes(model)) {
-							return {}
-						}
-
-						const newRenameConfig: ChatConfig = {
-							provider,
-							model,
-							apiKey: "",
-						}
-
-						localStorage.setItem(
-							RENAME_CONFIG_KEY,
-							JSON.stringify(newRenameConfig),
-						)
-						return { renameConfig: newRenameConfig }
-					})
-					return
-				}
-
-				const apiKey = await getPassword(`app.mdit.ai.${provider}`, "mdit")
-				if (!apiKey) {
-					return
-				}
-
-				set((prev) => {
-					const newRenameConfig: ChatConfig = {
-						provider,
-						model,
-						apiKey:
-							prev.renameConfig?.provider === provider &&
-							prev.renameConfig?.apiKey
-								? prev.renameConfig.apiKey
-								: apiKey,
-					}
-
-					localStorage.setItem(
-						RENAME_CONFIG_KEY,
-						JSON.stringify(newRenameConfig),
-					)
-
-					return { renameConfig: newRenameConfig }
-				})
+			selectRenameModel: async (provider: ChatProviderId, model: string) => {
+				await selectConfigModel(
+					"renameConfig",
+					RENAME_CONFIG_KEY,
+					provider,
+					model,
+				)
 			},
 
 			clearRenameModel: () => {
-				set(() => {
-					localStorage.removeItem(RENAME_CONFIG_KEY)
-					return { renameConfig: null }
-				})
+				localStorage.removeItem(RENAME_CONFIG_KEY)
+				set({ renameConfig: null })
 			},
 
 			toggleModelEnabled: (
-				provider: string,
+				provider: ChatProviderId,
 				model: string,
 				checked: boolean,
 			) => {
 				set((prev) => {
-					const newEnabledChatModels = checked
-						? [...prev.enabledChatModels, { provider, model }]
+					const exists = prev.enabledChatModels.some(
+						(item) => item.provider === provider && item.model === model,
+					)
+
+					const enabledChatModels = checked
+						? exists
+							? prev.enabledChatModels
+							: [...prev.enabledChatModels, { provider, model }]
 						: prev.enabledChatModels.filter(
-								(m) => m.provider !== provider || m.model !== model,
+								(item) => item.provider !== provider || item.model !== model,
 							)
 
 					localStorage.setItem(
 						ENABLED_CHAT_MODELS_KEY,
-						JSON.stringify(newEnabledChatModels),
+						JSON.stringify(enabledChatModels),
 					)
 
-					const newState: {
-						enabledChatModels: EnabledChatModels
-						chatConfig?: ChatConfig | null
-						renameConfig?: ChatConfig | null
-					} = {
-						enabledChatModels: newEnabledChatModels,
+					const nextState: Partial<AISettingsSlice> = {
+						enabledChatModels,
 					}
+
 					if (
 						!checked &&
 						prev.chatConfig?.provider === provider &&
 						prev.chatConfig?.model === model
 					) {
 						localStorage.removeItem(CHAT_CONFIG_KEY)
-						newState.chatConfig = null
+						nextState.chatConfig = null
 					}
+
 					if (
 						!checked &&
 						prev.renameConfig?.provider === provider &&
 						prev.renameConfig?.model === model
 					) {
 						localStorage.removeItem(RENAME_CONFIG_KEY)
-						newState.renameConfig = null
+						nextState.renameConfig = null
 					}
 
-					return newState
+					return nextState
 				})
 			},
 		}
@@ -363,7 +608,12 @@ export const prepareAISettingsSlice =
 
 export const createAISettingsSlice = prepareAISettingsSlice({
 	fetchOllamaModels: fetchOllamaModelsFromApi,
-	getPassword: getPasswordFromKeyring,
-	setPassword: setPasswordInKeyring,
-	deletePassword: deletePasswordFromKeyring,
+	listCredentialProviders,
+	getCredential: getCredentialFromStore,
+	setApiKeyCredential,
+	setCodexCredential,
+	deleteCredential: deleteCredentialFromStore,
+	startCodexBrowserOAuth,
+	refreshCodexAccessToken,
+	isCodexCredentialExpiringSoon,
 })

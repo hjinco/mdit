@@ -1,7 +1,9 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
+import { CODEX_BASE_URL } from "@mdit/ai-auth"
 import type { DirEntry } from "@tauri-apps/plugin-fs"
+import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import { ollama } from "ollama-ai-provider-v2"
 
 export const AI_RENAME_SYSTEM_PROMPT = `You are an assistant that suggests concise, unique titles for markdown notes. 
@@ -19,6 +21,8 @@ export function createModelFromConfig(config: {
 	provider: string
 	model: string
 	apiKey: string
+	accountId?: string
+	sessionId?: string
 }) {
 	switch (config.provider) {
 		case "anthropic":
@@ -33,6 +37,23 @@ export function createModelFromConfig(config: {
 			return createOpenAI({
 				apiKey: config.apiKey,
 			})(config.model)
+		case "codex_oauth": {
+			const headers: Record<string, string> = {
+				originator: "mdit",
+				accept: "text/event-stream",
+				"User-Agent": "mdit",
+				"session-id": config.sessionId ?? crypto.randomUUID(),
+			}
+			if (config.accountId) {
+				headers["ChatGPT-Account-Id"] = config.accountId
+			}
+			return createOpenAI({
+				apiKey: config.apiKey,
+				baseURL: CODEX_BASE_URL,
+				headers,
+				fetch: tauriHttpFetch,
+			})(config.model)
+		}
 		case "ollama":
 			return ollama(config.model)
 		default:

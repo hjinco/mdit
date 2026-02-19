@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Command, CommandList } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
 import type { Command as TCommand } from "../hooks/use-ai-commands"
 import { AIMenuItems } from "./ai-menu-items"
 import { AIModelSelector } from "./ai-model-selector"
@@ -12,11 +13,7 @@ type EditorChatState = "cursorCommand" | "cursorSuggestion" | "selectionCommand"
 
 const MAX_VISIBLE_LINES = 4
 interface AIMenuContentProps {
-	chatConfig: {
-		provider: string
-		model: string
-		apiKey: string
-	} | null
+	chatConfig: ChatConfig | null
 	modelPopoverOpen: boolean
 	isLoading: boolean
 	messages: any[]

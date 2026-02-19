@@ -33,7 +33,7 @@ export function AIMenu() {
 			licenseStatus: s.status,
 		})),
 	)
-	const chat = useChat(chatConfig)
+	const chat = useChat()
 
 	const { status, messages } = chat
 	const [input, setInput] = useState("")

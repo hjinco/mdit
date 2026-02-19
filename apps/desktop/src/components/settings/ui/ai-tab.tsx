@@ -1,6 +1,12 @@
+import {
+	AI_PROVIDER_DEFINITIONS,
+	type ApiKeyProviderId,
+	type ChatProviderId,
+	type CredentialProviderId,
+} from "@mdit/ai-auth"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink } from "lucide-react"
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,13 +29,6 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { useStore } from "@/store"
 
-const PROVIDER_LABELS: Record<string, string> = {
-	google: "Google Generative AI",
-	openai: "OpenAI",
-	ollama: "Ollama",
-	anthropic: "Anthropic",
-}
-
 export function AITab() {
 	const {
 		connectedProviders,
@@ -37,6 +36,7 @@ export function AITab() {
 		ollamaModels,
 		enabledChatModels,
 		connectProvider,
+		connectCodexOAuth,
 		disconnectProvider,
 		fetchOllamaModels,
 		renameConfig,
@@ -50,6 +50,7 @@ export function AITab() {
 			ollamaModels: state.ollamaModels,
 			enabledChatModels: state.enabledChatModels,
 			connectProvider: state.connectProvider,
+			connectCodexOAuth: state.connectCodexOAuth,
 			disconnectProvider: state.disconnectProvider,
 			fetchOllamaModels: state.fetchOllamaModels,
 			renameConfig: state.renameConfig,
@@ -58,16 +59,33 @@ export function AITab() {
 			toggleModelEnabled: state.toggleModelEnabled,
 		})),
 	)
+	const [providerBusy, setProviderBusy] = useState<
+		Partial<Record<CredentialProviderId, boolean>>
+	>({})
 
 	useEffect(() => {
 		fetchOllamaModels()
 	}, [fetchOllamaModels])
 
+	const runWithBusy = async (
+		provider: CredentialProviderId,
+		action: () => Promise<void>,
+	) => {
+		setProviderBusy((prev) => ({ ...prev, [provider]: true }))
+		try {
+			await action()
+		} catch (error) {
+			console.error(`Failed to process provider action (${provider}):`, error)
+		} finally {
+			setProviderBusy((prev) => ({ ...prev, [provider]: false }))
+		}
+	}
+
 	const providersMap = useMemo(() => {
 		return Object.entries(apiModels)
 			.map(([provider, models]) => {
 				return {
-					provider,
+					provider: provider as ChatProviderId,
 					models,
 				}
 			})
@@ -115,10 +133,16 @@ export function AITab() {
 	const hasConnectedProviders = useMemo(() => {
 		return (
 			Object.entries(apiModels).some(([provider]) =>
-				connectedProviders.includes(provider),
+				connectedProviders.includes(provider as CredentialProviderId),
 			) || ollamaModels.length > 0
 		)
 	}, [connectedProviders, apiModels, ollamaModels])
+
+	const credentialProviderDefinitions = useMemo(() => {
+		return Object.values(AI_PROVIDER_DEFINITIONS).filter(
+			(definition) => definition.id !== "ollama",
+		)
+	}, [])
 
 	return (
 		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24">
@@ -132,7 +156,9 @@ export function AITab() {
 							const isConnected =
 								provider === "ollama"
 									? true
-									: connectedProviders.includes(provider)
+									: connectedProviders.includes(
+											provider as CredentialProviderId,
+										)
 
 							if (!isConnected) return null
 
@@ -202,7 +228,7 @@ export function AITab() {
 											clearRenameModel()
 											return
 										}
-										selectRenameModel(provider, model)
+										selectRenameModel(provider as ChatProviderId, model)
 									}}
 								>
 									<SelectTrigger size="sm">
@@ -229,33 +255,77 @@ export function AITab() {
 					Connect to AI providers to enable their models
 				</FieldDescription>
 				<FieldGroup className="gap-2">
-					{Object.entries(apiModels).map(([provider]) => {
-						const url =
-							provider === "google"
-								? "https://aistudio.google.com"
-								: provider === "openai"
-									? "https://platform.openai.com"
-									: provider === "anthropic"
-										? "https://console.anthropic.com"
-										: ""
+					{credentialProviderDefinitions.map((definition) => {
+						const provider = definition.id as CredentialProviderId
+						const isConnected = connectedProviders.includes(provider)
+						const isBusy = Boolean(providerBusy[provider])
+
 						return (
 							<Field key={provider}>
 								<FieldLabel
-									className="cursor-pointer hover:text-blue-500"
-									onClick={() => openUrl(url)}
+									className={
+										definition.settingsUrl
+											? "cursor-pointer hover:text-blue-500"
+											: undefined
+									}
+									onClick={() => {
+										if (!definition.settingsUrl) {
+											return
+										}
+										openUrl(definition.settingsUrl)
+									}}
 								>
-									{PROVIDER_LABELS[provider]}
-									<ExternalLink className="size-3 inline" />
+									{definition.label}
+									{definition.settingsUrl && (
+										<ExternalLink className="size-3 inline" />
+									)}
 								</FieldLabel>
-								<ConnectProvider
-									isConnected={connectedProviders.includes(provider)}
-									provider={provider}
-									onConnect={connectProvider}
-									onDisconnect={disconnectProvider}
-								/>
+
+								{definition.authKind === "oauth" ? (
+									<div className="flex items-center gap-2">
+										<Button
+											variant="outline"
+											disabled={isBusy}
+											onClick={() => {
+												if (isConnected) {
+													void runWithBusy(provider, async () => {
+														await disconnectProvider(provider)
+													})
+													return
+												}
+												void runWithBusy(provider, async () => {
+													await connectCodexOAuth()
+												})
+											}}
+										>
+											{isBusy
+												? "Processing..."
+												: isConnected
+													? "Disconnect"
+													: "Connect"}
+										</Button>
+									</div>
+								) : (
+									<ConnectProvider
+										provider={provider as ApiKeyProviderId}
+										isConnected={isConnected}
+										isBusy={isBusy}
+										onConnect={async (targetProvider, apiKey) => {
+											await runWithBusy(targetProvider, async () => {
+												await connectProvider(targetProvider, apiKey)
+											})
+										}}
+										onDisconnect={async (targetProvider) => {
+											await runWithBusy(targetProvider, async () => {
+												await disconnectProvider(targetProvider)
+											})
+										}}
+									/>
+								)}
 							</Field>
 						)
 					})}
+
 					<Field orientation="vertical" className="mt-8">
 						<FieldContent>
 							<FieldLabel>Ollama</FieldLabel>
@@ -287,23 +357,28 @@ export function AITab() {
 }
 
 interface ConnectProviderProps {
-	provider: string
+	provider: ApiKeyProviderId
 	isConnected: boolean
-	onConnect: (provider: string, apiKey: string) => void
-	onDisconnect: (provider: string) => void
+	isBusy: boolean
+	onConnect: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
+	onDisconnect: (provider: CredentialProviderId) => Promise<void>
 }
 
 function ConnectProvider({
 	provider,
 	isConnected,
+	isBusy,
 	onConnect,
 	onDisconnect,
 }: ConnectProviderProps) {
 	const inputRef = useRef<HTMLInputElement>(null)
 
-	const handleConnect = () => {
+	const handleConnect = async () => {
+		if (isBusy) {
+			return
+		}
 		if (isConnected) {
-			onDisconnect(provider)
+			await onDisconnect(provider)
 			if (inputRef.current) {
 				inputRef.current.value = ""
 			}
@@ -311,7 +386,7 @@ function ConnectProvider({
 		}
 		const apiKey = inputRef.current?.value.trim()
 		if (apiKey) {
-			onConnect(provider, apiKey)
+			await onConnect(provider, apiKey)
 		}
 	}
 
@@ -324,9 +399,14 @@ function ConnectProvider({
 				placeholder="API Key"
 				autoComplete="off"
 				spellCheck="false"
+				disabled={isBusy}
 			/>
-			<Button variant="outline" onClick={handleConnect}>
-				{isConnected ? "Disconnect" : "Connect"}
+			<Button
+				variant="outline"
+				onClick={() => void handleConnect()}
+				disabled={isBusy}
+			>
+				{isBusy ? "Processing..." : isConnected ? "Disconnect" : "Connect"}
 			</Button>
 		</div>
 	)

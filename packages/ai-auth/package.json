@@ -1,0 +1,14 @@
+{
+	"name": "@mdit/ai-auth",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@fabianlars/tauri-plugin-oauth": "^2.0.0",
+		"@tauri-apps/plugin-opener": "~2.5.3",
+		"tauri-plugin-keyring-api": "^0.1.1"
+	}
+}

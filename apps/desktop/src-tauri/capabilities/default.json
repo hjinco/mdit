@@ -17,6 +17,7 @@
 		"process:default",
 		"opener:default",
 		"dialog:default",
+		"oauth:allow-start",
 		"fs:read-all",
 		"fs:write-all",
 		"clipboard:read-all",
@@ -50,7 +51,8 @@
 			"identifier": "http:default",
 			"allow": [
 				{ "url": "https://www.google.com/generate_204" },
-				{ "url": "https://example.com" }
+				{ "url": "https://example.com" },
+				{ "url": "https://chatgpt.com/**" }
 			]
 		}
 	]
