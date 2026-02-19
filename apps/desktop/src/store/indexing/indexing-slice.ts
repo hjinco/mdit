@@ -36,6 +36,10 @@ type PendingModelChange = {
 	model: string
 }
 
+type EmbeddingModelsState = {
+	ollamaModels: string[]
+}
+
 export type IndexingSlice = {
 	// State
 	indexingState: IndexingState
@@ -56,20 +60,13 @@ export type IndexingSlice = {
 	) => Promise<void>
 	indexWorkspace: (
 		workspacePath: string,
-		embeddingProvider: string,
-		embeddingModel: string,
 		forceReindex: boolean,
 	) => Promise<WorkspaceIndexSummary>
-	indexNote: (
-		workspacePath: string,
-		notePath: string,
-		embeddingProvider: string,
-		embeddingModel: string,
-	) => Promise<boolean>
+	indexNote: (workspacePath: string, notePath: string) => Promise<boolean>
 
 	loadIndexingMeta: (workspacePath: string) => Promise<void>
 	startIndexingMetaPolling: (workspacePath: string) => void
-	stopIndexingMetaPolling: () => void
+	stopIndexingMetaPolling: (clearWorkspacePath?: boolean) => void
 	handleModelChangeRequest: (
 		value: string,
 		workspacePath: string,
@@ -110,7 +107,7 @@ export const prepareIndexingSlice = ({
 	createIndexingService,
 	timerUtils = defaultTimerUtils,
 }: IndexingSliceDependencies): StateCreator<
-	IndexingSlice,
+	IndexingSlice & EmbeddingModelsState,
 	[],
 	[],
 	IndexingSlice
@@ -197,12 +194,7 @@ export const prepareIndexingSlice = ({
 			}))
 		},
 
-		indexWorkspace: async (
-			workspacePath: string,
-			embeddingProvider: string,
-			embeddingModel: string,
-			forceReindex: boolean,
-		) => {
+		indexWorkspace: async (workspacePath: string, forceReindex: boolean) => {
 			const isRunning = get().indexingState[workspacePath]
 			if (isRunning) {
 				throw new Error("Indexing is already running for this workspace")
@@ -216,15 +208,8 @@ export const prepareIndexingSlice = ({
 			}))
 
 			try {
-				const result = await invoke<WorkspaceIndexSummary>(
-					"index_workspace_command",
-					{
-						workspacePath,
-						embeddingProvider,
-						embeddingModel,
-						forceReindex,
-					},
-				)
+				const service = createIndexingService(invoke, workspacePath)
+				const result = await service.indexWorkspace(forceReindex)
 				return result
 			} finally {
 				set((state) => ({
@@ -236,12 +221,7 @@ export const prepareIndexingSlice = ({
 			}
 		},
 
-		indexNote: async (
-			workspacePath: string,
-			notePath: string,
-			embeddingProvider: string,
-			embeddingModel: string,
-		) => {
+		indexNote: async (workspacePath: string, notePath: string) => {
 			const isRunning = get().indexingState[workspacePath]
 			if (isRunning) {
 				return false
@@ -255,12 +235,8 @@ export const prepareIndexingSlice = ({
 			}))
 
 			try {
-				await invoke<WorkspaceIndexSummary>("index_note_command", {
-					workspacePath,
-					notePath,
-					embeddingProvider,
-					embeddingModel,
-				})
+				const service = createIndexingService(invoke, workspacePath)
+				await service.indexNote(notePath)
 				return true
 			} catch (error) {
 				console.error("Failed to index note:", error)
@@ -328,12 +304,14 @@ export const prepareIndexingSlice = ({
 			pollingIntervalId = timerUtils.setInterval(poll, 5000)
 		},
 
-		stopIndexingMetaPolling: () => {
+		stopIndexingMetaPolling: (clearWorkspacePath = false) => {
 			if (pollingIntervalId !== null) {
 				timerUtils.clearInterval(pollingIntervalId)
 				pollingIntervalId = null
 			}
-			currentWorkspacePath = null
+			if (clearWorkspacePath) {
+				currentWorkspacePath = null
+			}
 		},
 
 		handleModelChangeRequest: async (
@@ -384,7 +362,7 @@ export const prepareIndexingSlice = ({
 			// Then run indexing if needed
 			if (forceReindex) {
 				try {
-					await get().indexWorkspace(workspacePath, provider, model, true)
+					await get().indexWorkspace(workspacePath, true)
 					await get().loadIndexingMeta(workspacePath)
 				} catch {
 					// Error handling is done by caller or can be improved

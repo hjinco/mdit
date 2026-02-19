@@ -6,10 +6,14 @@ import {
 } from "@/services/indexing-service"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
+type TestStoreState = IndexingSlice & { ollamaModels: string[] }
+
 function createIndexingStore({
 	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
+	ollamaModels = [],
 }: {
 	invoke?: InvokeFunction
+	ollamaModels?: string[]
 } = {}) {
 	const createSlice = prepareIndexingSlice({
 		invoke,
@@ -22,9 +26,10 @@ function createIndexingStore({
 		},
 	})
 
-	const store = createStore<IndexingSlice>()((set, get, api) =>
-		createSlice(set, get, api),
-	)
+	const store = createStore<TestStoreState>()((set, get, api) => ({
+		ollamaModels,
+		...createSlice(set, get, api),
+	}))
 
 	return { store, invoke }
 }
@@ -94,13 +99,9 @@ describe("indexing-slice indexNote", () => {
 		) as unknown as InvokeFunction
 		const { store } = createIndexingStore({ invoke })
 
-		const firstRequest = store
-			.getState()
-			.indexNote("/ws", "/ws/a.md", "ollama", "mxbai-embed-large")
+		const firstRequest = store.getState().indexNote("/ws", "/ws/a.md")
 
-		const skipped = await store
-			.getState()
-			.indexNote("/ws", "/ws/b.md", "ollama", "mxbai-embed-large")
+		const skipped = await store.getState().indexNote("/ws", "/ws/b.md")
 
 		expect(skipped).toBe(false)
 		expect(invoke).toHaveBeenCalledTimes(1)
@@ -113,16 +114,12 @@ describe("indexing-slice indexNote", () => {
 		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
 		const { store } = createIndexingStore({ invoke })
 
-		const result = await store
-			.getState()
-			.indexNote("/ws", "/ws/a.md", "ollama", "mxbai-embed-large")
+		const result = await store.getState().indexNote("/ws", "/ws/a.md")
 
 		expect(result).toBe(true)
 		expect(invoke).toHaveBeenCalledWith("index_note_command", {
 			workspacePath: "/ws",
 			notePath: "/ws/a.md",
-			embeddingProvider: "ollama",
-			embeddingModel: "mxbai-embed-large",
 		})
 		expect(store.getState().indexingState["/ws"]).toBe(false)
 	})
@@ -136,13 +133,26 @@ describe("indexing-slice indexNote", () => {
 		const { store } = createIndexingStore({ invoke })
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-		const result = await store
-			.getState()
-			.indexNote("/ws", "/ws/a.md", "ollama", "mxbai-embed-large")
+		const result = await store.getState().indexNote("/ws", "/ws/a.md")
 
 		expect(result).toBe(false)
 		expect(store.getState().indexingState["/ws"]).toBe(false)
 
 		errorSpy.mockRestore()
+	})
+})
+
+describe("indexing-slice indexWorkspace", () => {
+	it("sends expected invoke payload for workspace indexing", async () => {
+		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({ invoke })
+
+		await store.getState().indexWorkspace("/ws", true)
+
+		expect(invoke).toHaveBeenCalledWith("index_workspace_command", {
+			workspacePath: "/ws",
+			forceReindex: true,
+		})
+		expect(store.getState().indexingState["/ws"]).toBe(false)
 	})
 })

@@ -110,7 +110,12 @@ export function IndexingTab() {
 
 	// Start/stop polling based on indexing state
 	useEffect(() => {
-		if (!workspacePath || !isIndexing) {
+		if (!workspacePath) {
+			stopIndexingMetaPolling(true)
+			return
+		}
+
+		if (!isIndexing) {
 			stopIndexingMetaPolling()
 			return
 		}
@@ -171,17 +176,8 @@ export function IndexingTab() {
 			return
 		}
 
-		if (isEmbeddingModelConfigured && !isEmbeddingModelAvailable) {
-			return
-		}
-
 		try {
-			await indexWorkspace(
-				workspacePath,
-				embeddingProvider,
-				embeddingModel,
-				forceReindex,
-			)
+			await indexWorkspace(workspacePath, forceReindex)
 			await loadIndexingMeta(workspacePath)
 		} catch (error) {
 			console.error("Failed to index workspace:", error)
