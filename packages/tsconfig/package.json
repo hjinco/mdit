@@ -1,0 +1,10 @@
+{
+  "name": "@mdit/tsconfig",
+  "private": true,
+  "version": "0.0.0",
+  "exports": {
+    "./base": "./base/tsconfig.json",
+    "./react-app": "./react-app/tsconfig.json",
+    "./node": "./node/tsconfig.json"
+  }
+}

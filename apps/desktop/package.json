@@ -120,6 +120,7 @@
 		"zustand": "^5.0.8"
 	},
 	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
 		"@tailwindcss/vite": "^4.1.12",
 		"@tauri-apps/cli": "^2.10.0",
 		"@types/d3-force": "^3.0.10",

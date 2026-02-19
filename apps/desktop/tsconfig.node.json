@@ -1,10 +1,6 @@
 {
+	"extends": "@mdit/tsconfig/node",
 	"compilerOptions": {
-		"composite": true,
-		"skipLibCheck": true,
-		"module": "ESNext",
-		"moduleResolution": "bundler",
-		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
