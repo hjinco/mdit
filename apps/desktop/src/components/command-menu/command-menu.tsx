@@ -140,6 +140,42 @@ export function CommandMenu() {
 			>
 				<CommandList ref={listRef} className="max-h-88">
 					<CommandEmpty>No results found</CommandEmpty>
+					{hasSemanticMatches && (
+						<CommandGroup heading="Suggestions">
+							{semanticResults.slice(0, 5).map((result) => {
+								const note = noteResultsByPath.get(result.path)
+								const label =
+									note?.label ??
+									stripMarkdownExtension(result.name) ??
+									result.name
+								const relativePath =
+									note?.relativePath ??
+									toRelativePath(result.path, workspacePath)
+								const keywords = [label, relativePath, "semantic", "ai"].filter(
+									Boolean,
+								) as string[]
+
+								return (
+									<CommandItem
+										key={`${result.path}:semantic`}
+										value={`${result.path}:semantic`}
+										keywords={keywords}
+										onSelect={() => handleSelectNote(result.path)}
+										className="data-[selected=true]:bg-accent-foreground/10"
+									>
+										<div className="flex flex-col gap-0.5">
+											<div className="flex items-center gap-2 text-sm">
+												<span className="truncate">{label}</span>
+											</div>
+											<span className="text-muted-foreground/80 text-xs">
+												{relativePath}
+											</span>
+										</div>
+									</CommandItem>
+								)
+							})}
+						</CommandGroup>
+					)}
 					{hasNoteMatches && (
 						<CommandGroup
 							heading={debouncedQuery.trim() ? "Notes" : "Recent Notes"}
@@ -202,42 +238,6 @@ export function CommandMenu() {
 												))}
 											</div>
 											<span className="text-muted-foreground text-xs">
-												{relativePath}
-											</span>
-										</div>
-									</CommandItem>
-								)
-							})}
-						</CommandGroup>
-					)}
-					{hasSemanticMatches && (
-						<CommandGroup heading="AI Suggestions">
-							{semanticResults.map((result) => {
-								const note = noteResultsByPath.get(result.path)
-								const label =
-									note?.label ??
-									stripMarkdownExtension(result.name) ??
-									result.name
-								const relativePath =
-									note?.relativePath ??
-									toRelativePath(result.path, workspacePath)
-								const keywords = [label, relativePath, "semantic", "ai"].filter(
-									Boolean,
-								) as string[]
-
-								return (
-									<CommandItem
-										key={`${result.path}:semantic`}
-										value={`${result.path}:semantic`}
-										keywords={keywords}
-										onSelect={() => handleSelectNote(result.path)}
-										className="data-[selected=true]:bg-accent-foreground/10"
-									>
-										<div className="flex flex-col gap-0.5">
-											<div className="flex items-center gap-2 text-sm">
-												<span className="truncate">{label}</span>
-											</div>
-											<span className="text-muted-foreground/80 text-xs">
 												{relativePath}
 											</span>
 										</div>

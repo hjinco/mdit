@@ -69,20 +69,23 @@ pub(crate) fn search_notes_for_query(
         return Ok(Vec::new());
     }
 
-    if embedding_provider.trim().is_empty() {
-        return Err(anyhow!("Embedding provider must be provided"));
-    }
+    let vector_search_input =
+        if embedding_provider.trim().is_empty() || embedding_model.trim().is_empty() {
+            None
+        } else {
+            let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
+            let query_embedding = embedder.generate(trimmed_query)?;
+            let query_vector = bytes_to_f32_vec(&query_embedding.bytes)?;
+            if query_vector.is_empty() || !query_vector.iter().all(|value| value.is_finite()) {
+                return Ok(Vec::new());
+            }
 
-    if embedding_model.trim().is_empty() {
-        return Err(anyhow!("Embedding model must be provided"));
-    }
-
-    let embedder = EmbeddingClient::new(embedding_provider, embedding_model)?;
-    let query_embedding = embedder.generate(trimmed_query)?;
-    let query_vector = bytes_to_f32_vec(&query_embedding.bytes)?;
-    if query_vector.is_empty() || !query_vector.iter().all(|value| value.is_finite()) {
-        return Ok(Vec::new());
-    }
+            Some((
+                embedder.model_name().to_string(),
+                query_embedding.dim,
+                query_embedding.bytes,
+            ))
+        };
 
     let conn = open_search_connection(db_path)?;
 
@@ -104,22 +107,25 @@ pub(crate) fn search_notes_for_query(
         entry.bm25 = Some(bm25_score);
     }
 
-    for (doc_id, rel_path, vector_score) in load_vector_scores(
-        &conn,
-        vault_id,
-        embedder.model_name(),
-        query_embedding.dim,
-        &query_embedding.bytes,
-    )? {
-        if !is_markdown(&rel_path) {
-            continue;
-        }
+    if let Some((embedding_model_name, embedding_dim, query_embedding_bytes)) = vector_search_input
+    {
+        for (doc_id, rel_path, vector_score) in load_vector_scores(
+            &conn,
+            vault_id,
+            &embedding_model_name,
+            embedding_dim,
+            &query_embedding_bytes,
+        )? {
+            if !is_markdown(&rel_path) {
+                continue;
+            }
 
-        let entry = scores.entry(doc_id).or_default();
-        if entry.rel_path.is_empty() {
-            entry.rel_path = rel_path;
+            let entry = scores.entry(doc_id).or_default();
+            if entry.rel_path.is_empty() {
+                entry.rel_path = rel_path;
+            }
+            entry.vector = Some(vector_score);
         }
-        entry.vector = Some(vector_score);
     }
 
     let candidates = scores
@@ -314,7 +320,15 @@ fn normalize_metric(value: Option<f32>, bounds: Option<(f32, f32)>) -> f32 {
 
 pub(super) fn rank_score_inputs(inputs: Vec<ScoreInput>) -> Vec<RankedCandidate> {
     let bm25_bounds = metric_bounds(inputs.iter().filter_map(|input| input.bm25));
-    let vector_bounds = metric_bounds(inputs.iter().filter_map(|input| input.vector));
+    let has_vector_scores = inputs
+        .iter()
+        .filter_map(|input| input.vector)
+        .any(|value| value.is_finite());
+    let vector_bounds = if has_vector_scores {
+        metric_bounds(inputs.iter().filter_map(|input| input.vector))
+    } else {
+        None
+    };
 
     let mut ranked = Vec::new();
     for input in inputs {
@@ -324,7 +338,11 @@ pub(super) fn rank_score_inputs(inputs: Vec<ScoreInput>) -> Vec<RankedCandidate>
 
         let bm25_norm = normalize_metric(input.bm25, bm25_bounds);
         let vector_norm = normalize_metric(input.vector, vector_bounds);
-        let final_score = vector_norm * VECTOR_WEIGHT + bm25_norm * BM25_WEIGHT;
+        let final_score = if has_vector_scores {
+            vector_norm * VECTOR_WEIGHT + bm25_norm * BM25_WEIGHT
+        } else {
+            bm25_norm
+        };
         if !final_score.is_finite() || final_score < MIN_FINAL_SCORE {
             continue;
         }
