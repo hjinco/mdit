@@ -1,6 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
-use local_api_core::{CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNotesInput};
+use local_api_core::{
+    CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNoteEntry, SearchNotesInput,
+};
 use rmcp::schemars;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -84,27 +86,10 @@ impl MditMcpServer {
         &self,
         Parameters(input): Parameters<SearchNotesToolInput>,
     ) -> Result<Json<SearchNotesToolOutput>, McpError> {
-        let output = local_api_core::search_notes(
-            &self.db_path,
-            SearchNotesInput {
-                vault_id: input.vault_id,
-                query: input.query,
-                limit: input.limit,
-            },
-        )
-        .map_err(local_api_error_to_mcp)?;
+        let output = local_api_core::search_notes(&self.db_path, input.into())
+            .map_err(local_api_error_to_mcp)?;
 
-        let results = output
-            .results
-            .into_iter()
-            .map(|entry| SearchResultToolEntry {
-                path: entry.path,
-                name: entry.name,
-                created_at: entry.created_at,
-                modified_at: entry.modified_at,
-                similarity: entry.similarity,
-            })
-            .collect();
+        let results = output.results.into_iter().map(Into::into).collect();
 
         Ok(Json(SearchNotesToolOutput { results }))
     }
@@ -171,6 +156,16 @@ pub struct SearchNotesToolInput {
     pub limit: Option<usize>,
 }
 
+impl From<SearchNotesToolInput> for SearchNotesInput {
+    fn from(value: SearchNotesToolInput) -> Self {
+        Self {
+            vault_id: value.vault_id,
+            query: value.query,
+            limit: value.limit,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ListVaultsToolOutput {
@@ -214,4 +209,16 @@ struct SearchResultToolEntry {
     pub created_at: Option<i64>,
     pub modified_at: Option<i64>,
     pub similarity: f32,
+}
+
+impl From<SearchNoteEntry> for SearchResultToolEntry {
+    fn from(value: SearchNoteEntry) -> Self {
+        Self {
+            path: value.path,
+            name: value.name,
+            created_at: value.created_at,
+            modified_at: value.modified_at,
+            similarity: value.similarity,
+        }
+    }
 }

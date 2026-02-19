@@ -9,7 +9,7 @@ use tower::ServiceExt;
 
 use super::{
     router::{build_router, LocalApiState},
-    test_support::Harness,
+    test_support::{seed_search_fixture, Harness},
 };
 
 #[tokio::test]
@@ -216,35 +216,6 @@ async fn search_notes_returns_not_found_for_unknown_vault() {
 
 fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
-}
-
-fn seed_search_fixture(harness: &Harness) {
-    fs::write(
-        harness.workspace_path.join("Nebula One.md"),
-        build_search_content("nebula"),
-    )
-    .expect("failed to write Nebula One.md");
-    fs::write(
-        harness.workspace_path.join("Nebula Two.md"),
-        build_search_content("nebula"),
-    )
-    .expect("failed to write Nebula Two.md");
-
-    indexing_core::index_workspace(
-        Path::new(&harness.workspace_path),
-        Path::new(&harness.db_path),
-        "",
-        "",
-        false,
-    )
-    .expect("failed to index workspace");
-}
-
-fn build_search_content(query: &str) -> String {
-    format!(
-        "# Search Fixture\n\n{query}\n\n{}\n",
-        "lorem ipsum ".repeat(40)
-    )
 }
 
 fn app(harness: &Harness) -> axum::Router {
