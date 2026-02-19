@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct AppState {
-    pub opened_files: Arc<Mutex<Vec<String>>>,
-    pub suppress_next_main_show: Arc<Mutex<bool>>,
+    pub opened_files: Mutex<Vec<String>>,
+    pub suppress_next_main_show: Mutex<bool>,
 }
 
 impl AppState {
