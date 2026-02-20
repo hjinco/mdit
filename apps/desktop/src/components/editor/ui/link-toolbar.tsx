@@ -1,4 +1,3 @@
-import { startsWithHttpProtocol } from "@mdit/editor/utils/link-utils"
 import { buttonVariants } from "@mdit/ui/components/button"
 import { Separator } from "@mdit/ui/components/separator"
 import { cn } from "@mdit/ui/lib/utils"
@@ -51,6 +50,7 @@ import {
 	useState,
 } from "react"
 import { useShallow } from "zustand/shallow"
+import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 

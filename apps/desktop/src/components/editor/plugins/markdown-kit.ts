@@ -6,10 +6,6 @@ import {
 	type ValueType,
 } from "@mdit/editor/utils/frontmatter-value-utils"
 import {
-	hasParentTraversal,
-	WINDOWS_ABSOLUTE_REGEX,
-} from "@mdit/editor/utils/link-utils"
-import {
 	convertChildrenDeserialize,
 	convertNodesSerialize,
 	MarkdownPlugin,
@@ -25,6 +21,10 @@ import remarkFrontmatter from "remark-frontmatter"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import YAML from "yaml"
+import {
+	hasParentTraversal,
+	WINDOWS_ABSOLUTE_REGEX,
+} from "@/components/editor/utils/link-utils"
 import type { KVRow } from "../ui/node-frontmatter-table"
 import { FRONTMATTER_KEY } from "./frontmatter-kit"
 
