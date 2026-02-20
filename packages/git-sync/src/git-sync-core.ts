@@ -190,7 +190,8 @@ export const createGitSyncCore = (ports: GitPorts): GitSyncCore => {
 		])
 
 		if (originBranchCheck.code !== 0) {
-			return "synced"
+			const localHead = await getCurrentCommitHash(workspacePath)
+			return localHead ? "unsynced" : "synced"
 		}
 
 		const aheadResult = await executeGit(workspacePath, [
@@ -245,10 +246,7 @@ export const createGitSyncCore = (ports: GitPorts): GitSyncCore => {
 
 		await ensureGitSuccess(workspacePath, ["push", "--", "origin", branch])
 
-		const isInitialRepo =
-			commitHashBeforePull === null || commitHashAfterPull === null
-		const pulledChanges =
-			!isInitialRepo && commitHashBeforePull !== commitHashAfterPull
+		const pulledChanges = commitHashBeforePull !== commitHashAfterPull
 
 		return { success: true, pulledChanges }
 	}

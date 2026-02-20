@@ -128,6 +128,20 @@ describe("GitSyncCore", () => {
 		await expect(core.detectSyncStatus(workspacePath)).resolves.toBe("unsynced")
 	})
 
+	it("detects unsynced state when origin branch is missing but local commits exist", async () => {
+		const handlers = createHandlers([
+			[["remote", "get-url", "origin"], ok("git@example.com:repo.git\n")],
+			[["fetch", "origin"], ok()],
+			[["status", "--porcelain=2"], ok("# branch.oid abc\n")],
+			[["rev-parse", "--abbrev-ref", "HEAD"], ok("feature/new-branch\n")],
+			[["rev-parse", "--verify", "origin/feature/new-branch"], err("fatal")],
+			[["rev-parse", "HEAD"], ok("abc123\n")],
+		])
+		const { core, workspacePath } = createCore({ handlers })
+
+		await expect(core.detectSyncStatus(workspacePath)).resolves.toBe("unsynced")
+	})
+
 	it("syncs and applies commit message date templating", async () => {
 		const fixedDate = new Date(2026, 0, 2, 3, 4, 0)
 		const expectedCommitMessage = `sync ${formatDate(fixedDate)}`
@@ -161,14 +175,11 @@ describe("GitSyncCore", () => {
 		])
 	})
 
-	it("treats missing HEAD as initial repository during sync", async () => {
+	it("treats missing HEAD as pulled changes when first commit is fetched", async () => {
 		const handlers = createHandlers([
 			[
 				["rev-parse", "HEAD"],
-				[
-					err("fatal: needed a single revision"),
-					err("fatal: your current branch does not have any commits yet"),
-				],
+				[err("fatal: needed a single revision"), ok("after-first-pull\n")],
 			],
 			[["pull", "--", "origin", "main"], ok()],
 			[["add", "--all"], ok()],
@@ -183,7 +194,7 @@ describe("GitSyncCore", () => {
 			autoSync: false,
 		})
 
-		expect(result).toEqual({ success: true, pulledChanges: false })
+		expect(result).toEqual({ success: true, pulledChanges: true })
 		expect(
 			gitExec.mock.calls.some(
 				([args]) => Array.isArray(args) && args[0] === "commit",
