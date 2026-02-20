@@ -1,16 +1,13 @@
+import type { GitSyncCore, GitSyncStatus, SyncConfig } from "@mdit/git-sync"
 import type { StateCreator } from "zustand"
 import {
 	loadSettings as loadSettingsFromFile,
 	saveSettings as saveSettingsToFile,
 } from "@/lib/settings-utils"
-import {
-	GitService,
-	type GitSyncStatus,
-	type SyncConfig,
-} from "@/services/git-service"
+import { createDesktopGitSyncCore } from "@/store/git-sync/git-sync-core"
 import type { WorkspaceSlice } from "../workspace/workspace-slice"
 
-export type { SyncConfig } from "@/services/git-service"
+export type { SyncConfig } from "@mdit/git-sync"
 
 export type GitSyncState = {
 	isGitRepo: boolean
@@ -41,6 +38,7 @@ export type GitSyncSlice = {
 type GitSyncSliceDependencies = {
 	loadSettings: typeof loadSettingsFromFile
 	saveSettings: typeof saveSettingsToFile
+	createGitSyncCore: () => GitSyncCore
 }
 
 const DEFAULT_CONFIG: SyncConfig = {
@@ -62,247 +60,253 @@ export const prepareGitSyncSlice =
 	({
 		loadSettings,
 		saveSettings,
+		createGitSyncCore,
 	}: GitSyncSliceDependencies): StateCreator<
 		GitSyncSlice & WorkspaceSlice,
 		[],
 		[],
 		GitSyncSlice
 	> =>
-	(set, get) => ({
-		gitSyncState: buildInitialGitSyncState(),
+	(set, get) => {
+		const gitSyncCore = createGitSyncCore()
 
-		initGitSync: async (workspacePath: string) => {
-			if (!workspacePath) {
-				set({ gitSyncState: buildInitialGitSyncState() })
-				return
-			}
+		return {
+			gitSyncState: buildInitialGitSyncState(),
 
-			try {
-				const gitService = new GitService(workspacePath)
-				const isRepo = await gitService.isGitRepository()
+			initGitSync: async (workspacePath: string) => {
+				if (!workspacePath) {
+					set({ gitSyncState: buildInitialGitSyncState() })
+					return
+				}
 
-				if (!isRepo) {
+				try {
+					const isRepo = await gitSyncCore.isGitRepository(workspacePath)
+
+					if (!isRepo) {
+						set({
+							gitSyncState: {
+								...buildInitialGitSyncState(),
+								workspacePath,
+							},
+						})
+						return
+					}
+
+					// Ensure .mdit/db.sqlite is in .gitignore
+					await gitSyncCore.ensureGitignoreEntry(workspacePath)
+
+					const status = await gitSyncCore.detectSyncStatus(workspacePath)
+					const config = await get().getSyncConfig(workspacePath)
+
+					set({
+						gitSyncState: {
+							isGitRepo: true,
+							status,
+							lastUpdated: Date.now(),
+							error: null,
+							workspacePath,
+							autoSyncEnabled: config.autoSync,
+						},
+					})
+				} catch (error) {
+					console.error("Failed to initialize git sync:", error)
+					const message =
+						error instanceof Error ? error.message : String(error ?? "Unknown")
 					set({
 						gitSyncState: {
 							...buildInitialGitSyncState(),
 							workspacePath,
+							status: "error",
+							error: message,
 						},
 					})
+				}
+			},
+
+			refreshGitStatus: async () => {
+				const { workspacePath } = get().gitSyncState
+
+				if (!workspacePath) {
 					return
 				}
 
-				// Ensure .mdit/db.sqlite is in .gitignore
-				await gitService.ensureGitignoreEntry()
+				try {
+					const isRepo = await gitSyncCore.isGitRepository(workspacePath)
 
-				const status = await gitService.detectSyncStatus()
-				const config = await get().getSyncConfig(workspacePath)
+					if (!isRepo) {
+						set((state) => ({
+							gitSyncState: {
+								...state.gitSyncState,
+								isGitRepo: false,
+								status: "synced",
+								lastUpdated: Date.now(),
+								error: null,
+							},
+						}))
+						return
+					}
 
-				set({
-					gitSyncState: {
-						isGitRepo: true,
-						status,
-						lastUpdated: Date.now(),
-						error: null,
-						workspacePath,
-						autoSyncEnabled: config.autoSync,
-					},
-				})
-			} catch (error) {
-				console.error("Failed to initialize git sync:", error)
-				const message =
-					error instanceof Error ? error.message : String(error ?? "Unknown")
-				set({
-					gitSyncState: {
-						...buildInitialGitSyncState(),
-						workspacePath,
-						status: "error",
-						error: message,
-					},
-				})
-			}
-		},
+					const status = await gitSyncCore.detectSyncStatus(workspacePath)
 
-		refreshGitStatus: async () => {
-			const { workspacePath } = get().gitSyncState
-
-			if (!workspacePath) {
-				return
-			}
-
-			try {
-				const gitService = new GitService(workspacePath)
-				const isRepo = await gitService.isGitRepository()
-
-				if (!isRepo) {
+					set((state) => ({
+						// Don't overwrite 'error' or 'syncing' status
+						gitSyncState:
+							state.gitSyncState.status === "error" ||
+							state.gitSyncState.status === "syncing"
+								? state.gitSyncState
+								: {
+										...state.gitSyncState,
+										isGitRepo: true,
+										status,
+										lastUpdated: Date.now(),
+										error: null,
+									},
+					}))
+				} catch (error) {
+					console.error("Failed to refresh git status:", error)
+					const message =
+						error instanceof Error ? error.message : String(error ?? "Unknown")
 					set((state) => ({
 						gitSyncState: {
 							...state.gitSyncState,
-							isGitRepo: false,
+							status: "error",
+							lastUpdated: Date.now(),
+							error: message,
+						},
+					}))
+				}
+			},
+
+			performSync: async () => {
+				const { workspacePath, status } = get().gitSyncState
+
+				if (!workspacePath || status === "syncing") {
+					return
+				}
+
+				set((state) => ({
+					gitSyncState: {
+						...state.gitSyncState,
+						status: "syncing",
+						error: null,
+					},
+				}))
+
+				try {
+					const config = await get().getSyncConfig(workspacePath)
+					const result = await gitSyncCore.sync(workspacePath, config)
+
+					set((state) => ({
+						gitSyncState: {
+							...state.gitSyncState,
 							status: "synced",
 							lastUpdated: Date.now(),
 							error: null,
 						},
 					}))
+
+					// Refresh workspace entries if pull merged changes
+					if (result.pulledChanges) {
+						await get().refreshWorkspaceEntries()
+					}
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : String(error ?? "Unknown")
+					console.error("Failed to sync workspace:", error)
+					set((state) => ({
+						gitSyncState: {
+							...state.gitSyncState,
+							status: "error",
+							error: message,
+						},
+					}))
+				}
+			},
+
+			getSyncConfig: async (workspacePath: string | null) => {
+				if (!workspacePath) {
+					return DEFAULT_CONFIG
+				}
+
+				const settings = await loadSettings(workspacePath)
+				const gitSync = settings.gitSync
+
+				return {
+					branchName: gitSync?.branchName ?? "",
+					commitMessage: gitSync?.commitMessage ?? "",
+					autoSync: gitSync?.autoSync ?? false,
+				}
+			},
+
+			setBranchName: async (workspacePath: string, branchName: string) => {
+				const settings = await loadSettings(workspacePath)
+				const currentGitSync = settings.gitSync ?? {
+					branchName: "",
+					commitMessage: "",
+					autoSync: false,
+				}
+
+				await saveSettings(workspacePath, {
+					...settings,
+					gitSync: {
+						...currentGitSync,
+						branchName,
+					},
+				})
+			},
+
+			setCommitMessage: async (
+				workspacePath: string,
+				commitMessage: string,
+			) => {
+				const settings = await loadSettings(workspacePath)
+				const currentGitSync = settings.gitSync ?? {
+					branchName: "",
+					commitMessage: "",
+					autoSync: false,
+				}
+
+				await saveSettings(workspacePath, {
+					...settings,
+					gitSync: {
+						...currentGitSync,
+						commitMessage,
+					},
+				})
+			},
+
+			setAutoSync: async (workspacePath: string, autoSync: boolean) => {
+				const settings = await loadSettings(workspacePath)
+				const currentGitSync = settings.gitSync ?? {
+					branchName: "",
+					commitMessage: "",
+					autoSync: false,
+				}
+
+				await saveSettings(workspacePath, {
+					...settings,
+					gitSync: {
+						...currentGitSync,
+						autoSync,
+					},
+				})
+
+				if (get().gitSyncState.workspacePath !== workspacePath) {
 					return
 				}
 
-				const status = await gitService.detectSyncStatus()
-
-				set((state) => ({
-					// Don't overwrite 'error' or 'syncing' status
-					gitSyncState:
-						state.gitSyncState.status === "error" ||
-						state.gitSyncState.status === "syncing"
-							? state.gitSyncState
-							: {
-									...state.gitSyncState,
-									isGitRepo: true,
-									status,
-									lastUpdated: Date.now(),
-									error: null,
-								},
-				}))
-			} catch (error) {
-				console.error("Failed to refresh git status:", error)
-				const message =
-					error instanceof Error ? error.message : String(error ?? "Unknown")
 				set((state) => ({
 					gitSyncState: {
 						...state.gitSyncState,
-						status: "error",
-						lastUpdated: Date.now(),
-						error: message,
+						autoSyncEnabled: autoSync,
 					},
 				}))
-			}
-		},
-
-		performSync: async () => {
-			const { workspacePath, status } = get().gitSyncState
-
-			if (!workspacePath || status === "syncing") {
-				return
-			}
-
-			set((state) => ({
-				gitSyncState: {
-					...state.gitSyncState,
-					status: "syncing",
-					error: null,
-				},
-			}))
-
-			try {
-				const config = await get().getSyncConfig(workspacePath)
-				const gitService = new GitService(workspacePath)
-				const result = await gitService.sync(config)
-
-				set((state) => ({
-					gitSyncState: {
-						...state.gitSyncState,
-						status: "synced",
-						lastUpdated: Date.now(),
-						error: null,
-					},
-				}))
-
-				// Refresh workspace entries if pull merged changes
-				if (result.pulledChanges) {
-					await get().refreshWorkspaceEntries()
-				}
-			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error ?? "Unknown")
-				console.error("Failed to sync workspace:", error)
-				set((state) => ({
-					gitSyncState: {
-						...state.gitSyncState,
-						status: "error",
-						error: message,
-					},
-				}))
-			}
-		},
-
-		getSyncConfig: async (workspacePath: string | null) => {
-			if (!workspacePath) {
-				return DEFAULT_CONFIG
-			}
-
-			const settings = await loadSettings(workspacePath)
-			const gitSync = settings.gitSync
-
-			return {
-				branchName: gitSync?.branchName ?? "",
-				commitMessage: gitSync?.commitMessage ?? "",
-				autoSync: gitSync?.autoSync ?? false,
-			}
-		},
-
-		setBranchName: async (workspacePath: string, branchName: string) => {
-			const settings = await loadSettings(workspacePath)
-			const currentGitSync = settings.gitSync ?? {
-				branchName: "",
-				commitMessage: "",
-				autoSync: false,
-			}
-
-			await saveSettings(workspacePath, {
-				...settings,
-				gitSync: {
-					...currentGitSync,
-					branchName,
-				},
-			})
-		},
-
-		setCommitMessage: async (workspacePath: string, commitMessage: string) => {
-			const settings = await loadSettings(workspacePath)
-			const currentGitSync = settings.gitSync ?? {
-				branchName: "",
-				commitMessage: "",
-				autoSync: false,
-			}
-
-			await saveSettings(workspacePath, {
-				...settings,
-				gitSync: {
-					...currentGitSync,
-					commitMessage,
-				},
-			})
-		},
-
-		setAutoSync: async (workspacePath: string, autoSync: boolean) => {
-			const settings = await loadSettings(workspacePath)
-			const currentGitSync = settings.gitSync ?? {
-				branchName: "",
-				commitMessage: "",
-				autoSync: false,
-			}
-
-			await saveSettings(workspacePath, {
-				...settings,
-				gitSync: {
-					...currentGitSync,
-					autoSync,
-				},
-			})
-
-			if (get().gitSyncState.workspacePath !== workspacePath) {
-				return
-			}
-
-			set((state) => ({
-				gitSyncState: {
-					...state.gitSyncState,
-					autoSyncEnabled: autoSync,
-				},
-			}))
-		},
-	})
+			},
+		}
+	}
 
 export const createGitSyncSlice = prepareGitSyncSlice({
 	loadSettings: loadSettingsFromFile,
 	saveSettings: saveSettingsToFile,
+	createGitSyncCore: createDesktopGitSyncCore,
 })

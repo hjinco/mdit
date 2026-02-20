@@ -53,6 +53,9 @@ importers:
       '@mdit/ai-auth':
         specifier: workspace:*
         version: link:../../packages/ai-auth
+      '@mdit/git-sync':
+        specifier: workspace:*
+        version: link:../../packages/git-sync
       '@platejs/ai':
         specifier: ^52.1.0
         version: 52.1.0(platejs@52.0.17(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.8.3)
@@ -387,6 +390,12 @@ importers:
       tauri-plugin-keyring-api:
         specifier: ^0.1.1
         version: 0.1.1
+
+  packages/git-sync:
+    devDependencies:
+      vitest:
+        specifier: ^4.0.9
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2)
 
   packages/tsconfig: {}
 
