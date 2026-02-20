@@ -140,6 +140,28 @@ export function CommandMenu() {
 			>
 				<CommandList ref={listRef} className="max-h-88">
 					<CommandEmpty>No results found</CommandEmpty>
+					{hasNoteMatches && (
+						<CommandGroup
+							heading={debouncedQuery.trim() ? "Notes" : "Recent Notes"}
+						>
+							{filteredNoteResults.map((note) => (
+								<CommandItem
+									key={note.path}
+									value={note.path}
+									keywords={note.keywords}
+									onSelect={() => handleSelectNote(note.path)}
+									className="data-[selected=true]:bg-accent-foreground/10"
+								>
+									<div className="flex flex-col">
+										<span>{note.label}</span>
+										<span className="text-muted-foreground/80 text-xs">
+											{note.relativePath}
+										</span>
+									</div>
+								</CommandItem>
+							))}
+						</CommandGroup>
+					)}
 					{hasSemanticMatches && (
 						<CommandGroup heading="Suggestions">
 							{semanticResults.slice(0, 5).map((result) => {
@@ -174,28 +196,6 @@ export function CommandMenu() {
 									</CommandItem>
 								)
 							})}
-						</CommandGroup>
-					)}
-					{hasNoteMatches && (
-						<CommandGroup
-							heading={debouncedQuery.trim() ? "Notes" : "Recent Notes"}
-						>
-							{filteredNoteResults.map((note) => (
-								<CommandItem
-									key={note.path}
-									value={note.path}
-									keywords={note.keywords}
-									onSelect={() => handleSelectNote(note.path)}
-									className="data-[selected=true]:bg-accent-foreground/10"
-								>
-									<div className="flex flex-col">
-										<span>{note.label}</span>
-										<span className="text-muted-foreground/80 text-xs">
-											{note.relativePath}
-										</span>
-									</div>
-								</CommandItem>
-							))}
 						</CommandGroup>
 					)}
 					{hasContentMatches && (
