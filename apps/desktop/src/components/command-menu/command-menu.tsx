@@ -6,11 +6,11 @@ import {
 	CommandItem,
 	CommandList,
 } from "@mdit/ui/components/command"
+import { useDebounce } from "@mdit/ui/hooks/use-debounce"
 import { motion } from "motion/react"
 import { useCallback, useEffect, useState } from "react"
 import useMeasure from "react-use-measure"
 import { useShallow } from "zustand/shallow"
-import { useDebounce } from "@/hooks/use-debounce"
 import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
 import { useStore } from "@/store"
 import { getFileNameFromPath } from "@/utils/path-utils"

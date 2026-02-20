@@ -6,6 +6,7 @@
 	"scripts": {},
 	"exports": {
 		"./components/*": "./src/components/*.tsx",
+		"./hooks/*": "./src/hooks/*.ts",
 		"./lib/*": "./src/lib/*.ts"
 	},
 	"dependencies": {

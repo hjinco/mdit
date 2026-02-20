@@ -1,5 +1,19 @@
+// import { DATABASE_KEY } from "../plugins/database-kit"
+
+import {
+	InlineCombobox,
+	InlineComboboxContent,
+	InlineComboboxEmpty,
+	InlineComboboxGroup,
+	InlineComboboxGroupLabel,
+	InlineComboboxInput,
+	InlineComboboxItem,
+} from "@mdit/editor/components/inline-combobox"
 import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
-import { buildImageLinkData } from "@mdit/editor/utils/image-link"
+import {
+	datePattern,
+	type ValueType,
+} from "@mdit/editor/utils/frontmatter-value-utils"
 import { insertBlock, insertInlineElement } from "@mdit/editor/utils/transforms"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { EmojiInputPlugin } from "@platejs/emoji/react"
@@ -31,18 +45,8 @@ import type { PlateEditor, PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
 import YAML from "yaml"
 import { useStore } from "@/store"
-import { datePattern, type ValueType } from "@/utils/frontmatter-value-utils"
-// import { DATABASE_KEY } from "../plugins/database-kit"
 import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
-import {
-	InlineCombobox,
-	InlineComboboxContent,
-	InlineComboboxEmpty,
-	InlineComboboxGroup,
-	InlineComboboxGroupLabel,
-	InlineComboboxInput,
-	InlineComboboxItem,
-} from "./inline-combobox"
+import { buildImageLinkData } from "../utils/image-link"
 import type { KVRow } from "./node-frontmatter-table"
 
 const MAX_REFERENCED_NOTES = 5

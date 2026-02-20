@@ -1,3 +1,10 @@
+import { Caption, CaptionTextarea } from "@mdit/editor/components/caption"
+import { MediaToolbar } from "@mdit/editor/components/media-toolbar"
+import {
+	mediaResizeHandleVariants,
+	Resizable,
+	ResizeHandle,
+} from "@mdit/editor/components/resize-handle"
 import { cn } from "@mdit/ui/lib/utils"
 import { Image, ImagePlugin, useMediaState } from "@platejs/media/react"
 import { ResizableProvider, useResizableValue } from "@platejs/resizable"
@@ -10,13 +17,6 @@ import { PlateElement, withHOC } from "platejs/react"
 import { useMemo, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
-import { Caption, CaptionTextarea } from "./caption"
-import { MediaToolbar } from "./media-toolbar"
-import {
-	mediaResizeHandleVariants,
-	Resizable,
-	ResizeHandle,
-} from "./resize-handle"
 
 export const ImageElement = withHOC(
 	ResizableProvider,

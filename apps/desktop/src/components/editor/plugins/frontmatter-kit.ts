@@ -1,10 +1,11 @@
+import { FRONTMATTER_KEY } from "@mdit/editor/plugins/frontmatter-kit"
 import { PointApi } from "platejs"
 import { createPlatePlugin } from "platejs/react"
 import { memo } from "react"
 import { useStore } from "@/store"
 import { FrontmatterElement } from "../ui/node-frontmatter"
 
-export const FRONTMATTER_KEY = "frontmatter"
+export { FRONTMATTER_KEY }
 
 export const frontmatterPlugin = createPlatePlugin({
 	key: FRONTMATTER_KEY,

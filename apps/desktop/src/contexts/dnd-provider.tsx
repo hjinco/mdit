@@ -1,5 +1,4 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
-import { buildImageLinkData } from "@mdit/editor/utils/image-link"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
 import { extname } from "pathe"
 import { KEYS, PathApi } from "platejs"
@@ -10,6 +9,7 @@ import { useShallow } from "zustand/react/shallow"
 import { useStore } from "@/store"
 import { isImageFile } from "@/utils/file-icon"
 import { isPathEqualOrDescendant } from "@/utils/path-utils"
+import { buildImageLinkData } from "../components/editor/utils/image-link"
 
 type DndProviderProps = {
 	children: React.ReactNode

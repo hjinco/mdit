@@ -1,8 +1,10 @@
 import remarkWikiLink from "@flowershow/remark-wiki-link"
+import { DATABASE_KEY } from "@mdit/editor/plugins/database-kit"
 import {
-	hasParentTraversal,
-	WINDOWS_ABSOLUTE_REGEX,
-} from "@mdit/editor/utils/link-utils"
+	convertValueToType,
+	datePattern,
+	type ValueType,
+} from "@mdit/editor/utils/frontmatter-value-utils"
 import {
 	convertChildrenDeserialize,
 	convertNodesSerialize,
@@ -20,12 +22,10 @@ import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import YAML from "yaml"
 import {
-	convertValueToType,
-	datePattern,
-	type ValueType,
-} from "@/utils/frontmatter-value-utils"
+	hasParentTraversal,
+	WINDOWS_ABSOLUTE_REGEX,
+} from "@/components/editor/utils/link-utils"
 import type { KVRow } from "../ui/node-frontmatter-table"
-import { DATABASE_KEY } from "./database-kit"
 import { FRONTMATTER_KEY } from "./frontmatter-kit"
 
 const EQUATION_ENVIRONMENT_REGEX =

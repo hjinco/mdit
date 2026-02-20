@@ -1,58 +1,75 @@
-import { AIKit } from "./ai-kit"
-import { AutoformatKit } from "./autoformat-kit"
-import { BasicBlocksKit } from "./basic-blocks-kit"
-import { BasicMarksKit } from "./basic-marks-kit"
-import { BlockSelectionKit } from "./block-selection-kit"
-import { CalloutKit } from "./callout-kit"
-import { CodeBlockKit } from "./code-block-kit"
-import { CommentKit } from "./comment-kit"
-import { CursorOverlayKit } from "./cursor-overlay-kit"
-import { DatabaseKit } from "./database-kit"
-import { DateKit } from "./date-kit"
-import { DndKit } from "./dnd-kit"
-import { EmojiKit } from "./emoji-kit"
+import { createAIKit } from "@mdit/editor/plugins/ai-kit"
+import { AutoformatKit } from "@mdit/editor/plugins/autoformat-kit"
+import { BasicBlocksKit } from "@mdit/editor/plugins/basic-blocks-kit"
+import { BasicMarksKit } from "@mdit/editor/plugins/basic-marks-kit"
+import { BlockSelectionKit } from "@mdit/editor/plugins/block-selection-kit"
+import { CalloutKit } from "@mdit/editor/plugins/callout-kit"
+import { CodeBlockKit } from "@mdit/editor/plugins/code-block-kit"
+import { CursorOverlayKit } from "@mdit/editor/plugins/cursor-overlay-kit"
+import { createDatabaseKit } from "@mdit/editor/plugins/database-kit"
+import { DateKit } from "@mdit/editor/plugins/date-kit"
+import { createBlockDraggable, DndPlugin } from "@mdit/editor/plugins/dnd-kit"
+import { EmojiKit } from "@mdit/editor/plugins/emoji-kit"
+import { FloatingToolbarKit } from "@mdit/editor/plugins/floating-toolbar-kit"
+import { createLinkKit } from "@mdit/editor/plugins/link-kit"
+import { ListKit } from "@mdit/editor/plugins/list-kit"
+import { MathKit } from "@mdit/editor/plugins/math-kit"
+import { createMediaKit } from "@mdit/editor/plugins/media-kit"
+import { ShortcutsKit } from "@mdit/editor/plugins/shortcuts-kit"
+import { createSlashKit } from "@mdit/editor/plugins/slash-kit"
+import { SuggestionKit } from "@mdit/editor/plugins/suggestion-kit"
+import { TableKit } from "@mdit/editor/plugins/table-kit"
+import { TocKit } from "@mdit/editor/plugins/toc-kit"
+import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
+import type { RenderNodeWrapper } from "platejs/react"
+import { useStore } from "@/store"
+import { AIMenu } from "../ui/ai-menu"
+import { LinkFloatingToolbar } from "../ui/link-toolbar"
+import { DatabaseElement } from "../ui/node-database"
+import { ImageElement } from "../ui/node-media-image"
+import { SlashInputElement } from "../ui/node-slash"
 import { FilePasteKit } from "./file-paste-kit"
-import { FloatingToolbarKit } from "./floating-toolbar-kit"
 import { FrontmatterKit } from "./frontmatter-kit"
-import { LinkKit } from "./link-kit"
-import { ListKit } from "./list-kit"
 import { MarkdownKit } from "./markdown-kit"
-import { MathKit } from "./math-kit"
-import { MediaKit } from "./media-kit"
-import { ShortcutsKit } from "./shortcuts-kit"
-import { SlashKit } from "./slash-kit"
-import { SuggestionKit } from "./suggestion-kit"
 import { TabMetadataKit } from "./tab-metadata-kit"
-import { TableKit } from "./table-kit"
-import { TocKit } from "./toc-kit"
-import { UtilsKit } from "./utils-kit"
+
+const AppBlockDraggable: RenderNodeWrapper = (props) => {
+	const isFocusMode = useStore((s) => s.isFocusMode)
+	return createBlockDraggable(isFocusMode)(props)
+}
+
+const DndKit = [
+	DndPlugin.configure({
+		render: {
+			aboveNodes: AppBlockDraggable,
+		},
+	}),
+]
 
 export const EditorKit = [
+	...createAIKit({ AIMenu }),
 	...FilePasteKit,
 	...TabMetadataKit,
-	...AIKit,
 	...AutoformatKit,
 	...BasicBlocksKit,
 	...BasicMarksKit,
 	...BlockSelectionKit,
 	...CalloutKit,
 	...CodeBlockKit,
-	// ...ColumnKit,
-	...CommentKit,
-	...DatabaseKit,
+	...createDatabaseKit({ DatabaseElement }),
 	...CursorOverlayKit,
 	...EmojiKit,
 	...FrontmatterKit,
 	...DateKit,
 	...DndKit,
 	...FloatingToolbarKit,
-	...LinkKit,
+	...createLinkKit({ LinkFloatingToolbar }),
 	...ListKit,
 	...MarkdownKit,
 	...MathKit,
-	...MediaKit,
+	...createMediaKit({ ImageElement }),
 	...ShortcutsKit,
-	...SlashKit,
+	...createSlashKit({ SlashInputElement }),
 	...SuggestionKit,
 	...TableKit,
 	...TocKit,
