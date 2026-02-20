@@ -6,14 +6,7 @@
 			"@/*": ["./src/*"]
 		}
 	},
-	"include": [
-		"src",
-		"../../packages/editor/src/components/selection-area-cursor.tsx",
-		"../../packages/editor/src/nodes/node-column.tsx",
-		"../../packages/editor/src/nodes/node-ai.tsx",
-		"../../packages/editor/src/components/ai-loading-bar.tsx",
-		"../../packages/editor/src/plugins/ai-kit.ts"
-	],
+	"include": ["src"],
 	"references": [
 		{
 			"path": "./tsconfig.node.json"
