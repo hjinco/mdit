@@ -1,3 +1,4 @@
+import { startsWithHttpProtocol } from "@mdit/editor/utils/link-utils"
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating"
 import { upsertLink } from "@platejs/link"
 import {
@@ -47,7 +48,6 @@ import {
 	useState,
 } from "react"
 import { useShallow } from "zustand/shallow"
-import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"

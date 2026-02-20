@@ -1,13 +1,10 @@
 import { relative } from "pathe"
-import {
-	hasParentTraversal,
-	isAbsoluteLike,
-} from "@/components/editor/utils/link-utils"
 import { useStore } from "@/store"
 import {
 	isPathEqualOrDescendant,
 	normalizePathSeparators,
 } from "@/utils/path-utils"
+import { hasParentTraversal, isAbsoluteLike } from "./link-utils"
 
 export type ImageLinkData = {
 	url: string

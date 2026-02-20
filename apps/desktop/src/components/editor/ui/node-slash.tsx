@@ -1,3 +1,6 @@
+import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
+import { buildImageLinkData } from "@mdit/editor/utils/image-link"
+import { insertBlock, insertInlineElement } from "@mdit/editor/utils/transforms"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { EmojiInputPlugin } from "@platejs/emoji/react"
 import { open } from "@tauri-apps/plugin-dialog"
@@ -31,9 +34,6 @@ import { useStore } from "@/store"
 import { datePattern, type ValueType } from "@/utils/frontmatter-value-utils"
 // import { DATABASE_KEY } from "../plugins/database-kit"
 import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
-import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
-import { buildImageLinkData } from "../utils/image-link"
-import { insertBlock, insertInlineElement } from "../utils/transforms"
 import {
 	InlineCombobox,
 	InlineComboboxContent,

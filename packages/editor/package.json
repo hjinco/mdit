@@ -1,0 +1,43 @@
+{
+	"name": "@mdit/editor",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"exports": {
+		"./plugins/*": "./src/plugins/*.tsx",
+		"./utils/*": "./src/utils/*.ts"
+	},
+	"scripts": {},
+	"devDependencies": {
+		"@platejs/ai": "^52.1.0",
+		"@platejs/autoformat": "^52.0.11",
+		"@platejs/basic-nodes": "^52.0.11",
+		"@platejs/callout": "^52.0.11",
+		"@platejs/caption": "^52.0.11",
+		"@platejs/code-block": "^52.0.11",
+		"@platejs/combobox": "^52.0.15",
+		"@platejs/comment": "^52.0.11",
+		"@platejs/date": "^52.0.11",
+		"@platejs/diff": "^52.0.11",
+		"@platejs/emoji": "^52.0.15",
+		"@platejs/floating": "^52.0.11",
+		"@platejs/indent": "^52.0.11",
+		"@platejs/layout": "^52.0.11",
+		"@platejs/link": "^52.0.11",
+		"@platejs/list": "^52.0.11",
+		"@platejs/markdown": "^52.1.0",
+		"@platejs/math": "^52.0.11",
+		"@platejs/media": "^52.0.11",
+		"@platejs/resizable": "^52.0.11",
+		"@platejs/selection": "^52.0.16",
+		"@platejs/slash-command": "^52.0.15",
+		"@platejs/suggestion": "^52.0.11",
+		"@platejs/table": "^52.0.11",
+		"@platejs/toc": "^52.0.11",
+		"platejs": "^52.0.17"
+	},
+	"dependencies": {
+		"ai": "^6.0.91",
+		"pathe": "^2.0.3"
+	}
+}

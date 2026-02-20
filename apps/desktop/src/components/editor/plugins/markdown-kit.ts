@@ -1,5 +1,9 @@
 import remarkWikiLink from "@flowershow/remark-wiki-link"
 import {
+	hasParentTraversal,
+	WINDOWS_ABSOLUTE_REGEX,
+} from "@mdit/editor/utils/link-utils"
+import {
 	convertChildrenDeserialize,
 	convertNodesSerialize,
 	MarkdownPlugin,
@@ -21,7 +25,6 @@ import {
 	type ValueType,
 } from "@/utils/frontmatter-value-utils"
 import type { KVRow } from "../ui/node-frontmatter-table"
-import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../utils/link-utils"
 import { DATABASE_KEY } from "./database-kit"
 import { FRONTMATTER_KEY } from "./frontmatter-kit"
 

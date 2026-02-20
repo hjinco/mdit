@@ -1,3 +1,4 @@
+import { KATEX_ENVIRONMENTS } from "@mdit/editor/utils/katex"
 import { useEquationInput } from "@platejs/math/react"
 import type { KatexOptions } from "katex"
 import { CornerDownLeftIcon, RadicalIcon } from "lucide-react"
@@ -32,7 +33,6 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { KATEX_ENVIRONMENTS } from "../utils/katex"
 
 let katexJsPromise: Promise<typeof import("katex")> | null = null
 let katexCssPromise: Promise<any> | null = null

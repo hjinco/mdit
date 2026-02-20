@@ -1,5 +1,6 @@
+import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
+import { KATEX_ENVIRONMENTS } from "@mdit/editor/utils/katex"
 import type { AutoformatRule } from "@platejs/autoformat"
-
 import {
 	AutoformatPlugin,
 	autoformatArrow,
@@ -13,8 +14,6 @@ import { insertEmptyCodeBlock } from "@platejs/code-block"
 import { toggleList } from "@platejs/list"
 import { insertInlineEquation } from "@platejs/math"
 import { KEYS } from "platejs"
-import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
-import { KATEX_ENVIRONMENTS } from "../utils/katex"
 
 const WIKILINK_PLACEHOLDER = "Page Title"
 
