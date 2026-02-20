@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 import { motion } from "motion/react"
 import {
@@ -8,7 +9,6 @@ import {
 	useRef,
 	useState,
 } from "react"
-import { cn } from "@/lib/utils"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type NoteEntryProps = {

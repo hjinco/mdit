@@ -1,6 +1,6 @@
+import { Button } from "@mdit/ui/components/button"
 import { AlertCircle, RotateCcw, Send } from "lucide-react"
 import { Component, type ErrorInfo, type ReactNode } from "react"
-import { Button } from "@/components/ui/button"
 import { isMac } from "@/utils/platform"
 
 interface ErrorBoundaryProps {

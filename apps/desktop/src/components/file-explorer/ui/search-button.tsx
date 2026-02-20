@@ -1,11 +1,11 @@
-import { SearchIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { Button } from "@mdit/ui/components/button"
+import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@mdit/ui/components/tooltip"
+import { SearchIcon } from "lucide-react"
 import { useStore } from "@/store"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 

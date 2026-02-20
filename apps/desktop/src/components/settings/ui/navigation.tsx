@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button"
-import { DialogTitle } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { Button } from "@mdit/ui/components/button"
+import { DialogTitle } from "@mdit/ui/components/dialog"
+import { cn } from "@mdit/ui/lib/utils"
 
 export type SettingsTab = "preferences" | "ai" | "sync" | "indexing" | "license"
 

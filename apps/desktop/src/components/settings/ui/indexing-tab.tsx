@@ -1,7 +1,4 @@
-import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo } from "react"
-import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -10,14 +7,17 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
+} from "@mdit/ui/components/field"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
+} from "@mdit/ui/components/select"
+import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
+import { useCallback, useEffect, useMemo } from "react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-utils"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"

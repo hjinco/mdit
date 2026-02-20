@@ -1,3 +1,13 @@
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuGroup,
+	ContextMenuItem,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
+	ContextMenuTrigger,
+} from "@mdit/ui/components/context-menu"
 import { AIChatPlugin } from "@platejs/ai/react"
 import {
 	BLOCK_CONTEXT_MENU_ID,
@@ -20,16 +30,6 @@ import {
 import { KEYS } from "platejs"
 import { useEditorPlugin, usePlateState } from "platejs/react"
 import { useCallback, useState } from "react"
-import {
-	ContextMenu,
-	ContextMenuContent,
-	ContextMenuGroup,
-	ContextMenuItem,
-	ContextMenuSub,
-	ContextMenuSubContent,
-	ContextMenuSubTrigger,
-	ContextMenuTrigger,
-} from "@/components/ui/context-menu"
 import { useIsTouchDevice } from "@/hooks/use-is-touch-device"
 
 type Value = "askAI" | null

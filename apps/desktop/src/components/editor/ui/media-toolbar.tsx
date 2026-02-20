@@ -1,3 +1,10 @@
+import { Button } from "@mdit/ui/components/button"
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@mdit/ui/components/popover"
+import { Separator } from "@mdit/ui/components/separator"
 import {
 	FloatingMedia as FloatingMediaPrimitive,
 	FloatingMediaStore,
@@ -17,9 +24,6 @@ import {
 	useSelected,
 } from "platejs/react"
 import { useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
 import { CaptionButton } from "./caption"
 
 const inputVariants = cva(

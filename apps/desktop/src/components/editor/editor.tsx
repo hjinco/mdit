@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { createSlateEditor, type Value } from "platejs"
 import {
@@ -15,7 +16,6 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
-import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import { isMac } from "@/utils/platform"
 import { Header } from "./header/header"

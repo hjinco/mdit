@@ -1,3 +1,18 @@
+import { Button } from "@mdit/ui/components/button"
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@mdit/ui/components/command"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@mdit/ui/components/popover"
+import { cn } from "@mdit/ui/lib/utils"
 import { formatCodeBlock, isLangSupported } from "@platejs/code-block"
 import { BracesIcon, Check, CheckIcon, CopyIcon } from "lucide-react"
 import { NodeApi, type TCodeBlockElement, type TCodeSyntaxLeaf } from "platejs"
@@ -11,21 +26,6 @@ import {
 	useReadOnly,
 } from "platejs/react"
 import { useEffect, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command"
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 	const { editor, element } = props

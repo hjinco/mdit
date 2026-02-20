@@ -1,3 +1,17 @@
+import { Button } from "@mdit/ui/components/button"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@mdit/ui/components/dropdown-menu"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@mdit/ui/components/tooltip"
 import {
 	ArrowDownIcon,
 	ArrowUpAZ,
@@ -12,20 +26,6 @@ import {
 	type LucideIcon,
 } from "lucide-react"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip"
 import type { SortDirection, SortOption } from "../hooks/use-collection-sort"
 
 const SORT_LABELS: Record<SortOption, string> = {

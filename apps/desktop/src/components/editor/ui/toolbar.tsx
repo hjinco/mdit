@@ -1,16 +1,16 @@
+import {
+	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuSeparator,
+} from "@mdit/ui/components/dropdown-menu"
+import { Separator } from "@mdit/ui/components/separator"
+import { TooltipTrigger } from "@mdit/ui/components/tooltip"
+import { cn } from "@mdit/ui/lib/utils"
 import * as ToolbarPrimitive from "@radix-ui/react-toolbar"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cva, type VariantProps } from "class-variance-authority"
 import { ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
-import {
-	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import { Separator } from "@/components/ui/separator"
-import { TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 
 export function Toolbar({
 	className,

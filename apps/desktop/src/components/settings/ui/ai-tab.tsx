@@ -5,11 +5,7 @@ import {
 	CREDENTIAL_PROVIDER_IDS,
 	type CredentialProviderId,
 } from "@mdit/ai-auth"
-import { openUrl } from "@tauri-apps/plugin-opener"
-import { ExternalLink } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -18,16 +14,20 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+} from "@mdit/ui/components/select"
+import { Switch } from "@mdit/ui/components/switch"
+import { openUrl } from "@tauri-apps/plugin-opener"
+import { ExternalLink } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
 function isCredentialProviderId(value: string): value is CredentialProviderId {

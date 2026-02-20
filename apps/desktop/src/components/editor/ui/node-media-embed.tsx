@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { parseTwitterUrl, parseVideoUrl } from "@platejs/media"
 import { MediaEmbedPlugin, useMediaState } from "@platejs/media/react"
 import { ResizableProvider, useResizableValue } from "@platejs/resizable"
@@ -6,8 +7,6 @@ import type { PlateElementProps } from "platejs/react"
 import { PlateElement, withHOC } from "platejs/react"
 import LiteYouTubeEmbed from "react-lite-youtube-embed"
 import { Tweet } from "react-tweet"
-
-import { cn } from "@/lib/utils"
 
 import { Caption, CaptionTextarea } from "./caption"
 import { MediaToolbar } from "./media-toolbar"

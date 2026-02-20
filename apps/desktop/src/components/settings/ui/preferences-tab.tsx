@@ -1,4 +1,3 @@
-import { Monitor, Moon, Sun } from "lucide-react"
 import {
 	Field,
 	FieldContent,
@@ -7,14 +6,15 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
+} from "@mdit/ui/components/field"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
+} from "@mdit/ui/components/select"
+import { Monitor, Moon, Sun } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
 
 export function PreferencesTab() {

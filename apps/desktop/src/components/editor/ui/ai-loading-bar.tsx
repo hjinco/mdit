@@ -1,8 +1,8 @@
+import { Button } from "@mdit/ui/components/button"
+import { cn } from "@mdit/ui/lib/utils"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { PauseIcon } from "lucide-react"
 import { useEditorPlugin, useHotkeys, usePluginOption } from "platejs/react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 export function AILoadingBar() {
 	const toolName = usePluginOption(AIChatPlugin, "toolName")

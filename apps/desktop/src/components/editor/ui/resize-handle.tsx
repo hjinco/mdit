@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	Resizable as ResizablePrimitive,
 	type ResizeHandle as ResizeHandlePrimitive,
@@ -6,8 +7,6 @@ import {
 } from "@platejs/resizable"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
 
 export const mediaResizeHandleVariants = cva(
 	cn(

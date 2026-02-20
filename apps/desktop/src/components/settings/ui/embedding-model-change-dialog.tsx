@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Dialog,
 	DialogContent,
@@ -6,7 +6,7 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
+} from "@mdit/ui/components/dialog"
 
 type EmbeddingModelChangeDialogProps = {
 	open: boolean

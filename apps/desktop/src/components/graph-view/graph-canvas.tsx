@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	forceCenter,
 	forceCollide,
@@ -16,7 +17,6 @@ import {
 	useState,
 	type WheelEvent,
 } from "react"
-import { cn } from "@/lib/utils"
 import {
 	getGraphDegradeProfile,
 	getNodeOpenAction,

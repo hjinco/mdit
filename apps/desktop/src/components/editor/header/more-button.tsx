@@ -1,3 +1,10 @@
+import { Button } from "@mdit/ui/components/button"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@mdit/ui/components/popover"
+import { Separator } from "@mdit/ui/components/separator"
 import { invoke } from "@tauri-apps/api/core"
 import { ArrowRight, InfoIcon } from "lucide-react"
 import { resolve } from "pathe"
@@ -5,13 +12,6 @@ import { useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
 import { useStore } from "@/store"
 
 const WORD_SPLIT_REGEX = /\s+/

@@ -1,27 +1,27 @@
-import { invoke } from "@tauri-apps/api/core"
-import { stat } from "@tauri-apps/plugin-fs"
-import { basename } from "pathe"
-import { useEffect, useRef, useState } from "react"
-import { toast } from "sonner"
-import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@mdit/ui/components/button"
+import { Checkbox } from "@mdit/ui/components/checkbox"
 import {
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+} from "@mdit/ui/components/dialog"
+import { Label } from "@mdit/ui/components/label"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+} from "@mdit/ui/components/select"
+import { Separator } from "@mdit/ui/components/separator"
+import { invoke } from "@tauri-apps/api/core"
+import { stat } from "@tauri-apps/plugin-fs"
+import { basename } from "pathe"
+import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { formatFileSize } from "@/utils/format-utils"
 import {

@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { SquarePenIcon } from "lucide-react"
 import {
 	type ChangeEvent,
@@ -10,8 +11,6 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
-
-import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import {

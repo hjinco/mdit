@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react"
-import { useShallow } from "zustand/shallow"
 import {
 	Field,
 	FieldContent,
@@ -8,10 +6,12 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
+} from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
+import { Switch } from "@mdit/ui/components/switch"
+import { Textarea } from "@mdit/ui/components/textarea"
+import { useEffect, useState } from "react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
 export function SyncTab() {

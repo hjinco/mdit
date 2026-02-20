@@ -1,3 +1,5 @@
+import { Popover, PopoverContent } from "@mdit/ui/components/popover"
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	BlockSelectionPlugin,
 	useBlockSelected,
@@ -43,8 +45,6 @@ import {
 	useSelected,
 	withHOC,
 } from "platejs/react"
-import { Popover, PopoverContent } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 import { blockSelectionVariants } from "./block-selection"
 import { ResizeHandle } from "./resize-handle"
 import { Toolbar, ToolbarButton, ToolbarGroup } from "./toolbar"

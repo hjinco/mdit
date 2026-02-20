@@ -1,3 +1,10 @@
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuGroup,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@mdit/ui/components/dropdown-menu"
 import { AIChatPlugin } from "@platejs/ai/react"
 import {
 	useLinkToolbarButton,
@@ -28,13 +35,6 @@ import {
 	useMarkToolbarButtonState,
 } from "platejs/react"
 import { useState } from "react"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 import { ToolbarButton, ToolbarGroup } from "./toolbar"
 

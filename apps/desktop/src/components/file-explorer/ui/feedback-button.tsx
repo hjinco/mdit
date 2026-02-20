@@ -1,4 +1,19 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
+import { Button } from "@mdit/ui/components/button"
+import { Field, FieldGroup, FieldLabel } from "@mdit/ui/components/field"
+import {
+	Form,
+	FormControl,
+	FormField,
+	FormItem,
+} from "@mdit/ui/components/form"
+import { Input } from "@mdit/ui/components/input"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@mdit/ui/components/popover"
+import { Textarea } from "@mdit/ui/components/textarea"
 import {
 	CameraIcon,
 	CheckIcon,
@@ -9,16 +24,6 @@ import {
 import { useEffect, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { Button } from "@/components/ui/button"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Form, FormControl, FormField, FormItem } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover"
-import { Textarea } from "@/components/ui/textarea"
 import { useScreenCapture } from "@/contexts/screen-capture-context"
 
 const formSchema = z.object({

@@ -1,7 +1,7 @@
+import { Input } from "@mdit/ui/components/input"
+import { cn } from "@mdit/ui/lib/utils"
 import { XIcon } from "lucide-react"
 import { type KeyboardEvent, useMemo, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import type { FocusRegistration } from "./node-frontmatter-table"
 
 type FrontmatterArrayProps = {

@@ -1,8 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
-import { useState } from "react"
-import { Controller, useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldDescription,
@@ -10,16 +7,19 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+} from "@mdit/ui/components/select"
+import { Textarea } from "@mdit/ui/components/textarea"
+import { useState } from "react"
+import { Controller, useForm } from "react-hook-form"
+import { z } from "zod"
 import type { Command } from "../hooks/use-ai-commands"
 import {
 	DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP,

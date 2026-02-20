@@ -1,8 +1,8 @@
+import { Button } from "@mdit/ui/components/button"
+import { cn } from "@mdit/ui/lib/utils"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { PinIcon, PinOffIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 export function WindowPinButton({ className }: { className?: string }) {
 	const [isPinned, setIsPinned] = useState(false)

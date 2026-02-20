@@ -1,5 +1,12 @@
 import type { Emoji } from "@emoji-mart/data"
-
+import { Button } from "@mdit/ui/components/button"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@mdit/ui/components/tooltip"
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	type EmojiCategoryList,
 	type EmojiIconList,
@@ -26,14 +33,6 @@ import {
 	XIcon,
 } from "lucide-react"
 import { memo, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 import { ToolbarButton } from "./toolbar"
 
 export function EmojiToolbarButton({

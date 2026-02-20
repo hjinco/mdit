@@ -1,13 +1,11 @@
+import { cn } from "@mdit/ui/lib/utils"
 import type { PlateElementProps } from "platejs/react"
-
 import {
 	PlateElement,
 	useFocused,
 	useReadOnly,
 	useSelected,
 } from "platejs/react"
-
-import { cn } from "@/lib/utils"
 
 export function HrElement(props: PlateElementProps) {
 	const readOnly = useReadOnly()

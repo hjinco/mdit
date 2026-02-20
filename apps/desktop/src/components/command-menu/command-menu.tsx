@@ -1,7 +1,3 @@
-import { motion } from "motion/react"
-import { useCallback, useEffect, useState } from "react"
-import useMeasure from "react-use-measure"
-import { useShallow } from "zustand/shallow"
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -9,7 +5,11 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@/components/ui/command"
+} from "@mdit/ui/components/command"
+import { motion } from "motion/react"
+import { useCallback, useEffect, useState } from "react"
+import useMeasure from "react-use-measure"
+import { useShallow } from "zustand/shallow"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
 import { useStore } from "@/store"

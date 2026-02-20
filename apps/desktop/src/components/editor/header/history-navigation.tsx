@@ -1,13 +1,13 @@
-import type { LucideIcon } from "lucide-react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+import { Button } from "@mdit/ui/components/button"
+import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@mdit/ui/components/tooltip"
+import type { LucideIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 

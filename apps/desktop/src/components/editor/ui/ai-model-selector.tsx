@@ -1,13 +1,13 @@
-import { Check, ChevronDownIcon, ChevronRightIcon } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@mdit/ui/components/dropdown-menu"
+import { cn } from "@mdit/ui/lib/utils"
+import { Check, ChevronDownIcon, ChevronRightIcon } from "lucide-react"
+import { useShallow } from "zustand/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
-import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 
 interface AIModelSelectorProps {

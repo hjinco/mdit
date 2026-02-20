@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { AIChatPlugin } from "@platejs/ai/react"
 import {
 	type CursorData,
@@ -6,8 +7,6 @@ import {
 } from "@platejs/selection/react"
 import { RangeApi } from "platejs"
 import { usePluginOption } from "platejs/react"
-
-import { cn } from "@/lib/utils"
 
 export function CursorOverlay() {
 	const { cursors } = useCursorOverlay()

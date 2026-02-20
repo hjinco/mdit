@@ -1,18 +1,18 @@
-import { ChevronDown, InboxIcon, MinusIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
+} from "@mdit/ui/components/dropdown-menu"
+import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@mdit/ui/components/tooltip"
+import { ChevronDown, InboxIcon, MinusIcon } from "lucide-react"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 import { getFolderNameFromPath } from "@/utils/path-utils"
 

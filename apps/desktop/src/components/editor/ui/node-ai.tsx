@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { AIChatPlugin } from "@platejs/ai/react"
 import {
 	PlateElement,
@@ -6,7 +7,6 @@ import {
 	type PlateTextProps,
 	usePluginOption,
 } from "platejs/react"
-import { cn } from "@/lib/utils"
 
 export function AILeaf(props: PlateTextProps) {
 	const streaming = usePluginOption(AIChatPlugin, "streaming")

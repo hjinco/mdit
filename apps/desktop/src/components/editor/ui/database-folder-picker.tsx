@@ -1,6 +1,4 @@
-import { ChevronsUpDown, FolderIcon } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Command,
 	CommandEmpty,
@@ -8,12 +6,14 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@/components/ui/command"
+} from "@mdit/ui/components/command"
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@mdit/ui/components/popover"
+import { ChevronsUpDown, FolderIcon } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { normalizePathSeparators } from "@/utils/path-utils"

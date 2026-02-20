@@ -1,14 +1,13 @@
-import type { TDateElement } from "platejs"
-import type { PlateElementProps } from "platejs/react"
-
-import { PlateElement, useReadOnly } from "platejs/react"
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar } from "@mdit/ui/components/calendar"
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+} from "@mdit/ui/components/popover"
+import { cn } from "@mdit/ui/lib/utils"
+import type { TDateElement } from "platejs"
+import type { PlateElementProps } from "platejs/react"
+import { PlateElement, useReadOnly } from "platejs/react"
 
 export function DateElement(props: PlateElementProps<TDateElement>) {
 	const { editor, element } = props

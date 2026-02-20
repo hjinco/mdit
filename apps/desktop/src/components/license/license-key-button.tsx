@@ -1,6 +1,6 @@
+import { Button } from "@mdit/ui/components/button"
 import { useEffect } from "react"
 import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
 import { checkInternetConnectivity } from "@/utils/network-utils"
 

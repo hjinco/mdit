@@ -1,3 +1,12 @@
+import { Button } from "@mdit/ui/components/button"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@mdit/ui/components/dropdown-menu"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { invoke } from "@tauri-apps/api/core"
 import {
@@ -24,15 +33,6 @@ import { PlateElement, useEditorRef } from "platejs/react"
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import {

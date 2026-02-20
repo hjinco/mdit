@@ -1,4 +1,19 @@
 import { KATEX_ENVIRONMENTS } from "@mdit/editor/utils/katex"
+import { Button } from "@mdit/ui/components/button"
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@mdit/ui/components/command"
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@mdit/ui/components/popover"
+import { cn } from "@mdit/ui/lib/utils"
 import { useEquationInput } from "@platejs/math/react"
 import type { KatexOptions } from "katex"
 import { CornerDownLeftIcon, RadicalIcon } from "lucide-react"
@@ -18,21 +33,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import TextareaAutosize, {
 	type TextareaAutosizeProps,
 } from "react-textarea-autosize"
-import { Button } from "@/components/ui/button"
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command"
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 
 let katexJsPromise: Promise<typeof import("katex")> | null = null
 let katexCssPromise: Promise<any> | null = null

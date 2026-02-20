@@ -1,6 +1,6 @@
+import { Button } from "@mdit/ui/components/button"
 import { relaunch } from "@tauri-apps/plugin-process"
 import { ArrowDownToLineIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
 
 export function UpdateButton() {

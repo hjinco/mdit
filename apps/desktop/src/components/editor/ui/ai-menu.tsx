@@ -1,3 +1,8 @@
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@mdit/ui/components/popover"
 import { AIChatPlugin, useEditorChat } from "@platejs/ai/react"
 import { BlockSelectionPlugin, useIsSelecting } from "@platejs/selection/react"
 import { isHotkey, KEYS, type NodeEntry } from "platejs"
@@ -9,7 +14,6 @@ import {
 } from "platejs/react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { useStore } from "@/store"
 import { useAICommands } from "../hooks/use-ai-commands"
 import { useChat } from "../hooks/use-chat"

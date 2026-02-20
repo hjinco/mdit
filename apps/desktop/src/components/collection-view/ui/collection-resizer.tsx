@@ -1,8 +1,12 @@
+import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@mdit/ui/components/popover"
+import { tooltipContentVariants } from "@mdit/ui/components/tooltip"
+import { cn } from "@mdit/ui/lib/utils"
 import { memo, useCallback, useState } from "react"
-import { Kbd, KbdGroup } from "@/components/ui/kbd"
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
-import { tooltipContentVariants } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 type CollectionResizerProps = {

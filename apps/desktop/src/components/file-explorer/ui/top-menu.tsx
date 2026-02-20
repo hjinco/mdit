@@ -1,5 +1,5 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { useIsFullscreen } from "@/hooks/use-is-fullscreen"
-import { cn } from "@/lib/utils"
 import { isMac } from "@/utils/platform"
 import { SearchButton } from "./search-button"
 import { ToggleButton } from "./toggle-button"

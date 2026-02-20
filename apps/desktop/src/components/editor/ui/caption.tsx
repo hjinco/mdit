@@ -1,3 +1,5 @@
+import { Button } from "@mdit/ui/components/button"
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	Caption as CaptionPrimitive,
 	CaptionTextarea as CaptionTextareaPrimitive,
@@ -7,8 +9,6 @@ import {
 import { createPrimitiveComponent } from "@udecode/cn"
 import type { VariantProps } from "class-variance-authority"
 import { cva } from "class-variance-authority"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 const captionVariants = cva("max-w-full", {
 	defaultVariants: {

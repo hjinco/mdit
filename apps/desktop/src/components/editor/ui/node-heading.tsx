@@ -1,7 +1,7 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
-import { cn } from "@/lib/utils"
 
 const headingVariants = cva("relative mb-1", {
 	variants: {

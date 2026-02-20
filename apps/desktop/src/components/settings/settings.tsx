@@ -1,6 +1,6 @@
+import { Dialog, DialogContent } from "@mdit/ui/components/dialog"
 import { useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useStore } from "@/store"
 import { AITab } from "./ui/ai-tab"
 import { IndexingTab } from "./ui/indexing-tab"

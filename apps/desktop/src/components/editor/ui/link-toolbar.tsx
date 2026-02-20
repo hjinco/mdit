@@ -1,4 +1,7 @@
 import { startsWithHttpProtocol } from "@mdit/editor/utils/link-utils"
+import { buttonVariants } from "@mdit/ui/components/button"
+import { Separator } from "@mdit/ui/components/separator"
+import { cn } from "@mdit/ui/lib/utils"
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating"
 import { upsertLink } from "@platejs/link"
 import {
@@ -48,9 +51,6 @@ import {
 	useState,
 } from "react"
 import { useShallow } from "zustand/shallow"
-import { buttonVariants } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 

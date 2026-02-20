@@ -1,8 +1,4 @@
-import { openUrl } from "@tauri-apps/plugin-opener"
-import { CheckCircle2, Loader2, XCircle } from "lucide-react"
-import { type ChangeEvent, useState } from "react"
-import { useShallow } from "zustand/shallow"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -11,8 +7,12 @@ import {
 	FieldLabel,
 	FieldLegend,
 	FieldSet,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
+import { openUrl } from "@tauri-apps/plugin-opener"
+import { CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { type ChangeEvent, useState } from "react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
 export function LicenseTab() {

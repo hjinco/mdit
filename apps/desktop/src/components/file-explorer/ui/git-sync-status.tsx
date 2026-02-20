@@ -1,5 +1,4 @@
-import { RefreshCw, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@mdit/ui/components/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -7,13 +6,14 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@mdit/ui/components/dropdown-menu"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+} from "@mdit/ui/components/tooltip"
+import { cn } from "@mdit/ui/lib/utils"
+import { RefreshCw, Settings } from "lucide-react"
 import { useStore } from "@/store"
 
 export function GitSyncStatus() {

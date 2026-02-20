@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { save } from "@tauri-apps/plugin-dialog"
 import { writeTextFile } from "@tauri-apps/plugin-fs"
@@ -10,7 +11,6 @@ import {
 import { useCallback, useEffect } from "react"
 import { toast } from "sonner"
 import { useLocation } from "wouter"
-import { cn } from "@/lib/utils"
 import { isMac } from "@/utils/platform"
 import { EditorKit } from "../editor/plugins/editor-kit"
 import { WindowPinButton } from "./window-pin-button"

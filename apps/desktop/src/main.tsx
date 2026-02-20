@@ -1,7 +1,7 @@
+import { Toaster } from "@mdit/ui/components/sonner"
 import { PlateController } from "platejs/react"
 import React from "react"
 import ReactDOM from "react-dom/client"
-import { Toaster } from "@/components/ui/sonner"
 import { ErrorBoundary } from "./components/error-boundary/error-boundary"
 import { WindowMenu } from "./components/window-menu/window-menu"
 import { DndProvider } from "./contexts/dnd-provider"

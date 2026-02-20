@@ -1,3 +1,5 @@
+import { Checkbox } from "@mdit/ui/components/checkbox"
+import { cn } from "@mdit/ui/lib/utils"
 import { isOrderedList } from "@platejs/list"
 import {
 	useTodoListElement,
@@ -12,8 +14,6 @@ import {
 	useReadOnly,
 } from "platejs/react"
 import { useCallback } from "react"
-import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
 
 const config: Record<
 	string,

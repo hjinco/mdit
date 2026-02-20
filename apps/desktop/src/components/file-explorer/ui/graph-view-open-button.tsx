@@ -1,5 +1,5 @@
+import { Button } from "@mdit/ui/components/button"
 import { GitBranchIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { useStore } from "@/store"
 import { getModifierKey } from "@/utils/keyboard-shortcut"
 

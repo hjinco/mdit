@@ -11,6 +11,7 @@ import {
 	useComboboxContext,
 	useComboboxStore,
 } from "@ariakit/react"
+import { cn } from "@mdit/ui/lib/utils"
 import { filterWords } from "@platejs/combobox"
 import {
 	type UseComboboxInputResult,
@@ -31,7 +32,6 @@ import {
 	useRef,
 	useState,
 } from "react"
-import { cn } from "@/lib/utils"
 
 type FilterFn = (
 	item: { value: string; group?: string; keywords?: string[]; label?: string },

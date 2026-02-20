@@ -1,3 +1,4 @@
+import { cn } from "@mdit/ui/lib/utils"
 import {
 	type FloatingToolbarState,
 	flip,
@@ -13,8 +14,6 @@ import {
 	useEventEditorValue,
 	usePluginOption,
 } from "platejs/react"
-
-import { cn } from "@/lib/utils"
 
 import { Toolbar } from "./toolbar"
 

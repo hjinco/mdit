@@ -1,8 +1,8 @@
+import { Button } from "@mdit/ui/components/button"
+import { cn } from "@mdit/ui/lib/utils"
 import { useCalloutEmojiPicker } from "@platejs/callout/react"
 import { useEmojiDropdownMenuState } from "@platejs/emoji/react"
 import { PlateElement } from "platejs/react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 import { EmojiPicker, EmojiPopover } from "./emoji-toolbar-button"
 
