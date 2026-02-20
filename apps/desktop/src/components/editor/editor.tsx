@@ -1,3 +1,4 @@
+import { SelectionAreaCursor } from "@mdit/editor/components/selection-area-cursor"
 import { cn } from "@mdit/ui/lib/utils"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { createSlateEditor, type Value } from "platejs"
@@ -23,7 +24,6 @@ import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useLinkedTabName } from "./hooks/use-linked-tab-name"
 import { EditorKit } from "./plugins/editor-kit"
-import { SelectionAreaCursor } from "./ui/selection-area-cursor"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 	const tab = useStore((s) => s.tab)

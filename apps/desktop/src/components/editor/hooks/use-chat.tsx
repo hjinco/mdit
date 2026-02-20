@@ -18,10 +18,9 @@ import {
 } from "ai"
 import { ollama } from "ollama-ai-provider-v2"
 import { createSlateEditor, RangeApi } from "platejs"
-import { useEditorRef, usePluginOption } from "platejs/react"
+import { useEditorRef } from "platejs/react"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
-import { aiChatPlugin } from "@/components/editor/plugins/ai-kit"
 import { EditorKit } from "@/components/editor/plugins/editor-kit"
 import { useStore } from "@/store"
 import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
@@ -230,7 +229,6 @@ const createModelFromConfig = (config: ChatConfig, sessionId: string) => {
 
 export const useChat = () => {
 	const editor = useEditorRef()
-	const options = usePluginOption(aiChatPlugin, "chatOptions")
 	const sessionIdRef = useRef(crypto.randomUUID())
 
 	const resolveActiveConfig = async (): Promise<ChatConfig> => {
@@ -366,7 +364,6 @@ export const useChat = () => {
 		onError(error) {
 			toast.error(error.message)
 		},
-		...options,
 	})
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: true
