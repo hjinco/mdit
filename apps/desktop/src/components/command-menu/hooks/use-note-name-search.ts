@@ -12,6 +12,7 @@ export type NoteResult = {
 }
 
 const MARKDOWN_EXTENSION_REGEX = /\.md$/i
+const RECENT_NOTES_LIMIT = 5
 const isMarkdownFile = (entry: WorkspaceEntry) =>
 	!entry.isDirectory && MARKDOWN_EXTENSION_REGEX.test(entry.name)
 
@@ -105,16 +106,28 @@ export const useNoteNameSearch = (
 
 	const filteredNoteResults = useMemo(() => {
 		if (!normalizedQuery) {
-			// When query is empty, show 5 most recently modified notes
-			return [...noteResults]
-				.sort((a, b) => {
-					// Sort by modifiedAt descending (most recent first)
-					// Notes without modifiedAt are treated as oldest
-					const aTime = a.modifiedAt?.getTime() ?? 0
-					const bTime = b.modifiedAt?.getTime() ?? 0
-					return bTime - aTime
-				})
-				.slice(0, 5)
+			// When query is empty, keep only the top N most recently modified notes.
+			const recentNotes: NoteResult[] = []
+			for (const note of noteResults) {
+				const noteTime = note.modifiedAt?.getTime() ?? 0
+				let insertAt = recentNotes.length
+
+				for (let index = 0; index < recentNotes.length; index += 1) {
+					const existingTime = recentNotes[index].modifiedAt?.getTime() ?? 0
+					if (noteTime > existingTime) {
+						insertAt = index
+						break
+					}
+				}
+
+				recentNotes.splice(insertAt, 0, note)
+
+				if (recentNotes.length > RECENT_NOTES_LIMIT) {
+					recentNotes.pop()
+				}
+			}
+
+			return recentNotes
 		}
 
 		return noteResults.filter((note) => {
