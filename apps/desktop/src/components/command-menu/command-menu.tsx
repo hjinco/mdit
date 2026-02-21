@@ -8,7 +8,7 @@ import {
 } from "@mdit/ui/components/command"
 import { useDebounce } from "@mdit/ui/hooks/use-debounce"
 import { motion } from "motion/react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useState } from "react"
 import useMeasure from "react-use-measure"
 import { useShallow } from "zustand/shallow"
 import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
@@ -49,13 +49,14 @@ export function CommandMenu() {
 	const [query, setQuery] = useState("")
 	const [isInitialMeasureDebounced, setIsInitialMeasureDebounced] =
 		useState(false)
+	const deferredQuery = useDeferredValue(query)
 	// Debounce intensive lookups so we only search once a user pauses typing.
 	const debouncedQuery = useDebounce(query, 250)
 	// Build an index of notes in the workspace and pre-filter by the current search.
 	const { filteredNoteResults, noteResultsByPath } = useNoteNameSearch(
 		entries,
 		workspacePath,
-		debouncedQuery,
+		deferredQuery,
 	)
 	// Search across note contents (slow path) and keep contextual snippets for display.
 	const { trimmedSearchTerm, contentMatchesByNote } = useNoteContentSearch(
@@ -142,7 +143,7 @@ export function CommandMenu() {
 					<CommandEmpty>No results found</CommandEmpty>
 					{hasNoteMatches && (
 						<CommandGroup
-							heading={debouncedQuery.trim() ? "Notes" : "Recent Notes"}
+							heading={deferredQuery.trim() ? "Notes" : "Recent Notes"}
 						>
 							{filteredNoteResults.map((note) => (
 								<CommandItem
