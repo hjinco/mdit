@@ -1,7 +1,6 @@
 {
 	"extends": "@mdit/tsconfig/react-app",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
 		}

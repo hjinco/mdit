@@ -1,7 +1,6 @@
 {
 	"extends": "@mdit/tsconfig/node",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"]
 		}
