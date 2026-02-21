@@ -15,12 +15,14 @@ export function Header() {
 		isFocusMode,
 		currentCollectionPath,
 		workspacePath,
+		isEditMode,
 	} = useStore(
 		useShallow((s) => ({
 			isFileExplorerOpen: s.isFileExplorerOpen,
 			isFocusMode: s.isFocusMode,
 			currentCollectionPath: s.currentCollectionPath,
 			workspacePath: s.workspacePath,
+			isEditMode: s.isEditMode,
 		})),
 	)
 	const isCollectionViewOpen = currentCollectionPath !== null
@@ -48,7 +50,7 @@ export function Header() {
 					!workspacePath && (isMac() && !isFullscreen ? "left-20" : "left-2"),
 				)}
 			>
-				<HistoryNavigation />
+				{!isEditMode && <HistoryNavigation />}
 			</div>
 			<Tab />
 			<div className="absolute right-0 flex items-center gap-0.5">
