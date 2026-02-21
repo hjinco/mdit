@@ -185,11 +185,11 @@ export function CommandMenu() {
 										onSelect={() => handleSelectNote(result.path)}
 										className="data-[selected=true]:bg-accent-foreground/10"
 									>
-										<div className="flex flex-col gap-0.5">
-											<div className="flex items-center gap-2 text-sm">
+										<div className="flex flex-col gap-0.5 max-w-full">
+											<div className="flex items-center gap-2 text-sm truncate">
 												<span className="truncate">{label}</span>
 											</div>
-											<span className="text-muted-foreground/80 text-xs">
+											<span className="text-muted-foreground/80 text-xs truncate">
 												{relativePath}
 											</span>
 										</div>
