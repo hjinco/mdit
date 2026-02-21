@@ -66,7 +66,8 @@ pub fn run() {
             commands::vault_indexing::get_vault_embedding_config_command,
             commands::vault_indexing::set_vault_embedding_config_command,
             commands::image::get_image_properties,
-            commands::image::edit_image
+            commands::image::edit_image,
+            commands::window::set_macos_traffic_lights_hidden
         ])
         .manage(app_state)
         .build(tauri::generate_context!())

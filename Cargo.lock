@@ -3014,6 +3014,7 @@ dependencies = [
  "indexing-core",
  "local-api-core",
  "note-core",
+ "objc2-app-kit",
  "rmcp",
  "serde",
  "serde_json",

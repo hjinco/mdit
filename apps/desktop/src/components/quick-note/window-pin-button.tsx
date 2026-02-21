@@ -1,5 +1,6 @@
 import { Button } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
+import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { PinIcon, PinOffIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
@@ -7,6 +8,13 @@ import { useCallback, useEffect, useState } from "react"
 export function WindowPinButton({ className }: { className?: string }) {
 	const [isPinned, setIsPinned] = useState(false)
 	const [isPending, setIsPending] = useState(false)
+	const syncTrafficLights = useCallback(async (hidden: boolean) => {
+		try {
+			await invoke("set_macos_traffic_lights_hidden", { hidden })
+		} catch (error) {
+			console.error("Failed to sync macOS traffic light visibility:", error)
+		}
+	}, [])
 
 	useEffect(() => {
 		let isMounted = true
@@ -14,10 +22,11 @@ export function WindowPinButton({ className }: { className?: string }) {
 
 		appWindow
 			.isAlwaysOnTop()
-			.then((alwaysOnTop) => {
+			.then(async (alwaysOnTop) => {
 				if (isMounted) {
 					setIsPinned(alwaysOnTop)
 				}
+				await syncTrafficLights(alwaysOnTop)
 			})
 			.catch((error) => {
 				console.error("Failed to read window pin state:", error)
@@ -26,7 +35,7 @@ export function WindowPinButton({ className }: { className?: string }) {
 		return () => {
 			isMounted = false
 		}
-	}, [])
+	}, [syncTrafficLights])
 
 	const handleToggle = useCallback(async () => {
 		if (isPending) {
@@ -40,12 +49,13 @@ export function WindowPinButton({ className }: { className?: string }) {
 		try {
 			await appWindow.setAlwaysOnTop(nextPinned)
 			setIsPinned(nextPinned)
+			await syncTrafficLights(nextPinned)
 		} catch (error) {
 			console.error("Failed to toggle window pin state:", error)
 		} finally {
 			setIsPending(false)
 		}
-	}, [isPinned, isPending])
+	}, [isPinned, isPending, syncTrafficLights])
 
 	const label = isPinned ? "Unpin window" : "Pin window"
 
