@@ -5,6 +5,7 @@ import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 export type NoteResult = {
 	path: string
 	label: string
+	normalizedLabel: string
 	relativePath: string
 	keywords: string[]
 	modifiedAt?: Date
@@ -51,6 +52,7 @@ const createNoteResult = (
 	return {
 		path: entry.path,
 		label,
+		normalizedLabel: label.toLowerCase(),
 		relativePath,
 		keywords: [label],
 		modifiedAt: entry.modifiedAt,
@@ -116,7 +118,7 @@ export const useNoteNameSearch = (
 		}
 
 		return noteResults.filter((note) => {
-			return note.label.toLowerCase().includes(normalizedQuery)
+			return note.normalizedLabel.includes(normalizedQuery)
 		})
 	}, [noteResults, normalizedQuery])
 
