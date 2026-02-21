@@ -5,12 +5,14 @@ import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 export type NoteResult = {
 	path: string
 	label: string
+	normalizedLabel: string
 	relativePath: string
 	keywords: string[]
 	modifiedAt?: Date
 }
 
 const MARKDOWN_EXTENSION_REGEX = /\.md$/i
+const RECENT_NOTES_LIMIT = 5
 const isMarkdownFile = (entry: WorkspaceEntry) =>
 	!entry.isDirectory && MARKDOWN_EXTENSION_REGEX.test(entry.name)
 
@@ -51,6 +53,7 @@ const createNoteResult = (
 	return {
 		path: entry.path,
 		label,
+		normalizedLabel: label.toLowerCase(),
 		relativePath,
 		keywords: [label],
 		modifiedAt: entry.modifiedAt,
@@ -103,20 +106,38 @@ export const useNoteNameSearch = (
 
 	const filteredNoteResults = useMemo(() => {
 		if (!normalizedQuery) {
-			// When query is empty, show 5 most recently modified notes
-			return [...noteResults]
-				.sort((a, b) => {
-					// Sort by modifiedAt descending (most recent first)
-					// Notes without modifiedAt are treated as oldest
-					const aTime = a.modifiedAt?.getTime() ?? 0
-					const bTime = b.modifiedAt?.getTime() ?? 0
-					return bTime - aTime
-				})
-				.slice(0, 5)
+			// When query is empty, keep only the top N most recently modified notes.
+			const recentNotes: NoteResult[] = []
+			for (const note of noteResults) {
+				const noteTime = note.modifiedAt?.getTime() ?? 0
+				if (
+					recentNotes.length === RECENT_NOTES_LIMIT &&
+					noteTime <=
+						(recentNotes[RECENT_NOTES_LIMIT - 1].modifiedAt?.getTime() ?? 0)
+				) {
+					continue
+				}
+
+				const insertAt = recentNotes.findIndex(
+					(recentNote) => noteTime > (recentNote.modifiedAt?.getTime() ?? 0),
+				)
+
+				recentNotes.splice(
+					insertAt === -1 ? recentNotes.length : insertAt,
+					0,
+					note,
+				)
+
+				if (recentNotes.length > RECENT_NOTES_LIMIT) {
+					recentNotes.pop()
+				}
+			}
+
+			return recentNotes
 		}
 
 		return noteResults.filter((note) => {
-			return note.label.toLowerCase().includes(normalizedQuery)
+			return note.normalizedLabel.includes(normalizedQuery)
 		})
 	}, [noteResults, normalizedQuery])
 
