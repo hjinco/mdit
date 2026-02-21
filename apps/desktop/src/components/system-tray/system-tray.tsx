@@ -17,6 +17,7 @@ const createQuickNoteWindow = () => {
 		title: "Mdit",
 		width: 800,
 		height: 600,
+		transparent: false,
 		titleBarStyle: "overlay",
 		hiddenTitle: true,
 		trafficLightPosition: new LogicalPosition(18, 22),

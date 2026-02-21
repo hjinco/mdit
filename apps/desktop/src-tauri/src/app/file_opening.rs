@@ -88,6 +88,8 @@ fn open_edit_window(app_handle: &tauri::AppHandle, file_path: &str) {
         config.label = label;
         config.visible = true;
         config.url = tauri::WebviewUrl::App(url.into());
+        config.transparent = false;
+        config.window_effects = None;
 
         tauri::WebviewWindowBuilder::from_config(app_handle, &config)
             .ok()?
