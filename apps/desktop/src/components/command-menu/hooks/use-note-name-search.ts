@@ -110,17 +110,23 @@ export const useNoteNameSearch = (
 			const recentNotes: NoteResult[] = []
 			for (const note of noteResults) {
 				const noteTime = note.modifiedAt?.getTime() ?? 0
-				let insertAt = recentNotes.length
-
-				for (let index = 0; index < recentNotes.length; index += 1) {
-					const existingTime = recentNotes[index].modifiedAt?.getTime() ?? 0
-					if (noteTime > existingTime) {
-						insertAt = index
-						break
-					}
+				if (
+					recentNotes.length === RECENT_NOTES_LIMIT &&
+					noteTime <=
+						(recentNotes[RECENT_NOTES_LIMIT - 1].modifiedAt?.getTime() ?? 0)
+				) {
+					continue
 				}
 
-				recentNotes.splice(insertAt, 0, note)
+				const insertAt = recentNotes.findIndex(
+					(recentNote) => noteTime > (recentNote.modifiedAt?.getTime() ?? 0),
+				)
+
+				recentNotes.splice(
+					insertAt === -1 ? recentNotes.length : insertAt,
+					0,
+					note,
+				)
 
 				if (recentNotes.length > RECENT_NOTES_LIMIT) {
 					recentNotes.pop()
