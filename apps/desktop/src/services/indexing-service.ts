@@ -55,12 +55,16 @@ export class IndexingService {
 		return result
 	}
 
-	async indexNote(notePath: string): Promise<WorkspaceIndexSummary> {
+	async indexNote(
+		notePath: string,
+		options?: { includeEmbeddings?: boolean },
+	): Promise<WorkspaceIndexSummary> {
 		const result = await this.invoke<WorkspaceIndexSummary>(
 			"index_note_command",
 			{
 				workspacePath: this.workspacePath,
 				notePath,
+				includeEmbeddings: options?.includeEmbeddings ?? true,
 			},
 		)
 		return result

@@ -120,8 +120,25 @@ describe("indexing-slice indexNote", () => {
 		expect(invoke).toHaveBeenCalledWith("index_note_command", {
 			workspacePath: "/ws",
 			notePath: "/ws/a.md",
+			includeEmbeddings: true,
 		})
 		expect(store.getState().indexingState["/ws"]).toBe(false)
+	})
+
+	it("can disable embeddings for note indexing", async () => {
+		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({ invoke })
+
+		const result = await store
+			.getState()
+			.indexNote("/ws", "/ws/a.md", { includeEmbeddings: false })
+
+		expect(result).toBe(true)
+		expect(invoke).toHaveBeenCalledWith("index_note_command", {
+			workspacePath: "/ws",
+			notePath: "/ws/a.md",
+			includeEmbeddings: false,
+		})
 	})
 
 	it("returns false and clears lock when note indexing fails", async () => {

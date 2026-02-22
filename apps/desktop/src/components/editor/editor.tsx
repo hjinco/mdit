@@ -96,49 +96,44 @@ function EditorContent({
 
 	const { handleRenameAfterSave } = useAutoRenameOnSave(path)
 
-	const runBlurIndexing = useCallback(
+	const runSaveIndexing = useCallback(
 		async (notePath: string) => {
 			if (!workspacePath) {
 				return
 			}
 
-			await indexNote(workspacePath, notePath)
+			await indexNote(workspacePath, notePath, { includeEmbeddings: false })
 		},
 		[workspacePath, indexNote],
 	)
 
-	const handleSave = useCallback(
-		async (options?: { triggerNoteIndexing?: boolean }) => {
-			if (isSaved.current) return
-			await saveNoteContent(path, editor.api.markdown.serialize())
-				.then(async () => {
-					isSaved.current = true
-					setTabSaved(true)
-					const finalPath = await handleRenameAfterSave()
+	const handleSave = useCallback(async () => {
+		if (isSaved.current) return
+		await saveNoteContent(path, editor.api.markdown.serialize())
+			.then(async () => {
+				isSaved.current = true
+				setTabSaved(true)
+				const finalPath = await handleRenameAfterSave()
 
-					if (options?.triggerNoteIndexing) {
-						try {
-							await runBlurIndexing(finalPath)
-						} catch (error) {
-							console.error("Failed to index note on blur:", error)
-						}
-					}
-				})
-				.catch(() => {
-					isSaved.current = false
-					setTabSaved(false)
-					toast.error("Failed to save note")
-				})
-		},
-		[
-			editor,
-			path,
-			setTabSaved,
-			handleRenameAfterSave,
-			saveNoteContent,
-			runBlurIndexing,
-		],
-	)
+				try {
+					await runSaveIndexing(finalPath)
+				} catch (error) {
+					console.error("Failed to index note on save:", error)
+				}
+			})
+			.catch(() => {
+				isSaved.current = false
+				setTabSaved(false)
+				toast.error("Failed to save note")
+			})
+	}, [
+		editor,
+		path,
+		setTabSaved,
+		handleRenameAfterSave,
+		saveNoteContent,
+		runSaveIndexing,
+	])
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow()
@@ -239,7 +234,7 @@ function EditorContent({
 					spellCheck={false}
 					disableDefaultStyles
 					onBlur={() => {
-						void handleSave({ triggerNoteIndexing: true })
+						void handleSave()
 					}}
 				/>
 			</PlateContainer>

@@ -62,7 +62,11 @@ export type IndexingSlice = {
 		workspacePath: string,
 		forceReindex: boolean,
 	) => Promise<WorkspaceIndexSummary>
-	indexNote: (workspacePath: string, notePath: string) => Promise<boolean>
+	indexNote: (
+		workspacePath: string,
+		notePath: string,
+		options?: { includeEmbeddings?: boolean },
+	) => Promise<boolean>
 
 	loadIndexingMeta: (workspacePath: string) => Promise<void>
 	startIndexingMetaPolling: (workspacePath: string) => void
@@ -221,7 +225,11 @@ export const prepareIndexingSlice = ({
 			}
 		},
 
-		indexNote: async (workspacePath: string, notePath: string) => {
+		indexNote: async (
+			workspacePath: string,
+			notePath: string,
+			options?: { includeEmbeddings?: boolean },
+		) => {
 			const isRunning = get().indexingState[workspacePath]
 			if (isRunning) {
 				return false
@@ -236,7 +244,7 @@ export const prepareIndexingSlice = ({
 
 			try {
 				const service = createIndexingService(invoke, workspacePath)
-				await service.indexNote(notePath)
+				await service.indexNote(notePath, options)
 				return true
 			} catch (error) {
 				console.error("Failed to index note:", error)
