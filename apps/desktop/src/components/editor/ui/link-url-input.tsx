@@ -658,14 +658,14 @@ export function LinkUrlInput({
 			</div>
 			<div className="flex items-center">
 				<div className="flex items-center pr-1 pl-2 text-muted-foreground">
-					<LinkIcon value={value} />
+					<LinkIcon value={value} linkMode={linkMode} />
 				</div>
 
 				<div className="flex-1">
 					<input
 						ref={inputRef}
 						className="flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:ring-transparent focus-visible:outline-none md:text-sm"
-						placeholder="Paste link"
+						placeholder={linkMode === "wiki" ? "Search notes..." : "Paste link"}
 						value={value}
 						data-plate-focus
 						onChange={handleChange}
@@ -760,7 +760,13 @@ export function LinkUrlInput({
 	)
 }
 
-function LinkIcon({ value }: { value: string }) {
+function LinkIcon({
+	value,
+	linkMode,
+}: {
+	value: string
+	linkMode: LinkMode
+}) {
 	const trimmed = value.trim()
 
 	if (startsWithHttpProtocol(trimmed)) {
@@ -771,5 +777,10 @@ function LinkIcon({ value }: { value: string }) {
 		return <FileIcon className="size-4" />
 	}
 
-	return <Link className="size-4" />
+	// Empty: wiki = note feel, markdown = paste link
+	return linkMode === "wiki" ? (
+		<FileIcon className="size-4" />
+	) : (
+		<Link className="size-4" />
+	)
 }
