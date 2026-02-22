@@ -686,9 +686,9 @@ function LinkUrlInput({
 		workspacePath,
 	])
 
-		const handleKeyDown = useCallback(
-			(event: KeyboardEvent<HTMLInputElement>) => {
-				const { key } = event
+	const handleKeyDown = useCallback(
+		(event: KeyboardEvent<HTMLInputElement>) => {
+			const { key } = event
 
 			if (key === "Enter") {
 				event.preventDefault()
