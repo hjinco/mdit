@@ -1,4 +1,8 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+    sync::{Arc, RwLock},
+};
 
 use axum::{
     body::{to_bytes, Body},
@@ -12,6 +16,9 @@ use super::{
     test_support::{seed_search_fixture, Harness},
 };
 
+const TEST_AUTH_TOKEN: &str = "test-local-api-auth-token-0123456789";
+const TEST_AUTH_HEADER: &str = "Bearer test-local-api-auth-token-0123456789";
+
 #[tokio::test]
 async fn get_vaults_returns_workspace_list() {
     let harness = Harness::new("local-api-rest-vaults");
@@ -21,6 +28,7 @@ async fn get_vaults_returns_workspace_list() {
             Request::builder()
                 .uri("/api/v1/vaults")
                 .method("GET")
+                .header(header::AUTHORIZATION, TEST_AUTH_HEADER)
                 .body(Body::empty())
                 .expect("failed to build request"),
         )
@@ -64,6 +72,7 @@ async fn create_note_returns_conflict_when_file_already_exists() {
             Request::builder()
                 .uri(format!("/api/v1/vaults/{}/notes", harness.vault_id))
                 .method("POST")
+                .header(header::AUTHORIZATION, TEST_AUTH_HEADER)
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
                     json!({
@@ -102,6 +111,7 @@ async fn search_notes_returns_results() {
             Request::builder()
                 .uri(format!("/api/v1/vaults/{}/search", harness.vault_id))
                 .method("POST")
+                .header(header::AUTHORIZATION, TEST_AUTH_HEADER)
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
                     json!({
@@ -151,6 +161,7 @@ async fn search_notes_returns_bad_request_for_empty_query() {
             Request::builder()
                 .uri(format!("/api/v1/vaults/{}/search", harness.vault_id))
                 .method("POST")
+                .header(header::AUTHORIZATION, TEST_AUTH_HEADER)
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
                     json!({
@@ -187,6 +198,7 @@ async fn search_notes_returns_not_found_for_unknown_vault() {
             Request::builder()
                 .uri(format!("/api/v1/vaults/{}/search", harness.vault_id + 1000))
                 .method("POST")
+                .header(header::AUTHORIZATION, TEST_AUTH_HEADER)
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
                     json!({
@@ -214,6 +226,36 @@ async fn search_notes_returns_not_found_for_unknown_vault() {
     );
 }
 
+#[tokio::test]
+async fn get_vaults_returns_unauthorized_without_token() {
+    let harness = Harness::new("local-api-rest-unauthorized");
+
+    let response = app(&harness)
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/vaults")
+                .method("GET")
+                .body(Body::empty())
+                .expect("failed to build request"),
+        )
+        .await
+        .expect("request should succeed");
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("failed to read response body");
+    let payload: Value = serde_json::from_slice(&body).expect("response should be json");
+
+    assert_eq!(
+        payload
+            .get("error")
+            .and_then(|value| value.get("code"))
+            .and_then(Value::as_str),
+        Some("UNAUTHORIZED")
+    );
+}
+
 fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
@@ -221,5 +263,6 @@ fn normalize_path(path: &Path) -> String {
 fn app(harness: &Harness) -> axum::Router {
     build_router(LocalApiState {
         db_path: harness.db_path.clone(),
+        auth_token: Arc::new(RwLock::new(TEST_AUTH_TOKEN.to_string())),
     })
 }
