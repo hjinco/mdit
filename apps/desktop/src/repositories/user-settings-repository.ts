@@ -1,5 +1,6 @@
 export const FONT_SCALE_STORAGE_KEY = "font-scale"
 export const DEFAULT_FONT_SCALE = 1
+export const LOCAL_API_ENABLED_STORAGE_KEY = "local-api-enabled"
 const MIN_FONT_SCALE = 0.8
 const MAX_FONT_SCALE = 1.6
 const FONT_SCALE_STEP = 0.1
@@ -30,6 +31,22 @@ const saveFontScale = (value: number): void => {
 	localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(value))
 }
 
+const readLocalApiEnabled = (): boolean => {
+	if (typeof window === "undefined") return true
+
+	const storedValue = localStorage.getItem(LOCAL_API_ENABLED_STORAGE_KEY)
+	if (storedValue === null) {
+		return true
+	}
+
+	return storedValue === "true"
+}
+
+const saveLocalApiEnabled = (enabled: boolean): void => {
+	if (typeof window === "undefined") return
+	localStorage.setItem(LOCAL_API_ENABLED_STORAGE_KEY, String(enabled))
+}
+
 export class UserSettingsRepository {
 	getFontScale(): number {
 		return readFontScale()
@@ -56,5 +73,14 @@ export class UserSettingsRepository {
 	resetFontScale(): number {
 		saveFontScale(DEFAULT_FONT_SCALE)
 		return DEFAULT_FONT_SCALE
+	}
+
+	getLocalApiEnabled(): boolean {
+		return readLocalApiEnabled()
+	}
+
+	setLocalApiEnabled(enabled: boolean): boolean {
+		saveLocalApiEnabled(enabled)
+		return enabled
 	}
 }

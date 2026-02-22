@@ -18,6 +18,7 @@ const ACTIVATION_ID_STORAGE_KEY = "license-activation-id"
 
 export type LicenseSlice = {
 	status: "valid" | "invalid" | "validating" | "activating" | "deactivating"
+	hasVerifiedLicense: boolean
 	error: string | null
 	clearLicenseError: () => void
 	checkLicense: () => Promise<void>
@@ -59,6 +60,7 @@ export const prepareLicenseSlice =
 	> =>
 	(set, get) => ({
 		status: "valid",
+		hasVerifiedLicense: false,
 		error: null,
 
 		clearLicenseError: () => set({ error: null }),
@@ -74,7 +76,7 @@ export const prepareLicenseSlice =
 				const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
 				const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
 				if (!polarApiBaseUrl || !organizationId) {
-					set({ status: "valid" })
+					set({ status: "valid", hasVerifiedLicense: true })
 					return
 				}
 
@@ -82,7 +84,7 @@ export const prepareLicenseSlice =
 				let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
 				if (!licenseKey) {
-					set({ status: "invalid" })
+					set({ status: "invalid", hasVerifiedLicense: false })
 					return
 				}
 
@@ -98,6 +100,7 @@ export const prepareLicenseSlice =
 			} catch {
 				set({
 					status: "invalid",
+					hasVerifiedLicense: false,
 					error: "Failed to check license",
 				})
 			}
@@ -120,6 +123,7 @@ export const prepareLicenseSlice =
 			} catch {
 				set({
 					status: "invalid",
+					hasVerifiedLicense: false,
 					error: "Failed to register license key",
 				})
 				return
@@ -133,6 +137,7 @@ export const prepareLicenseSlice =
 			if (!result.success) {
 				set({
 					status: "invalid",
+					hasVerifiedLicense: false,
 					error: result.error.message,
 				})
 				return null
@@ -153,16 +158,17 @@ export const prepareLicenseSlice =
 					localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
 					set({
 						status: "invalid",
+						hasVerifiedLicense: false,
 						error: result.error.message,
 					})
 					return null
 				}
 
-				set({ status: "valid", error: null })
+				set({ status: "valid", hasVerifiedLicense: false, error: null })
 				return null
 			}
 
-			set({ status: "valid" })
+			set({ status: "valid", hasVerifiedLicense: true })
 			return result.data
 		},
 
@@ -176,6 +182,7 @@ export const prepareLicenseSlice =
 				if (!licenseKey || !activationId) {
 					set({
 						status: "valid",
+						hasVerifiedLicense: false,
 						error: "No license key or activation ID found",
 					})
 					return
@@ -187,18 +194,30 @@ export const prepareLicenseSlice =
 					if (result.isValidationError) {
 						await deletePassword(LICENSE_SERVICE, LICENSE_USER)
 						localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-						set({ status: "invalid", error: result.error.message })
+						set({
+							status: "invalid",
+							hasVerifiedLicense: false,
+							error: result.error.message,
+						})
 					} else {
-						set({ status: "valid", error: result.error.message })
+						set({
+							status: "valid",
+							hasVerifiedLicense: false,
+							error: result.error.message,
+						})
 					}
 					return
 				}
 
 				await deletePassword(LICENSE_SERVICE, LICENSE_USER)
 				localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-				set({ status: "invalid" })
+				set({ status: "invalid", hasVerifiedLicense: false })
 			} catch {
-				set({ status: "valid", error: "Failed to deactivate license" })
+				set({
+					status: "valid",
+					hasVerifiedLicense: false,
+					error: "Failed to deactivate license",
+				})
 			}
 		},
 	})

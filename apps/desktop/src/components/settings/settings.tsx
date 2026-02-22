@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { AITab } from "./ui/ai-tab"
+import { ApiMcpTab } from "./ui/api-mcp-tab"
 import { IndexingTab } from "./ui/indexing-tab"
 import { LicenseTab } from "./ui/license-tab"
 import { SettingsNavigation, type SettingsTab } from "./ui/navigation"
@@ -59,6 +60,7 @@ export function SettingsDialog() {
 				<div className="flex-1 flex flex-col">
 					{activeTab === "preferences" && <PreferencesTab />}
 					{activeTab === "ai" && <AITab />}
+					{activeTab === "api-mcp" && <ApiMcpTab />}
 					{activeTab === "sync" && <SyncTab />}
 					{activeTab === "indexing" && <IndexingTab />}
 					{activeTab === "license" && <LicenseTab />}

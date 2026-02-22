@@ -2,7 +2,13 @@ import { Button } from "@mdit/ui/components/button"
 import { DialogTitle } from "@mdit/ui/components/dialog"
 import { cn } from "@mdit/ui/lib/utils"
 
-export type SettingsTab = "preferences" | "ai" | "sync" | "indexing" | "license"
+export type SettingsTab =
+	| "preferences"
+	| "ai"
+	| "api-mcp"
+	| "sync"
+	| "indexing"
+	| "license"
 
 interface SettingsNavigationProps {
 	activeTab: SettingsTab
@@ -18,6 +24,7 @@ export function SettingsNavigation({
 	const tabs: Array<{ id: SettingsTab; label: string }> = [
 		{ id: "preferences", label: "Preferences" },
 		{ id: "ai", label: "AI" },
+		{ id: "api-mcp", label: "API / MCP" },
 		...(hasWorkspace
 			? [
 					{ id: "sync", label: "Sync" } as const,

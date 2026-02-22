@@ -34,6 +34,10 @@ export type UISlice = {
 	increaseFontScale: () => void
 	decreaseFontScale: () => void
 	resetFontScale: () => void
+	localApiEnabled: boolean
+	setLocalApiEnabled: (enabled: boolean) => void
+	localApiError: string | null
+	setLocalApiError: (message: string | null) => void
 }
 
 type UISliceDependencies = {
@@ -128,6 +132,13 @@ export const prepareUISlice =
 			const resetValue = userSettingsRepository.resetFontScale()
 			set({ fontScale: resetValue })
 		},
+		localApiEnabled: userSettingsRepository.getLocalApiEnabled(),
+		setLocalApiEnabled: (enabled) => {
+			const nextValue = userSettingsRepository.setLocalApiEnabled(enabled)
+			set({ localApiEnabled: nextValue })
+		},
+		localApiError: null,
+		setLocalApiError: (message) => set({ localApiError: message }),
 	})
 
 export const createUISlice = prepareUISlice({
