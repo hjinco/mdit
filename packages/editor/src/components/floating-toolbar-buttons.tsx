@@ -45,7 +45,8 @@ export function FloatingToolbarButtons() {
 
 	const state = useLinkToolbarButtonState()
 	const { props: linkButtonProps } = useLinkToolbarButton(state)
-	const { onClick: defaultLinkOnClick, ...restLinkButtonProps } = linkButtonProps
+	const { onClick: defaultLinkOnClick, ...restLinkButtonProps } =
+		linkButtonProps
 
 	const modifierKey =
 		typeof navigator !== "undefined" && navigator.userAgent.includes("Mac")

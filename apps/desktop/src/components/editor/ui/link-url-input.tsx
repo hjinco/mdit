@@ -760,13 +760,7 @@ export function LinkUrlInput({
 	)
 }
 
-function LinkIcon({
-	value,
-	linkMode,
-}: {
-	value: string
-	linkMode: LinkMode
-}) {
+function LinkIcon({ value, linkMode }: { value: string; linkMode: LinkMode }) {
 	const trimmed = value.trim()
 
 	if (startsWithHttpProtocol(trimmed)) {
