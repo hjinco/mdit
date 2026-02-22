@@ -21,18 +21,33 @@ type BacklinkEntry = {
 	fileName: string
 }
 
+type RelatedNoteEntry = {
+	relPath: string
+	fileName: string
+}
+
+const RELATED_NOTES_LIMIT = 5
+
 export function MoreButton() {
 	const editor = useEditorRef()
 	const [open, setOpen] = useState(false)
 	const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
+	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
 
-	const { tab, workspacePath, openTab } = useStore(
+	const { tab, workspacePath, openTab, getIndexingConfig } = useStore(
 		useShallow((s) => ({
 			tab: s.tab,
 			workspacePath: s.workspacePath,
 			openTab: s.openTab,
+			getIndexingConfig: s.getIndexingConfig,
 		})),
+	)
+	const indexingConfig = useStore((s) =>
+		workspacePath ? (s.configs[workspacePath] ?? null) : null,
+	)
+	const hasEmbeddingConfig = Boolean(
+		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
 	)
 
 	useEffect(() => {
@@ -75,7 +90,42 @@ export function MoreButton() {
 		}
 	}, [open, workspacePath, tab?.path])
 
-	const handleBacklinkClick = (relPath: string) => {
+	useEffect(() => {
+		if (!open || !workspacePath) {
+			return
+		}
+
+		getIndexingConfig(workspacePath).catch((error) => {
+			console.error("Failed to load indexing config:", error)
+		})
+	}, [open, workspacePath, getIndexingConfig])
+
+	useEffect(() => {
+		if (!open || !workspacePath || !tab?.path || !hasEmbeddingConfig) {
+			setRelatedNotes([])
+			return
+		}
+
+		let cancelled = false
+		invoke<RelatedNoteEntry[]>("get_related_notes_command", {
+			workspacePath,
+			filePath: tab.path,
+			limit: RELATED_NOTES_LIMIT,
+		})
+			.then((entries) => {
+				if (!cancelled) setRelatedNotes(entries)
+			})
+			.catch((error) => {
+				console.error("Failed to fetch related notes:", error)
+				if (!cancelled) setRelatedNotes([])
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [open, workspacePath, tab?.path, hasEmbeddingConfig])
+
+	const handleNoteClick = (relPath: string) => {
 		if (!workspacePath) return
 		const absolutePath = resolve(workspacePath, relPath)
 		openTab(absolutePath)
@@ -117,12 +167,36 @@ export function MoreButton() {
 									<button
 										type="button"
 										key={entry.relPath}
-										onClick={() => handleBacklinkClick(entry.relPath)}
+										onClick={() => handleNoteClick(entry.relPath)}
 										className="inline-flex justify-between gap-1 w-full text-left py-1 text-xs rounded text-muted-foreground hover:text-accent-foreground transition-colors cursor-pointer truncate"
 										title={entry.relPath}
 									>
-										{entry.fileName}
-										<ArrowRight className="size-3" />
+										<span className="truncate">{entry.fileName}</span>
+										<ArrowRight className="size-3 shrink-0" />
+									</button>
+								))}
+							</div>
+						</div>
+					</>
+				)}
+				{relatedNotes.length > 0 && (
+					<>
+						<Separator className="my-3" />
+						<div className="space-y-1">
+							<div className="text-muted-foreground text-xs mb-1">
+								Related Notes
+							</div>
+							<div className="space-y-0.5">
+								{relatedNotes.map((entry) => (
+									<button
+										type="button"
+										key={entry.relPath}
+										onClick={() => handleNoteClick(entry.relPath)}
+										className="inline-flex justify-between gap-1 w-full text-left py-1 text-xs rounded text-muted-foreground hover:text-accent-foreground transition-colors cursor-pointer truncate"
+										title={entry.relPath}
+									>
+										<span className="truncate">{entry.fileName}</span>
+										<ArrowRight className="size-3 shrink-0" />
 									</button>
 								))}
 							</div>

@@ -34,6 +34,8 @@ pub use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
 
 const TARGET_CHUNKING_VERSION: i64 = 1;
+const SEGMENT_VEC_TABLE: &str = "segment_vec";
+const MIN_RELATED_NOTE_SCORE: f32 = 0.4;
 
 /// Human readable summary of what happened during an indexing run.
 #[derive(Debug, Default, Serialize)]
@@ -439,6 +441,16 @@ pub struct BacklinkEntry {
     pub file_name: String,
 }
 
+/// Represents a single related note entry ranked by vector similarity.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelatedNoteEntry {
+    /// Relative path from workspace root to the related document.
+    pub rel_path: String,
+    /// Filename without extension for display purposes.
+    pub file_name: String,
+}
+
 #[derive(Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GraphViewData {
@@ -544,6 +556,142 @@ pub fn get_backlinks(
     }
 
     Ok(backlinks)
+}
+
+/// Get semantically related documents using only existing indexed vectors.
+///
+/// This reuses persisted segment vectors and does not generate new embeddings.
+pub fn get_related_notes(
+    workspace_root: &Path,
+    db_path: &Path,
+    file_path: &Path,
+    limit: usize,
+) -> Result<Vec<RelatedNoteEntry>> {
+    if limit == 0 {
+        return Ok(Vec::new());
+    }
+
+    let rel_path = file_path
+        .strip_prefix(workspace_root)
+        .with_context(|| {
+            format!(
+                "Failed to compute relative path for {} within workspace {}",
+                file_path.display(),
+                workspace_root.display()
+            )
+        })?
+        .to_string_lossy()
+        .replace('\\', "/");
+
+    let conn = open_indexing_connection(db_path)?;
+    if !segment_vec_table_exists(&conn)? {
+        return Ok(Vec::new());
+    }
+
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(Vec::new());
+    };
+
+    let source_doc: Option<(i64, String, i32)> = conn
+        .query_row(
+            "SELECT id, last_embedding_model, last_embedding_dim \
+             FROM doc \
+             WHERE vault_id = ?1 AND rel_path = ?2 AND last_hash IS NOT NULL",
+            params![vault_id, &rel_path],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                    row.get::<_, Option<i32>>(2)?.unwrap_or_default(),
+                ))
+            },
+        )
+        .optional()
+        .context("Failed to query source document for related note lookup")?;
+
+    let Some((source_doc_id, embedding_model, embedding_dim)) = source_doc else {
+        return Ok(Vec::new());
+    };
+
+    if embedding_model.trim().is_empty() || embedding_dim <= 0 {
+        return Ok(Vec::new());
+    }
+
+    let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+    let mut stmt = conn
+        .prepare(
+            "WITH source_segments AS ( \
+                 SELECT sv.embedding AS embedding \
+                 FROM segment s \
+                 JOIN segment_vec sv ON sv.rowid = s.id \
+                 WHERE s.doc_id = ?2 \
+                   AND length(sv.embedding) = (?4 * 4) \
+             ), \
+             candidate_scores AS ( \
+                 SELECT d.rel_path AS rel_path, \
+                        MAX(1.0 - vec_distance_cosine(ss.embedding, cv.embedding)) AS score \
+                 FROM doc d \
+                 JOIN segment cs ON cs.doc_id = d.id \
+                 JOIN segment_vec cv ON cv.rowid = cs.id \
+                 JOIN source_segments ss \
+                 WHERE d.vault_id = ?1 \
+                   AND d.id != ?2 \
+                   AND d.last_hash IS NOT NULL \
+                   AND d.last_embedding_model = ?3 \
+                   AND d.last_embedding_dim = ?4 \
+                   AND length(cv.embedding) = (?4 * 4) \
+                 GROUP BY d.id, d.rel_path \
+             ) \
+             SELECT rel_path \
+             FROM candidate_scores \
+             WHERE score IS NOT NULL \
+               AND score >= ?6 \
+             ORDER BY score DESC, rel_path ASC \
+             LIMIT ?5",
+        )
+        .context("Failed to prepare related notes query")?;
+
+    let rows = stmt
+        .query_map(
+            params![
+                vault_id,
+                source_doc_id,
+                embedding_model,
+                embedding_dim,
+                limit,
+                MIN_RELATED_NOTE_SCORE as f64
+            ],
+            |row| row.get::<_, String>(0),
+        )
+        .context("Failed to query related notes")?;
+
+    let mut related_notes = Vec::new();
+    for row in rows {
+        let rel_path = row?;
+        let file_name = Path::new(&rel_path)
+            .file_stem()
+            .map(|segment| segment.to_string_lossy().to_string())
+            .unwrap_or_else(|| rel_path.clone());
+
+        related_notes.push(RelatedNoteEntry {
+            rel_path,
+            file_name,
+        });
+    }
+
+    Ok(related_notes)
+}
+
+fn segment_vec_table_exists(conn: &Connection) -> Result<bool> {
+    let exists: i64 = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
+            params![SEGMENT_VEC_TABLE],
+            |row| row.get(0),
+        )
+        .context("Failed to check segment_vec table existence")?;
+
+    Ok(exists != 0)
 }
 
 fn graph_node_name(rel_path: &str) -> String {

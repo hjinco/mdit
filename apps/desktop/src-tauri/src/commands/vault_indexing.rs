@@ -2,9 +2,10 @@ use std::path::{Path, PathBuf};
 
 use app_storage::vault::VaultEmbeddingConfig;
 use indexing_core::{
-    get_backlinks, get_graph_view_data, get_indexing_meta, index_note, index_workspace,
-    resolve_wiki_link, search_notes_for_query, BacklinkEntry, GraphViewData, IndexSummary,
-    IndexingMeta, ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
+    get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes, index_note,
+    index_workspace, resolve_wiki_link, search_notes_for_query, BacklinkEntry, GraphViewData,
+    IndexSummary, IndexingMeta, RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult,
+    SemanticNoteEntry,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -144,6 +145,21 @@ pub async fn get_backlinks_command(
     let file_path = PathBuf::from(file_path);
 
     run_blocking(move || get_backlinks(&workspace_path, &db_path, &file_path)).await
+}
+
+#[tauri::command]
+pub async fn get_related_notes_command(
+    app_handle: tauri::AppHandle,
+    workspace_path: String,
+    file_path: String,
+    limit: Option<usize>,
+) -> Result<Vec<RelatedNoteEntry>, String> {
+    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
+    let workspace_path = PathBuf::from(workspace_path);
+    let file_path = PathBuf::from(file_path);
+    let limit = limit.unwrap_or(5);
+
+    run_blocking(move || get_related_notes(&workspace_path, &db_path, &file_path, limit)).await
 }
 
 #[tauri::command]
