@@ -79,19 +79,15 @@ url = "http://127.0.0.1:39123/mcp"`,
 ] as const
 
 export function ApiMcpTab() {
-	const {
-		licenseStatus,
-		localApiEnabled,
-		setLocalApiEnabled,
-		localApiError,
-	} = useStore(
-		useShallow((state) => ({
-			licenseStatus: state.status,
-			localApiEnabled: state.localApiEnabled,
-			setLocalApiEnabled: state.setLocalApiEnabled,
-			localApiError: state.localApiError,
-		})),
-	)
+	const { licenseStatus, localApiEnabled, setLocalApiEnabled, localApiError } =
+		useStore(
+			useShallow((state) => ({
+				licenseStatus: state.status,
+				localApiEnabled: state.localApiEnabled,
+				setLocalApiEnabled: state.setLocalApiEnabled,
+				localApiError: state.localApiError,
+			})),
+		)
 
 	return (
 		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24">
