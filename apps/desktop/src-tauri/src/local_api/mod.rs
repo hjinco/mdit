@@ -12,13 +12,51 @@ use std::{
     error::Error as StdError,
     io,
     net::{Ipv4Addr, SocketAddrV4, TcpListener},
-    sync::Mutex,
+    sync::{Arc, Mutex, RwLock},
 };
 
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::oneshot;
 
 const LOCAL_API_PORT: u16 = 39123;
+const LOCAL_API_AUTH_TOKEN_MIN_LENGTH: usize = 32;
+
+#[derive(Default)]
+pub struct LocalApiAuthState {
+    token: Arc<RwLock<String>>,
+}
+
+impl LocalApiAuthState {
+    pub fn set_token(&self, token: String) -> Result<(), io::Error> {
+        let normalized = token.trim().to_string();
+        if normalized.len() < LOCAL_API_AUTH_TOKEN_MIN_LENGTH {
+            return Err(io::Error::other(format!(
+                "Local API token must be at least {LOCAL_API_AUTH_TOKEN_MIN_LENGTH} characters long"
+            )));
+        }
+
+        let mut guard = self.token.write().map_err(|error| {
+            io::Error::other(format!(
+                "Failed to lock local API auth token for write: {error}"
+            ))
+        })?;
+        *guard = normalized;
+        Ok(())
+    }
+
+    pub fn shared_token(&self) -> Arc<RwLock<String>> {
+        Arc::clone(&self.token)
+    }
+
+    fn has_token(&self) -> Result<bool, io::Error> {
+        let guard = self.token.read().map_err(|error| {
+            io::Error::other(format!(
+                "Failed to lock local API auth token for read: {error}"
+            ))
+        })?;
+        Ok(!guard.is_empty())
+    }
+}
 
 pub struct LocalApiRuntime {
     shutdown_tx: Mutex<Option<oneshot::Sender<()>>>,
@@ -48,7 +86,11 @@ fn create_local_api_runtime<R: Runtime>(
     app_handle: &AppHandle<R>,
 ) -> Result<LocalApiRuntime, Box<dyn StdError>> {
     let db_path = crate::persistence::run_app_migrations_anyhow(app_handle)?;
-    let router = router::build_router(router::LocalApiState { db_path });
+    let auth_token = app_handle.state::<LocalApiAuthState>().shared_token();
+    let router = router::build_router(router::LocalApiState {
+        db_path,
+        auth_token,
+    });
 
     let bind_addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, LOCAL_API_PORT);
     let std_listener = TcpListener::bind(bind_addr).map_err(|error| {
@@ -94,6 +136,13 @@ fn create_local_api_runtime<R: Runtime>(
 pub fn start_local_api_server<R: Runtime>(
     app_handle: &AppHandle<R>,
 ) -> Result<(), Box<dyn StdError>> {
+    if !app_handle.state::<LocalApiAuthState>().has_token()? {
+        return Err(io::Error::other(
+            "Local API auth token is not configured. Set token before starting the server.",
+        )
+        .into());
+    }
+
     let runtime_state = app_handle.state::<LocalApiRuntimeState>();
     let mut guard = runtime_state.runtime.lock().map_err(|error| {
         io::Error::other(format!("Failed to lock local API runtime state: {error}"))
@@ -105,6 +154,15 @@ pub fn start_local_api_server<R: Runtime>(
 
     *guard = Some(create_local_api_runtime(app_handle)?);
 
+    Ok(())
+}
+
+pub fn set_local_api_auth_token<R: Runtime>(
+    app_handle: &AppHandle<R>,
+    token: String,
+) -> Result<(), Box<dyn StdError>> {
+    let auth_state = app_handle.state::<LocalApiAuthState>();
+    auth_state.set_token(token)?;
     Ok(())
 }
 

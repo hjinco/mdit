@@ -1,4 +1,7 @@
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    sync::{Arc, RwLock},
+};
 
 use rmcp::{
     model::CallToolRequestParams, service::RunningService,
@@ -11,6 +14,8 @@ use super::{
     router::{build_mcp_only_router, LocalApiState},
     test_support::{seed_search_fixture, Harness},
 };
+
+const TEST_AUTH_TOKEN: &str = "test-local-api-auth-token-0123456789";
 
 #[tokio::test]
 async fn mcp_tools_list_and_create_note_conflict_flow() {
@@ -144,6 +149,7 @@ async fn mcp_search_notes_returns_results_and_maps_invalid_input() {
 fn mcp_app(harness: &Harness) -> axum::Router {
     build_mcp_only_router(LocalApiState {
         db_path: harness.db_path.clone(),
+        auth_token: Arc::new(RwLock::new(TEST_AUTH_TOKEN.to_string())),
     })
 }
 
@@ -181,8 +187,10 @@ impl McpServerHarness {
     }
 
     async fn connect_client(&self) -> McpClient {
-        let transport =
-            StreamableHttpClientTransport::from_uri(format!("http://{}/mcp", self.addr));
+        let transport = StreamableHttpClientTransport::from_uri(format!(
+            "http://{}/mcp?token={TEST_AUTH_TOKEN}",
+            self.addr
+        ));
         ().serve(transport)
             .await
             .expect("failed to connect to MCP server")
