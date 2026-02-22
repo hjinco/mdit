@@ -154,7 +154,7 @@ export function Draggable(
 		return <>{props.children}</>
 	}
 
-	const handleInsertBelowSlash = () => {
+	const handleInsertBelow = () => {
 		const entry = props.editor.api.node({
 			at: [],
 			block: true,
@@ -162,20 +162,31 @@ export function Draggable(
 		})
 		if (!entry) return
 
-		const [, currentPath] = entry
+		const [node, currentPath] = entry
 		if (currentPath.length !== 1) return
 
+		const listStyleType = (node as { listStyleType?: string }).listStyleType
+		const indent = (node as { indent?: number }).indent ?? 1
+
 		const insertPath = PathApi.next(currentPath)
+		const blockProps = listStyleType
+			? {
+					indent,
+					listStyleType,
+					...(listStyleType === KEYS.listTodo && { checked: false }),
+				}
+			: {}
+
 		props.editor.tf.insertNodes(
 			props.editor.api.create.block({
 				type: props.editor.getType(KEYS.p),
 				children: [{ text: "" }],
+				...blockProps,
 			}),
 			{ at: insertPath },
 		)
 		props.editor.tf.select(insertPath, { edge: "start" })
 		props.editor.tf.focus()
-		props.editor.tf.insertText("/")
 	}
 
 	return (
@@ -196,7 +207,7 @@ export function Draggable(
 				onClick={(e) => {
 					e.preventDefault()
 					e.stopPropagation()
-					handleInsertBelowSlash()
+					handleInsertBelow()
 				}}
 				data-plate-prevent-deselect
 			/>
