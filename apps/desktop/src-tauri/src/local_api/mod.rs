@@ -32,7 +32,19 @@ impl LocalApiRuntime {
     }
 }
 
-pub fn start_local_api_server<R: Runtime>(
+pub struct LocalApiRuntimeState {
+    runtime: Mutex<Option<LocalApiRuntime>>,
+}
+
+impl Default for LocalApiRuntimeState {
+    fn default() -> Self {
+        Self {
+            runtime: Mutex::new(None),
+        }
+    }
+}
+
+fn create_local_api_runtime<R: Runtime>(
     app_handle: &AppHandle<R>,
 ) -> Result<LocalApiRuntime, Box<dyn StdError>> {
     let db_path = crate::persistence::run_app_migrations_anyhow(app_handle)?;
@@ -79,9 +91,30 @@ pub fn start_local_api_server<R: Runtime>(
     })
 }
 
+pub fn start_local_api_server<R: Runtime>(
+    app_handle: &AppHandle<R>,
+) -> Result<(), Box<dyn StdError>> {
+    let runtime_state = app_handle.state::<LocalApiRuntimeState>();
+    let mut guard = runtime_state.runtime.lock().map_err(|error| {
+        io::Error::other(format!("Failed to lock local API runtime state: {error}"))
+    })?;
+
+    if guard.is_some() {
+        return Ok(());
+    }
+
+    *guard = Some(create_local_api_runtime(app_handle)?);
+
+    Ok(())
+}
+
 pub fn shutdown_local_api_server<R: Runtime>(app_handle: &AppHandle<R>) {
-    if let Some(runtime) = app_handle.try_state::<LocalApiRuntime>() {
-        runtime.shutdown();
+    if let Some(runtime_state) = app_handle.try_state::<LocalApiRuntimeState>() {
+        if let Ok(mut guard) = runtime_state.runtime.lock() {
+            if let Some(runtime) = guard.take() {
+                runtime.shutdown();
+            }
+        }
     }
 }
 

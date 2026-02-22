@@ -15,7 +15,12 @@ import { ScreenCaptureProvider } from "./contexts/screen-capture-context"
 import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
 import { useGitSync } from "./hooks/use-git-sync"
+import {
+	startLocalApiServer,
+	stopLocalApiServer,
+} from "./services/local-api-service"
 import { useStore } from "./store"
+import { checkInternetConnectivity } from "./utils/network-utils"
 import { isLinux, isWindows10 } from "./utils/platform"
 
 export function App() {
@@ -24,16 +29,28 @@ export function App() {
 		isLoading,
 		initializeWorkspace,
 		initializeAISettings,
+		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
+		licenseStatus,
+		hasVerifiedLicense,
+		localApiEnabled,
+		setLocalApiEnabled,
+		setLocalApiError,
 	} = useStore(
 		useShallow((s) => ({
 			workspacePath: s.workspacePath,
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
+			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
+			licenseStatus: s.status,
+			hasVerifiedLicense: s.hasVerifiedLicense,
+			localApiEnabled: s.localApiEnabled,
+			setLocalApiEnabled: s.setLocalApiEnabled,
+			setLocalApiError: s.setLocalApiError,
 		})),
 	)
 	useFontScale()
@@ -81,6 +98,64 @@ export function App() {
 	useEffect(() => {
 		void initializeAISettings()
 	}, [initializeAISettings])
+
+	useEffect(() => {
+		const checkAndValidateLicense = async () => {
+			const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
+			const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
+			if (!polarApiBaseUrl || !organizationId) {
+				await checkLicense()
+				return
+			}
+
+			const isOnline = await checkInternetConnectivity()
+			if (!isOnline) {
+				return
+			}
+
+			await checkLicense()
+		}
+
+		void checkAndValidateLicense()
+		window.addEventListener("online", checkAndValidateLicense)
+
+		return () => {
+			window.removeEventListener("online", checkAndValidateLicense)
+		}
+	}, [checkLicense])
+
+	useEffect(() => {
+		const syncLocalApiServerState = async () => {
+			if (licenseStatus === "invalid" && localApiEnabled) {
+				setLocalApiEnabled(false)
+			}
+
+			const shouldRunLocalApi =
+				localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
+
+			try {
+				if (shouldRunLocalApi) {
+					await startLocalApiServer()
+				} else {
+					await stopLocalApiServer()
+				}
+				setLocalApiError(null)
+			} catch (error) {
+				const action = shouldRunLocalApi ? "start" : "stop"
+				const message =
+					error instanceof Error ? error.message : String(error ?? "Unknown")
+				setLocalApiError(`Failed to ${action} local API server: ${message}`)
+			}
+		}
+
+		void syncLocalApiServerState()
+	}, [
+		localApiEnabled,
+		licenseStatus,
+		hasVerifiedLicense,
+		setLocalApiEnabled,
+		setLocalApiError,
+	])
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />
