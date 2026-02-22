@@ -119,8 +119,13 @@ export function LinkFloatingToolbar({
 	// Show edit popover when cursor is at end of link (platejs useFloatingLinkEdit
 	// only triggers when editor.api.some finds a link, which can fail at the boundary).
 	// Move selection to the end of the link so platejs and LinkUrlInput find the element.
+	// Skip when user just exited via arrow right (LinkExitPlugin sets _linkExitedArrowRight).
 	useEffect(() => {
 		if (!selection || !editor.api.isCollapsed() || mode !== "") return
+		if (editor.meta._linkExitedArrowRight) {
+			editor.meta._linkExitedArrowRight = false
+			return
+		}
 		const linkType = editor.getType(KEYS.link)
 		if (editor.api.some({ at: selection, match: { type: linkType } })) return
 		const beforePoint = editor.api.before(selection.anchor)

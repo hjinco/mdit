@@ -38,7 +38,8 @@ const LinkExitPlugin = createPlatePlugin({
 					editor.tf.insertNodes({ text: "" }, { at: nextPath })
 					editor.tf.select(nextPath)
 				}
-				editor.tf.insertText(" ")
+				editor.meta._linkExitedArrowRight = true
+				editor.tf.focus()
 				return true
 			},
 		},
