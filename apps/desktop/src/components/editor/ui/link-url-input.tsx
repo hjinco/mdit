@@ -240,32 +240,24 @@ export function LinkUrlInput({
 				relativePathLower.includes(candidate),
 			)
 
-			if (!exactMatchFound && exactQueryCandidates.has(relativePathLower)) {
-				exactMatchFound = true
-			}
-
 			if (
 				!exactMatchFound &&
-				relativeToTabLower &&
-				exactQueryCandidates.has(relativeToTabLower)
+				(exactQueryCandidates.has(relativePathLower) ||
+					(relativeToTabLower && exactQueryCandidates.has(relativeToTabLower)))
 			) {
 				exactMatchFound = true
 			}
 
 			if (suggestions.length < MAX_SUGGESTIONS) {
-				if (matchesRelativePath) {
-					suggestions.push(file)
-				} else if (
-					displayNameQuery &&
-					displayNameLower.includes(displayNameQuery)
-				) {
-					suggestions.push(file)
-				} else if (
+				const matchesDisplayName =
+					displayNameQuery && displayNameLower.includes(displayNameQuery)
+				const matchesRelativeToTab =
 					relativeToTabLower &&
 					pathQueryCandidates.some((candidate) =>
 						relativeToTabLower.includes(candidate),
 					)
-				) {
+
+				if (matchesRelativePath || matchesDisplayName || matchesRelativeToTab) {
 					suggestions.push(file)
 				}
 			}
