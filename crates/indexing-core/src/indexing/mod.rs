@@ -573,15 +573,14 @@ pub fn get_related_notes(
 
     let rel_path = file_path
         .strip_prefix(workspace_root)
+        .map(files::normalize_rel_path)
         .with_context(|| {
             format!(
                 "Failed to compute relative path for {} within workspace {}",
                 file_path.display(),
                 workspace_root.display()
             )
-        })?
-        .to_string_lossy()
-        .replace('\\', "/");
+        })?;
 
     let conn = open_indexing_connection(db_path)?;
     if !segment_vec_table_exists(&conn)? {
