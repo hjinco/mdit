@@ -15,7 +15,7 @@ import { toggleList } from "@platejs/list"
 import { insertInlineEquation } from "@platejs/math"
 import { KEYS } from "platejs"
 
-const WIKILINK_PLACEHOLDER = "Page Title"
+const WIKILINK_PLACEHOLDER = "Note"
 
 const autoformatMarks: AutoformatRule[] = [
 	{
@@ -257,7 +257,7 @@ const autoformatWikiCustom: AutoformatRule[] = [
 					type: KEYS.link,
 					url: "",
 					wiki: true,
-					wikiTarget: WIKILINK_PLACEHOLDER,
+					wikiTarget: "",
 					children: [{ text: WIKILINK_PLACEHOLDER }],
 				},
 				{ select: true },

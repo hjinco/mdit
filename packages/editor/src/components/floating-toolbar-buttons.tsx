@@ -6,6 +6,7 @@ import {
 	DropdownMenuTrigger,
 } from "@mdit/ui/components/dropdown-menu"
 import { AIChatPlugin } from "@platejs/ai/react"
+import { unwrapLink } from "@platejs/link"
 import {
 	useLinkToolbarButton,
 	useLinkToolbarButtonState,
@@ -43,7 +44,9 @@ export function FloatingToolbarButtons() {
 	const { api } = useEditorPlugin(AIChatPlugin)
 
 	const state = useLinkToolbarButtonState()
-	const { props: buttonProps } = useLinkToolbarButton(state)
+	const { props: linkButtonProps } = useLinkToolbarButton(state)
+	const { onClick: defaultLinkOnClick, ...restLinkButtonProps } =
+		linkButtonProps
 
 	const modifierKey =
 		typeof navigator !== "undefined" && navigator.userAgent.includes("Mac")
@@ -125,7 +128,14 @@ export function FloatingToolbarButtons() {
 							size="sm"
 							data-plate-focus
 							tooltip="Link"
-							{...buttonProps}
+							{...restLinkButtonProps}
+							onClick={() => {
+								if (state.pressed) {
+									unwrapLink(editor)
+								} else {
+									defaultLinkOnClick?.()
+								}
+							}}
 						>
 							<LinkIcon />
 						</ToolbarButton>

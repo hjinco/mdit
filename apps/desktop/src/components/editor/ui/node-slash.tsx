@@ -468,29 +468,33 @@ const groups: Group[] = [
 				label: "Wiki Link",
 				value: "wikiLink",
 				onSelect: (editor: PlateEditor, _value: string) => {
-					// Insert a wiki link placeholder that the user can edit
-					editor.tf.insertNodes({
-						type: KEYS.link,
-						url: "",
-						wiki: true,
-						wikiTarget: "Page Title",
-						children: [{ text: "Page Title" }],
-					})
-					// Select the text for easy editing
-					const selection = editor.selection
-					if (selection) {
-						const entry = editor.api.node({
-							at: selection,
-							match: { type: KEYS.link },
+					editor.tf.insertNodes(
+						{
+							type: KEYS.link,
+							url: "",
+							wiki: true,
+							wikiTarget: "",
+							children: [{ text: "Note" }],
+						},
+						{ select: true },
+					)
+					// Defer: combobox close can overwrite selection; move cursor to end of link
+					const linkType = editor.getType(KEYS.link)
+					setTimeout(() => {
+						const sel = editor.selection
+						if (!sel) return
+						const linkEntry = editor.api.above({
+							at: sel.anchor,
+							match: { type: linkType },
 						})
-						if (entry) {
-							const [, path] = entry
-							editor.tf.select({
-								anchor: { path: [...path, 0], offset: 0 },
-								focus: { path: [...path, 0], offset: 10 }, // "Page Title".length
-							})
+						if (!linkEntry) return
+						const [, path] = linkEntry
+						const end = editor.api.end(path)
+						if (end) {
+							editor.tf.select({ anchor: end, focus: end })
+							editor.tf.focus()
 						}
-					}
+					}, 0)
 				},
 			},
 		].map((item) => {

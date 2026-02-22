@@ -98,11 +98,43 @@ export function LinkFloatingToolbar({
 			return false
 		}
 
-		return editor.api.some({
-			at: selection,
+		if (
+			editor.api.some({
+				at: selection,
+				match: { type: editor.getType(KEYS.link) },
+			})
+		) {
+			return true
+		}
+		// Cursor at end of link: selection can be right after the link, so above() fails.
+		// Check if the point before the cursor is inside a link.
+		const beforePoint = editor.api.before(selection.anchor)
+		if (!beforePoint) return false
+		return !!editor.api.above({
+			at: beforePoint,
 			match: { type: editor.getType(KEYS.link) },
 		})
 	}, [editor, selection])
+
+	// Show edit popover when cursor is at end of link (platejs useFloatingLinkEdit
+	// only triggers when editor.api.some finds a link, which can fail at the boundary).
+	// Move selection to the end of the link so platejs and LinkUrlInput find the element.
+	useEffect(() => {
+		if (!selection || !editor.api.isCollapsed() || mode !== "") return
+		const linkType = editor.getType(KEYS.link)
+		if (editor.api.some({ at: selection, match: { type: linkType } })) return
+		const beforePoint = editor.api.before(selection.anchor)
+		if (!beforePoint) return
+		const linkEntry = editor.api.above({
+			at: beforePoint,
+			match: { type: linkType },
+		})
+		if (!linkEntry) return
+		const [, path] = linkEntry
+		const end = editor.api.end(path)
+		if (!end) return
+		editor.tf.select({ anchor: end, focus: end })
+	}, [editor, mode, selection])
 
 	useEffect(() => {
 		if (!isEditOpen || !isLinkLeafSelected) {
