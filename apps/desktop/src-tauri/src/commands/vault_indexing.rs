@@ -60,12 +60,17 @@ pub async fn index_note_command(
     app_handle: tauri::AppHandle,
     workspace_path: String,
     note_path: String,
+    include_embeddings: Option<bool>,
 ) -> Result<IndexSummary, String> {
     let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let workspace_path = PathBuf::from(workspace_path);
     let note_path = PathBuf::from(note_path);
-    let (embedding_provider, embedding_model) =
-        resolve_embedding_for_workspace(&db_path, &workspace_path)?;
+    let should_include_embeddings = include_embeddings.unwrap_or(true);
+    let (embedding_provider, embedding_model) = if should_include_embeddings {
+        resolve_embedding_for_workspace(&db_path, &workspace_path)?
+    } else {
+        (String::new(), String::new())
+    };
 
     run_blocking(move || {
         index_note(
