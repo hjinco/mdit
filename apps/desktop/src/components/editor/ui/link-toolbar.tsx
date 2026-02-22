@@ -838,7 +838,7 @@ function LinkUrlInput({
 
 				<button
 					type="button"
-					className={`${buttonVariants({ size: "icon", variant: "ghost" })} ml-1 flex-shrink-0 text-muted-foreground`}
+					className={`${buttonVariants({ size: "icon", variant: "ghost" })} ml-1 shrink-0 text-muted-foreground`}
 					aria-label="Apply link"
 					title="Apply link"
 					onClick={handleConfirm}
@@ -1067,6 +1067,15 @@ async function openLink(options: OpenLinkOptions) {
 export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> =
 	{
 		onMouseDown: (event) => {
+			const { currentTarget } = event
+			const url = currentTarget.dataset.linkUrl || currentTarget.href
+			if (isJavaScriptUrl(url)) {
+				event.preventDefault()
+				event.stopPropagation()
+				event.nativeEvent.stopImmediatePropagation?.()
+				return
+			}
+
 			const isPrimaryClick = event.button === 0
 			const hasModifierKey =
 				event.metaKey || event.ctrlKey || event.altKey || event.shiftKey
@@ -1078,8 +1087,6 @@ export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> 
 			event.stopPropagation()
 			event.nativeEvent.stopImmediatePropagation?.()
 
-			const { currentTarget } = event
-			const url = currentTarget.dataset.linkUrl || currentTarget.href
 			void openLink({
 				href: url,
 				wiki: currentTarget.dataset.wiki === "true",
@@ -1456,4 +1463,10 @@ function safelyDecodeUrl(url: string): string {
 		}
 		throw error
 	}
+}
+
+function isJavaScriptUrl(url: string): boolean {
+	const decoded = safelyDecodeUrl(url)
+	const normalized = decoded.trim().toLowerCase()
+	return normalized.startsWith("javascript:")
 }
