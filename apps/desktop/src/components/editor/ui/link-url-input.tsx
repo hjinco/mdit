@@ -19,6 +19,7 @@ import {
 	type MouseEvent,
 	type RefObject,
 	useCallback,
+	useDeferredValue,
 	useEffect,
 	useId,
 	useMemo,
@@ -46,6 +47,14 @@ import {
 } from "./link-toolbar-utils"
 
 const modeButtonVariants = cva("h-6 px-2 text-xs")
+const MAX_SUGGESTIONS = 50
+
+type SearchableWorkspaceFile = {
+	file: WorkspaceFileOption
+	displayNameLower: string
+	relativePathLower: string
+	relativeToTabLower: string | null
+}
 
 export function LinkUrlInput({
 	inputRef,
@@ -146,6 +155,26 @@ export function LinkUrlInput({
 	const listboxId = useId()
 
 	const trimmedValue = useMemo(() => value.trim(), [value])
+	const deferredQuery = useDeferredValue(trimmedValue)
+
+	const searchableSuggestions = useMemo(() => {
+		const tabDirectory = currentTabPath ? pathDirname(currentTabPath) : null
+
+		return suggestionsSource.map<SearchableWorkspaceFile>((file) => {
+			const relativeToTabLower = tabDirectory
+				? normalizePathSeparators(
+						relative(tabDirectory, file.absolutePath),
+					).toLowerCase()
+				: null
+
+			return {
+				file,
+				displayNameLower: file.displayName.toLowerCase(),
+				relativePathLower: file.relativePathLower,
+				relativeToTabLower,
+			}
+		})
+	}, [currentTabPath, suggestionsSource])
 
 	const applyUrlToEditor = useCallback(
 		(rawUrl: string) => {
@@ -186,70 +215,56 @@ export function LinkUrlInput({
 			return { hasExactMatch: false, suggestions: [] as WorkspaceFileOption[] }
 		}
 
-		if (!trimmedValue) {
+		if (!deferredQuery) {
 			return {
 				hasExactMatch: false,
 				suggestions: [] as WorkspaceFileOption[],
 			}
 		}
 
-		const normalizedQuery = normalizePathSeparators(trimmedValue)
+		const normalizedQuery = normalizePathSeparators(deferredQuery)
 		const normalizedLowerQuery = normalizedQuery.toLowerCase()
 		const pathQueryCandidates = createPathQueryCandidates(normalizedLowerQuery)
 		const exactQueryCandidates = new Set(pathQueryCandidates)
 		const displayNameQuery = stripCurrentDirectoryPrefix(
 			stripLeadingSlashes(normalizedLowerQuery),
 		)
-		const tabDirectory = currentTabPath ? pathDirname(currentTabPath) : null
 
 		let exactMatchFound = false
+		const suggestions: WorkspaceFileOption[] = []
 
-		const suggestions = suggestionsSource.filter((file) => {
+		for (const searchable of searchableSuggestions) {
+			const { file, displayNameLower, relativePathLower, relativeToTabLower } =
+				searchable
 			const matchesRelativePath = pathQueryCandidates.some((candidate) =>
-				file.relativePathLower.includes(candidate),
+				relativePathLower.includes(candidate),
 			)
 
 			if (
 				!exactMatchFound &&
-				exactQueryCandidates.has(file.relativePathLower)
+				(exactQueryCandidates.has(relativePathLower) ||
+					(relativeToTabLower && exactQueryCandidates.has(relativeToTabLower)))
 			) {
 				exactMatchFound = true
 			}
 
-			if (matchesRelativePath) {
-				return true
-			}
-
-			if (
-				displayNameQuery &&
-				file.displayName.toLowerCase().includes(displayNameQuery)
-			) {
-				return true
-			}
-
-			if (tabDirectory) {
-				const relativeToTabLower = normalizePathSeparators(
-					relative(tabDirectory, file.absolutePath),
-				).toLowerCase()
-
-				if (!exactMatchFound && exactQueryCandidates.has(relativeToTabLower)) {
-					exactMatchFound = true
-				}
-
-				if (
+			if (suggestions.length < MAX_SUGGESTIONS) {
+				const matchesDisplayName =
+					displayNameQuery && displayNameLower.includes(displayNameQuery)
+				const matchesRelativeToTab =
+					relativeToTabLower &&
 					pathQueryCandidates.some((candidate) =>
 						relativeToTabLower.includes(candidate),
 					)
-				) {
-					return true
+
+				if (matchesRelativePath || matchesDisplayName || matchesRelativeToTab) {
+					suggestions.push(file)
 				}
 			}
-
-			return false
-		})
+		}
 
 		return { hasExactMatch: exactMatchFound, suggestions }
-	}, [suggestionsEnabled, suggestionsSource, trimmedValue, currentTabPath])
+	}, [deferredQuery, searchableSuggestions, suggestionsEnabled])
 
 	useEffect(() => {
 		setHighlightedIndex((previous) => {
