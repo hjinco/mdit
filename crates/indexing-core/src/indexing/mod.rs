@@ -667,10 +667,7 @@ pub fn get_related_notes(
     let mut related_notes = Vec::new();
     for row in rows {
         let rel_path = row?;
-        let file_name = Path::new(&rel_path)
-            .file_stem()
-            .map(|segment| segment.to_string_lossy().to_string())
-            .unwrap_or_else(|| rel_path.clone());
+        let file_name = graph_node_name(&rel_path);
 
         related_notes.push(RelatedNoteEntry {
             rel_path,
