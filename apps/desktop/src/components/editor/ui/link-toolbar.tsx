@@ -1,5 +1,4 @@
 import { buttonVariants } from "@mdit/ui/components/button"
-import { Separator } from "@mdit/ui/components/separator"
 import { cn } from "@mdit/ui/lib/utils"
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating"
 import { upsertLink } from "@platejs/link"
@@ -10,19 +9,11 @@ import {
 	useFloatingLinkEditState,
 	useFloatingLinkInsert,
 	useFloatingLinkInsertState,
-	useFloatingLinkUrlInputState,
 } from "@platejs/link/react"
 import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { cva } from "class-variance-authority"
-import {
-	Check,
-	FileIcon,
-	FileInput,
-	GlobeIcon,
-	Link,
-	Unlink,
-} from "lucide-react"
+import { Check, FileIcon, GlobeIcon, Link } from "lucide-react"
 import {
 	isAbsolute,
 	join,
@@ -40,13 +31,16 @@ import {
 	usePluginOption,
 } from "platejs/react"
 import {
+	type AnchorHTMLAttributes,
 	type ChangeEvent,
 	type KeyboardEvent,
 	type MouseEvent,
+	type RefObject,
 	useCallback,
 	useEffect,
 	useId,
 	useMemo,
+	useRef,
 	useState,
 } from "react"
 import { useShallow } from "zustand/shallow"
@@ -63,11 +57,17 @@ export function LinkFloatingToolbar({
 }: {
 	state?: LinkFloatingToolbarState
 }) {
+	const editor = useEditorRef()
+	const selection = useEditorSelection()
 	const activeCommentId = usePluginOption({ key: KEYS.comment }, "activeId")
 	const activeSuggestionId = usePluginOption(
 		{ key: KEYS.suggestion },
 		"activeId",
 	)
+	const mode = usePluginOption(LinkPlugin, "mode")
+	const isOpen = usePluginOption(LinkPlugin, "isOpen", editor.id)
+	const insertInputRef = useRef<HTMLInputElement>(null)
+	const editInputRef = useRef<HTMLInputElement>(null)
 
 	const floatingOptions: UseVirtualFloatingOptions = useMemo(() => {
 		return {
@@ -103,64 +103,78 @@ export function LinkFloatingToolbar({
 			...state?.floatingOptions,
 		},
 	})
-	const {
-		editButtonProps,
-		props: editProps,
-		ref: editRef,
-		unlinkButtonProps,
-	} = useFloatingLinkEdit(editState)
+	const { props: editProps, ref: editRef } = useFloatingLinkEdit(editState)
 	const inputProps = useFormInputProps({
 		preventDefaultOnEnterKeydown: true,
 	})
+	const isEditOpen = isOpen && mode === "edit"
+	const isLinkLeafSelected = useMemo(() => {
+		if (!selection || !editor.api.isCollapsed()) {
+			return false
+		}
+
+		return editor.api.some({
+			at: selection,
+			match: { type: editor.getType(KEYS.link) },
+		})
+	}, [editor, selection])
+
+	useEffect(() => {
+		if (!isEditOpen || !isLinkLeafSelected) {
+			return
+		}
+
+		const handleArrowDown = (event: globalThis.KeyboardEvent) => {
+			if (event.key !== "ArrowDown") {
+				return
+			}
+
+			const input = editInputRef.current
+			if (!input) {
+				return
+			}
+
+			const activeElement = document.activeElement
+			if (
+				activeElement === input ||
+				activeElement instanceof HTMLInputElement ||
+				activeElement instanceof HTMLTextAreaElement ||
+				activeElement instanceof HTMLSelectElement
+			) {
+				return
+			}
+
+			event.preventDefault()
+			event.stopPropagation()
+			input.focus()
+		}
+
+		window.addEventListener("keydown", handleArrowDown, true)
+
+		return () => {
+			window.removeEventListener("keydown", handleArrowDown, true)
+		}
+	}, [isEditOpen, isLinkLeafSelected])
 
 	if (hidden) return null
 
-	const input = (
-		<div className="flex w-[360px] flex-col" {...inputProps}>
-			<LinkUrlInput />
-		</div>
-	)
-
-	const editContent = editState.isEditing ? (
-		input
-	) : (
-		<div className="box-content flex items-center">
-			<button
-				className={buttonVariants({ size: "sm", variant: "ghost" })}
-				type="button"
-				{...editButtonProps}
-			>
-				Edit link
-			</button>
-
-			<Separator orientation="vertical" />
-
-			<LinkOpenButton />
-
-			<Separator orientation="vertical" />
-
-			<button
-				className={buttonVariants({
-					size: "icon",
-					variant: "ghost",
-				})}
-				type="button"
-				{...unlinkButtonProps}
-			>
-				<Unlink width={18} />
-			</button>
-		</div>
-	)
-
 	return (
 		<>
-			<div ref={insertRef} className={popoverVariants()} {...insertProps}>
-				{input}
-			</div>
+			{mode === "insert" && (
+				<div ref={insertRef} className={popoverVariants()} {...insertProps}>
+					<div className="flex w-[360px] flex-col" {...inputProps}>
+						<LinkUrlInput inputRef={insertInputRef} />
+					</div>
+				</div>
+			)}
 
-			<div ref={editRef} className={popoverVariants()} {...editProps}>
-				{editContent}
-			</div>
+			{mode === "edit" && (
+				<div ref={editRef} className={popoverVariants()} {...editProps}>
+					<div className="flex w-[360px] flex-col" {...inputProps}>
+						<LinkUrlInput inputRef={editInputRef} />
+					</div>
+				</div>
+			)}
 		</>
 	)
 }
@@ -199,8 +213,11 @@ async function resolveWikiLinkViaInvoke(
 	return invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", params)
 }
 
-function LinkUrlInput() {
-	const { ref } = useFloatingLinkUrlInputState()
+function LinkUrlInput({
+	inputRef,
+}: {
+	inputRef: RefObject<HTMLInputElement | null>
+}) {
 	const editor = useEditorRef()
 	const { api, setOption } = useEditorPlugin(LinkPlugin)
 
@@ -222,36 +239,28 @@ function LinkUrlInput() {
 		[workspaceEntries, workspacePath],
 	)
 
-	const encodedUrl = usePluginOption(LinkPlugin, "url") as string | undefined
-	const decodedUrl = useMemo(
-		() => (encodedUrl ? safelyDecodeUrl(encodedUrl) : ""),
-		[encodedUrl],
+	const optionUrl = usePluginOption(LinkPlugin, "url") as string | undefined
+	const decodedOptionUrl = useMemo(
+		() => (optionUrl ? safelyDecodeUrl(optionUrl) : ""),
+		[optionUrl],
 	)
 
 	const selection = useEditorSelection()
+	const linkEntry = editor.api.node<TLinkElement>({
+		match: { type: editor.getType(KEYS.link) },
+	})
+	const element = (linkEntry?.[0] ?? null) as
+		| (TLinkElement & {
+				wiki?: boolean
+				wikiTarget?: string
+		  })
+		| null
 
-	const { element } = useMemo(() => {
-		const entry = editor.api.node<TLinkElement>({
-			match: { type: editor.getType(KEYS.link) },
-		})
-
-		if (!entry) {
-			return {
-				element: null as
-					| (TLinkElement & {
-							wiki?: boolean
-							wikiTarget?: string
-					  })
-					| null,
-			}
-		}
-
-		const [node] = entry
-
-		return {
-			element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
-		}
-	}, [editor])
+	const elementUrl = useMemo(
+		() => (element?.url ? safelyDecodeUrl(element.url) : ""),
+		[element?.url],
+	)
+	const decodedUrl = decodedOptionUrl || elementUrl
 
 	const [linkMode, setLinkMode] = useState<LinkMode>("wiki")
 
@@ -438,21 +447,71 @@ function LinkUrlInput() {
 		}
 	}, [highlightedIndex, listboxId])
 
-	const handleSelectSuggestion = useCallback(
-		(file: WorkspaceFileOption) => {
-			const focusInput = () => {
-				requestAnimationFrame(() => {
-					ref.current?.focus()
+	const submitLink = useCallback(
+		({
+			mode,
+			nextUrl,
+			isWebLink,
+			wikiTarget,
+		}: {
+			mode: LinkMode
+			nextUrl: string
+			isWebLink: boolean
+			wikiTarget?: string | null
+		}) => {
+			applyUrlToEditor(nextUrl)
+
+			const didSubmit = upsertLink(editor, {
+				url: nextUrl,
+				skipValidation: true,
+			})
+			if (didSubmit) {
+				const entry = editor.api.node<TLinkElement>({
+					match: { type: editor.getType(KEYS.link) },
 				})
+
+				if (entry) {
+					const [, path] = entry
+					if (isWebLink || mode === "markdown") {
+						editor.tf.unsetNodes(["wiki", "wikiTarget"], {
+							at: path,
+						})
+					} else {
+						editor.tf.setNodes(
+							{
+								wiki: true,
+								wikiTarget: wikiTarget ?? nextUrl,
+							},
+							{ at: path },
+						)
+					}
+				}
+
+				setHighlightedIndex(-1)
+				api.floatingLink.hide()
+				editor.tf.focus()
+				return
 			}
 
+			requestAnimationFrame(() => {
+				inputRef.current?.focus()
+			})
+		},
+		[api, applyUrlToEditor, editor, inputRef],
+	)
+
+	const handleSelectSuggestion = useCallback(
+		(file: WorkspaceFileOption) => {
 			if (linkMode === "wiki") {
 				const fallbackValue = normalizeWikiTargetForDisplay(file.relativePath)
 				const applySelection = (nextValue: string) => {
 					setValue(nextValue)
-					applyUrlToEditor(nextValue)
-					setHighlightedIndex(-1)
-					focusInput()
+					submitLink({
+						mode: "wiki",
+						nextUrl: nextValue,
+						isWebLink: false,
+						wikiTarget: nextValue,
+					})
 				}
 
 				if (!workspacePath) {
@@ -499,12 +558,13 @@ function LinkUrlInput() {
 			const displayValue = normalizeMarkdownPathForDisplay(nextValue)
 
 			setValue(displayValue)
-			applyUrlToEditor(displayValue)
-			setHighlightedIndex(-1)
-
-			focusInput()
+			submitLink({
+				mode: "markdown",
+				nextUrl: displayValue,
+				isWebLink: false,
+			})
 		},
-		[applyUrlToEditor, currentTabPath, linkMode, ref, workspacePath],
+		[currentTabPath, linkMode, submitLink, workspacePath],
 	)
 
 	const handleBlur = useCallback(() => {
@@ -529,7 +589,7 @@ function LinkUrlInput() {
 	const confirmLink = useCallback(async () => {
 		if (!trimmedValue) {
 			requestAnimationFrame(() => {
-				ref.current?.focus()
+				inputRef.current?.focus()
 			})
 			return
 		}
@@ -610,51 +670,18 @@ function LinkUrlInput() {
 			}
 		}
 
-		applyUrlToEditor(nextUrl)
-
-		const didSubmit = upsertLink(editor, {
-			url: nextUrl,
-			skipValidation: true,
-		})
-		if (didSubmit) {
-			const entry = editor.api.node<TLinkElement>({
-				match: { type: editor.getType(KEYS.link) },
-			})
-
-			if (entry) {
-				const [, path] = entry
-				if (isWebLink || linkMode === "markdown") {
-					editor.tf.unsetNodes(["wiki", "wikiTarget"], {
-						at: path,
-					})
-				} else {
-					editor.tf.setNodes(
-						{
-							wiki: true,
-							wikiTarget: nextWikiTarget ?? nextUrl,
-						},
-						{ at: path },
-					)
-				}
-			}
-
-			setHighlightedIndex(-1)
-			api.floatingLink.hide()
-			editor.tf.focus()
-			return
-		}
-
-		requestAnimationFrame(() => {
-			ref.current?.focus()
+		submitLink({
+			mode: linkMode,
+			nextUrl,
+			isWebLink,
+			wikiTarget: nextWikiTarget,
 		})
 	}, [
-		api,
-		applyUrlToEditor,
+		inputRef,
 		currentTabPath,
-		editor,
 		linkMode,
-		ref,
 		suggestionsSource,
+		submitLink,
 		trimmedValue,
 		workspacePath,
 	])
@@ -696,6 +723,23 @@ function LinkUrlInput() {
 				return
 			}
 
+			if (key === "ArrowUp") {
+				event.preventDefault()
+				if (highlightedIndex >= 0) {
+					setHighlightedIndex((previous) => {
+						if (previous <= 0) {
+							return -1
+						}
+						return previous - 1
+					})
+					return
+				}
+
+				api.floatingLink.hide()
+				editor.tf.focus()
+				return
+			}
+
 			if (!filteredSuggestions.length) {
 				return
 			}
@@ -708,17 +752,6 @@ function LinkUrlInput() {
 					return next >= filteredSuggestions.length
 						? filteredSuggestions.length - 1
 						: next
-				})
-				return
-			}
-
-			if (key === "ArrowUp") {
-				event.preventDefault()
-				setHighlightedIndex((previous) => {
-					if (previous <= 0) {
-						return -1
-					}
-					return previous - 1
 				})
 				return
 			}
@@ -746,7 +779,7 @@ function LinkUrlInput() {
 
 	return (
 		<div className="flex flex-1 flex-col">
-			<div className="flex items-center justify-between px-2 pb-1 text-xs text-muted-foreground">
+			<div className="flex items-center justify-between pl-2 pb-1 text-xs text-muted-foreground">
 				<span>Link type</span>
 				<div className="flex items-center gap-1">
 					<button
@@ -781,7 +814,7 @@ function LinkUrlInput() {
 
 				<div className="flex-1">
 					<input
-						ref={ref}
+						ref={inputRef}
 						className="flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:ring-transparent focus-visible:outline-none md:text-sm"
 						placeholder="Paste link"
 						value={value}
@@ -805,7 +838,7 @@ function LinkUrlInput() {
 
 				<button
 					type="button"
-					className={`${buttonVariants({ size: "icon", variant: "ghost" })} ml-1 flex-shrink-0 text-muted-foreground`}
+					className={`${buttonVariants({ size: "icon", variant: "ghost" })} ml-1 shrink-0 text-muted-foreground`}
 					aria-label="Apply link"
 					title="Apply link"
 					onClick={handleConfirm}
@@ -892,153 +925,67 @@ function LinkIcon({ value }: { value: string }) {
 	return <Link className="size-4" />
 }
 
-function LinkOpenButton() {
-	const editor = useEditorRef()
-	const selection = useEditorSelection()
+type OpenLinkOptions = {
+	href: string
+	wiki?: boolean
+	wikiTarget?: string
+}
+
+async function openLink(options: OpenLinkOptions) {
+	const decodedUrl = options.href ? safelyDecodeUrl(options.href) : ""
+	const targetUrl = decodedUrl || options.href
+	if (!targetUrl) {
+		return
+	}
+
+	const isWebLink = startsWithHttpProtocol(targetUrl)
+	if (isWebLink) {
+		try {
+			await openUrl(targetUrl)
+		} catch (error) {
+			console.error("Failed to open external link:", error)
+		}
+		return
+	}
+
+	if (targetUrl.startsWith("#")) {
+		// TODO: handle anchor links
+		return
+	}
+
 	const {
 		entries: workspaceEntries,
-		workspacePath,
 		openTab,
 		tab: currentTab,
-	} = useStore(
-		useShallow((state) => ({
-			entries: state.entries,
-			workspacePath: state.workspacePath,
-			openTab: state.openTab,
-			tab: state.tab,
-		})),
-	)
+		workspacePath,
+	} = useStore.getState()
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: get element when the selection changes
-	const { element } = useMemo(() => {
-		const entry = editor.api.node<TLinkElement>({
-			match: { type: editor.getType(KEYS.link) },
-		})
-
-		if (!entry) {
-			return {
-				element: null as
-					| (TLinkElement & { wiki?: boolean; wikiTarget?: string })
-					| null,
-			}
+	try {
+		if (!workspacePath) {
+			return
 		}
 
-		const [node] = entry
+		const workspaceFiles = flattenWorkspaceFiles(
+			workspaceEntries,
+			workspacePath,
+		)
+		const isWikiLink = Boolean(options.wiki || options.wikiTarget)
+		const rawTarget = options.wikiTarget || targetUrl
 
-		return {
-			element: node as TLinkElement & { wiki?: boolean; wikiTarget?: string },
-		}
-	}, [selection])
-
-	const href = element?.url ?? ""
-	const decodedUrl = href ? safelyDecodeUrl(href) : ""
-	const isWebLink = startsWithHttpProtocol(decodedUrl)
-	const isWikiLink = Boolean(element?.wiki || element?.wikiTarget)
-	const workspaceFiles = useMemo(
-		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
-		[workspaceEntries, workspacePath],
-	)
-
-	const handleOpen = useCallback(
-		async (event: MouseEvent<HTMLButtonElement>) => {
-			event.preventDefault()
-
-			const fallbackHref = element?.url ?? ""
-			const targetUrl = decodedUrl || fallbackHref
-			if (!targetUrl) {
-				return
-			}
-
-			if (!isWebLink) {
-				if (targetUrl.startsWith("#")) {
-					// TODO: handle anchor links
-					return
-				}
-
-				try {
-					if (!workspacePath) {
-						return
-					}
-
-					const rawTarget = element?.wikiTarget || targetUrl
-
-					if (isWikiLink) {
-						try {
-							const resolved = await resolveWikiLinkViaInvoke({
-								workspacePath,
-								currentNotePath: currentTab?.path ?? null,
-								rawTarget,
-							})
-							if (resolved.resolvedRelPath) {
-								const absoluteResolved = resolve(
-									workspacePath,
-									resolved.resolvedRelPath,
-								)
-								const normalizedWorkspaceRoot =
-									normalizeWorkspaceRoot(workspacePath)
-								const normalizedAbsolute =
-									normalizePathSeparators(absoluteResolved)
-								if (
-									normalizedAbsolute !== normalizedWorkspaceRoot &&
-									!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
-								) {
-									console.warn(
-										"Workspace link outside of root blocked:",
-										normalizedAbsolute,
-									)
-									return
-								}
-								await openTab(absoluteResolved)
-							}
-							return
-						} catch (error) {
-							console.warn(
-								"Failed to resolve wiki link via invoke while opening; using fallback:",
-								error,
-							)
-						}
-					}
-
-					let absolutePath: string | null = null
-					const { rawPath, target } = parseInternalLinkTarget(rawTarget)
-					const resolvedPath = resolveInternalLinkPath({
-						rawPath,
-						target,
-						workspaceFiles,
+		if (isWikiLink) {
+			try {
+				const resolved = await resolveWikiLinkViaInvoke({
+					workspacePath,
+					currentNotePath: currentTab?.path ?? null,
+					rawTarget,
+				})
+				if (resolved.resolvedRelPath) {
+					const absoluteResolved = resolve(
 						workspacePath,
-						currentTabPath: currentTab?.path ?? null,
-					})
-
-					if (resolvedPath) {
-						await openTab(resolvedPath)
-						return
-					}
-
-					if (rawTarget.startsWith("/")) {
-						const workspaceRelativePath = stripLeadingSlashes(rawTarget)
-						absolutePath = join(workspacePath, workspaceRelativePath)
-					} else {
-						const currentPath = currentTab?.path
-						if (!currentPath) {
-							return
-						}
-
-						const currentDirectory = pathDirname(currentPath)
-						absolutePath = join(currentDirectory, rawTarget)
-					}
-
-					if (!absolutePath) {
-						return
-					}
-
+						resolved.resolvedRelPath,
+					)
 					const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
-					if (!normalizedWorkspaceRoot) {
-						console.warn("Workspace root missing; link open aborted")
-						return
-					}
-
-					const normalizedAbsolute = normalizePathSeparators(absolutePath)
-
+					const normalizedAbsolute = normalizePathSeparators(absoluteResolved)
 					if (
 						normalizedAbsolute !== normalizedWorkspaceRoot &&
 						!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
@@ -1049,53 +996,109 @@ function LinkOpenButton() {
 						)
 						return
 					}
-
-					await openTab(absolutePath)
-				} catch (error) {
-					console.error("Failed to open workspace link:", error)
+					await openTab(absoluteResolved)
 				}
-
 				return
-			}
-
-			try {
-				await openUrl(targetUrl)
 			} catch (error) {
-				console.error("Failed to open external link:", error)
+				console.warn(
+					"Failed to resolve wiki link via invoke while opening; using fallback:",
+					error,
+				)
 			}
-		},
-		[
-			currentTab?.path,
-			decodedUrl,
-			element?.url,
-			element?.wikiTarget,
-			isWikiLink,
-			isWebLink,
-			openTab,
+		}
+
+		let absolutePath: string | null = null
+		const { rawPath, target } = parseInternalLinkTarget(rawTarget)
+		const resolvedPath = resolveInternalLinkPath({
+			rawPath,
+			target,
 			workspaceFiles,
 			workspacePath,
-		],
-	)
+			currentTabPath: currentTab?.path ?? null,
+		})
 
-	return (
-		<button
-			type="button"
-			className={buttonVariants({
-				size: "icon",
-				variant: "ghost",
-			})}
-			onMouseOver={(event) => {
-				event.stopPropagation()
-			}}
-			onFocus={() => {
+		if (resolvedPath) {
+			await openTab(resolvedPath)
+			return
+		}
+
+		if (rawTarget.startsWith("/")) {
+			const workspaceRelativePath = stripLeadingSlashes(rawTarget)
+			absolutePath = join(workspacePath, workspaceRelativePath)
+		} else {
+			const currentPath = currentTab?.path
+			if (!currentPath) {
 				return
-			}}
-			onClick={handleOpen}
-		>
-			<FileInput />
-		</button>
-	)
+			}
+
+			const currentDirectory = pathDirname(currentPath)
+			absolutePath = join(currentDirectory, rawTarget)
+		}
+
+		if (!absolutePath) {
+			return
+		}
+
+		const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
+		if (!normalizedWorkspaceRoot) {
+			console.warn("Workspace root missing; link open aborted")
+			return
+		}
+
+		const normalizedAbsolute = normalizePathSeparators(absolutePath)
+
+		if (
+			normalizedAbsolute !== normalizedWorkspaceRoot &&
+			!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
+		) {
+			console.warn(
+				"Workspace link outside of root blocked:",
+				normalizedAbsolute,
+			)
+			return
+		}
+
+		await openTab(absolutePath)
+	} catch (error) {
+		console.error("Failed to open workspace link:", error)
+	}
 }
+
+export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> =
+	{
+		onMouseDown: (event) => {
+			const { currentTarget } = event
+			const url = currentTarget.dataset.linkUrl || currentTarget.href
+			if (isJavaScriptUrl(url)) {
+				event.preventDefault()
+				event.stopPropagation()
+				event.nativeEvent.stopImmediatePropagation?.()
+				return
+			}
+
+			const isPrimaryClick = event.button === 0
+			const hasModifierKey =
+				event.metaKey || event.ctrlKey || event.altKey || event.shiftKey
+			if (!isPrimaryClick || hasModifierKey) {
+				return
+			}
+
+			event.preventDefault()
+			event.stopPropagation()
+			event.nativeEvent.stopImmediatePropagation?.()
+
+			void openLink({
+				href: url,
+				wiki: currentTarget.dataset.wiki === "true",
+				wikiTarget: currentTarget.dataset.wikiTarget || undefined,
+			})
+		},
+		onClick: (event) => {
+			event.preventDefault()
+			event.stopPropagation()
+			event.nativeEvent.stopImmediatePropagation?.()
+		},
+	}
 
 // Recursively traverse workspace file tree and collect all .md files for autocomplete
 // Returns flattened list with relative paths for suggestion matching
@@ -1460,4 +1463,10 @@ function safelyDecodeUrl(url: string): string {
 		}
 		throw error
 	}
+}
+
+function isJavaScriptUrl(url: string): boolean {
+	const decoded = safelyDecodeUrl(url)
+	const normalized = decoded.trim().toLowerCase()
+	return normalized.startsWith("javascript:")
 }

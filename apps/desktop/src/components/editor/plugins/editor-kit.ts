@@ -24,7 +24,10 @@ import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useStore } from "@/store"
 import { AIMenu } from "../ui/ai-menu"
-import { LinkFloatingToolbar } from "../ui/link-toolbar"
+import {
+	LinkFloatingToolbar,
+	linkLeafDefaultAttributes,
+} from "../ui/link-toolbar"
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
 import { SlashInputElement } from "../ui/node-slash"
@@ -63,7 +66,10 @@ export const EditorKit = [
 	...DateKit,
 	...DndKit,
 	...FloatingToolbarKit,
-	...createLinkKit({ LinkFloatingToolbar }),
+	...createLinkKit({
+		LinkFloatingToolbar,
+		defaultLinkAttributes: linkLeafDefaultAttributes,
+	}),
 	...ListKit,
 	...MarkdownKit,
 	...MathKit,
