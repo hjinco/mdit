@@ -56,6 +56,7 @@ pub fn run() {
             commands::vault_indexing::search_query_entries_command,
             commands::vault_indexing::resolve_wiki_link_command,
             commands::vault_indexing::get_backlinks_command,
+            commands::vault_indexing::get_related_notes_command,
             commands::vault_indexing::get_graph_view_data_command,
             commands::vault_indexing::list_vault_workspaces_command,
             commands::vault_indexing::touch_vault_workspace_command,
