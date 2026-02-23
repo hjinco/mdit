@@ -405,7 +405,7 @@ export function TreeNode({
 								paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px`,
 							}}
 						>
-							<div className="shrink-0 px-1.5 py-1" aria-hidden="true">
+							<div className="shrink-0 pl-1.5 py-1" aria-hidden="true">
 								<ChevronRight className="size-4" />
 							</div>
 							<div className="relative flex-1 min-w-0 flex items-center">
