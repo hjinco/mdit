@@ -7,6 +7,8 @@ export {
 } from "./codex-oauth"
 export type {
 	ApiKeyCredential,
+	AppSecretKey,
+	AppSecrets,
 	CodexOAuthCredential,
 	CredentialStore,
 	KeyringApi,
@@ -16,11 +18,14 @@ export type {
 export {
 	AI_CREDENTIALS_SERVICE,
 	AI_CREDENTIALS_USER,
+	deleteAppSecret,
 	deleteCredential,
+	getAppSecret,
 	getCredential,
 	listCredentialProviders,
 	loadCredentialStore,
 	setApiKeyCredential,
+	setAppSecret,
 	setCodexCredential,
 } from "./credential-store"
 export type {
