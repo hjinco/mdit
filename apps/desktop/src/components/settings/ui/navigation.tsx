@@ -24,7 +24,7 @@ export function SettingsNavigation({
 	const tabs: Array<{ id: SettingsTab; label: string }> = [
 		{ id: "preferences", label: "Preferences" },
 		{ id: "ai", label: "AI" },
-		{ id: "api-mcp", label: "API / MCP" },
+		{ id: "api-mcp", label: "MCP" },
 		...(hasWorkspace
 			? [
 					{ id: "sync", label: "Sync" } as const,
@@ -36,7 +36,9 @@ export function SettingsNavigation({
 
 	return (
 		<nav className="flex flex-col p-1 gap-0.5 border-r w-40 bg-muted">
-			<DialogTitle className="text-sm p-3 font-medium">Settings</DialogTitle>
+			<DialogTitle className="text-xs text-muted-foreground p-3">
+				Settings
+			</DialogTitle>
 			{tabs.map((tab) => (
 				<Button
 					key={tab.id}
