@@ -213,17 +213,19 @@ const syncBacklinksAndLinkIndex = async (
 		warnings.push("rename-indexed-note")
 	}
 
-	for (const notePath of indexTargets) {
-		try {
-			await ctx.deps.linkIndexing.indexNote(input.workspacePath, notePath)
-		} catch (error) {
-			console.warn("Failed to refresh link index for note after rename:", {
-				notePath,
-				error,
-			})
-			warnings.push(`index:${notePath}`)
-		}
-	}
+	await Promise.all(
+		[...indexTargets].map(async (notePath) => {
+			try {
+				await ctx.deps.linkIndexing.indexNote(input.workspacePath, notePath)
+			} catch (error) {
+				console.warn("Failed to refresh link index for note after rename:", {
+					notePath,
+					error,
+				})
+				warnings.push(`index:${notePath}`)
+			}
+		}),
+	)
 
 	if (warnings.length > 0) {
 		console.warn("Rename completed with silent warnings.", {
