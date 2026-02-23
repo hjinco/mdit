@@ -3,6 +3,7 @@ import { PlateController } from "platejs/react"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { ErrorBoundary } from "./components/error-boundary/error-boundary"
+import { Hotkeys } from "./components/hotkeys/hotkeys"
 import { WindowMenu } from "./components/window-menu/window-menu"
 import { DndProvider } from "./contexts/dnd-provider"
 import { DropProvider } from "./contexts/drop-context"
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 				</PlateController>
 			</ThemeProvider>
 			<WindowMenu />
+			<Hotkeys />
 			<Toaster />
 		</ErrorBoundary>
 	</React.StrictMode>,
