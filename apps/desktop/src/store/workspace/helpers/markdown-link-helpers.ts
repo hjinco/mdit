@@ -529,7 +529,8 @@ function collectWikiLinkTargetSlices(content: string): WikiLinkTargetSlice[] {
 				}
 			}
 		})
-	} catch {
+	} catch (error) {
+		console.error("Failed to parse markdown for wiki link collection:", error)
 		return []
 	}
 

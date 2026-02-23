@@ -45,45 +45,55 @@ const rewriteBacklinkDocument = async (
 	const wikiTargets = collectWikiLinkTargets(updatedContent)
 	if (wikiTargets.length > 0) {
 		const replacements = new Map<string, string>()
-
-		for (const rawWikiTarget of wikiTargets) {
-			const trimmedTarget = rawWikiTarget.trim()
-			if (!trimmedTarget || isExternalWikiTarget(trimmedTarget)) {
-				continue
-			}
-
-			try {
-				const resolved = await ctx.deps.linkIndexing.resolveWikiLink({
-					workspacePath: input.workspacePath,
-					currentNotePath: input.sourcePath,
-					rawTarget: trimmedTarget,
-				})
-
-				const matchesByResolver =
-					normalizeSlashes(resolved.resolvedRelPath ?? "") === input.oldRelPath
-				const matchesByFallback =
-					resolved.unresolved &&
-					doesWikiTargetReferToRelPath(trimmedTarget, input.oldRelPath)
-
-				if (!matchesByResolver && !matchesByFallback) {
-					continue
+		const replacementEntries = await Promise.all(
+			wikiTargets.map(async (rawWikiTarget) => {
+				const trimmedTarget = rawWikiTarget.trim()
+				if (!trimmedTarget || isExternalWikiTarget(trimmedTarget)) {
+					return null
 				}
 
-				const { suffix } = splitWikiTargetSuffix(trimmedTarget)
-				replacements.set(
-					rawWikiTarget,
-					withPreservedSurroundingWhitespace(
+				try {
+					const resolved = await ctx.deps.linkIndexing.resolveWikiLink({
+						workspacePath: input.workspacePath,
+						currentNotePath: input.sourcePath,
+						rawTarget: trimmedTarget,
+					})
+
+					const matchesByResolver =
+						normalizeSlashes(resolved.resolvedRelPath ?? "") ===
+						input.oldRelPath
+					const matchesByFallback =
+						resolved.unresolved &&
+						doesWikiTargetReferToRelPath(trimmedTarget, input.oldRelPath)
+
+					if (!matchesByResolver && !matchesByFallback) {
+						return null
+					}
+
+					const { suffix } = splitWikiTargetSuffix(trimmedTarget)
+					return {
 						rawWikiTarget,
-						`${input.newWikiTarget}${suffix}`,
-					),
-				)
-			} catch (error) {
-				console.warn("Failed to resolve wiki target while renaming note:", {
-					sourcePath: input.sourcePath,
-					rawWikiTarget: trimmedTarget,
-					error,
-				})
+						replacement: withPreservedSurroundingWhitespace(
+							rawWikiTarget,
+							`${input.newWikiTarget}${suffix}`,
+						),
+					}
+				} catch (error) {
+					console.warn("Failed to resolve wiki target while renaming note:", {
+						sourcePath: input.sourcePath,
+						rawWikiTarget: trimmedTarget,
+						error,
+					})
+					return null
+				}
+			}),
+		)
+
+		for (const entry of replacementEntries) {
+			if (!entry) {
+				continue
 			}
+			replacements.set(entry.rawWikiTarget, entry.replacement)
 		}
 
 		if (replacements.size > 0) {
@@ -155,37 +165,39 @@ const syncBacklinksAndLinkIndex = async (
 	}
 
 	const indexTargets = new Set<string>([normalizeSlashes(input.newNotePath)])
-	for (const backlink of backlinks) {
-		const sourcePath = resolveSourcePath(
-			input.workspacePath,
-			backlink.relPath,
-			input.oldNotePath,
-			input.newNotePath,
-		)
+	await Promise.all(
+		backlinks.map(async (backlink) => {
+			const sourcePath = resolveSourcePath(
+				input.workspacePath,
+				backlink.relPath,
+				input.oldNotePath,
+				input.newNotePath,
+			)
 
-		if (!isMarkdownNotePath(sourcePath)) {
-			continue
-		}
+			if (!isMarkdownNotePath(sourcePath)) {
+				return
+			}
 
-		indexTargets.add(normalizeSlashes(sourcePath))
+			indexTargets.add(normalizeSlashes(sourcePath))
 
-		try {
-			await rewriteBacklinkDocument(ctx, {
-				workspacePath: input.workspacePath,
-				sourcePath,
-				oldNotePath: input.oldNotePath,
-				newNotePath: input.newNotePath,
-				oldRelPath,
-				newWikiTarget,
-			})
-		} catch (error) {
-			console.warn("Failed to rewrite backlink document after note rename:", {
-				sourcePath,
-				error,
-			})
-			warnings.push(`rewrite:${sourcePath}`)
-		}
-	}
+			try {
+				await rewriteBacklinkDocument(ctx, {
+					workspacePath: input.workspacePath,
+					sourcePath,
+					oldNotePath: input.oldNotePath,
+					newNotePath: input.newNotePath,
+					oldRelPath,
+					newWikiTarget,
+				})
+			} catch (error) {
+				console.warn("Failed to rewrite backlink document after note rename:", {
+					sourcePath,
+					error,
+				})
+				warnings.push(`rewrite:${sourcePath}`)
+			}
+		}),
+	)
 
 	for (const backlink of backlinksToNewTarget) {
 		const sourcePath = resolveSourcePath(

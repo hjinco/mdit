@@ -94,7 +94,7 @@ export const toWikiTargetFromAbsolutePath = (
 	notePath: string,
 ) => {
 	const relPath = normalizeSlashes(relative(workspacePath, notePath))
-	return relPath.endsWith(".md") ? relPath.slice(0, -3) : relPath
+	return stripMarkdownExtension(relPath)
 }
 
 export const resolveSourcePath = (
