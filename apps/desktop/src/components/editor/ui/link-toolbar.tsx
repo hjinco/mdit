@@ -36,6 +36,7 @@ import { LinkUrlInput } from "./link-url-input"
 const popoverVariants = cva(
 	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
 )
+const LINK_INSERT_FOCUS_REQUEST_TTL_MS = 1000
 
 export function LinkFloatingToolbar({
 	state,
@@ -92,6 +93,7 @@ export function LinkFloatingToolbar({
 	const inputProps = useFormInputProps({
 		preventDefaultOnEnterKeydown: true,
 	})
+	const isInsertOpen = isOpen && mode === "insert"
 	const isEditOpen = isOpen && mode === "edit"
 	const isLinkLeafSelected = useMemo(() => {
 		if (!selection || !editor.api.isCollapsed()) {
@@ -140,6 +142,27 @@ export function LinkFloatingToolbar({
 		if (!end) return
 		editor.tf.select({ anchor: end, focus: end })
 	}, [editor, mode, selection])
+
+	useEffect(() => {
+		if (!isInsertOpen) {
+			return
+		}
+
+		const requestedAt = editor.meta._linkInsertFocusRequestedAt
+		if (typeof requestedAt !== "number") {
+			return
+		}
+
+		editor.meta._linkInsertFocusRequestedAt = undefined
+
+		if (Date.now() - requestedAt > LINK_INSERT_FOCUS_REQUEST_TTL_MS) {
+			return
+		}
+
+		requestAnimationFrame(() => {
+			insertInputRef.current?.focus()
+		})
+	}, [editor, isInsertOpen])
 
 	useEffect(() => {
 		if (!isEditOpen || !isLinkLeafSelected) {
