@@ -26,6 +26,7 @@
 		"@fabianlars/tauri-plugin-oauth": "^2.0.0",
 		"@flowershow/remark-wiki-link": "^3.3.1",
 		"@hookform/resolvers": "^5.2.2",
+		"@mdit/assets": "workspace:*",
 		"@mdit/ai-auth": "workspace:*",
 		"@mdit/editor": "workspace:*",
 		"@mdit/git-sync": "workspace:*",

@@ -53,6 +53,9 @@ importers:
       '@mdit/ai-auth':
         specifier: workspace:*
         version: link:../../packages/ai-auth
+      '@mdit/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
       '@mdit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -375,6 +378,16 @@ importers:
       tauri-plugin-keyring-api:
         specifier: ^0.1.1
         version: 0.1.1
+
+  packages/assets:
+    dependencies:
+      '@mdit/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
 
   packages/editor:
     dependencies:
