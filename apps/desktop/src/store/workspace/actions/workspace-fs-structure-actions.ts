@@ -120,30 +120,29 @@ const syncBacklinksAndLinkIndex = async (
 		input.newNotePath,
 	)
 
-	let backlinks = [] as { relPath: string; fileName: string }[]
-	try {
-		backlinks = await ctx.deps.linkIndexing.getBacklinks(
-			input.workspacePath,
-			input.oldNotePath,
-		)
-	} catch (error) {
+	const [backlinksResult, backlinksToNewTargetResult] = await Promise.allSettled([
+		ctx.deps.linkIndexing.getBacklinks(input.workspacePath, input.oldNotePath),
+		ctx.deps.linkIndexing.getBacklinks(input.workspacePath, input.newNotePath),
+	])
+
+	const backlinks =
+		backlinksResult.status === "fulfilled" ? backlinksResult.value : []
+	if (backlinksResult.status === "rejected") {
 		console.warn(
 			"Failed to load backlinks before note rename indexing sync:",
-			error,
+			backlinksResult.reason,
 		)
 		warnings.push("load-backlinks")
 	}
 
-	let backlinksToNewTarget = [] as { relPath: string; fileName: string }[]
-	try {
-		backlinksToNewTarget = await ctx.deps.linkIndexing.getBacklinks(
-			input.workspacePath,
-			input.newNotePath,
-		)
-	} catch (error) {
+	const backlinksToNewTarget =
+		backlinksToNewTargetResult.status === "fulfilled"
+			? backlinksToNewTargetResult.value
+			: []
+	if (backlinksToNewTargetResult.status === "rejected") {
 		console.warn(
 			"Failed to load unresolved backlinks for new note path before rename indexing sync:",
-			error,
+			backlinksToNewTargetResult.reason,
 		)
 		warnings.push("load-new-backlinks")
 	}
