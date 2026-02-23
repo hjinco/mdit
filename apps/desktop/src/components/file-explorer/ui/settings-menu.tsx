@@ -17,7 +17,7 @@ export function SettingsMenu() {
 			<SettingsIcon className="size-4" /> Settings
 			<span className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0">
 				{getModifierKey()}
-				<span className="ml-1">{";"}</span>
+				<span className="ml-1">{"/"}</span>
 			</span>
 		</Button>
 	)
