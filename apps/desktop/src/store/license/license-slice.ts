@@ -1,7 +1,7 @@
+import { deleteAppSecret, getAppSecret, setAppSecret } from "@mdit/ai-auth"
 import {
 	deletePassword as deletePasswordFromKeyring,
 	getPassword as getPasswordFromKeyring,
-	setPassword as setPasswordInKeyring,
 } from "tauri-plugin-keyring-api"
 import type { StateCreator } from "zustand"
 import {
@@ -12,8 +12,8 @@ import {
 	validateLicenseKey,
 } from "./lib/license-api"
 
-const LICENSE_SERVICE = "app.mdit.license.lifetime"
-const LICENSE_USER = "mdit"
+const LEGACY_LICENSE_SERVICE = "app.mdit.license.lifetime"
+const LEGACY_LICENSE_USER = "mdit"
 const ACTIVATION_ID_STORAGE_KEY = "license-activation-id"
 
 export type LicenseSlice = {
@@ -32,13 +32,11 @@ export type LicenseSlice = {
 }
 
 type LicenseSliceDependencies = {
-	getPassword: (service: string, username: string) => Promise<string | null>
-	setPassword: (
-		service: string,
-		username: string,
-		password: string,
-	) => Promise<void>
-	deletePassword: (service: string, username: string) => Promise<void>
+	getLicenseKey: () => Promise<string | null>
+	setLicenseKey: (key: string) => Promise<void>
+	deleteLicenseKey: () => Promise<void>
+	getLegacyLicenseKey: () => Promise<string | null>
+	deleteLegacyLicenseKey: () => Promise<void>
 	activateLicenseKey: typeof activateLicenseKey
 	validateLicenseKey: typeof validateLicenseKey
 	deactivateLicenseKey: typeof deactivateLicenseKey
@@ -46,9 +44,11 @@ type LicenseSliceDependencies = {
 
 export const prepareLicenseSlice =
 	({
-		getPassword,
-		setPassword,
-		deletePassword,
+		getLicenseKey,
+		setLicenseKey,
+		deleteLicenseKey,
+		getLegacyLicenseKey,
+		deleteLegacyLicenseKey,
 		activateLicenseKey,
 		validateLicenseKey,
 		deactivateLicenseKey,
@@ -80,7 +80,15 @@ export const prepareLicenseSlice =
 					return
 				}
 
-				const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+				let licenseKey = await getLicenseKey()
+				if (!licenseKey) {
+					const legacyLicenseKey = await getLegacyLicenseKey()
+					if (legacyLicenseKey) {
+						await setLicenseKey(legacyLicenseKey)
+						await deleteLegacyLicenseKey()
+						licenseKey = legacyLicenseKey
+					}
+				}
 				let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
 				if (!licenseKey) {
@@ -112,7 +120,7 @@ export const prepareLicenseSlice =
 				if (!activationResult) {
 					return
 				}
-				await setPassword(LICENSE_SERVICE, LICENSE_USER, key)
+				await setLicenseKey(key)
 				const validationResult = await get().validateLicense(
 					key,
 					activationResult.id,
@@ -154,7 +162,7 @@ export const prepareLicenseSlice =
 
 			if (!result.success) {
 				if (result.isValidationError) {
-					await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+					await deleteLicenseKey()
 					localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
 					set({
 						status: "invalid",
@@ -176,7 +184,7 @@ export const prepareLicenseSlice =
 			try {
 				set({ status: "deactivating", error: null })
 
-				const licenseKey = await getPassword(LICENSE_SERVICE, LICENSE_USER)
+				const licenseKey = await getLicenseKey()
 				const activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
 
 				if (!licenseKey || !activationId) {
@@ -192,7 +200,7 @@ export const prepareLicenseSlice =
 
 				if (!result.success) {
 					if (result.isValidationError) {
-						await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+						await deleteLicenseKey()
 						localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
 						set({
 							status: "invalid",
@@ -209,7 +217,7 @@ export const prepareLicenseSlice =
 					return
 				}
 
-				await deletePassword(LICENSE_SERVICE, LICENSE_USER)
+				await deleteLicenseKey()
 				localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
 				set({ status: "invalid", hasVerifiedLicense: false })
 			} catch {
@@ -223,9 +231,13 @@ export const prepareLicenseSlice =
 	})
 
 export const createLicenseSlice = prepareLicenseSlice({
-	getPassword: getPasswordFromKeyring,
-	setPassword: setPasswordInKeyring,
-	deletePassword: deletePasswordFromKeyring,
+	getLicenseKey: async () => getAppSecret("license_key"),
+	setLicenseKey: async (key: string) => setAppSecret("license_key", key),
+	deleteLicenseKey: async () => deleteAppSecret("license_key"),
+	getLegacyLicenseKey: async () =>
+		getPasswordFromKeyring(LEGACY_LICENSE_SERVICE, LEGACY_LICENSE_USER),
+	deleteLegacyLicenseKey: async () =>
+		deletePasswordFromKeyring(LEGACY_LICENSE_SERVICE, LEGACY_LICENSE_USER),
 	activateLicenseKey,
 	validateLicenseKey,
 	deactivateLicenseKey,

@@ -34,7 +34,8 @@ const ensureLocalStorage = () => {
 }
 
 function createLicenseStore({
-	getPassword = vi.fn().mockResolvedValue("license-key"),
+	getLicenseKey = vi.fn().mockResolvedValue("license-key"),
+	getLegacyLicenseKey = vi.fn().mockResolvedValue(null),
 	validateLicenseKey = vi.fn().mockResolvedValue({
 		success: true,
 		data: {} as any,
@@ -44,14 +45,17 @@ function createLicenseStore({
 		data: undefined,
 	}),
 }: {
-	getPassword?: (service: string, username: string) => Promise<string | null>
+	getLicenseKey?: () => Promise<string | null>
+	getLegacyLicenseKey?: () => Promise<string | null>
 	validateLicenseKey?: (key: string, activationId: string) => Promise<any>
 	deactivateLicenseKey?: (key: string, activationId: string) => Promise<any>
 } = {}) {
 	const deps = {
-		getPassword,
-		setPassword: vi.fn().mockResolvedValue(undefined),
-		deletePassword: vi.fn().mockResolvedValue(undefined),
+		getLicenseKey,
+		setLicenseKey: vi.fn().mockResolvedValue(undefined),
+		deleteLicenseKey: vi.fn().mockResolvedValue(undefined),
+		getLegacyLicenseKey,
+		deleteLegacyLicenseKey: vi.fn().mockResolvedValue(undefined),
 		activateLicenseKey: vi.fn().mockResolvedValue({
 			success: true,
 			data: { id: "activation-id" },
@@ -123,5 +127,36 @@ describe("license-slice hasVerifiedLicense", () => {
 		expect(store.getState().status).toBe("invalid")
 		expect(store.getState().hasVerifiedLicense).toBe(false)
 		expect(localStorage.getItem("license-activation-id")).toBeNull()
+	})
+
+	it("migrates legacy license key when unified key is missing", async () => {
+		const validateLicenseKey = vi.fn().mockResolvedValue({
+			success: true,
+			data: {} as any,
+		})
+		const { store, deps } = createLicenseStore({
+			getLicenseKey: vi.fn().mockResolvedValue(null),
+			getLegacyLicenseKey: vi.fn().mockResolvedValue("legacy-license-key"),
+			validateLicenseKey,
+		})
+		localStorage.setItem("license-activation-id", "activation-id")
+		const previousBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
+		const previousOrgId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
+		import.meta.env.VITE_POLAR_API_BASE_URL = "https://example.com"
+		import.meta.env.VITE_POLAR_ORGANIZATION_ID = "org_123"
+
+		try {
+			await store.getState().checkLicense()
+		} finally {
+			import.meta.env.VITE_POLAR_API_BASE_URL = previousBaseUrl
+			import.meta.env.VITE_POLAR_ORGANIZATION_ID = previousOrgId
+		}
+
+		expect(deps.setLicenseKey).toHaveBeenCalledWith("legacy-license-key")
+		expect(deps.deleteLegacyLicenseKey).toHaveBeenCalled()
+		expect(validateLicenseKey).toHaveBeenCalledWith(
+			"legacy-license-key",
+			"activation-id",
+		)
 	})
 })

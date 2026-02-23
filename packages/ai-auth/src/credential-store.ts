@@ -35,9 +35,18 @@ export type ProviderCredentialMap = {
 
 export type ProviderCredential = ProviderCredentialMap[CredentialProviderId]
 
+export type AppSecretKey = "local_api_token" | "license_key"
+
+export type AppSecrets = {
+	localApiToken?: string
+	licenseKey?: string
+}
+
 export type CredentialStore = {
 	version: typeof CREDENTIAL_STORE_VERSION
 	providers: Partial<Record<CredentialProviderId, ProviderCredential>>
+	localApiToken?: string
+	licenseKey?: string
 }
 
 export type KeyringApi = {
@@ -74,6 +83,17 @@ function isCredentialProviderId(value: unknown): value is CredentialProviderId {
 		value === "anthropic" ||
 		value === "codex_oauth"
 	)
+}
+
+function isAppSecretKey(value: unknown): value is AppSecretKey {
+	return value === "local_api_token" || value === "license_key"
+}
+
+function toStoreSecretKey(key: AppSecretKey): keyof AppSecrets {
+	if (key === "local_api_token") {
+		return "localApiToken"
+	}
+	return "licenseKey"
 }
 
 function isApiKeyCredential(value: unknown): value is ApiKeyCredential {
@@ -135,9 +155,33 @@ function decodeCredentialStore(raw: string): CredentialStore {
 			providers[providerIdRaw] = credential
 		}
 
+		const secrets: AppSecrets = {}
+
+		if (typeof parsed.localApiToken === "string") {
+			secrets.localApiToken = parsed.localApiToken
+		}
+		if (typeof parsed.licenseKey === "string") {
+			secrets.licenseKey = parsed.licenseKey
+		}
+
+		const secretsRaw = parsed.secrets
+		if (isRecord(secretsRaw)) {
+			for (const [secretKeyRaw, secretValue] of Object.entries(secretsRaw)) {
+				if (!isAppSecretKey(secretKeyRaw)) {
+					continue
+				}
+				if (typeof secretValue !== "string") {
+					continue
+				}
+				secrets[toStoreSecretKey(secretKeyRaw)] = secretValue
+			}
+		}
+
 		return {
 			version: CREDENTIAL_STORE_VERSION,
 			providers,
+			localApiToken: secrets.localApiToken,
+			licenseKey: secrets.licenseKey,
 		}
 	} catch {
 		return createEmptyCredentialStore()
@@ -149,7 +193,10 @@ async function saveCredentialStore(
 	keyringApi: KeyringApi,
 ): Promise<void> {
 	const hasProvider = Object.keys(store.providers).length > 0
-	if (!hasProvider) {
+	const hasSecret =
+		typeof store.localApiToken === "string" ||
+		typeof store.licenseKey === "string"
+	if (!hasProvider && !hasSecret) {
 		await keyringApi.deletePassword(AI_CREDENTIALS_SERVICE, AI_CREDENTIALS_USER)
 		return
 	}
@@ -227,4 +274,38 @@ export async function listCredentialProviders(
 ): Promise<CredentialProviderId[]> {
 	const store = await loadCredentialStore(keyringApi)
 	return Object.keys(store.providers).filter(isCredentialProviderId)
+}
+
+export async function getAppSecret(
+	key: AppSecretKey,
+	keyringApi: KeyringApi = defaultKeyringApi,
+): Promise<string | null> {
+	const store = await loadCredentialStore(keyringApi)
+	const storeKey = toStoreSecretKey(key)
+	return store[storeKey] ?? null
+}
+
+export async function setAppSecret(
+	key: AppSecretKey,
+	value: string,
+	keyringApi: KeyringApi = defaultKeyringApi,
+): Promise<void> {
+	if (!value) {
+		throw new Error("Secret value is required")
+	}
+
+	const store = await loadCredentialStore(keyringApi)
+	const storeKey = toStoreSecretKey(key)
+	store[storeKey] = value
+	await saveCredentialStore(store, keyringApi)
+}
+
+export async function deleteAppSecret(
+	key: AppSecretKey,
+	keyringApi: KeyringApi = defaultKeyringApi,
+): Promise<void> {
+	const store = await loadCredentialStore(keyringApi)
+	const storeKey = toStoreSecretKey(key)
+	delete store[storeKey]
+	await saveCredentialStore(store, keyringApi)
 }
