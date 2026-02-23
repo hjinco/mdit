@@ -142,6 +142,10 @@ describe("wiki link helpers", () => {
 		const content = [
 			"[[docs/old-note|Alias]]",
 			"`[[inline-code]]`",
+			"`` [[double-tick-inline-code]] ``",
+			"`inline-start",
+			"[[multi-line-inline-code]]",
+			"`",
 			"```md",
 			"[[inside-fence]]",
 			"```",
@@ -157,6 +161,13 @@ describe("wiki link helpers", () => {
 		const content = [
 			"[[docs/old-note|Alias]]",
 			"![[docs/old-note#section]]",
+			"`` [[docs/old-note]] ``",
+			"`inline-start",
+			"[[docs/old-note]]",
+			"`",
+			"```md",
+			"[[docs/old-note]]",
+			"```",
 			"[[other-note]]",
 		].join("\n")
 		const result = rewriteWikiLinkTargets(
@@ -171,6 +182,13 @@ describe("wiki link helpers", () => {
 			[
 				"[[archive/new-note|Alias]]",
 				"![[archive/new-note#section]]",
+				"`` [[docs/old-note]] ``",
+				"`inline-start",
+				"[[docs/old-note]]",
+				"`",
+				"```md",
+				"[[docs/old-note]]",
+				"```",
 				"[[other-note]]",
 			].join("\n"),
 		)

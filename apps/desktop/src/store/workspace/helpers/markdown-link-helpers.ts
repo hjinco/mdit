@@ -1,3 +1,4 @@
+import remarkWikiLink from "@flowershow/remark-wiki-link"
 import type { Definition, Image, Link } from "mdast"
 import { normalize, relative, resolve } from "pathe"
 import remarkParse from "remark-parse"
@@ -50,6 +51,7 @@ const ESCAPABLE_CHARACTERS = new Set([
 const DESTINATION_ESCAPE_REGEX = /[()\s<>]/g
 
 const remarkProcessor = unified().use(remarkParse)
+const wikiRemarkProcessor = unified().use(remarkParse).use(remarkWikiLink)
 
 export function rewriteMarkdownRelativeLinks(
 	content: string,
@@ -507,145 +509,112 @@ function applyReplacements(content: string, replacements: Replacement[]) {
 
 function collectWikiLinkTargetSlices(content: string): WikiLinkTargetSlice[] {
 	const slices: WikiLinkTargetSlice[] = []
-	let index = 0
-	let inFence = false
-	let fenceChar: "`" | "~" | null = null
-	let fenceLength = 0
 
-	while (index < content.length) {
-		const lineStart = index
-		const lineEnd = findLineEnd(content, lineStart)
-		const line = content.slice(lineStart, lineEnd)
-		const fence = parseFenceLine(line)
+	try {
+		const tree = wikiRemarkProcessor.runSync(wikiRemarkProcessor.parse(content))
 
-		if (inFence) {
-			if (
-				fence &&
-				fence.char === fenceChar &&
-				fence.length >= fenceLength &&
-				fence.isFence
-			) {
-				inFence = false
-				fenceChar = null
-				fenceLength = 0
+		visit(tree, (node) => {
+			if (node.type === "wikiLink") {
+				const slice = extractWikiLinkSlice(node, content)
+				if (slice) {
+					slices.push(slice)
+				}
+				return
 			}
-		} else if (fence?.isFence) {
-			inFence = true
-			fenceChar = fence.char
-			fenceLength = fence.length
-		} else {
-			collectWikiTargetsFromLine(lineStart, line, slices)
-		}
 
-		index = lineEnd + 1
+			if (node.type === "embed") {
+				const slice = extractWikiEmbedSlice(node, content)
+				if (slice) {
+					slices.push(slice)
+				}
+			}
+		})
+	} catch {
+		return []
 	}
 
 	return slices
 }
 
-function findLineEnd(content: string, start: number) {
-	let end = start
-	while (end < content.length && content[end] !== "\n") {
-		end += 1
+type OffsetNode = {
+	position?: {
+		start?: { offset?: number }
+		end?: { offset?: number }
 	}
-	return end
 }
 
-function parseFenceLine(line: string): {
-	isFence: boolean
-	char: "`" | "~"
-	length: number
-} | null {
-	let index = 0
-	let spaces = 0
-	while (index < line.length && line[index] === " " && spaces < 3) {
-		index += 1
-		spaces += 1
-	}
+type WikiValueNode = OffsetNode & {
+	value?: string
+}
 
-	const marker = line[index]
-	if (marker !== "`" && marker !== "~") {
+function extractWikiLinkSlice(
+	node: WikiValueNode,
+	content: string,
+): WikiLinkTargetSlice | null {
+	const target = typeof node.value === "string" ? node.value : ""
+	if (!target.length) {
 		return null
 	}
 
-	let count = 0
-	while (index < line.length && line[index] === marker) {
-		index += 1
-		count += 1
+	const offsets = getOffsets(node)
+	if (!offsets) {
+		return null
 	}
 
-	if (count < 3) {
+	const end = offsets.start + target.length
+	if (end > content.length) {
 		return null
 	}
 
 	return {
-		isFence: true,
-		char: marker,
-		length: count,
+		start: offsets.start,
+		end,
+		target: content.slice(offsets.start, end),
 	}
 }
 
-function collectWikiTargetsFromLine(
-	lineOffset: number,
-	line: string,
-	slices: WikiLinkTargetSlice[],
-) {
-	let index = 0
-	let codeFenceTicks = 0
+function extractWikiEmbedSlice(
+	node: WikiValueNode,
+	content: string,
+): WikiLinkTargetSlice | null {
+	const target = typeof node.value === "string" ? node.value : ""
+	if (!target.length) {
+		return null
+	}
 
-	while (index < line.length) {
-		const char = line[index]
+	const offsets = getOffsets(node)
+	if (!offsets) {
+		return null
+	}
 
-		if (char === "`") {
-			const runLength = countRun(line, index, "`")
-			if (codeFenceTicks === 0) {
-				codeFenceTicks = runLength
-			} else if (runLength === codeFenceTicks) {
-				codeFenceTicks = 0
-			}
-			index += runLength
-			continue
-		}
+	const rawToken = content.slice(offsets.start, offsets.end)
+	const openIndex = rawToken.indexOf("[[")
+	if (openIndex === -1) {
+		return null
+	}
 
-		if (codeFenceTicks > 0) {
-			index += 1
-			continue
-		}
+	const start = offsets.start + openIndex + 2
+	const end = start + target.length
+	if (end > offsets.end || end > content.length) {
+		return null
+	}
 
-		if (char === "[" && line[index + 1] === "[") {
-			const targetStart = index + 2
-			const closeIndex = line.indexOf("]]", targetStart)
-			if (closeIndex === -1) {
-				break
-			}
-
-			const rawInner = line.slice(targetStart, closeIndex)
-			const aliasIndex = rawInner.indexOf("|")
-			const rawTarget =
-				aliasIndex === -1 ? rawInner : rawInner.slice(0, aliasIndex)
-
-			if (rawTarget.trim().length > 0) {
-				slices.push({
-					start: lineOffset + targetStart,
-					end: lineOffset + targetStart + rawTarget.length,
-					target: rawTarget,
-				})
-			}
-
-			index = closeIndex + 2
-			continue
-		}
-
-		index += 1
+	return {
+		start,
+		end,
+		target: content.slice(start, end),
 	}
 }
 
-function countRun(value: string, start: number, target: string) {
-	let count = 0
-	while (start + count < value.length && value[start + count] === target) {
-		count += 1
+function getOffsets(node: OffsetNode) {
+	const start = node.position?.start?.offset
+	const end = node.position?.end?.offset
+
+	if (start == null || end == null || end < start) {
+		return null
 	}
-	return count
+
+	return { start, end }
 }
 
 function findDefinitionTargetStart(value: string) {
