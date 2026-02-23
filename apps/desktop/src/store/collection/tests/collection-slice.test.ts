@@ -9,11 +9,11 @@ type EntryLike = {
 	children?: EntryLike[]
 }
 
-const makeFile = (path: string, name: string): EntryLike => ({
-	path,
-	name,
-	isDirectory: false,
-})
+// const makeFile = (path: string, name: string): EntryLike => ({
+// 	path,
+// 	name,
+// 	isDirectory: false,
+// })
 
 const makeDir = (
 	path: string,
@@ -35,37 +35,6 @@ const createCollectionTestStore = () => {
 }
 
 describe("collection-slice event handlers", () => {
-	it("onEntryCreated switches collection path only for directories", () => {
-		const store = createCollectionTestStore()
-		store.setState({
-			entries: [
-				makeDir("/ws/folder", "folder", [
-					makeFile("/ws/folder/a.md", "a.md"),
-					makeFile("/ws/folder/b.txt", "b.txt"),
-				]),
-			],
-		})
-
-		store.getState().onEntryCreated({
-			parentPath: "/ws",
-			entry: makeDir("/ws/folder", "folder"),
-		})
-
-		expect(store.getState().currentCollectionPath).toBe("/ws/folder")
-		expect(store.getState().lastCollectionPath).toBe("/ws/folder")
-		expect(store.getState().collectionEntries).toEqual([
-			makeFile("/ws/folder/a.md", "a.md"),
-		])
-
-		store.getState().onEntryCreated({
-			parentPath: "/ws/folder",
-			entry: makeFile("/ws/folder/new.md", "new.md"),
-		})
-
-		expect(store.getState().currentCollectionPath).toBe("/ws/folder")
-		expect(store.getState().lastCollectionPath).toBe("/ws/folder")
-	})
-
 	it("onEntriesDeleted clears current and last paths when affected", () => {
 		const store = createCollectionTestStore()
 		store.setState({

@@ -104,13 +104,7 @@ export const prepareCollectionSlice =
 			}))
 		},
 
-		onEntryCreated: ({ entry }) => {
-			if (!entry.isDirectory) {
-				return
-			}
-
-			get().setCurrentCollectionPath(entry.path)
-		},
+		onEntryCreated: () => {},
 
 		onEntriesDeleted: ({ paths }) => {
 			set((state) => {
