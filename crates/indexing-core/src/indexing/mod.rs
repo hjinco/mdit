@@ -374,6 +374,29 @@ pub fn index_note(
     )
 }
 
+pub fn delete_indexed_note(
+    workspace_root: &Path,
+    db_path: &Path,
+    note_path: &Path,
+) -> Result<bool> {
+    let _ = canonicalize_workspace_root(workspace_root)?;
+    let rel_path = to_workspace_rel_markdown_path(workspace_root, note_path)?;
+
+    let conn = open_indexing_connection(db_path)?;
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(false);
+    };
+
+    let deleted = conn
+        .execute(
+            "DELETE FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, &rel_path],
+        )
+        .context("Failed to delete indexed note document row")?;
+
+    Ok(deleted > 0)
+}
+
 pub fn rename_indexed_note(
     workspace_root: &Path,
     db_path: &Path,

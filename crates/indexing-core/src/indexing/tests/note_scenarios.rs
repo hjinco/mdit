@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
 
-use super::super::{get_related_notes, rename_indexed_note};
+use super::super::{delete_indexed_note, get_related_notes, rename_indexed_note};
 use super::test_support::IndexingHarness;
 
 #[test]
@@ -212,6 +212,64 @@ fn given_indexed_note_when_renaming_single_indexed_note_then_doc_id_is_preserved
             .collect::<Vec<_>>(),
         vec!["source.md".to_string()]
     );
+}
+
+#[test]
+fn given_indexed_note_when_deleting_single_indexed_note_then_doc_row_is_removed() {
+    let harness = IndexingHarness::new("mdit-indexing-delete-indexed-note");
+    harness.write_note("target.md", "# target");
+    harness.write_note("source.md", "[[target]]");
+    harness.run_workspace_index();
+
+    assert!(harness.doc_id("target.md").is_some());
+
+    let deleted = delete_indexed_note(
+        harness.root(),
+        harness.db_path(),
+        &harness.root().join("target.md"),
+    )
+    .expect("delete indexed note should succeed");
+
+    assert!(deleted);
+    assert!(harness.doc_id("target.md").is_none());
+}
+
+#[test]
+fn given_source_link_to_deleted_target_when_deleting_indexed_note_then_target_doc_binding_is_cleared(
+) {
+    let harness = IndexingHarness::new("mdit-indexing-delete-link-target-clear");
+    harness.write_note("target.md", "# target");
+    harness.write_note("source.md", "[[target]]");
+    harness.run_workspace_index();
+
+    let deleted = delete_indexed_note(
+        harness.root(),
+        harness.db_path(),
+        &harness.root().join("target.md"),
+    )
+    .expect("delete indexed note should succeed");
+
+    assert!(deleted);
+    assert_eq!(
+        harness.link_rows_for("source.md"),
+        vec![("target.md".to_string(), None)]
+    );
+}
+
+#[test]
+fn given_missing_indexed_note_when_deleting_then_it_returns_false() {
+    let harness = IndexingHarness::new("mdit-indexing-delete-indexed-note-missing");
+    harness.write_note("source.md", "# source");
+    harness.run_workspace_index();
+
+    let deleted = delete_indexed_note(
+        harness.root(),
+        harness.db_path(),
+        &harness.root().join("missing.md"),
+    )
+    .expect("delete indexed note should succeed");
+
+    assert!(!deleted);
 }
 
 fn set_doc_embedding(

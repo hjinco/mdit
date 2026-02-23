@@ -269,4 +269,194 @@ describe("workspace-fs-structure-actions", () => {
 			paths: ["/ws/a.md", "/ws/b.md"],
 		})
 	})
+
+	it("deleteEntries removes indexed markdown note and reindexes backlink sources", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		deps.linkIndexing.getBacklinks.mockResolvedValue([
+			{ relPath: "source.md", fileName: "source" },
+		])
+
+		await actions.deleteEntries(["/ws/target.md"])
+
+		expect(deps.linkIndexing.getBacklinks).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/target.md",
+		)
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/target.md",
+		)
+		expect(deps.linkIndexing.indexNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/source.md",
+		)
+	})
+
+	it("deleteEntries skips indexing sync for non-markdown paths", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		await actions.deleteEntries(["/ws/file.txt"])
+
+		expect(deps.linkIndexing.getBacklinks).not.toHaveBeenCalled()
+		expect(deps.linkIndexing.deleteIndexedNote).not.toHaveBeenCalled()
+		expect(deps.linkIndexing.indexNote).not.toHaveBeenCalled()
+	})
+
+	it("deleteEntries removes indexed markdown notes under deleted directory", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/folder",
+					name: "folder",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/folder/target.md",
+							name: "target.md",
+							isDirectory: false,
+						},
+						{
+							path: "/ws/folder/nested",
+							name: "nested",
+							isDirectory: true,
+							children: [
+								{
+									path: "/ws/folder/nested/deep.md",
+									name: "deep.md",
+									isDirectory: false,
+								},
+							],
+						},
+						{
+							path: "/ws/folder/ignored.txt",
+							name: "ignored.txt",
+							isDirectory: false,
+						},
+					],
+				},
+			],
+		})
+
+		await actions.deleteEntries(["/ws/folder"])
+
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/folder/target.md",
+		)
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/folder/nested/deep.md",
+		)
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledTimes(2)
+	})
+
+	it("deleteEntries reindexes only backlink sources outside deleted directory", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/folder",
+					name: "folder",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/folder/target.md",
+							name: "target.md",
+							isDirectory: false,
+						},
+					],
+				},
+			],
+		})
+
+		deps.linkIndexing.getBacklinks.mockResolvedValue([
+			{ relPath: "source.md", fileName: "source" },
+			{ relPath: "folder/internal.md", fileName: "internal" },
+		])
+
+		await actions.deleteEntries(["/ws/folder"])
+
+		expect(deps.linkIndexing.indexNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/source.md",
+		)
+		expect(deps.linkIndexing.indexNote).not.toHaveBeenCalledWith(
+			"/ws",
+			"/ws/folder/internal.md",
+		)
+	})
+
+	it("deleteEntries does not reindex backlink sources that are deleted together", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		deps.linkIndexing.getBacklinks.mockResolvedValue([
+			{ relPath: "source.md", fileName: "source" },
+		])
+
+		await actions.deleteEntries(["/ws/target.md", "/ws/source.md"])
+
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/target.md",
+		)
+		expect(deps.linkIndexing.deleteIndexedNote).toHaveBeenCalledWith(
+			"/ws",
+			"/ws/source.md",
+		)
+		expect(deps.linkIndexing.indexNote).not.toHaveBeenCalled()
+	})
+
+	it("deleteEntries keeps filesystem deletion successful on indexing sync failures", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		deps.linkIndexing.getBacklinks.mockResolvedValue([
+			{ relPath: "source.md", fileName: "source" },
+		])
+		deps.linkIndexing.deleteIndexedNote.mockRejectedValue(
+			new Error("delete-index-failed"),
+		)
+		deps.linkIndexing.indexNote.mockRejectedValue(new Error("reindex-failed"))
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		try {
+			await expect(
+				actions.deleteEntries(["/ws/target.md"]),
+			).resolves.toBeUndefined()
+			expect(deps.fileSystemRepository.moveToTrash).toHaveBeenCalledWith(
+				"/ws/target.md",
+			)
+			expect(getState().entriesDeleted).toHaveBeenCalledWith({
+				paths: ["/ws/target.md"],
+			})
+			expect(warnSpy).toHaveBeenCalled()
+		} finally {
+			warnSpy.mockRestore()
+		}
+	})
 })

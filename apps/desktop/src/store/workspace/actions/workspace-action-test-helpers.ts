@@ -63,6 +63,7 @@ export function createWorkspaceActionTestContext() {
 			}),
 			indexNote: vi.fn().mockResolvedValue(undefined),
 			renameIndexedNote: vi.fn().mockResolvedValue(false),
+			deleteIndexedNote: vi.fn().mockResolvedValue(false),
 		},
 	}
 
