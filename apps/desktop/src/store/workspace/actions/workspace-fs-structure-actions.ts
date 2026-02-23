@@ -120,10 +120,17 @@ const syncBacklinksAndLinkIndex = async (
 		input.newNotePath,
 	)
 
-	const [backlinksResult, backlinksToNewTargetResult] = await Promise.allSettled([
-		ctx.deps.linkIndexing.getBacklinks(input.workspacePath, input.oldNotePath),
-		ctx.deps.linkIndexing.getBacklinks(input.workspacePath, input.newNotePath),
-	])
+	const [backlinksResult, backlinksToNewTargetResult] =
+		await Promise.allSettled([
+			ctx.deps.linkIndexing.getBacklinks(
+				input.workspacePath,
+				input.oldNotePath,
+			),
+			ctx.deps.linkIndexing.getBacklinks(
+				input.workspacePath,
+				input.newNotePath,
+			),
+		])
 
 	const backlinks =
 		backlinksResult.status === "fulfilled" ? backlinksResult.value : []
