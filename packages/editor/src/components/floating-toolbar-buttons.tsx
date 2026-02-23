@@ -133,6 +133,7 @@ export function FloatingToolbarButtons() {
 								if (state.pressed) {
 									unwrapLink(editor)
 								} else {
+									editor.meta._linkInsertFocusRequestedAt = Date.now()
 									defaultLinkOnClick?.()
 								}
 							}}
