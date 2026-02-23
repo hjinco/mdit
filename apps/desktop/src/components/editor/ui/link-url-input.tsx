@@ -3,7 +3,7 @@ import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
 import { LinkPlugin } from "@platejs/link/react"
 import { cva } from "class-variance-authority"
-import { Check, FileIcon, GlobeIcon, Link } from "lucide-react"
+import { Check, FileIcon, FilePlus, GlobeIcon, Link } from "lucide-react"
 import { dirname as pathDirname, relative } from "pathe"
 import type { TLinkElement } from "platejs"
 import { KEYS } from "platejs"
@@ -32,6 +32,7 @@ import {
 	createPathQueryCandidates,
 	ensureUriEncoding,
 	flattenWorkspaceFiles,
+	formatMarkdownPath,
 	type LinkMode,
 	normalizeMarkdownPathForDisplay,
 	normalizePathSeparators,
@@ -68,14 +69,26 @@ export function LinkUrlInput({
 		entries: workspaceEntries,
 		workspacePath,
 		tab,
+		createNote,
+		openTab,
 	} = useStore(
 		useShallow((state) => ({
 			entries: state.entries,
 			workspacePath: state.workspacePath,
 			tab: state.tab,
+			createNote: state.createNote,
+			openTab: state.openTab,
 		})),
 	)
 	const currentTabPath = tab?.path ?? null
+	const currentRelativeDir = useMemo(() => {
+		if (currentTabPath && workspacePath) {
+			const dir = pathDirname(currentTabPath)
+			const relDir = relative(workspacePath, dir)
+			return normalizePathSeparators(relDir) || "root"
+		}
+		return "root"
+	}, [currentTabPath, workspacePath])
 
 	const suggestionsSource = useMemo(
 		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
@@ -397,12 +410,7 @@ export function LinkUrlInput({
 			const relativePath = relative(tabDirectory, file.absolutePath)
 
 			const normalizedRelativePath = normalizePathSeparators(relativePath)
-			const nextValue =
-				normalizedRelativePath &&
-				!normalizedRelativePath.startsWith(".") &&
-				!normalizedRelativePath.startsWith("/")
-					? `./${normalizedRelativePath}`
-					: normalizedRelativePath
+			const nextValue = formatMarkdownPath(normalizedRelativePath)
 
 			const displayValue = normalizeMarkdownPathForDisplay(nextValue)
 
@@ -510,12 +518,7 @@ export function LinkUrlInput({
 				const relativePath = normalizePathSeparators(
 					relative(tabDirectory, resolvedPath),
 				)
-				nextUrl =
-					relativePath &&
-					!relativePath.startsWith(".") &&
-					!relativePath.startsWith("/")
-						? `./${relativePath}`
-						: relativePath
+				nextUrl = formatMarkdownPath(relativePath)
 			}
 		}
 
@@ -535,6 +538,55 @@ export function LinkUrlInput({
 		workspacePath,
 	])
 
+	const handleCreateNote = useCallback(async () => {
+		if (!workspacePath) return
+		const targetDirectory = currentTabPath
+			? pathDirname(currentTabPath)
+			: workspacePath
+
+		const fallbackName = trimmedValue || "Untitled"
+
+		const newFilePath = await createNote(targetDirectory, {
+			initialName: fallbackName,
+			openTab: false,
+		})
+
+		if (!newFilePath) return
+
+		let finalUrl = fallbackName
+		let nextWikiTarget: string | null = fallbackName
+
+		if (linkMode === "markdown") {
+			const relativePath = normalizePathSeparators(
+				relative(targetDirectory, newFilePath),
+			)
+			finalUrl = formatMarkdownPath(relativePath)
+			nextWikiTarget = null
+		} else {
+			const baseName =
+				newFilePath.split("/").pop()?.replace(/\.md$/, "") || fallbackName
+			finalUrl = baseName
+			nextWikiTarget = baseName
+		}
+
+		submitLink({
+			mode: linkMode,
+			nextUrl: finalUrl,
+			isWebLink: false,
+			wikiTarget: nextWikiTarget,
+		})
+
+		await openTab(newFilePath)
+	}, [
+		workspacePath,
+		currentTabPath,
+		trimmedValue,
+		linkMode,
+		submitLink,
+		createNote,
+		openTab,
+	])
+
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
 			const { key } = event
@@ -549,6 +601,11 @@ export function LinkUrlInput({
 					if (option) {
 						handleSelectSuggestion(option)
 					}
+					return
+				}
+
+				if (showEmptyState) {
+					void handleCreateNote()
 					return
 				}
 
@@ -609,9 +666,11 @@ export function LinkUrlInput({
 			confirmLink,
 			filteredSuggestions,
 			handleSelectSuggestion,
+			handleCreateNote,
 			highlightedIndex,
 			api,
 			editor,
+			showEmptyState,
 		],
 	)
 
@@ -713,8 +772,31 @@ export function LinkUrlInput({
 							className="max-h-[300px] scroll-py-1 overflow-y-auto"
 						>
 							{showEmptyState ? (
-								<div className="py-4 text-center text-sm text-muted-foreground">
-									No matching notes
+								<div className="space-y-0.5 text-foreground">
+									<div
+										id={`${listboxId}-empty`}
+										role="button"
+										tabIndex={0}
+										className={cn(
+											"relative flex cursor-pointer select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
+											highlightedIndex <= 0
+												? "bg-accent text-accent-foreground"
+												: "text-foreground",
+										)}
+										onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
+											event.preventDefault()
+										}}
+										onMouseEnter={() => setHighlightedIndex(0)}
+										onClick={handleCreateNote}
+									>
+										<span className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
+											<FilePlus className="size-3.5 shrink-0" />
+											Create new note "{trimmedValue}"
+										</span>
+										<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
+											{currentRelativeDir}
+										</span>
+									</div>
 								</div>
 							) : (
 								<div className="space-y-0.5 text-foreground">
@@ -741,10 +823,11 @@ export function LinkUrlInput({
 												}}
 												onClick={() => handleSelectSuggestion(file)}
 											>
-												<span className="text-sm font-medium max-w-full truncate">
+												<span className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
+													<FileIcon className="size-3.5 shrink-0" />
 													{file.displayName}
 												</span>
-												<span className="text-xs text-muted-foreground max-w-full truncate">
+												<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
 													{file.relativePath}
 												</span>
 											</div>
