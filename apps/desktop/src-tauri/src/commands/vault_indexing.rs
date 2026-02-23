@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 use app_storage::vault::VaultEmbeddingConfig;
 use indexing_core::{
-    get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes, index_note,
-    index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_for_query, BacklinkEntry,
-    GraphViewData, IndexSummary, IndexingMeta, RelatedNoteEntry, ResolveWikiLinkRequest,
-    ResolveWikiLinkResult, SemanticNoteEntry,
+    delete_indexed_note, get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes,
+    index_note, index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_for_query,
+    BacklinkEntry, GraphViewData, IndexSummary, IndexingMeta, RelatedNoteEntry,
+    ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -101,6 +101,19 @@ pub async fn rename_indexed_note_command(
         rename_indexed_note(&workspace_path, &db_path, &old_note_path, &new_note_path)
     })
     .await
+}
+
+#[tauri::command]
+pub async fn delete_indexed_note_command(
+    app_handle: tauri::AppHandle,
+    workspace_path: String,
+    note_path: String,
+) -> Result<bool, String> {
+    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
+    let workspace_path = PathBuf::from(workspace_path);
+    let note_path = PathBuf::from(note_path);
+
+    run_blocking(move || delete_indexed_note(&workspace_path, &db_path, &note_path)).await
 }
 
 #[tauri::command]

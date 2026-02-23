@@ -1,4 +1,8 @@
-import { dirname, join, relative } from "pathe"
+import { dirname, join, relative, resolve } from "pathe"
+import {
+	isPathDeletedByTargets,
+	resolveDeletedMarkdownPaths,
+} from "../helpers/deletion-indexing-helpers"
 import { sanitizeWorkspaceEntryName } from "../helpers/fs-entry-name-helpers"
 import {
 	doesWikiTargetReferToRelPath,
@@ -378,11 +382,53 @@ export const createWorkspaceFsStructureActions = (
 	},
 
 	deleteEntries: async (paths: string[]) => {
-		const { tab } = ctx.get()
+		const { tab, workspacePath, entries } = ctx.get()
 		const activeTabPath = tab?.path
 
 		if (activeTabPath && paths.includes(activeTabPath)) {
 			await waitForUnsavedTabToSettle(activeTabPath, ctx.get)
+		}
+
+		const deletedPathSet = new Set(paths.map((path) => normalizeSlashes(path)))
+		const deletedMarkdownPaths = workspacePath
+			? resolveDeletedMarkdownPaths(paths, entries)
+			: []
+		const reindexTargets = new Set<string>()
+
+		if (workspacePath && deletedMarkdownPaths.length > 0) {
+			await Promise.all(
+				deletedMarkdownPaths.map(async (notePath) => {
+					try {
+						const backlinks = await ctx.deps.linkIndexing.getBacklinks(
+							workspacePath,
+							notePath,
+						)
+
+						for (const backlink of backlinks) {
+							const sourcePath = normalizeSlashes(
+								resolve(workspacePath, backlink.relPath),
+							)
+
+							if (!isMarkdownNotePath(sourcePath)) {
+								continue
+							}
+							if (isPathDeletedByTargets(sourcePath, deletedPathSet)) {
+								continue
+							}
+
+							reindexTargets.add(sourcePath)
+						}
+					} catch (error) {
+						console.warn(
+							"Failed to load backlinks before note deletion indexing sync:",
+							{
+								notePath,
+								error,
+							},
+						)
+					}
+				}),
+			)
 		}
 
 		if (paths.length === 1) {
@@ -393,6 +439,42 @@ export const createWorkspaceFsStructureActions = (
 		ctx.get().recordFsOperation()
 
 		await ctx.get().entriesDeleted({ paths })
+
+		if (!workspacePath || deletedMarkdownPaths.length === 0) {
+			return
+		}
+
+		await Promise.all(
+			deletedMarkdownPaths.map(async (notePath) => {
+				try {
+					await ctx.deps.linkIndexing.deleteIndexedNote(workspacePath, notePath)
+				} catch (error) {
+					console.warn(
+						"Failed to delete indexed note after filesystem deletion:",
+						{
+							notePath,
+							error,
+						},
+					)
+				}
+			}),
+		)
+
+		await Promise.all(
+			[...reindexTargets].map(async (notePath) => {
+				try {
+					await ctx.deps.linkIndexing.indexNote(workspacePath, notePath)
+				} catch (error) {
+					console.warn(
+						"Failed to refresh link index for backlink source after note deletion:",
+						{
+							notePath,
+							error,
+						},
+					)
+				}
+			}),
+		)
 	},
 
 	deleteEntry: async (path: string) => {

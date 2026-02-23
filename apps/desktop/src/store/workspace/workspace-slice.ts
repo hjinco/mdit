@@ -229,5 +229,10 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 				oldNotePath,
 				newNotePath,
 			}),
+		deleteIndexedNote: (workspacePath: string, notePath: string) =>
+			invoke<boolean>("delete_indexed_note_command", {
+				workspacePath,
+				notePath,
+			}),
 	},
 })

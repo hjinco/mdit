@@ -100,6 +100,10 @@ export type LinkIndexingDependencies = {
 		oldNotePath: string,
 		newNotePath: string,
 	) => Promise<boolean>
+	deleteIndexedNote: (
+		workspacePath: string,
+		notePath: string,
+	) => Promise<boolean>
 }
 
 export type WorkspaceDependencies = {
