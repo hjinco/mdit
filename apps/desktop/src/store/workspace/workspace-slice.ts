@@ -33,7 +33,9 @@ import {
 import type { WorkspaceActionContext } from "./workspace-action-context"
 import type {
 	AiRenameHelpers,
+	BacklinkEntry,
 	FrontmatterUtils,
+	ResolveWikiLinkResult,
 	WorkspaceDependencies,
 } from "./workspace-dependencies"
 import { createWorkspacePorts } from "./workspace-ports"
@@ -191,4 +193,41 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 	frontmatterUtils,
 	toast,
 	aiRenameHelpers,
+	linkIndexing: {
+		getBacklinks: (workspacePath: string, filePath: string) =>
+			invoke<BacklinkEntry[]>("get_backlinks_command", {
+				workspacePath,
+				filePath,
+			}),
+		resolveWikiLink: ({
+			workspacePath,
+			currentNotePath,
+			rawTarget,
+		}: {
+			workspacePath: string
+			currentNotePath?: string | null
+			rawTarget: string
+		}) =>
+			invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", {
+				workspacePath,
+				currentNotePath,
+				rawTarget,
+			}),
+		indexNote: (workspacePath: string, notePath: string) =>
+			invoke<void>("index_note_command", {
+				workspacePath,
+				notePath,
+				includeEmbeddings: false,
+			}),
+		renameIndexedNote: (
+			workspacePath: string,
+			oldNotePath: string,
+			newNotePath: string,
+		) =>
+			invoke<boolean>("rename_indexed_note_command", {
+				workspacePath,
+				oldNotePath,
+				newNotePath,
+			}),
+	},
 })

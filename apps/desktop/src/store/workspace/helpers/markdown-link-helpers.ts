@@ -15,6 +15,12 @@ type RewriteContext = {
 	toDir: string
 }
 
+type TargetRewriteContext = {
+	sourceDir: string
+	oldTargetPath: string
+	newTargetPath: string
+}
+
 type InlineTargetSlice = {
 	start: number
 	end: number
@@ -103,6 +109,102 @@ export function rewriteMarkdownRelativeLinks(
 	return result
 }
 
+export function rewriteMarkdownLinksForRenamedTarget(
+	content: string,
+	sourceDir: string,
+	oldTargetPath: string,
+	newTargetPath: string,
+) {
+	if (!content?.length || !sourceDir || !oldTargetPath || !newTargetPath) {
+		return content
+	}
+
+	const normalizedSourceDir = normalizeToPosix(sourceDir)
+	const normalizedOldTarget = normalizeToPosix(oldTargetPath)
+	const normalizedNewTarget = normalizeToPosix(newTargetPath)
+
+	if (normalizedOldTarget === normalizedNewTarget) {
+		return content
+	}
+
+	const tree = remarkProcessor.parse(content)
+	const context: TargetRewriteContext = {
+		sourceDir: normalizedSourceDir,
+		oldTargetPath: normalizedOldTarget,
+		newTargetPath: normalizedNewTarget,
+	}
+	const replacements: Replacement[] = []
+
+	visit(tree, (node) => {
+		if (node.type === "definition") {
+			addDefinitionReplacementForRenamedTarget(
+				node,
+				content,
+				context,
+				replacements,
+			)
+			return
+		}
+
+		if (node.type === "link" || node.type === "image") {
+			addInlineReplacementForRenamedTarget(node, content, context, replacements)
+		}
+	})
+
+	return applyReplacements(content, replacements)
+}
+
+type WikiLinkTargetSlice = {
+	start: number
+	end: number
+	target: string
+}
+
+export function collectWikiLinkTargets(content: string): string[] {
+	if (!content?.length) {
+		return []
+	}
+
+	const uniqueTargets = new Set<string>()
+	const slices = collectWikiLinkTargetSlices(content)
+	for (const slice of slices) {
+		uniqueTargets.add(slice.target)
+	}
+
+	return Array.from(uniqueTargets)
+}
+
+export function rewriteWikiLinkTargets(
+	content: string,
+	replacements: ReadonlyMap<string, string>,
+) {
+	if (!content?.length || replacements.size === 0) {
+		return content
+	}
+
+	const targetSlices = collectWikiLinkTargetSlices(content)
+	if (targetSlices.length === 0) {
+		return content
+	}
+
+	const applied: Replacement[] = []
+
+	for (const slice of targetSlices) {
+		const replacement = replacements.get(slice.target)
+		if (!replacement || replacement === slice.target) {
+			continue
+		}
+
+		applied.push({
+			start: slice.start,
+			end: slice.end,
+			text: replacement,
+		})
+	}
+
+	return applyReplacements(content, applied)
+}
+
 function addInlineReplacement(
 	node: Link | Image,
 	source: string,
@@ -115,6 +217,31 @@ function addInlineReplacement(
 	}
 
 	const replacement = buildReplacementForTarget(targetSlice.rawTarget, context)
+
+	if (replacement && replacement !== targetSlice.rawTarget) {
+		replacements.push({
+			start: targetSlice.start,
+			end: targetSlice.end,
+			text: replacement,
+		})
+	}
+}
+
+function addInlineReplacementForRenamedTarget(
+	node: Link | Image,
+	source: string,
+	context: TargetRewriteContext,
+	replacements: Replacement[],
+) {
+	const targetSlice = extractInlineTargetSlice(node, source)
+	if (!targetSlice) {
+		return
+	}
+
+	const replacement = buildReplacementForRenamedTarget(
+		targetSlice.rawTarget,
+		context,
+	)
 
 	if (replacement && replacement !== targetSlice.rawTarget) {
 		replacements.push({
@@ -153,6 +280,44 @@ function addDefinitionReplacement(
 	const absoluteTargetStart = startOffset + targetStart
 	const rawTarget = source.slice(absoluteTargetStart, endOffset)
 	const replacement = buildReplacementForTarget(rawTarget, context)
+
+	if (replacement && replacement !== rawTarget) {
+		replacements.push({
+			start: absoluteTargetStart,
+			end: endOffset,
+			text: replacement,
+		})
+	}
+}
+
+function addDefinitionReplacementForRenamedTarget(
+	node: Definition,
+	source: string,
+	context: TargetRewriteContext,
+	replacements: Replacement[],
+) {
+	const position = node.position
+	if (!position?.start || !position.end) {
+		return
+	}
+
+	const startOffset = position.start.offset
+	const endOffset = position.end.offset
+
+	if (startOffset == null || endOffset == null) {
+		return
+	}
+
+	const rawNode = source.slice(startOffset, endOffset)
+	const targetStart = findDefinitionTargetStart(rawNode)
+
+	if (targetStart === -1) {
+		return
+	}
+
+	const absoluteTargetStart = startOffset + targetStart
+	const rawTarget = source.slice(absoluteTargetStart, endOffset)
+	const replacement = buildReplacementForRenamedTarget(rawTarget, context)
 
 	if (replacement && replacement !== rawTarget) {
 		replacements.push({
@@ -268,6 +433,219 @@ function buildReplacementForTarget(rawTarget: string, context: RewriteContext) {
 		: escapeDestination(newDestinationValue)
 
 	return parsedTarget.leading + formattedDestination + parsedTarget.trailing
+}
+
+function buildReplacementForRenamedTarget(
+	rawTarget: string,
+	context: TargetRewriteContext,
+) {
+	const parsedTarget = splitTarget(rawTarget)
+
+	if (!parsedTarget) {
+		return null
+	}
+
+	const unwrappedDestination = decodeDestination(parsedTarget.destination)
+	const { path: destinationPath, suffix } =
+		splitDestinationSuffix(unwrappedDestination)
+
+	if (!destinationPath || !shouldRewrite(destinationPath)) {
+		return null
+	}
+
+	const normalizedTargetPath = normalizeForComputation(destinationPath)
+	const absoluteTarget = normalizeToPosix(
+		resolve(context.sourceDir, normalizedTargetPath),
+	)
+
+	if (absoluteTarget !== context.oldTargetPath) {
+		return null
+	}
+
+	let relativePathToTarget = relative(context.sourceDir, context.newTargetPath)
+	if (!relativePathToTarget) {
+		relativePathToTarget = "."
+	}
+
+	const preferredBackslash =
+		!parsedTarget.wrappedWithAngles &&
+		shouldUseBackslash(parsedTarget.destination)
+	const formattedRelativePath = preferredBackslash
+		? relativePathToTarget.replace(/\//g, "\\")
+		: toForwardSlash(relativePathToTarget)
+
+	const newDestinationValue = formattedRelativePath + suffix
+	const formattedDestination = parsedTarget.wrappedWithAngles
+		? `<${newDestinationValue}>`
+		: escapeDestination(newDestinationValue)
+
+	return parsedTarget.leading + formattedDestination + parsedTarget.trailing
+}
+
+function applyReplacements(content: string, replacements: Replacement[]) {
+	if (replacements.length === 0) {
+		return content
+	}
+
+	replacements.sort((a, b) => a.start - b.start)
+	let cursor = 0
+	let result = ""
+
+	for (const replacement of replacements) {
+		if (replacement.start < cursor) {
+			continue
+		}
+
+		result += content.slice(cursor, replacement.start)
+		result += replacement.text
+		cursor = replacement.end
+	}
+
+	result += content.slice(cursor)
+	return result
+}
+
+function collectWikiLinkTargetSlices(content: string): WikiLinkTargetSlice[] {
+	const slices: WikiLinkTargetSlice[] = []
+	let index = 0
+	let inFence = false
+	let fenceChar: "`" | "~" | null = null
+	let fenceLength = 0
+
+	while (index < content.length) {
+		const lineStart = index
+		const lineEnd = findLineEnd(content, lineStart)
+		const line = content.slice(lineStart, lineEnd)
+		const fence = parseFenceLine(line)
+
+		if (inFence) {
+			if (
+				fence &&
+				fence.char === fenceChar &&
+				fence.length >= fenceLength &&
+				fence.isFence
+			) {
+				inFence = false
+				fenceChar = null
+				fenceLength = 0
+			}
+		} else if (fence?.isFence) {
+			inFence = true
+			fenceChar = fence.char
+			fenceLength = fence.length
+		} else {
+			collectWikiTargetsFromLine(lineStart, line, slices)
+		}
+
+		index = lineEnd + 1
+	}
+
+	return slices
+}
+
+function findLineEnd(content: string, start: number) {
+	let end = start
+	while (end < content.length && content[end] !== "\n") {
+		end += 1
+	}
+	return end
+}
+
+function parseFenceLine(line: string): {
+	isFence: boolean
+	char: "`" | "~"
+	length: number
+} | null {
+	let index = 0
+	let spaces = 0
+	while (index < line.length && line[index] === " " && spaces < 3) {
+		index += 1
+		spaces += 1
+	}
+
+	const marker = line[index]
+	if (marker !== "`" && marker !== "~") {
+		return null
+	}
+
+	let count = 0
+	while (index < line.length && line[index] === marker) {
+		index += 1
+		count += 1
+	}
+
+	if (count < 3) {
+		return null
+	}
+
+	return {
+		isFence: true,
+		char: marker,
+		length: count,
+	}
+}
+
+function collectWikiTargetsFromLine(
+	lineOffset: number,
+	line: string,
+	slices: WikiLinkTargetSlice[],
+) {
+	let index = 0
+	let codeFenceTicks = 0
+
+	while (index < line.length) {
+		const char = line[index]
+
+		if (char === "`") {
+			const runLength = countRun(line, index, "`")
+			if (codeFenceTicks === 0) {
+				codeFenceTicks = runLength
+			} else if (runLength === codeFenceTicks) {
+				codeFenceTicks = 0
+			}
+			index += runLength
+			continue
+		}
+
+		if (codeFenceTicks > 0) {
+			index += 1
+			continue
+		}
+
+		if (char === "[" && line[index + 1] === "[") {
+			const targetStart = index + 2
+			const closeIndex = line.indexOf("]]", targetStart)
+			if (closeIndex === -1) {
+				break
+			}
+
+			const rawInner = line.slice(targetStart, closeIndex)
+			const aliasIndex = rawInner.indexOf("|")
+			const rawTarget =
+				aliasIndex === -1 ? rawInner : rawInner.slice(0, aliasIndex)
+
+			if (rawTarget.trim().length > 0) {
+				slices.push({
+					start: lineOffset + targetStart,
+					end: lineOffset + targetStart + rawTarget.length,
+					target: rawTarget,
+				})
+			}
+
+			index = closeIndex + 2
+			continue
+		}
+
+		index += 1
+	}
+}
+
+function countRun(value: string, start: number, target: string) {
+	let count = 0
+	while (start + count < value.length && value[start + count] === target) {
+		count += 1
+	}
+	return count
 }
 
 function findDefinitionTargetStart(value: string) {

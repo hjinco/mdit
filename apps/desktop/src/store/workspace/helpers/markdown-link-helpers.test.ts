@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { rewriteMarkdownRelativeLinks } from "./markdown-link-helpers"
+import {
+	collectWikiLinkTargets,
+	rewriteMarkdownLinksForRenamedTarget,
+	rewriteMarkdownRelativeLinks,
+	rewriteWikiLinkTargets,
+} from "./markdown-link-helpers"
 
 describe("rewriteMarkdownRelativeLinks", () => {
 	it("rewrites inline relative links when a file moves between sibling directories", () => {
@@ -104,5 +109,70 @@ describe("rewriteMarkdownRelativeLinks", () => {
 		)
 
 		expect(result).toBe(content)
+	})
+})
+
+describe("rewriteMarkdownLinksForRenamedTarget", () => {
+	it("rewrites only links that resolve to the renamed note", () => {
+		const content = [
+			"[A](./old.md)",
+			"[B](../shared/old.md#head)",
+			"[C](./other.md)",
+		].join("\n")
+
+		const result = rewriteMarkdownLinksForRenamedTarget(
+			content,
+			"/repo/docs/current",
+			"/repo/docs/current/old.md",
+			"/repo/docs/renamed/new.md",
+		)
+
+		expect(result).toBe(
+			[
+				"[A](../renamed/new.md)",
+				"[B](../shared/old.md#head)",
+				"[C](./other.md)",
+			].join("\n"),
+		)
+	})
+})
+
+describe("wiki link helpers", () => {
+	it("collects wiki targets while ignoring fenced and inline code", () => {
+		const content = [
+			"[[docs/old-note|Alias]]",
+			"`[[inline-code]]`",
+			"```md",
+			"[[inside-fence]]",
+			"```",
+			"![[docs/old-note#section]]",
+		].join("\n")
+
+		const targets = collectWikiLinkTargets(content)
+
+		expect(targets).toEqual(["docs/old-note", "docs/old-note#section"])
+	})
+
+	it("rewrites only mapped wiki targets and keeps alias/anchor text", () => {
+		const content = [
+			"[[docs/old-note|Alias]]",
+			"![[docs/old-note#section]]",
+			"[[other-note]]",
+		].join("\n")
+		const result = rewriteWikiLinkTargets(
+			content,
+			new Map([
+				["docs/old-note", "archive/new-note"],
+				["docs/old-note#section", "archive/new-note#section"],
+			]),
+		)
+
+		expect(result).toBe(
+			[
+				"[[archive/new-note|Alias]]",
+				"![[archive/new-note#section]]",
+				"[[other-note]]",
+			].join("\n"),
+		)
 	})
 })

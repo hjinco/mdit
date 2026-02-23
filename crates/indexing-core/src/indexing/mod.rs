@@ -277,6 +277,35 @@ fn build_single_markdown_file(
     ))
 }
 
+fn to_workspace_rel_markdown_path(workspace_root: &Path, note_path: &Path) -> Result<String> {
+    if !is_markdown_path(note_path) {
+        return Err(anyhow!(
+            "Note path must point to a markdown file (.md): {}",
+            note_path.display()
+        ));
+    }
+
+    let candidate_abs = if note_path.is_absolute() {
+        note_path.to_path_buf()
+    } else {
+        workspace_root.join(note_path)
+    };
+
+    if let Ok(rel_path) = candidate_abs.strip_prefix(workspace_root) {
+        return Ok(files::normalize_rel_path(rel_path));
+    }
+
+    let workspace_canonical = canonicalize_workspace_root(workspace_root)?;
+    if let Ok(rel_path) = candidate_abs.strip_prefix(&workspace_canonical) {
+        return Ok(files::normalize_rel_path(rel_path));
+    }
+
+    Err(anyhow!(
+        "Note path is outside workspace: {}",
+        note_path.display()
+    ))
+}
+
 fn run_indexing_for_files(
     workspace_root: &Path,
     db_path: &Path,
@@ -343,6 +372,72 @@ pub fn index_note(
         false,
         false,
     )
+}
+
+pub fn rename_indexed_note(
+    workspace_root: &Path,
+    db_path: &Path,
+    old_note_path: &Path,
+    new_note_path: &Path,
+) -> Result<bool> {
+    let _ = canonicalize_workspace_root(workspace_root)?;
+    let old_rel_path = to_workspace_rel_markdown_path(workspace_root, old_note_path)?;
+    let new_rel_path = to_workspace_rel_markdown_path(workspace_root, new_note_path)?;
+
+    if old_rel_path == new_rel_path {
+        return Ok(false);
+    }
+
+    let mut conn = open_indexing_connection(db_path)?;
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(false);
+    };
+
+    let tx = conn
+        .transaction()
+        .context("Failed to start transaction for indexed note rename")?;
+
+    let Some(old_doc_id) = tx
+        .query_row(
+            "SELECT id FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, &old_rel_path],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .context("Failed to query old indexed note document row")?
+    else {
+        return Ok(false);
+    };
+
+    let new_doc_id: Option<i64> = tx
+        .query_row(
+            "SELECT id FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, &new_rel_path],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()
+        .context("Failed to query new indexed note document row")?;
+
+    if let Some(new_doc_id) = new_doc_id {
+        if new_doc_id != old_doc_id {
+            return Err(anyhow!(
+                "Cannot rename indexed note to '{}' because a different indexed document already exists",
+                new_rel_path
+            ));
+        }
+    }
+
+    let updated = tx
+        .execute(
+            "UPDATE doc SET rel_path = ?1 WHERE id = ?2",
+            params![&new_rel_path, old_doc_id],
+        )
+        .context("Failed to update indexed note rel_path")?;
+
+    tx.commit()
+        .context("Failed to commit indexed note rename transaction")?;
+
+    Ok(updated > 0)
 }
 
 fn ensure_embedding_dimension_compatible(

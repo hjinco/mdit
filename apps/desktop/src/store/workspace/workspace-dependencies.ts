@@ -71,6 +71,37 @@ export type AiRenameHelpers = {
 	extractAndSanitizeName: (raw: string) => string
 }
 
+export type BacklinkEntry = {
+	relPath: string
+	fileName: string
+}
+
+export type ResolveWikiLinkResult = {
+	canonicalTarget: string
+	resolvedRelPath?: string | null
+	matchCount: number
+	disambiguated: boolean
+	unresolved: boolean
+}
+
+export type LinkIndexingDependencies = {
+	getBacklinks: (
+		workspacePath: string,
+		filePath: string,
+	) => Promise<BacklinkEntry[]>
+	resolveWikiLink: (input: {
+		workspacePath: string
+		currentNotePath?: string | null
+		rawTarget: string
+	}) => Promise<ResolveWikiLinkResult>
+	indexNote: (workspacePath: string, notePath: string) => Promise<void>
+	renameIndexedNote: (
+		workspacePath: string,
+		oldNotePath: string,
+		newNotePath: string,
+	) => Promise<boolean>
+}
+
 export type WorkspaceDependencies = {
 	fileSystemRepository: FileSystemRepositoryLike
 	settingsRepository: WorkspaceSettingsRepositoryLike
@@ -81,4 +112,5 @@ export type WorkspaceDependencies = {
 	frontmatterUtils: FrontmatterUtils
 	toast: ToastLike
 	aiRenameHelpers: AiRenameHelpers
+	linkIndexing: LinkIndexingDependencies
 }
