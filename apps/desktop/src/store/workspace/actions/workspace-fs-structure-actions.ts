@@ -173,6 +173,7 @@ export const createWorkspaceFsStructureActions = (
 		ctx.get().recordFsOperation()
 
 		if (ctx.get().isEditMode) {
+			await ctx.ports.tab.renameTab(entry.path, nextPath)
 			return nextPath
 		}
 

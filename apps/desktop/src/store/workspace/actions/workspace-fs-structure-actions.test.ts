@@ -73,6 +73,31 @@ describe("workspace-fs-structure-actions", () => {
 		)
 	})
 
+	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
+		const { context, deps, ports, setState, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({ isEditMode: true })
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"new.md",
+		)
+
+		expect(renamedPath).toBe("/ws/new.md")
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/new.md",
+		)
+		expect(ports.tab.renameTab).toHaveBeenCalledWith("/ws/old.md", "/ws/new.md")
+		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
 	it("deleteEntries uses moveManyToTrash for multiple items", async () => {
 		const { context, deps, getState } = createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsStructureActions(context)
