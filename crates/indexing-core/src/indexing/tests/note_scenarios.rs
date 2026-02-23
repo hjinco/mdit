@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
 
-use super::super::get_related_notes;
+use super::super::{get_related_notes, rename_indexed_note};
 use super::test_support::IndexingHarness;
 
 #[test]
@@ -180,6 +180,38 @@ fn given_source_without_embedding_metadata_when_loading_related_notes_then_it_re
     .expect("related note lookup should succeed");
 
     assert!(related.is_empty());
+}
+
+#[test]
+fn given_indexed_note_when_renaming_single_indexed_note_then_doc_id_is_preserved() {
+    let harness = IndexingHarness::new("mdit-indexing-rename-indexed-note");
+    harness.write_note("old.md", "# old");
+    harness.write_note("source.md", "[[old]]");
+    harness.run_workspace_index();
+
+    let old_doc_id = harness.doc_id("old.md").expect("expected old doc id");
+    std::fs::rename(harness.root().join("old.md"), harness.root().join("new.md"))
+        .expect("failed to rename note on fs");
+
+    let renamed = rename_indexed_note(
+        harness.root(),
+        harness.db_path(),
+        &harness.root().join("old.md"),
+        &harness.root().join("new.md"),
+    )
+    .expect("rename indexed note should succeed");
+
+    assert!(renamed);
+    assert!(harness.doc_id("old.md").is_none());
+    assert_eq!(harness.doc_id("new.md"), Some(old_doc_id));
+    assert_eq!(
+        harness
+            .backlinks("new.md")
+            .into_iter()
+            .map(|entry| entry.rel_path)
+            .collect::<Vec<_>>(),
+        vec!["source.md".to_string()]
+    );
 }
 
 fn set_doc_embedding(

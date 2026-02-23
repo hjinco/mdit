@@ -1,3 +1,4 @@
+import remarkWikiLink from "@flowershow/remark-wiki-link"
 import type { Definition, Image, Link } from "mdast"
 import { normalize, relative, resolve } from "pathe"
 import remarkParse from "remark-parse"
@@ -13,6 +14,12 @@ type Replacement = {
 type RewriteContext = {
 	fromDir: string
 	toDir: string
+}
+
+type TargetRewriteContext = {
+	sourceDir: string
+	oldTargetPath: string
+	newTargetPath: string
 }
 
 type InlineTargetSlice = {
@@ -44,6 +51,7 @@ const ESCAPABLE_CHARACTERS = new Set([
 const DESTINATION_ESCAPE_REGEX = /[()\s<>]/g
 
 const remarkProcessor = unified().use(remarkParse)
+const wikiRemarkProcessor = unified().use(remarkParse).use(remarkWikiLink)
 
 export function rewriteMarkdownRelativeLinks(
 	content: string,
@@ -103,6 +111,102 @@ export function rewriteMarkdownRelativeLinks(
 	return result
 }
 
+export function rewriteMarkdownLinksForRenamedTarget(
+	content: string,
+	sourceDir: string,
+	oldTargetPath: string,
+	newTargetPath: string,
+) {
+	if (!content?.length || !sourceDir || !oldTargetPath || !newTargetPath) {
+		return content
+	}
+
+	const normalizedSourceDir = normalizeToPosix(sourceDir)
+	const normalizedOldTarget = normalizeToPosix(oldTargetPath)
+	const normalizedNewTarget = normalizeToPosix(newTargetPath)
+
+	if (normalizedOldTarget === normalizedNewTarget) {
+		return content
+	}
+
+	const tree = remarkProcessor.parse(content)
+	const context: TargetRewriteContext = {
+		sourceDir: normalizedSourceDir,
+		oldTargetPath: normalizedOldTarget,
+		newTargetPath: normalizedNewTarget,
+	}
+	const replacements: Replacement[] = []
+
+	visit(tree, (node) => {
+		if (node.type === "definition") {
+			addDefinitionReplacementForRenamedTarget(
+				node,
+				content,
+				context,
+				replacements,
+			)
+			return
+		}
+
+		if (node.type === "link" || node.type === "image") {
+			addInlineReplacementForRenamedTarget(node, content, context, replacements)
+		}
+	})
+
+	return applyReplacements(content, replacements)
+}
+
+type WikiLinkTargetSlice = {
+	start: number
+	end: number
+	target: string
+}
+
+export function collectWikiLinkTargets(content: string): string[] {
+	if (!content?.length) {
+		return []
+	}
+
+	const uniqueTargets = new Set<string>()
+	const slices = collectWikiLinkTargetSlices(content)
+	for (const slice of slices) {
+		uniqueTargets.add(slice.target)
+	}
+
+	return Array.from(uniqueTargets)
+}
+
+export function rewriteWikiLinkTargets(
+	content: string,
+	replacements: ReadonlyMap<string, string>,
+) {
+	if (!content?.length || replacements.size === 0) {
+		return content
+	}
+
+	const targetSlices = collectWikiLinkTargetSlices(content)
+	if (targetSlices.length === 0) {
+		return content
+	}
+
+	const applied: Replacement[] = []
+
+	for (const slice of targetSlices) {
+		const replacement = replacements.get(slice.target)
+		if (!replacement || replacement === slice.target) {
+			continue
+		}
+
+		applied.push({
+			start: slice.start,
+			end: slice.end,
+			text: replacement,
+		})
+	}
+
+	return applyReplacements(content, applied)
+}
+
 function addInlineReplacement(
 	node: Link | Image,
 	source: string,
@@ -115,6 +219,31 @@ function addInlineReplacement(
 	}
 
 	const replacement = buildReplacementForTarget(targetSlice.rawTarget, context)
+
+	if (replacement && replacement !== targetSlice.rawTarget) {
+		replacements.push({
+			start: targetSlice.start,
+			end: targetSlice.end,
+			text: replacement,
+		})
+	}
+}
+
+function addInlineReplacementForRenamedTarget(
+	node: Link | Image,
+	source: string,
+	context: TargetRewriteContext,
+	replacements: Replacement[],
+) {
+	const targetSlice = extractInlineTargetSlice(node, source)
+	if (!targetSlice) {
+		return
+	}
+
+	const replacement = buildReplacementForRenamedTarget(
+		targetSlice.rawTarget,
+		context,
+	)
 
 	if (replacement && replacement !== targetSlice.rawTarget) {
 		replacements.push({
@@ -153,6 +282,44 @@ function addDefinitionReplacement(
 	const absoluteTargetStart = startOffset + targetStart
 	const rawTarget = source.slice(absoluteTargetStart, endOffset)
 	const replacement = buildReplacementForTarget(rawTarget, context)
+
+	if (replacement && replacement !== rawTarget) {
+		replacements.push({
+			start: absoluteTargetStart,
+			end: endOffset,
+			text: replacement,
+		})
+	}
+}
+
+function addDefinitionReplacementForRenamedTarget(
+	node: Definition,
+	source: string,
+	context: TargetRewriteContext,
+	replacements: Replacement[],
+) {
+	const position = node.position
+	if (!position?.start || !position.end) {
+		return
+	}
+
+	const startOffset = position.start.offset
+	const endOffset = position.end.offset
+
+	if (startOffset == null || endOffset == null) {
+		return
+	}
+
+	const rawNode = source.slice(startOffset, endOffset)
+	const targetStart = findDefinitionTargetStart(rawNode)
+
+	if (targetStart === -1) {
+		return
+	}
+
+	const absoluteTargetStart = startOffset + targetStart
+	const rawTarget = source.slice(absoluteTargetStart, endOffset)
+	const replacement = buildReplacementForRenamedTarget(rawTarget, context)
 
 	if (replacement && replacement !== rawTarget) {
 		replacements.push({
@@ -268,6 +435,187 @@ function buildReplacementForTarget(rawTarget: string, context: RewriteContext) {
 		: escapeDestination(newDestinationValue)
 
 	return parsedTarget.leading + formattedDestination + parsedTarget.trailing
+}
+
+function buildReplacementForRenamedTarget(
+	rawTarget: string,
+	context: TargetRewriteContext,
+) {
+	const parsedTarget = splitTarget(rawTarget)
+
+	if (!parsedTarget) {
+		return null
+	}
+
+	const unwrappedDestination = decodeDestination(parsedTarget.destination)
+	const { path: destinationPath, suffix } =
+		splitDestinationSuffix(unwrappedDestination)
+
+	if (!destinationPath || !shouldRewrite(destinationPath)) {
+		return null
+	}
+
+	const normalizedTargetPath = normalizeForComputation(destinationPath)
+	const absoluteTarget = normalizeToPosix(
+		resolve(context.sourceDir, normalizedTargetPath),
+	)
+
+	if (absoluteTarget !== context.oldTargetPath) {
+		return null
+	}
+
+	let relativePathToTarget = relative(context.sourceDir, context.newTargetPath)
+	if (!relativePathToTarget) {
+		relativePathToTarget = "."
+	}
+
+	const preferredBackslash =
+		!parsedTarget.wrappedWithAngles &&
+		shouldUseBackslash(parsedTarget.destination)
+	const formattedRelativePath = preferredBackslash
+		? relativePathToTarget.replace(/\//g, "\\")
+		: toForwardSlash(relativePathToTarget)
+
+	const newDestinationValue = formattedRelativePath + suffix
+	const formattedDestination = parsedTarget.wrappedWithAngles
+		? `<${newDestinationValue}>`
+		: escapeDestination(newDestinationValue)
+
+	return parsedTarget.leading + formattedDestination + parsedTarget.trailing
+}
+
+function applyReplacements(content: string, replacements: Replacement[]) {
+	if (replacements.length === 0) {
+		return content
+	}
+
+	replacements.sort((a, b) => a.start - b.start)
+	let cursor = 0
+	let result = ""
+
+	for (const replacement of replacements) {
+		if (replacement.start < cursor) {
+			continue
+		}
+
+		result += content.slice(cursor, replacement.start)
+		result += replacement.text
+		cursor = replacement.end
+	}
+
+	result += content.slice(cursor)
+	return result
+}
+
+function collectWikiLinkTargetSlices(content: string): WikiLinkTargetSlice[] {
+	const slices: WikiLinkTargetSlice[] = []
+
+	try {
+		const tree = wikiRemarkProcessor.runSync(wikiRemarkProcessor.parse(content))
+
+		visit(tree, (node) => {
+			if (node.type === "wikiLink") {
+				const slice = extractWikiLinkSlice(node, content)
+				if (slice) {
+					slices.push(slice)
+				}
+				return
+			}
+
+			if (node.type === "embed") {
+				const slice = extractWikiEmbedSlice(node, content)
+				if (slice) {
+					slices.push(slice)
+				}
+			}
+		})
+	} catch (error) {
+		console.error("Failed to parse markdown for wiki link collection:", error)
+		return []
+	}
+
+	return slices
+}
+
+type OffsetNode = {
+	position?: {
+		start?: { offset?: number }
+		end?: { offset?: number }
+	}
+}
+
+type WikiValueNode = OffsetNode & {
+	value?: string
+}
+
+function extractWikiLinkSlice(
+	node: WikiValueNode,
+	content: string,
+): WikiLinkTargetSlice | null {
+	const target = typeof node.value === "string" ? node.value : ""
+	if (!target.length) {
+		return null
+	}
+
+	const offsets = getOffsets(node)
+	if (!offsets) {
+		return null
+	}
+
+	const end = offsets.start + target.length
+	if (end > content.length) {
+		return null
+	}
+
+	return {
+		start: offsets.start,
+		end,
+		target: content.slice(offsets.start, end),
+	}
+}
+
+function extractWikiEmbedSlice(
+	node: WikiValueNode,
+	content: string,
+): WikiLinkTargetSlice | null {
+	const target = typeof node.value === "string" ? node.value : ""
+	if (!target.length) {
+		return null
+	}
+
+	const offsets = getOffsets(node)
+	if (!offsets) {
+		return null
+	}
+
+	const rawToken = content.slice(offsets.start, offsets.end)
+	const openIndex = rawToken.indexOf("[[")
+	if (openIndex === -1) {
+		return null
+	}
+
+	const start = offsets.start + openIndex + 2
+	const end = start + target.length
+	if (end > offsets.end || end > content.length) {
+		return null
+	}
+
+	return {
+		start,
+		end,
+		target: content.slice(start, end),
+	}
+}
+
+function getOffsets(node: OffsetNode) {
+	const start = node.position?.start?.offset
+	const end = node.position?.end?.offset
+
+	if (start == null || end == null || end < start) {
+		return null
+	}
+
+	return { start, end }
 }
 
 function findDefinitionTargetStart(value: string) {

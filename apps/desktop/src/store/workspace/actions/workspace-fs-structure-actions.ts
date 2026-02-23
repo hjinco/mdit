@@ -1,9 +1,259 @@
-import { dirname, join } from "pathe"
+import { dirname, join, relative } from "pathe"
 import { sanitizeWorkspaceEntryName } from "../helpers/fs-entry-name-helpers"
+import {
+	doesWikiTargetReferToRelPath,
+	isExternalWikiTarget,
+	isMarkdownNotePath,
+	normalizeSlashes,
+	resolveSourcePath,
+	splitWikiTargetSuffix,
+	toWikiTargetFromAbsolutePath,
+	withPreservedSurroundingWhitespace,
+} from "../helpers/fs-structure-helpers"
+import {
+	collectWikiLinkTargets,
+	rewriteMarkdownLinksForRenamedTarget,
+	rewriteWikiLinkTargets,
+} from "../helpers/markdown-link-helpers"
 import { waitForUnsavedTabToSettle } from "../helpers/tab-save-helpers"
 import { generateUniqueFileName } from "../helpers/unique-filename-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceSlice } from "../workspace-slice"
+
+const rewriteBacklinkDocument = async (
+	ctx: WorkspaceActionContext,
+	input: {
+		workspacePath: string
+		sourcePath: string
+		oldNotePath: string
+		newNotePath: string
+		oldRelPath: string
+		newWikiTarget: string
+	},
+) => {
+	const originalContent = await ctx.deps.fileSystemRepository.readTextFile(
+		input.sourcePath,
+	)
+
+	let updatedContent = rewriteMarkdownLinksForRenamedTarget(
+		originalContent,
+		dirname(input.sourcePath),
+		input.oldNotePath,
+		input.newNotePath,
+	)
+
+	const wikiTargets = collectWikiLinkTargets(updatedContent)
+	if (wikiTargets.length > 0) {
+		const replacements = new Map<string, string>()
+		const replacementEntries = await Promise.all(
+			wikiTargets.map(async (rawWikiTarget) => {
+				const trimmedTarget = rawWikiTarget.trim()
+				if (!trimmedTarget || isExternalWikiTarget(trimmedTarget)) {
+					return null
+				}
+
+				try {
+					const resolved = await ctx.deps.linkIndexing.resolveWikiLink({
+						workspacePath: input.workspacePath,
+						currentNotePath: input.sourcePath,
+						rawTarget: trimmedTarget,
+					})
+
+					const matchesByResolver =
+						normalizeSlashes(resolved.resolvedRelPath ?? "") ===
+						input.oldRelPath
+					const matchesByFallback =
+						resolved.unresolved &&
+						doesWikiTargetReferToRelPath(trimmedTarget, input.oldRelPath)
+
+					if (!matchesByResolver && !matchesByFallback) {
+						return null
+					}
+
+					const { suffix } = splitWikiTargetSuffix(trimmedTarget)
+					return {
+						rawWikiTarget,
+						replacement: withPreservedSurroundingWhitespace(
+							rawWikiTarget,
+							`${input.newWikiTarget}${suffix}`,
+						),
+					}
+				} catch (error) {
+					console.warn("Failed to resolve wiki target while renaming note:", {
+						sourcePath: input.sourcePath,
+						rawWikiTarget: trimmedTarget,
+						error,
+					})
+					return null
+				}
+			}),
+		)
+
+		for (const entry of replacementEntries) {
+			if (!entry) {
+				continue
+			}
+			replacements.set(entry.rawWikiTarget, entry.replacement)
+		}
+
+		if (replacements.size > 0) {
+			updatedContent = rewriteWikiLinkTargets(updatedContent, replacements)
+		}
+	}
+
+	if (updatedContent === originalContent) {
+		return false
+	}
+
+	await ctx.deps.fileSystemRepository.writeTextFile(
+		input.sourcePath,
+		updatedContent,
+	)
+	ctx.get().recordFsOperation()
+	return true
+}
+
+const syncBacklinksAndLinkIndex = async (
+	ctx: WorkspaceActionContext,
+	input: {
+		workspacePath: string
+		oldNotePath: string
+		newNotePath: string
+	},
+) => {
+	const warnings: string[] = []
+	const oldRelPath = normalizeSlashes(
+		relative(input.workspacePath, input.oldNotePath),
+	)
+	const newWikiTarget = toWikiTargetFromAbsolutePath(
+		input.workspacePath,
+		input.newNotePath,
+	)
+
+	const [backlinksResult, backlinksToNewTargetResult] =
+		await Promise.allSettled([
+			ctx.deps.linkIndexing.getBacklinks(
+				input.workspacePath,
+				input.oldNotePath,
+			),
+			ctx.deps.linkIndexing.getBacklinks(
+				input.workspacePath,
+				input.newNotePath,
+			),
+		])
+
+	const backlinks =
+		backlinksResult.status === "fulfilled" ? backlinksResult.value : []
+	if (backlinksResult.status === "rejected") {
+		console.warn(
+			"Failed to load backlinks before note rename indexing sync:",
+			backlinksResult.reason,
+		)
+		warnings.push("load-backlinks")
+	}
+
+	const backlinksToNewTarget =
+		backlinksToNewTargetResult.status === "fulfilled"
+			? backlinksToNewTargetResult.value
+			: []
+	if (backlinksToNewTargetResult.status === "rejected") {
+		console.warn(
+			"Failed to load unresolved backlinks for new note path before rename indexing sync:",
+			backlinksToNewTargetResult.reason,
+		)
+		warnings.push("load-new-backlinks")
+	}
+
+	const indexTargets = new Set<string>([normalizeSlashes(input.newNotePath)])
+	await Promise.all(
+		backlinks.map(async (backlink) => {
+			const sourcePath = resolveSourcePath(
+				input.workspacePath,
+				backlink.relPath,
+				input.oldNotePath,
+				input.newNotePath,
+			)
+
+			if (!isMarkdownNotePath(sourcePath)) {
+				return
+			}
+
+			indexTargets.add(normalizeSlashes(sourcePath))
+
+			try {
+				await rewriteBacklinkDocument(ctx, {
+					workspacePath: input.workspacePath,
+					sourcePath,
+					oldNotePath: input.oldNotePath,
+					newNotePath: input.newNotePath,
+					oldRelPath,
+					newWikiTarget,
+				})
+			} catch (error) {
+				console.warn("Failed to rewrite backlink document after note rename:", {
+					sourcePath,
+					error,
+				})
+				warnings.push(`rewrite:${sourcePath}`)
+			}
+		}),
+	)
+
+	for (const backlink of backlinksToNewTarget) {
+		const sourcePath = resolveSourcePath(
+			input.workspacePath,
+			backlink.relPath,
+			input.oldNotePath,
+			input.newNotePath,
+		)
+
+		if (!isMarkdownNotePath(sourcePath)) {
+			continue
+		}
+
+		indexTargets.add(normalizeSlashes(sourcePath))
+	}
+
+	try {
+		await ctx.deps.linkIndexing.renameIndexedNote(
+			input.workspacePath,
+			input.oldNotePath,
+			input.newNotePath,
+		)
+	} catch (error) {
+		console.warn(
+			"Failed to rename indexed note path after filesystem rename:",
+			{
+				oldPath: input.oldNotePath,
+				newPath: input.newNotePath,
+				error,
+			},
+		)
+		warnings.push("rename-indexed-note")
+	}
+
+	await Promise.all(
+		[...indexTargets].map(async (notePath) => {
+			try {
+				await ctx.deps.linkIndexing.indexNote(input.workspacePath, notePath)
+			} catch (error) {
+				console.warn("Failed to refresh link index for note after rename:", {
+					notePath,
+					error,
+				})
+				warnings.push(`index:${notePath}`)
+			}
+		}),
+	)
+
+	if (warnings.length > 0) {
+		console.warn("Rename completed with silent warnings.", {
+			oldPath: input.oldNotePath,
+			newPath: input.newNotePath,
+			warnings,
+		})
+	}
+}
 
 export const createWorkspaceFsStructureActions = (
 	ctx: WorkspaceActionContext,
@@ -171,6 +421,21 @@ export const createWorkspaceFsStructureActions = (
 
 		await ctx.deps.fileSystemRepository.rename(entry.path, nextPath)
 		ctx.get().recordFsOperation()
+
+		const workspacePath = ctx.get().workspacePath
+		const shouldSyncBacklinks =
+			workspacePath &&
+			!entry.isDirectory &&
+			isMarkdownNotePath(entry.path) &&
+			isMarkdownNotePath(nextPath)
+
+		if (shouldSyncBacklinks) {
+			await syncBacklinksAndLinkIndex(ctx, {
+				workspacePath,
+				oldNotePath: entry.path,
+				newNotePath: nextPath,
+			})
+		}
 
 		if (ctx.get().isEditMode) {
 			await ctx.ports.tab.renameTab(entry.path, nextPath)

@@ -52,6 +52,18 @@ export function createWorkspaceActionTestContext() {
 			createModelFromConfig: vi.fn().mockReturnValue({}),
 			extractAndSanitizeName: vi.fn().mockReturnValue("renamed-note"),
 		},
+		linkIndexing: {
+			getBacklinks: vi.fn().mockResolvedValue([]),
+			resolveWikiLink: vi.fn().mockResolvedValue({
+				canonicalTarget: "",
+				resolvedRelPath: null,
+				matchCount: 0,
+				disambiguated: false,
+				unresolved: true,
+			}),
+			indexNote: vi.fn().mockResolvedValue(undefined),
+			renameIndexedNote: vi.fn().mockResolvedValue(false),
+		},
 	}
 
 	const ports = {
