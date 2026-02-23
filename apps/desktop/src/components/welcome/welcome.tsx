@@ -1,6 +1,5 @@
 import { Logo } from "@mdit/assets"
 import { Button } from "@mdit/ui/components/button"
-import { FolderOpenIcon } from "lucide-react"
 import { motion } from "motion/react"
 import { useStore } from "@/store"
 import { isMac } from "@/utils/platform"
