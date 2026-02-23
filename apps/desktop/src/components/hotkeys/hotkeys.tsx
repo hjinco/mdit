@@ -10,18 +10,6 @@ export function Hotkeys() {
 		toggleCollectionView,
 		goBack,
 		goForward,
-	} = useStore(
-		useShallow((s) => ({
-			createAndOpenNote: s.createAndOpenNote,
-			openFolderPicker: s.openFolderPicker,
-			workspacePath: s.workspacePath,
-			toggleCollectionView: s.toggleCollectionView,
-			goBack: s.goBack,
-			goForward: s.goForward,
-		})),
-	)
-
-	const {
 		toggleFileExplorer,
 		openCommandMenu,
 		isGraphViewDialogOpen,
@@ -32,6 +20,12 @@ export function Hotkeys() {
 		resetZoom,
 	} = useStore(
 		useShallow((s) => ({
+			createAndOpenNote: s.createAndOpenNote,
+			openFolderPicker: s.openFolderPicker,
+			workspacePath: s.workspacePath,
+			toggleCollectionView: s.toggleCollectionView,
+			goBack: s.goBack,
+			goForward: s.goForward,
 			toggleFileExplorer: s.toggleFileExplorerOpen,
 			openCommandMenu: s.openCommandMenu,
 			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
