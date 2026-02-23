@@ -48,7 +48,7 @@ export function Welcome() {
 								duration: 1.2,
 								ease: [0.16, 1, 0.3, 1],
 							}}
-							className="text-muted-foreground text-base leading-relaxed max-w-[280px] mx-auto"
+							className="text-muted-foreground text-base leading-relaxed max-w-[240px] mx-auto"
 						>
 							Write, organize, and think with simply better notes.
 						</motion.p>
@@ -62,10 +62,9 @@ export function Welcome() {
 						<Button
 							variant="default"
 							size="lg"
-							className="h-11 px-8 rounded-full font-medium transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 will-change-transform"
+							className="h-11 px-8 rounded-full font-medium transition-all hover:bg-primary/90 hover:scale-102 active:scale-98 will-change-transform"
 							onClick={openFolderPicker}
 						>
-							<FolderOpenIcon className="size-4" />
 							Open Folder
 						</Button>
 					</motion.div>
