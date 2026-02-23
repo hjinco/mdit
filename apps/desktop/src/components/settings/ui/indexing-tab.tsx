@@ -41,6 +41,7 @@ export function IndexingTab() {
 		handleModelChangeRequest,
 		confirmModelChange,
 		cancelModelChange,
+		licenseStatus,
 	} = useStore(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
@@ -59,6 +60,7 @@ export function IndexingTab() {
 			handleModelChangeRequest: state.handleModelChangeRequest,
 			confirmModelChange: state.confirmModelChange,
 			cancelModelChange: state.cancelModelChange,
+			licenseStatus: state.status,
 		})),
 	)
 
@@ -166,6 +168,7 @@ export function IndexingTab() {
 		isEmbeddingModelAvailable && embeddingProvider
 			? `${embeddingProvider}|${embeddingModel}`
 			: null
+	const isLicenseValid = licenseStatus === "valid"
 	const isIndexButtonDisabled =
 		isIndexing ||
 		isMetaLoading ||
@@ -214,15 +217,22 @@ export function IndexingTab() {
 							<FieldContent>
 								<FieldLabel>Embedding Model</FieldLabel>
 								<FieldDescription>
-									Select the embedding model to use for indexing
+									{isLicenseValid
+										? "Select the embedding model to use for indexing"
+										: "Register a license key to use embedding features"}
 								</FieldDescription>
 							</FieldContent>
 							<Select
 								value={selectedEmbeddingModel ?? undefined}
 								onValueChange={handleEmbeddingModelChange}
+								disabled={!isLicenseValid}
 							>
 								<SelectTrigger size="sm">
-									<SelectValue placeholder="Select a model" />
+									<SelectValue
+										placeholder={
+											isLicenseValid ? "Select a model" : "License required"
+										}
+									/>
 								</SelectTrigger>
 								<SelectContent align="end">
 									{ollamaModels.length > 0 ? (
