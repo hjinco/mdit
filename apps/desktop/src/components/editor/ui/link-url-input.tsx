@@ -32,6 +32,7 @@ import {
 	createPathQueryCandidates,
 	ensureUriEncoding,
 	flattenWorkspaceFiles,
+	formatMarkdownPath,
 	type LinkMode,
 	normalizeMarkdownPathForDisplay,
 	normalizePathSeparators,
@@ -80,6 +81,14 @@ export function LinkUrlInput({
 		})),
 	)
 	const currentTabPath = tab?.path ?? null
+	const currentRelativeDir = useMemo(() => {
+		if (currentTabPath && workspacePath) {
+			const dir = pathDirname(currentTabPath)
+			const relDir = relative(workspacePath, dir)
+			return normalizePathSeparators(relDir) || "root"
+		}
+		return "root"
+	}, [currentTabPath, workspacePath])
 
 	const suggestionsSource = useMemo(
 		() => flattenWorkspaceFiles(workspaceEntries, workspacePath),
@@ -401,12 +410,7 @@ export function LinkUrlInput({
 			const relativePath = relative(tabDirectory, file.absolutePath)
 
 			const normalizedRelativePath = normalizePathSeparators(relativePath)
-			const nextValue =
-				normalizedRelativePath &&
-				!normalizedRelativePath.startsWith(".") &&
-				!normalizedRelativePath.startsWith("/")
-					? `./${normalizedRelativePath}`
-					: normalizedRelativePath
+			const nextValue = formatMarkdownPath(normalizedRelativePath)
 
 			const displayValue = normalizeMarkdownPathForDisplay(nextValue)
 
@@ -514,12 +518,7 @@ export function LinkUrlInput({
 				const relativePath = normalizePathSeparators(
 					relative(tabDirectory, resolvedPath),
 				)
-				nextUrl =
-					relativePath &&
-					!relativePath.startsWith(".") &&
-					!relativePath.startsWith("/")
-						? `./${relativePath}`
-						: relativePath
+				nextUrl = formatMarkdownPath(relativePath)
 			}
 		}
 
@@ -561,12 +560,7 @@ export function LinkUrlInput({
 			const relativePath = normalizePathSeparators(
 				relative(targetDirectory, newFilePath),
 			)
-			finalUrl =
-				relativePath &&
-				!relativePath.startsWith(".") &&
-				!relativePath.startsWith("/")
-					? `./${relativePath}`
-					: relativePath
+			finalUrl = formatMarkdownPath(relativePath)
 			nextWikiTarget = null
 		} else {
 			const baseName =
@@ -800,14 +794,7 @@ export function LinkUrlInput({
 											Create new note "{trimmedValue}"
 										</span>
 										<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
-											{currentTabPath && workspacePath
-												? normalizePathSeparators(
-														relative(
-															workspacePath,
-															pathDirname(currentTabPath),
-														),
-													) || "root"
-												: "root"}
+											{currentRelativeDir}
 										</span>
 									</div>
 								</div>

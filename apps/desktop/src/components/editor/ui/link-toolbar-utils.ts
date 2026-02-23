@@ -136,6 +136,15 @@ export function normalizePathSeparators(path: string): string {
 	return collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed
 }
 
+/** Prefixes relative markdown path with ./ when it doesn't start with . or / */
+export function formatMarkdownPath(relativePath: string): string {
+	return relativePath &&
+		!relativePath.startsWith(".") &&
+		!relativePath.startsWith("/")
+		? `./${relativePath}`
+		: relativePath
+}
+
 export function normalizeWikiTargetForDisplay(value: string): string {
 	const decoded = safelyDecodeUrl(value.trim())
 	if (!decoded) {
