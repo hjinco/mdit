@@ -1,3 +1,4 @@
+import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Popover,
@@ -9,7 +10,7 @@ import { LinkPlugin } from "@platejs/link/react"
 import { invoke } from "@tauri-apps/api/core"
 import { ArrowRight, InfoIcon, Link2 } from "lucide-react"
 import { resolve } from "pathe"
-import { KEYS, PathApi } from "platejs"
+import { KEYS } from "platejs"
 import { useEditorPlugin, useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
@@ -186,42 +187,11 @@ export function MoreButton() {
 		}
 
 		const moveSelectionOutsideInsertedLink = () => {
-			const selection = editor.selection
-			if (!selection) {
-				return
-			}
-
-			const linkType = editor.getType(KEYS.link)
-			const linkEntry = editor.api.above({
-				at: selection.anchor,
-				match: { type: linkType },
+			exitLinkForwardAtSelection(editor, {
+				allowFromInsideLink: true,
+				focusEditor: false,
+				markArrowRightExit: true,
 			})
-			if (!linkEntry) {
-				return
-			}
-
-			const [, path] = linkEntry
-			if (!editor.api.isEnd(selection.focus, path)) {
-				const end = editor.api.end(path)
-				if (end) {
-					editor.tf.select({ anchor: end, focus: end })
-				}
-			}
-
-			if (!editor.selection) {
-				return
-			}
-
-			// Same exit semantics as LinkExitPlugin arrowRight handler.
-			const nextStart = editor.api.start(path, { next: true })
-			if (nextStart) {
-				editor.tf.select({ anchor: nextStart, focus: nextStart })
-			} else {
-				const nextPath = PathApi.next(path)
-				editor.tf.insertNodes({ text: "" }, { at: nextPath })
-				editor.tf.select(nextPath)
-			}
-			editor.meta._linkExitedArrowRight = true
 		}
 
 		// Defer selection handling: other UI updates can overwrite selection immediately after insert.
