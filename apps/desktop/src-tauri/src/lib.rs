@@ -70,7 +70,8 @@ pub fn run() {
             commands::local_api::stop_local_api_server_command,
             commands::image::get_image_properties,
             commands::image::edit_image,
-            commands::window::set_macos_traffic_lights_hidden
+            commands::window::set_macos_traffic_lights_hidden,
+            commands::window::set_macos_pinned_window_space_behavior
         ])
         .manage(app_state)
         .build(tauri::generate_context!())
