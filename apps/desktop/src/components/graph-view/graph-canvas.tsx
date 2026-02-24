@@ -621,8 +621,7 @@ export function GraphCanvas({
 						{renderLines}
 						{nodes.map((node) => {
 							const isCurrentTabNode =
-								currentTabRelPath !== null &&
-								node.relPath === currentTabRelPath
+								currentTabRelPath !== null && node.relPath === currentTabRelPath
 							const isFocused =
 								hoveredNodeId === node.id || selectedNodeId === node.id
 							const showLabel =
@@ -656,7 +655,11 @@ export function GraphCanvas({
 										/>
 									)}
 									<circle
-										r={radius + (isFocused ? 2.1 : 0) + (isCurrentTabNode ? 2.4 : 0)}
+										r={
+											radius +
+											(isFocused ? 2.1 : 0) +
+											(isCurrentTabNode ? 2.4 : 0)
+										}
 										className={cn(
 											"transition-colors",
 											isCurrentTabNode
