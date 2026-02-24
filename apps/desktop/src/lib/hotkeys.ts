@@ -97,7 +97,7 @@ export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 		id: "toggle-settings",
 		label: "Toggle Settings",
 		category: "app",
-		defaultBinding: "Mod+,",
+		defaultBinding: "Mod+;",
 	},
 	{
 		id: "toggle-note-info",
