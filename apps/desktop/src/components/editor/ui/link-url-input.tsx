@@ -2,9 +2,10 @@ import { buttonVariants } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
 import { LinkPlugin } from "@platejs/link/react"
+import { invoke } from "@tauri-apps/api/core"
 import { cva } from "class-variance-authority"
 import { Check, FileIcon, FilePlus, GlobeIcon, Link } from "lucide-react"
-import { dirname as pathDirname, relative } from "pathe"
+import { dirname as pathDirname, relative, resolve } from "pathe"
 import type { TLinkElement } from "platejs"
 import { KEYS } from "platejs"
 import {
@@ -49,6 +50,12 @@ import {
 
 const modeButtonVariants = cva("h-6 px-2 text-xs")
 const MAX_SUGGESTIONS = 50
+const RELATED_NOTES_LIMIT = 5
+
+type RelatedNoteEntry = {
+	relPath: string
+	fileName: string
+}
 
 type SearchableWorkspaceFile = {
 	file: WorkspaceFileOption
@@ -71,6 +78,7 @@ export function LinkUrlInput({
 		tab,
 		createNote,
 		openTab,
+		getIndexingConfig,
 	} = useStore(
 		useShallow((state) => ({
 			entries: state.entries,
@@ -78,7 +86,14 @@ export function LinkUrlInput({
 			tab: state.tab,
 			createNote: state.createNote,
 			openTab: state.openTab,
+			getIndexingConfig: state.getIndexingConfig,
 		})),
+	)
+	const indexingConfig = useStore((state) =>
+		workspacePath ? (state.configs[workspacePath] ?? null) : null,
+	)
+	const hasEmbeddingConfig = Boolean(
+		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
 	)
 	const currentTabPath = tab?.path ?? null
 	const currentRelativeDir = useMemo(() => {
@@ -165,6 +180,9 @@ export function LinkUrlInput({
 
 	const [value, setValue] = useState(displayValue)
 	const [highlightedIndex, setHighlightedIndex] = useState(-1)
+	const [relatedSuggestions, setRelatedSuggestions] = useState<
+		WorkspaceFileOption[]
+	>([])
 	const listboxId = useId()
 
 	const trimmedValue = useMemo(() => value.trim(), [value])
@@ -223,6 +241,65 @@ export function LinkUrlInput({
 
 	const suggestionsEnabled = !isHttpLink
 
+	useEffect(() => {
+		if (!workspacePath || linkMode !== "wiki" || trimmedValue) {
+			return
+		}
+
+		getIndexingConfig(workspacePath).catch((error) => {
+			console.error("Failed to load indexing config:", error)
+		})
+	}, [getIndexingConfig, linkMode, trimmedValue, workspacePath])
+
+	useEffect(() => {
+		if (
+			!workspacePath ||
+			!currentTabPath ||
+			linkMode !== "wiki" ||
+			trimmedValue ||
+			!hasEmbeddingConfig
+		) {
+			setRelatedSuggestions([])
+			return
+		}
+
+		let cancelled = false
+		invoke<RelatedNoteEntry[]>("get_related_notes_command", {
+			workspacePath,
+			filePath: currentTabPath,
+			limit: RELATED_NOTES_LIMIT,
+		})
+			.then((entries) => {
+				if (cancelled) {
+					return
+				}
+
+				const mappedEntries = entries.map((entry) => ({
+					absolutePath: resolve(workspacePath, entry.relPath),
+					displayName: entry.fileName,
+					relativePath: entry.relPath,
+					relativePathLower: entry.relPath.toLowerCase(),
+				}))
+				setRelatedSuggestions(mappedEntries)
+			})
+			.catch((error) => {
+				console.error("Failed to fetch related notes for link toolbar:", error)
+				if (!cancelled) {
+					setRelatedSuggestions([])
+				}
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [
+		currentTabPath,
+		hasEmbeddingConfig,
+		linkMode,
+		trimmedValue,
+		workspacePath,
+	])
+
 	const { hasExactMatch, suggestions: filteredSuggestions } = useMemo(() => {
 		if (!suggestionsEnabled) {
 			return { hasExactMatch: false, suggestions: [] as WorkspaceFileOption[] }
@@ -279,19 +356,41 @@ export function LinkUrlInput({
 		return { hasExactMatch: exactMatchFound, suggestions }
 	}, [deferredQuery, searchableSuggestions, suggestionsEnabled])
 
+	const hasQuery = Boolean(trimmedValue)
+	const showRelatedSuggestionList =
+		!hasQuery &&
+		suggestionsEnabled &&
+		linkMode === "wiki" &&
+		relatedSuggestions.length > 0
+	const showFilteredSuggestionList =
+		hasQuery &&
+		suggestionsEnabled &&
+		!hasExactMatch &&
+		filteredSuggestions.length > 0
+	const showSuggestionList =
+		showRelatedSuggestionList || showFilteredSuggestionList
+	const showEmptyState =
+		hasQuery &&
+		suggestionsEnabled &&
+		!hasExactMatch &&
+		filteredSuggestions.length === 0
+	const activeSuggestions = showRelatedSuggestionList
+		? relatedSuggestions
+		: filteredSuggestions
+
 	useEffect(() => {
 		setHighlightedIndex((previous) => {
 			if (previous < 0) {
 				return -1
 			}
 
-			if (previous >= filteredSuggestions.length) {
-				return filteredSuggestions.length ? filteredSuggestions.length - 1 : -1
+			if (previous >= activeSuggestions.length) {
+				return activeSuggestions.length ? activeSuggestions.length - 1 : -1
 			}
 
 			return previous
 		})
-	}, [filteredSuggestions])
+	}, [activeSuggestions])
 
 	useEffect(() => {
 		if (highlightedIndex < 0) {
@@ -429,19 +528,6 @@ export function LinkUrlInput({
 			setHighlightedIndex(-1)
 		})
 	}, [])
-
-	const hasQuery = Boolean(trimmedValue)
-
-	const showSuggestionList =
-		hasQuery &&
-		suggestionsEnabled &&
-		!hasExactMatch &&
-		filteredSuggestions.length > 0
-	const showEmptyState =
-		hasQuery &&
-		suggestionsEnabled &&
-		!hasExactMatch &&
-		filteredSuggestions.length === 0
 
 	const confirmLink = useCallback(async () => {
 		if (!trimmedValue) {
@@ -596,8 +682,8 @@ export function LinkUrlInput({
 				event.stopPropagation()
 				event.nativeEvent.stopImmediatePropagation?.()
 
-				if (filteredSuggestions.length && highlightedIndex >= 0) {
-					const option = filteredSuggestions[highlightedIndex]
+				if (activeSuggestions.length && highlightedIndex >= 0) {
+					const option = activeSuggestions[highlightedIndex]
 					if (option) {
 						handleSelectSuggestion(option)
 					}
@@ -646,7 +732,7 @@ export function LinkUrlInput({
 				return
 			}
 
-			if (!filteredSuggestions.length) {
+			if (!activeSuggestions.length) {
 				return
 			}
 
@@ -655,16 +741,16 @@ export function LinkUrlInput({
 				setHighlightedIndex((previous) => {
 					const next = previous + 1
 					if (next < 0) return 0
-					return next >= filteredSuggestions.length
-						? filteredSuggestions.length - 1
+					return next >= activeSuggestions.length
+						? activeSuggestions.length - 1
 						: next
 				})
 				return
 			}
 		},
 		[
+			activeSuggestions,
 			confirmLink,
-			filteredSuggestions,
 			handleSelectSuggestion,
 			handleCreateNote,
 			highlightedIndex,
@@ -732,11 +818,15 @@ export function LinkUrlInput({
 						onKeyDown={handleKeyDown}
 						role="combobox"
 						aria-expanded={showSuggestionList || showEmptyState}
-						aria-controls={showSuggestionList ? listboxId : undefined}
+						aria-controls={
+							showSuggestionList || showEmptyState ? listboxId : undefined
+						}
 						aria-activedescendant={
-							showSuggestionList && highlightedIndex >= 0
-								? `${listboxId}-${highlightedIndex}`
-								: undefined
+							showEmptyState && highlightedIndex >= 0
+								? `${listboxId}-empty`
+								: showSuggestionList && highlightedIndex >= 0
+									? `${listboxId}-${highlightedIndex}`
+									: undefined
 						}
 						aria-autocomplete="list"
 						autoComplete="off"
@@ -800,7 +890,12 @@ export function LinkUrlInput({
 								</div>
 							) : (
 								<div className="space-y-0.5 text-foreground">
-									{filteredSuggestions.map((file, index) => {
+									{showRelatedSuggestionList && (
+										<div className="px-2 py-1 text-xs text-muted-foreground">
+											Related Notes
+										</div>
+									)}
+									{activeSuggestions.map((file, index) => {
 										const isHighlighted = index === highlightedIndex
 										return (
 											<div
