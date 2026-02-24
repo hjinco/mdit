@@ -13,6 +13,7 @@ export type AppHotkeyActionId =
 	| "go-back"
 	| "go-forward"
 	| "toggle-settings"
+	| "toggle-note-info"
 
 export type AppHotkeyCategory = "file" | "view" | "history" | "app"
 
@@ -97,6 +98,12 @@ export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 		label: "Toggle Settings",
 		category: "app",
 		defaultBinding: "Mod+,",
+	},
+	{
+		id: "toggle-note-info",
+		label: "Toggle Note Info",
+		category: "view",
+		defaultBinding: "Mod+Shift+I",
 	},
 ] as const
 

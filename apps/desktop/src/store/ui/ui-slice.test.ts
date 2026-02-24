@@ -85,3 +85,31 @@ describe("ui-slice local api settings", () => {
 		expect(store.getState().localApiError).toBeNull()
 	})
 })
+
+describe("ui-slice note info panel", () => {
+	it("defaults isNoteInfoOpen to false", () => {
+		const store = createUISliceStore()
+
+		expect(store.getState().isNoteInfoOpen).toBe(false)
+	})
+
+	it("sets note info panel open state directly", () => {
+		const store = createUISliceStore()
+
+		store.getState().setNoteInfoOpen(true)
+		expect(store.getState().isNoteInfoOpen).toBe(true)
+
+		store.getState().setNoteInfoOpen(false)
+		expect(store.getState().isNoteInfoOpen).toBe(false)
+	})
+
+	it("toggles note info panel open state", () => {
+		const store = createUISliceStore()
+
+		store.getState().toggleNoteInfoOpen()
+		expect(store.getState().isNoteInfoOpen).toBe(true)
+
+		store.getState().toggleNoteInfoOpen()
+		expect(store.getState().isNoteInfoOpen).toBe(false)
+	})
+})

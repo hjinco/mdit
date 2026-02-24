@@ -15,6 +15,9 @@ export type UISlice = {
 	isSettingsDialogOpen: boolean
 	setSettingsDialogOpen: (isOpen: boolean) => void
 	toggleSettingsDialogOpen: () => void
+	isNoteInfoOpen: boolean
+	setNoteInfoOpen: (isOpen: boolean) => void
+	toggleNoteInfoOpen: () => void
 	settingsInitialTab: SettingsTab | null
 	openSettingsWithTab: (tab: SettingsTab) => void
 	isCommandMenuOpen: boolean
@@ -86,6 +89,10 @@ export const prepareUISlice =
 		setSettingsDialogOpen: (isOpen) => set({ isSettingsDialogOpen: isOpen }),
 		toggleSettingsDialogOpen: () =>
 			set((state) => ({ isSettingsDialogOpen: !state.isSettingsDialogOpen })),
+		isNoteInfoOpen: false,
+		setNoteInfoOpen: (isOpen) => set({ isNoteInfoOpen: isOpen }),
+		toggleNoteInfoOpen: () =>
+			set((state) => ({ isNoteInfoOpen: !state.isNoteInfoOpen })),
 		settingsInitialTab: null,
 		openSettingsWithTab: (tab) =>
 			set({

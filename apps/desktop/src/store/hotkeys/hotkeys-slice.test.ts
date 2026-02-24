@@ -53,6 +53,7 @@ describe("hotkeys-slice", () => {
 
 		expect(store.getState().isHotkeysLoaded).toBe(true)
 		expect(store.getState().hotkeys).toEqual(createDefaultAppHotkeys())
+		expect(store.getState().hotkeys["toggle-note-info"]).toBe("Mod+Shift+I")
 	})
 
 	it("updates hotkey binding and persists it", async () => {
@@ -72,10 +73,10 @@ describe("hotkeys-slice", () => {
 
 		const result = await store
 			.getState()
-			.setHotkeyBinding("create-note", "Mod+O")
+			.setHotkeyBinding("create-note", "Mod+Shift+I")
 
 		expect(result.success).toBe(false)
-		expect(result.conflictWith).toBe("open-folder")
+		expect(result.conflictWith).toBe("toggle-note-info")
 		expect(storage.save).not.toHaveBeenCalled()
 	})
 
