@@ -15,6 +15,13 @@ export function WindowPinButton({ className }: { className?: string }) {
 			console.error("Failed to sync macOS traffic light visibility:", error)
 		}
 	}, [])
+	const syncPinnedSpaceBehavior = useCallback(async (pinned: boolean) => {
+		try {
+			await invoke("set_macos_pinned_window_space_behavior", { pinned })
+		} catch (error) {
+			console.error("Failed to sync macOS pinned window space behavior:", error)
+		}
+	}, [])
 
 	useEffect(() => {
 		let isMounted = true
@@ -26,6 +33,7 @@ export function WindowPinButton({ className }: { className?: string }) {
 				if (isMounted) {
 					setIsPinned(alwaysOnTop)
 				}
+				await syncPinnedSpaceBehavior(alwaysOnTop)
 				await syncTrafficLights(alwaysOnTop)
 			})
 			.catch((error) => {
@@ -35,7 +43,7 @@ export function WindowPinButton({ className }: { className?: string }) {
 		return () => {
 			isMounted = false
 		}
-	}, [syncTrafficLights])
+	}, [syncPinnedSpaceBehavior, syncTrafficLights])
 
 	const handleToggle = useCallback(async () => {
 		if (isPending) {
@@ -49,13 +57,14 @@ export function WindowPinButton({ className }: { className?: string }) {
 		try {
 			await appWindow.setAlwaysOnTop(nextPinned)
 			setIsPinned(nextPinned)
+			await syncPinnedSpaceBehavior(nextPinned)
 			await syncTrafficLights(nextPinned)
 		} catch (error) {
 			console.error("Failed to toggle window pin state:", error)
 		} finally {
 			setIsPending(false)
 		}
-	}, [isPinned, isPending, syncTrafficLights])
+	}, [isPinned, isPending, syncPinnedSpaceBehavior, syncTrafficLights])
 
 	const label = isPinned ? "Unpin window" : "Pin window"
 
