@@ -14,7 +14,6 @@ import { useShallow } from "zustand/shallow"
 import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
 import { useStore } from "@/store"
 import { getFileNameFromPath } from "@/utils/path-utils"
-import { useCommandMenuHotkey } from "./hooks/use-command-menu-hotkey"
 import { useNoteContentSearch } from "./hooks/use-note-content-search"
 import {
 	stripMarkdownExtension,
@@ -32,16 +31,10 @@ export function CommandMenu() {
 		})),
 	)
 
-	const {
-		isCommandMenuOpen,
-		setCommandMenuOpen,
-		openCommandMenu,
-		closeCommandMenu,
-	} = useStore(
+	const { isCommandMenuOpen, setCommandMenuOpen, closeCommandMenu } = useStore(
 		useShallow((state) => ({
 			isCommandMenuOpen: state.isCommandMenuOpen,
 			setCommandMenuOpen: state.setCommandMenuOpen,
-			openCommandMenu: state.openCommandMenu,
 			closeCommandMenu: state.closeCommandMenu,
 		})),
 	)
@@ -71,8 +64,6 @@ export function CommandMenu() {
 	const hasNoteMatches = filteredNoteResults.length > 0
 	const hasContentMatches = contentMatchesByNote.length > 0
 	const hasSemanticMatches = semanticResults.length > 0
-
-	useCommandMenuHotkey(isCommandMenuOpen, openCommandMenu, closeCommandMenu)
 
 	// Clear the search so the next open starts fresh.
 	// Delay clearing to avoid showing placeholder during close animation

@@ -21,6 +21,7 @@ export type UISlice = {
 	setCommandMenuOpen: (isOpen: boolean) => void
 	openCommandMenu: () => void
 	closeCommandMenu: () => void
+	toggleCommandMenu: () => void
 	isUpdateReady: boolean
 	isUpdateDownloading: boolean
 	setUpdateReady: (ready: boolean) => void
@@ -95,6 +96,8 @@ export const prepareUISlice =
 		setCommandMenuOpen: (isOpen) => set({ isCommandMenuOpen: isOpen }),
 		openCommandMenu: () => set({ isCommandMenuOpen: true }),
 		closeCommandMenu: () => set({ isCommandMenuOpen: false }),
+		toggleCommandMenu: () =>
+			set((state) => ({ isCommandMenuOpen: !state.isCommandMenuOpen })),
 		isUpdateReady: false,
 		isUpdateDownloading: false,
 		setUpdateReady: (ready) => set({ isUpdateReady: ready }),

@@ -11,7 +11,7 @@ export function Hotkeys() {
 		goBack,
 		goForward,
 		toggleFileExplorer,
-		openCommandMenu,
+		toggleCommandMenu,
 		isGraphViewDialogOpen,
 		toggleGraphViewDialogOpen,
 		toggleSettingsDialogOpen,
@@ -27,7 +27,7 @@ export function Hotkeys() {
 			goBack: s.goBack,
 			goForward: s.goForward,
 			toggleFileExplorer: s.toggleFileExplorerOpen,
-			openCommandMenu: s.openCommandMenu,
+			toggleCommandMenu: s.toggleCommandMenu,
 			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
 			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
@@ -42,7 +42,7 @@ export function Hotkeys() {
 	useHotkey("Mod+O", () => openFolderPicker(), { preventDefault: true })
 
 	// View
-	useHotkey("Mod+K", () => openCommandMenu(), { preventDefault: true })
+	useHotkey("Mod+K", () => toggleCommandMenu(), { preventDefault: true })
 	useHotkey(
 		"Mod+G",
 		() => {
