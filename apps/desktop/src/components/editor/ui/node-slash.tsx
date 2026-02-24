@@ -9,6 +9,7 @@ import {
 	InlineComboboxInput,
 	InlineComboboxItem,
 } from "@mdit/editor/components/inline-combobox"
+import { CODE_DRAWING_KEY } from "@mdit/editor/plugins/code-drawing-kit"
 import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
 import {
 	datePattern,
@@ -17,6 +18,7 @@ import {
 import { insertBlock, insertInlineElement } from "@mdit/editor/utils/transforms"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { EmojiInputPlugin } from "@platejs/emoji/react"
+import { IconSitemap } from "@tabler/icons-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import {
@@ -416,6 +418,12 @@ const groups: Group[] = [
 				icon: <RadicalIcon />,
 				label: "Equation",
 				value: KEYS.equation,
+			},
+			{
+				icon: <IconSitemap />,
+				keywords: ["mermaid", "plantuml", "graphviz", "flowchart", "diagram"],
+				label: "Code Drawing",
+				value: CODE_DRAWING_KEY,
 			},
 			// {
 			// 	focusEditor: false,

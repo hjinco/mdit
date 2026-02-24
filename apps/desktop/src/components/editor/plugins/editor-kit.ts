@@ -5,6 +5,7 @@ import { BasicMarksKit } from "@mdit/editor/plugins/basic-marks-kit"
 import { BlockSelectionKit } from "@mdit/editor/plugins/block-selection-kit"
 import { CalloutKit } from "@mdit/editor/plugins/callout-kit"
 import { CodeBlockKit } from "@mdit/editor/plugins/code-block-kit"
+import { CodeDrawingKit } from "@mdit/editor/plugins/code-drawing-kit"
 import { CursorOverlayKit } from "@mdit/editor/plugins/cursor-overlay-kit"
 import { createDatabaseKit } from "@mdit/editor/plugins/database-kit"
 import { DateKit } from "@mdit/editor/plugins/date-kit"
@@ -59,6 +60,7 @@ export const EditorKit = [
 	...BlockSelectionKit,
 	...CalloutKit,
 	...CodeBlockKit,
+	...CodeDrawingKit,
 	...createDatabaseKit({ DatabaseElement }),
 	...CursorOverlayKit,
 	...EmojiKit,
