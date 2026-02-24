@@ -1,5 +1,6 @@
 import { insertCallout } from "@platejs/callout"
 import { insertCodeBlock, toggleCodeBlock } from "@platejs/code-block"
+import { insertCodeDrawing } from "@platejs/code-drawing"
 import { insertDate } from "@platejs/date"
 import { insertColumnGroup, toggleColumnGroup } from "@platejs/layout"
 import { triggerFloatingLink } from "@platejs/link/react"
@@ -20,6 +21,7 @@ import {
 	type TElement,
 } from "platejs"
 import type { PlateEditor } from "platejs/react"
+import { CODE_DRAWING_KEY } from "../plugins/code-drawing-kit"
 
 // import { DATABASE_KEY } from "../plugins/database-kit"
 
@@ -48,6 +50,10 @@ const insertBlockMap: Record<
 	[KEYS.audio]: (editor) => insertAudioPlaceholder(editor, { select: true }),
 	[KEYS.callout]: (editor) => insertCallout(editor, { select: true }),
 	[KEYS.codeBlock]: (editor) => insertCodeBlock(editor, { select: true }),
+	[CODE_DRAWING_KEY]: (editor) => {
+		const codeDrawingType = editor.getType(CODE_DRAWING_KEY) || CODE_DRAWING_KEY
+		insertCodeDrawing(editor, { type: codeDrawingType }, { select: true })
+	},
 	[KEYS.equation]: (editor) => insertEquation(editor, { select: true }),
 	[KEYS.file]: (editor) => insertFilePlaceholder(editor, { select: true }),
 	[KEYS.img]: (editor) =>

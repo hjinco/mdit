@@ -27,6 +27,7 @@
 		"@platejs/callout": "^52.0.11",
 		"@platejs/caption": "^52.0.11",
 		"@platejs/code-block": "^52.0.11",
+		"@platejs/code-drawing": "^52.3.0",
 		"@platejs/combobox": "^52.0.15",
 		"@platejs/comment": "^52.0.11",
 		"@platejs/date": "^52.0.11",
