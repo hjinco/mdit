@@ -1,13 +1,8 @@
-import { cn } from "@mdit/ui/lib/utils"
+import { EditorSurface } from "@mdit/editor/components/editor-surface"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { save } from "@tauri-apps/plugin-dialog"
 import { writeTextFile } from "@tauri-apps/plugin-fs"
-import {
-	Plate,
-	PlateContainer,
-	PlateContent,
-	usePlateEditor,
-} from "platejs/react"
+import { usePlateEditor } from "platejs/react"
 import { useCallback, useEffect } from "react"
 import { toast } from "sonner"
 import { useLocation } from "wouter"
@@ -62,45 +57,24 @@ export function QuickNote() {
 	}, [])
 
 	return (
-		<div className="min-h-screen bg-background">
+		<div className="h-screen flex flex-col overflow-hidden bg-background">
 			<div
-				className="fixed top-0 left-0 h-12 w-full z-50"
+				className="relative h-12 shrink-0 flex items-center justify-end px-2"
 				{...(isMac() && { "data-tauri-drag-region": "" })}
-			/>
-			<div className="fixed top-2 right-2 z-60">
+			>
 				<WindowPinButton />
 			</div>
-			<Plate editor={editor}>
-				<PlateContainer
-					className={cn(
-						"ignore-click-outside/toolbar",
-						"relative w-full h-full overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14",
-					)}
+			<div className="flex-1 min-h-0 overflow-hidden">
+				<EditorSurface
+					editor={editor}
 					onKeyDown={(e) => {
 						if ((e.metaKey || e.ctrlKey) && e.key === "s") {
 							e.preventDefault()
-							handleSave()
+							void handleSave()
 						}
 					}}
-				>
-					<PlateContent
-						className={cn(
-							"group/editor",
-							"relative overflow-x-hidden break-words whitespace-pre-wrap select-text",
-							"rounded-md ring-offset-background focus-visible:outline-none",
-							"placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!",
-							"[&_strong]:font-bold",
-							"size-full px-8 pt-16 md:pt-28 pb-72 min-h-screen text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/90 font-scale-scope",
-						)}
-						placeholder="'/' for commands..."
-						autoCapitalize="off"
-						autoCorrect="off"
-						autoComplete="off"
-						spellCheck={false}
-						disableDefaultStyles
-					/>
-				</PlateContainer>
-			</Plate>
+				/>
+			</div>
 		</div>
 	)
 }
