@@ -173,7 +173,7 @@ export function ApiMcpTab() {
 	}
 
 	return (
-		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24">
+		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24 select-text **:select-text [&_button]:select-none **:[[role=switch]]:select-none">
 			<FieldSet className="border-b pb-8">
 				<FieldLegend>Local API/MCP Server</FieldLegend>
 				<FieldDescription>
