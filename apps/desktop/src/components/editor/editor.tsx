@@ -1,13 +1,7 @@
-import { SelectionAreaCursor } from "@mdit/editor/components/selection-area-cursor"
-import { cn } from "@mdit/ui/lib/utils"
+import { EditorSurface } from "@mdit/editor/components/editor-surface"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { createSlateEditor, type Value } from "platejs"
-import {
-	Plate,
-	PlateContainer,
-	PlateContent,
-	usePlateEditor,
-} from "platejs/react"
+import { usePlateEditor } from "platejs/react"
 import {
 	type KeyboardEvent,
 	useCallback,
@@ -198,7 +192,7 @@ function EditorContent({
 	)
 
 	return (
-		<Plate
+		<EditorSurface
 			editor={editor}
 			onValueChange={() => {
 				if (isInitializing.current) {
@@ -208,37 +202,10 @@ function EditorContent({
 					setTabSaved(false)
 				}
 			}}
-		>
-			<PlateContainer
-				className={cn(
-					"ignore-click-outside/toolbar",
-					"relative w-full h-full overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none [&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14",
-				)}
-				onKeyDown={(e) => {
-					handleTypingDetection(e)
-				}}
-			>
-				<PlateContent
-					className={cn(
-						"group/editor",
-						"relative overflow-x-hidden break-words whitespace-pre-wrap select-text",
-						"rounded-md ring-offset-background focus-visible:outline-none",
-						"placeholder:text-muted-foreground/80 **:data-slate-placeholder:!top-1/2 **:data-slate-placeholder:-translate-y-1/2 **:data-slate-placeholder:text-muted-foreground/80 **:data-slate-placeholder:opacity-100!",
-						"[&_strong]:font-bold",
-						"size-full px-8 pt-16 md:pt-28 pb-72 min-h-screen text-base sm:px-[max(64px,calc(50%-350px))] text-foreground/90 font-scale-scope",
-					)}
-					placeholder="'/' for commands..."
-					autoCapitalize="off"
-					autoCorrect="off"
-					autoComplete="off"
-					spellCheck={false}
-					disableDefaultStyles
-					onBlur={() => {
-						void handleSave()
-					}}
-				/>
-			</PlateContainer>
-			<SelectionAreaCursor />
-		</Plate>
+			onKeyDown={handleTypingDetection}
+			onBlur={() => {
+				void handleSave()
+			}}
+		/>
 	)
 }
