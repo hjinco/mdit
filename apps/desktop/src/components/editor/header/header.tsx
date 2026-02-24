@@ -34,7 +34,7 @@ export function Header() {
 	return (
 		<div
 			className={cn(
-				"h-12 shrink-0 flex items-center justify-center transition-opacity duration-600 w-[calc(100%-8px)]",
+				"relative h-12 shrink-0 flex items-center justify-center transition-opacity duration-600 w-[calc(100%-8px)]",
 				isFocusMode && "pointer-events-none opacity-0",
 			)}
 			{...(isMac() && { "data-tauri-drag-region": "" })}
