@@ -8,6 +8,7 @@ export type SettingsTab =
 	| "api-mcp"
 	| "sync"
 	| "indexing"
+	| "hotkeys"
 	| "license"
 
 interface SettingsNavigationProps {
@@ -31,6 +32,7 @@ export function SettingsNavigation({
 					{ id: "indexing", label: "Indexing" } as const,
 				]
 			: []),
+		{ id: "hotkeys", label: "Hotkeys" },
 		{ id: "license", label: "License" },
 	]
 

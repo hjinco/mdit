@@ -31,6 +31,7 @@ export function WindowMenu() {
 		zoomIn,
 		zoomOut,
 		resetZoom,
+		hotkeys,
 	} = useStore(
 		useShallow((s) => ({
 			toggleFileExplorer: s.toggleFileExplorerOpen,
@@ -41,6 +42,7 @@ export function WindowMenu() {
 			zoomIn: s.increaseFontScale,
 			zoomOut: s.decreaseFontScale,
 			resetZoom: s.resetFontScale,
+			hotkeys: s.hotkeys,
 		})),
 	)
 
@@ -63,6 +65,7 @@ export function WindowMenu() {
 			goBack,
 			goForward,
 			toggleSettings: toggleSettingsDialogOpen,
+			hotkeys,
 		})
 	}, [
 		createAndOpenNote,
@@ -79,6 +82,7 @@ export function WindowMenu() {
 		goBack,
 		goForward,
 		toggleSettingsDialogOpen,
+		hotkeys,
 	])
 
 	return null

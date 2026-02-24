@@ -1,10 +1,16 @@
 import { Button } from "@mdit/ui/components/button"
 import { SettingsIcon } from "lucide-react"
+import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function SettingsMenu() {
-	const setSettingsDialogOpen = useStore((s) => s.setSettingsDialogOpen)
+	const { setSettingsDialogOpen, settingsHotkey } = useStore(
+		useShallow((s) => ({
+			setSettingsDialogOpen: s.setSettingsDialogOpen,
+			settingsHotkey: s.hotkeys["toggle-settings"],
+		})),
+	)
 
 	return (
 		<Button
@@ -15,10 +21,10 @@ export function SettingsMenu() {
 			onClick={() => setSettingsDialogOpen(true)}
 		>
 			<SettingsIcon className="size-4" /> Settings
-			<span className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0">
-				{getModifierKey()}
-				<span className="ml-1">{"/"}</span>
-			</span>
+			<HotkeyKbd
+				binding={settingsHotkey}
+				className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0"
+			/>
 		</Button>
 	)
 }

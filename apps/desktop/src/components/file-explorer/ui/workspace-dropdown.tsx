@@ -6,14 +6,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@mdit/ui/components/dropdown-menu"
-import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@mdit/ui/components/tooltip"
 import { ChevronDown, InboxIcon, MinusIcon } from "lucide-react"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
+import { useStore } from "@/store"
 import { getFolderNameFromPath } from "@/utils/path-utils"
 
 const REMOVE_WORKSPACE_SELECTOR = '[data-remove-workspace="true"]'
@@ -44,6 +44,7 @@ export function WorkspaceDropdown({
 	onWorkspaceRemove,
 	onOpenFolderPicker,
 }: WorkspaceDropdownProps) {
+	const openFolderHotkey = useStore((s) => s.hotkeys["open-folder"])
 	const currentWorkspaceName = workspacePath
 		? getFolderNameFromPath(workspacePath)
 		: "No folder"
@@ -134,10 +135,7 @@ export function WorkspaceDropdown({
 					<span className="text-sm text-accent-foreground/90 mr-auto">
 						Open Folder...
 					</span>
-					<KbdGroup>
-						<Kbd>{getModifierKey()}</Kbd>
-						<Kbd>O</Kbd>
-					</KbdGroup>
+					<HotkeyKbd binding={openFolderHotkey} />
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

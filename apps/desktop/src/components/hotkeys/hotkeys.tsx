@@ -1,9 +1,30 @@
 import { useHotkey } from "@tanstack/react-hotkeys"
+import { useEffect, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
+import { APP_HOTKEY_DEFINITIONS, type AppHotkeyActionId } from "@/lib/hotkeys"
 import { useStore } from "@/store"
+
+const HOTKEY_OPTIONS = { preventDefault: true } as const
+
+type HotkeyBindingProps = {
+	binding: string
+	onTrigger: () => void
+}
+
+function HotkeyBinding({ binding, onTrigger }: HotkeyBindingProps) {
+	useHotkey(
+		binding as Parameters<typeof useHotkey>[0],
+		() => onTrigger(),
+		HOTKEY_OPTIONS,
+	)
+	return null
+}
 
 export function Hotkeys() {
 	const {
+		hotkeys,
+		isHotkeysLoaded,
+		initializeHotkeys,
 		createAndOpenNote,
 		openFolderPicker,
 		workspacePath,
@@ -20,6 +41,9 @@ export function Hotkeys() {
 		resetZoom,
 	} = useStore(
 		useShallow((s) => ({
+			hotkeys: s.hotkeys,
+			isHotkeysLoaded: s.isHotkeysLoaded,
+			initializeHotkeys: s.initializeHotkeys,
 			createAndOpenNote: s.createAndOpenNote,
 			openFolderPicker: s.openFolderPicker,
 			workspacePath: s.workspacePath,
@@ -37,32 +61,88 @@ export function Hotkeys() {
 		})),
 	)
 
-	// File
-	useHotkey("Mod+N", () => createAndOpenNote(), { preventDefault: true })
-	useHotkey("Mod+O", () => openFolderPicker(), { preventDefault: true })
+	useEffect(() => {
+		if (isHotkeysLoaded) {
+			return
+		}
+		void initializeHotkeys()
+	}, [initializeHotkeys, isHotkeysLoaded])
 
-	// View
-	useHotkey("Mod+K", () => toggleCommandMenu(), { preventDefault: true })
-	useHotkey(
-		"Mod+G",
-		() => {
-			if (!workspacePath && !isGraphViewDialogOpen) return
-			toggleGraphViewDialogOpen()
-		},
-		{ preventDefault: true },
+	const actionHandlers = useMemo<Record<AppHotkeyActionId, () => void>>(
+		() => ({
+			"create-note": () => {
+				void createAndOpenNote()
+			},
+			"open-folder": () => {
+				void openFolderPicker()
+			},
+			"open-command-menu": () => {
+				toggleCommandMenu()
+			},
+			"toggle-graph-view": () => {
+				if (!workspacePath && !isGraphViewDialogOpen) {
+					return
+				}
+				toggleGraphViewDialogOpen()
+			},
+			"toggle-file-explorer": () => {
+				toggleFileExplorer()
+			},
+			"toggle-collection-view": () => {
+				toggleCollectionView()
+			},
+			"zoom-in": () => {
+				zoomIn()
+			},
+			"zoom-out": () => {
+				zoomOut()
+			},
+			"reset-zoom": () => {
+				resetZoom()
+			},
+			"go-back": () => {
+				void goBack()
+			},
+			"go-forward": () => {
+				void goForward()
+			},
+			"toggle-settings": () => {
+				toggleSettingsDialogOpen()
+			},
+		}),
+		[
+			createAndOpenNote,
+			openFolderPicker,
+			toggleCommandMenu,
+			workspacePath,
+			isGraphViewDialogOpen,
+			toggleGraphViewDialogOpen,
+			toggleFileExplorer,
+			toggleCollectionView,
+			zoomIn,
+			zoomOut,
+			resetZoom,
+			goBack,
+			goForward,
+			toggleSettingsDialogOpen,
+		],
 	)
-	useHotkey("Mod+S", () => toggleFileExplorer(), { preventDefault: true })
-	useHotkey("Mod+D", () => toggleCollectionView(), { preventDefault: true })
-	useHotkey("Mod+=", () => zoomIn(), { preventDefault: true })
-	useHotkey("Mod+-", () => zoomOut(), { preventDefault: true })
-	useHotkey("Mod+0", () => resetZoom(), { preventDefault: true })
 
-	// History
-	useHotkey("Mod+[", () => goBack(), { preventDefault: true })
-	useHotkey("Mod+]", () => goForward(), { preventDefault: true })
-
-	// App
-	useHotkey("Mod+/", () => toggleSettingsDialogOpen(), { preventDefault: true })
-
-	return null
+	return (
+		<>
+			{APP_HOTKEY_DEFINITIONS.map((definition) => {
+				const binding = hotkeys[definition.id]
+				if (!binding) {
+					return null
+				}
+				return (
+					<HotkeyBinding
+						key={definition.id}
+						binding={binding}
+						onTrigger={actionHandlers[definition.id]}
+					/>
+				)
+			})}
+		</>
+	)
 }

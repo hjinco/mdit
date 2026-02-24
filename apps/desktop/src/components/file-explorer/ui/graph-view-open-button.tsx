@@ -1,10 +1,16 @@
 import { Button } from "@mdit/ui/components/button"
 import { GitBranchIcon } from "lucide-react"
+import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function GraphViewOpenButton({ disabled }: { disabled: boolean }) {
-	const openGraphViewDialog = useStore((s) => s.openGraphViewDialog)
+	const { openGraphViewDialog, graphViewHotkey } = useStore(
+		useShallow((s) => ({
+			openGraphViewDialog: s.openGraphViewDialog,
+			graphViewHotkey: s.hotkeys["toggle-graph-view"],
+		})),
+	)
 
 	return (
 		<Button
@@ -16,10 +22,10 @@ export function GraphViewOpenButton({ disabled }: { disabled: boolean }) {
 			disabled={disabled}
 		>
 			<GitBranchIcon className="size-4" /> Graph View
-			<span className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0">
-				{getModifierKey()}
-				<span className="ml-1">G</span>
-			</span>
+			<HotkeyKbd
+				binding={graphViewHotkey}
+				className="ml-auto text-sm text-muted-foreground transition-opacity group-hover:opacity-100 opacity-0"
+			/>
 		</Button>
 	)
 }

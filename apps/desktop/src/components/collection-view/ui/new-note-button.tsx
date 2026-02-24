@@ -1,20 +1,25 @@
 import { Button } from "@mdit/ui/components/button"
-import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@mdit/ui/components/tooltip"
 import { SquarePenIcon } from "lucide-react"
+import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function NewNoteButton({
 	directoryPath,
 }: {
 	directoryPath: string | null
 }) {
-	const createNote = useStore((s) => s.createNote)
+	const { createNote, createNoteHotkey } = useStore(
+		useShallow((s) => ({
+			createNote: s.createNote,
+			createNoteHotkey: s.hotkeys["create-note"],
+		})),
+	)
 
 	return (
 		<Tooltip>
@@ -33,10 +38,7 @@ export function NewNoteButton({
 			<TooltipContent className="pr-1">
 				<div className="flex items-center gap-1">
 					New Note
-					<KbdGroup>
-						<Kbd>{getModifierKey()}</Kbd>
-						<Kbd>N</Kbd>
-					</KbdGroup>
+					<HotkeyKbd binding={createNoteHotkey} />
 				</div>
 			</TooltipContent>
 		</Tooltip>

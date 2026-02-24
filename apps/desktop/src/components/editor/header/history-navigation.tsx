@@ -1,5 +1,4 @@
 import { Button } from "@mdit/ui/components/button"
-import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
@@ -8,16 +7,25 @@ import {
 import type { LucideIcon } from "lucide-react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 export function HistoryNavigation() {
-	const { canGoBack, canGoForward, goBack, goForward } = useStore(
+	const {
+		canGoBack,
+		canGoForward,
+		goBack,
+		goForward,
+		goBackHotkey,
+		goForwardHotkey,
+	} = useStore(
 		useShallow((s) => ({
 			canGoBack: s.historyIndex > 0,
 			canGoForward: s.historyIndex < s.history.length - 1,
 			goBack: s.goBack,
 			goForward: s.goForward,
+			goBackHotkey: s.hotkeys["go-back"],
+			goForwardHotkey: s.hotkeys["go-forward"],
 		})),
 	)
 
@@ -27,7 +35,7 @@ export function HistoryNavigation() {
 				icon={ChevronLeft}
 				ariaLabel="Go back"
 				tooltipLabel="Back"
-				shortcutKeys={[getModifierKey(), "["]}
+				binding={goBackHotkey}
 				disabled={!canGoBack}
 				onClick={goBack}
 			/>
@@ -35,7 +43,7 @@ export function HistoryNavigation() {
 				icon={ChevronRight}
 				ariaLabel="Go forward"
 				tooltipLabel="Forward"
-				shortcutKeys={[getModifierKey(), "]"]}
+				binding={goForwardHotkey}
 				disabled={!canGoForward}
 				onClick={goForward}
 			/>
@@ -47,7 +55,7 @@ interface HistoryButtonProps {
 	icon: LucideIcon
 	ariaLabel: string
 	tooltipLabel: string
-	shortcutKeys: [string, string]
+	binding: string
 	disabled: boolean
 	onClick: () => void
 }
@@ -56,7 +64,7 @@ function HistoryButton({
 	icon: Icon,
 	ariaLabel,
 	tooltipLabel,
-	shortcutKeys,
+	binding,
 	disabled,
 	onClick,
 }: HistoryButtonProps) {
@@ -77,10 +85,7 @@ function HistoryButton({
 			<TooltipContent className="pr-1">
 				<div className="flex items-center gap-1">
 					{tooltipLabel}
-					<KbdGroup>
-						<Kbd>{shortcutKeys[0]}</Kbd>
-						<Kbd>{shortcutKeys[1]}</Kbd>
-					</KbdGroup>
+					<HotkeyKbd binding={binding} />
 				</div>
 			</TooltipContent>
 		</Tooltip>
