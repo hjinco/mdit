@@ -1,8 +1,8 @@
 import { Button } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
+import { IconPinned, IconPinnedFilled } from "@tabler/icons-react"
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { PinIcon, PinOffIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 export function WindowPinButton({ className }: { className?: string }) {
@@ -72,7 +72,7 @@ export function WindowPinButton({ className }: { className?: string }) {
 				void handleToggle()
 			}}
 		>
-			{isPinned ? <PinOffIcon /> : <PinIcon />}
+			{isPinned ? <IconPinnedFilled /> : <IconPinned />}
 		</Button>
 	)
 }

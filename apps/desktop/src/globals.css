@@ -202,6 +202,7 @@
 	@apply my-px px-0 py-1;
 }
 
-.lucide {
+.lucide,
+.tabler-icon {
 	stroke-width: 1.6;
 }
