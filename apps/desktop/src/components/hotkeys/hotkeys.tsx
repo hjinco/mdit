@@ -36,6 +36,7 @@ export function Hotkeys() {
 		isGraphViewDialogOpen,
 		toggleGraphViewDialogOpen,
 		toggleSettingsDialogOpen,
+		toggleNoteInfoOpen,
 		zoomIn,
 		zoomOut,
 		resetZoom,
@@ -55,6 +56,7 @@ export function Hotkeys() {
 			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
 			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
+			toggleNoteInfoOpen: s.toggleNoteInfoOpen,
 			zoomIn: s.increaseFontScale,
 			zoomOut: s.decreaseFontScale,
 			resetZoom: s.resetFontScale,
@@ -109,6 +111,9 @@ export function Hotkeys() {
 			"toggle-settings": () => {
 				toggleSettingsDialogOpen()
 			},
+			"toggle-note-info": () => {
+				toggleNoteInfoOpen()
+			},
 		}),
 		[
 			createAndOpenNote,
@@ -125,6 +130,7 @@ export function Hotkeys() {
 			goBack,
 			goForward,
 			toggleSettingsDialogOpen,
+			toggleNoteInfoOpen,
 		],
 	)
 

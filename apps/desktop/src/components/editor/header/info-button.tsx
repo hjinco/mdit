@@ -35,20 +35,28 @@ type RelatedNoteEntry = {
 
 const RELATED_NOTES_LIMIT = 5
 
-export function MoreButton() {
+export function InfoButton() {
 	const editor = useEditorRef()
 	const { api } = useEditorPlugin(LinkPlugin)
-	const [open, setOpen] = useState(false)
 	const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
 	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
 
-	const { tab, workspacePath, openTab, getIndexingConfig } = useStore(
+	const {
+		tab,
+		workspacePath,
+		openTab,
+		getIndexingConfig,
+		isNoteInfoOpen,
+		setNoteInfoOpen,
+	} = useStore(
 		useShallow((s) => ({
 			tab: s.tab,
 			workspacePath: s.workspacePath,
 			openTab: s.openTab,
 			getIndexingConfig: s.getIndexingConfig,
+			isNoteInfoOpen: s.isNoteInfoOpen,
+			setNoteInfoOpen: s.setNoteInfoOpen,
 		})),
 	)
 	const indexingConfig = useStore((s) =>
@@ -59,7 +67,7 @@ export function MoreButton() {
 	)
 
 	useEffect(() => {
-		if (!editor || !open) {
+		if (!editor || !isNoteInfoOpen) {
 			return
 		}
 
@@ -73,10 +81,10 @@ export function MoreButton() {
 		const minutes = Math.round(words / wordsPerMinute)
 
 		setStats({ characters, words, minutes })
-	}, [editor, open])
+	}, [editor, isNoteInfoOpen])
 
 	useEffect(() => {
-		if (!open || !workspacePath || !tab?.path) {
+		if (!isNoteInfoOpen || !workspacePath || !tab?.path) {
 			return
 		}
 
@@ -96,20 +104,25 @@ export function MoreButton() {
 		return () => {
 			cancelled = true
 		}
-	}, [open, workspacePath, tab?.path])
+	}, [isNoteInfoOpen, workspacePath, tab?.path])
 
 	useEffect(() => {
-		if (!open || !workspacePath) {
+		if (!isNoteInfoOpen || !workspacePath) {
 			return
 		}
 
 		getIndexingConfig(workspacePath).catch((error) => {
 			console.error("Failed to load indexing config:", error)
 		})
-	}, [open, workspacePath, getIndexingConfig])
+	}, [isNoteInfoOpen, workspacePath, getIndexingConfig])
 
 	useEffect(() => {
-		if (!open || !workspacePath || !tab?.path || !hasEmbeddingConfig) {
+		if (
+			!isNoteInfoOpen ||
+			!workspacePath ||
+			!tab?.path ||
+			!hasEmbeddingConfig
+		) {
 			setRelatedNotes([])
 			return
 		}
@@ -131,13 +144,13 @@ export function MoreButton() {
 		return () => {
 			cancelled = true
 		}
-	}, [open, workspacePath, tab?.path, hasEmbeddingConfig])
+	}, [isNoteInfoOpen, workspacePath, tab?.path, hasEmbeddingConfig])
 
 	const handleNoteClick = (relPath: string) => {
 		if (!workspacePath) return
 		const absolutePath = resolve(workspacePath, relPath)
 		openTab(absolutePath)
-		setOpen(false)
+		setNoteInfoOpen(false)
 	}
 
 	const handleInsertWikiLink = async (relPath: string, fileName: string) => {
@@ -202,9 +215,15 @@ export function MoreButton() {
 	}
 
 	return (
-		<Popover open={open} onOpenChange={setOpen}>
+		<Popover open={isNoteInfoOpen} onOpenChange={setNoteInfoOpen}>
 			<PopoverTrigger asChild>
-				<Button variant="ghost" size="icon" className="text-foreground/70">
+				<Button
+					variant="ghost"
+					size="icon"
+					className="text-foreground/70"
+					aria-label="Note info"
+					title="Note info"
+				>
 					<InfoIcon />
 				</Button>
 			</PopoverTrigger>

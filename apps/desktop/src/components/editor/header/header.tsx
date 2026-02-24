@@ -6,7 +6,7 @@ import { useIsFullscreen } from "@/hooks/use-is-fullscreen"
 import { useStore } from "@/store"
 import { isMac } from "@/utils/platform"
 import { HistoryNavigation } from "./history-navigation"
-import { MoreButton } from "./more-button"
+import { InfoButton } from "./info-button"
 import { Tab } from "./tab"
 
 export function Header() {
@@ -55,7 +55,7 @@ export function Header() {
 			<Tab />
 			<div className="absolute right-2 flex items-center gap-0.5">
 				{showPin && <WindowPinButton />}
-				<MoreButton />
+				<InfoButton />
 			</div>
 		</div>
 	)
