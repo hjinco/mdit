@@ -208,7 +208,7 @@ export function MoreButton() {
 					<InfoIcon />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-64 z-101 p-2.5" align="end">
+			<PopoverContent className="w-64 z-101 p-3" align="end">
 				<div className="space-y-1 text-xs">
 					<div className="flex justify-between items-center">
 						<span className="text-muted-foreground">Characters</span>
@@ -241,7 +241,7 @@ export function MoreButton() {
 										title={entry.relPath}
 									>
 										<span className="truncate">{entry.fileName}</span>
-										<ArrowRight className="size-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+										<ArrowRight className="size-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
 									</button>
 								))}
 							</div>
@@ -277,7 +277,7 @@ export function MoreButton() {
 											onMouseDown={(event) => {
 												event.preventDefault()
 											}}
-											className="inline-flex shrink-0 h-7 px-1.5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+											className="inline-flex shrink-0 h-7 px-1.75 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
 											aria-label={`Link ${entry.fileName} to current note`}
 											title="Link to current note"
 										>
