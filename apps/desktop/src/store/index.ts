@@ -12,6 +12,7 @@ import {
 	createGitSyncSlice,
 	type GitSyncSlice,
 } from "./git-sync/git-sync-slice"
+import { createHotkeysSlice, type HotkeysSlice } from "./hotkeys/hotkeys-slice"
 import {
 	createImageEditSlice,
 	type ImageEditSlice,
@@ -36,6 +37,7 @@ export type StoreState = WorkspaceSlice &
 	GitSyncSlice &
 	ImageEditSlice &
 	IndexingSlice &
+	HotkeysSlice &
 	LicenseSlice &
 	UISlice
 
@@ -48,6 +50,7 @@ export const useStore = create<StoreState>()((...a) => ({
 	...createGitSyncSlice(...a),
 	...createImageEditSlice(...a),
 	...createIndexingSlice(...a),
+	...createHotkeysSlice(...a),
 	...createLicenseSlice(...a),
 	...createUISlice(...a),
 }))

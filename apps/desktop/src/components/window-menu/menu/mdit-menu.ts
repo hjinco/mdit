@@ -1,9 +1,12 @@
 import { MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
+import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@/lib/hotkeys"
 
 export async function createMditMenu({
 	toggleSettings,
+	hotkeys,
 }: {
 	toggleSettings: () => void
+	hotkeys: AppHotkeyMap
 }) {
 	return await Submenu.new({
 		text: "Mdit",
@@ -19,7 +22,7 @@ export async function createMditMenu({
 			await MenuItem.new({
 				id: "settings",
 				text: "Settings…",
-				accelerator: "CmdOrCtrl+/",
+				accelerator: hotkeyToMenuAccelerator(hotkeys["toggle-settings"]),
 				action: () => toggleSettings(),
 			}),
 			await PredefinedMenuItem.new({

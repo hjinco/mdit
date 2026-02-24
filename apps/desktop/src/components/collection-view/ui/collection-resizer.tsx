@@ -1,4 +1,3 @@
-import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Popover,
 	PopoverAnchor,
@@ -7,7 +6,8 @@ import {
 import { tooltipContentVariants } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
 import { memo, useCallback, useState } from "react"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
+import { useStore } from "@/store"
 
 type CollectionResizerProps = {
 	isOpen: boolean
@@ -20,6 +20,9 @@ export const CollectionResizer = memo(function CollectionResizer({
 	isResizing,
 	onPointerDown,
 }: CollectionResizerProps) {
+	const toggleCollectionHotkey = useStore(
+		(s) => s.hotkeys["toggle-collection-view"],
+	)
 	const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 	const [anchorPoint, setAnchorPoint] = useState<{
 		x: number
@@ -106,14 +109,10 @@ export const CollectionResizer = memo(function CollectionResizer({
 				>
 					<div className="flex items-center gap-1">
 						Close
-						<KbdGroup>
-							<Kbd className="bg-background/20 text-background dark:bg-background/10">
-								{getModifierKey()}
-							</Kbd>
-							<Kbd className="bg-background/20 text-background dark:bg-background/10">
-								D
-							</Kbd>
-						</KbdGroup>
+						<HotkeyKbd
+							binding={toggleCollectionHotkey}
+							kbdClassName="bg-background/20 text-background dark:bg-background/10"
+						/>
 					</div>
 				</PopoverContent>
 			)}

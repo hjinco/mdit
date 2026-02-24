@@ -1,4 +1,5 @@
 import { Menu } from "@tauri-apps/api/menu"
+import type { AppHotkeyMap } from "@/lib/hotkeys"
 import { createEditMenu } from "./edit-menu"
 import { createFileMenu } from "./file-menu"
 import { createHelpMenu } from "./help-menu"
@@ -20,6 +21,7 @@ export async function installWindowMenu({
 	goBack,
 	goForward,
 	toggleSettings,
+	hotkeys,
 }: {
 	createNote: () => void | Promise<void>
 	openWorkspace: () => void | Promise<void>
@@ -33,13 +35,15 @@ export async function installWindowMenu({
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	toggleSettings: () => void
+	hotkeys: AppHotkeyMap
 }) {
 	const menu = await Menu.new({
 		items: [
-			await createMditMenu({ toggleSettings }),
+			await createMditMenu({ toggleSettings, hotkeys }),
 			await createFileMenu({
 				createNote,
 				openWorkspace,
+				hotkeys,
 			}),
 			await createEditMenu(),
 			await createViewMenu({
@@ -50,10 +54,12 @@ export async function installWindowMenu({
 				resetZoom,
 				openCommandMenu,
 				openGraphView,
+				hotkeys,
 			}),
 			await createHistoryMenu({
 				goBack,
 				goForward,
+				hotkeys,
 			}),
 			await createWindowMenu(),
 			await createHelpMenu(),

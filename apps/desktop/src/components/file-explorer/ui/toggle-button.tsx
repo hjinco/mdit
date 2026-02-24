@@ -1,5 +1,4 @@
 import { Button } from "@mdit/ui/components/button"
-import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
 import {
 	Tooltip,
 	TooltipContent,
@@ -8,8 +7,8 @@ import {
 import { cn } from "@mdit/ui/lib/utils"
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from "lucide-react"
 import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getModifierKey } from "@/utils/keyboard-shortcut"
 
 type Props = {
 	isOpen: boolean
@@ -17,10 +16,11 @@ type Props = {
 }
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
-	const { isFocusMode, currentCollectionPath } = useStore(
+	const { isFocusMode, currentCollectionPath, toggleExplorerHotkey } = useStore(
 		useShallow((s) => ({
 			isFocusMode: s.isFocusMode,
 			currentCollectionPath: s.currentCollectionPath,
+			toggleExplorerHotkey: s.hotkeys["toggle-file-explorer"],
 		})),
 	)
 	const isCollectionViewOpen = currentCollectionPath !== null
@@ -44,10 +44,7 @@ export function ToggleButton({ isOpen, onToggle }: Props) {
 			<TooltipContent className="pr-1">
 				<div className="flex items-center gap-1">
 					Toggle
-					<KbdGroup>
-						<Kbd>{getModifierKey()}</Kbd>
-						<Kbd>S</Kbd>
-					</KbdGroup>
+					<HotkeyKbd binding={toggleExplorerHotkey} />
 				</div>
 			</TooltipContent>
 		</Tooltip>

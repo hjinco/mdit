@@ -1,11 +1,14 @@
 import { MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
+import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@/lib/hotkeys"
 
 export async function createFileMenu({
 	createNote,
 	openWorkspace,
+	hotkeys,
 }: {
 	createNote: () => void | Promise<void>
 	openWorkspace: () => void | Promise<void>
+	hotkeys: AppHotkeyMap
 }) {
 	return await Submenu.new({
 		text: "File",
@@ -13,13 +16,13 @@ export async function createFileMenu({
 			await MenuItem.new({
 				id: "new-note",
 				text: "New Note",
-				accelerator: "CmdOrCtrl+N",
+				accelerator: hotkeyToMenuAccelerator(hotkeys["create-note"]),
 				action: () => createNote(),
 			}),
 			await MenuItem.new({
 				id: "open-folder",
 				text: "Open Folder...",
-				accelerator: "CmdOrCtrl+O",
+				accelerator: hotkeyToMenuAccelerator(hotkeys["open-folder"]),
 				action: () => openWorkspace(),
 			}),
 			await PredefinedMenuItem.new({

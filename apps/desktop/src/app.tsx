@@ -29,6 +29,7 @@ export function App() {
 		isLoading,
 		initializeWorkspace,
 		initializeAISettings,
+		initializeHotkeys,
 		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
@@ -43,6 +44,7 @@ export function App() {
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
+			initializeHotkeys: s.initializeHotkeys,
 			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
@@ -98,6 +100,10 @@ export function App() {
 	useEffect(() => {
 		void initializeAISettings()
 	}, [initializeAISettings])
+
+	useEffect(() => {
+		void initializeHotkeys()
+	}, [initializeHotkeys])
 
 	useEffect(() => {
 		const checkAndValidateLicense = async () => {
