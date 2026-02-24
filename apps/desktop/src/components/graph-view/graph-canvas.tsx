@@ -8,6 +8,7 @@ import {
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force"
+import { relative } from "pathe"
 import {
 	type PointerEvent,
 	useCallback,
@@ -17,6 +18,8 @@ import {
 	useState,
 	type WheelEvent,
 } from "react"
+import { useShallow } from "zustand/shallow"
+import { useStore } from "@/store"
 import {
 	getGraphDegradeProfile,
 	getNodeOpenAction,
@@ -58,6 +61,10 @@ const VIEW_INTERPOLATION = 0.24
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value))
+}
+
+function normalizeGraphPath(value: string) {
+	return value.replace(/\\/g, "/")
 }
 
 function getNodeRadius(node: Pick<GraphRenderNode, "unresolved" | "degree">) {
@@ -120,6 +127,12 @@ export function GraphCanvas({
 	data: GraphViewData
 	onNodeAction: (action: GraphNodeOpenAction) => void
 }) {
+	const { tabPath, workspacePath } = useStore(
+		useShallow((state) => ({
+			tabPath: state.tab?.path ?? null,
+			workspacePath: state.workspacePath,
+		})),
+	)
 	const containerRef = useRef<HTMLDivElement | null>(null)
 	const svgRef = useRef<SVGSVGElement | null>(null)
 
@@ -239,6 +252,12 @@ export function GraphCanvas({
 		() => getGraphDegradeProfile(data.nodes.length, data.edges.length),
 		[data.edges.length, data.nodes.length],
 	)
+	const currentTabRelPath = useMemo(() => {
+		if (!workspacePath || !tabPath) {
+			return null
+		}
+		return normalizeGraphPath(relative(workspacePath, tabPath))
+	}, [tabPath, workspacePath])
 
 	useEffect(() => {
 		const target = containerRef.current
@@ -601,10 +620,15 @@ export function GraphCanvas({
 					<g transform={`translate(${view.x},${view.y}) scale(${view.scale})`}>
 						{renderLines}
 						{nodes.map((node) => {
+							const isCurrentTabNode =
+								currentTabRelPath !== null &&
+								node.relPath === currentTabRelPath
 							const isFocused =
 								hoveredNodeId === node.id || selectedNodeId === node.id
 							const showLabel =
-								isFocused || view.scale >= degradeProfile.labelVisibleScale
+								isCurrentTabNode ||
+								isFocused ||
+								view.scale >= degradeProfile.labelVisibleScale
 							const radius = getNodeRadius(node)
 							const labelScale = 1 / view.scale
 							const labelOffsetX = radius * view.scale + 6
@@ -625,13 +649,23 @@ export function GraphCanvas({
 										setHoveredNodeId((prev) => (prev === node.id ? null : prev))
 									}
 								>
+									{isCurrentTabNode && (
+										<circle
+											r={radius + 5.6}
+											className="fill-primary/20 stroke-primary/60 stroke-[1.6]"
+										/>
+									)}
 									<circle
-										r={radius + (isFocused ? 2.1 : 0)}
+										r={radius + (isFocused ? 2.1 : 0) + (isCurrentTabNode ? 2.4 : 0)}
 										className={cn(
-											"stroke transition-colors",
-											node.unresolved
-												? "fill-transparent stroke-muted-foreground/55"
-												: "fill-primary/70 stroke-primary/90",
+											"transition-colors",
+											isCurrentTabNode
+												? node.unresolved
+													? "fill-transparent stroke-primary stroke-[2.2]"
+													: "fill-primary/90 stroke-primary stroke-[2.2]"
+												: node.unresolved
+													? "fill-transparent stroke-muted-foreground/55 stroke"
+													: "fill-primary/70 stroke-primary/90 stroke",
 										)}
 									/>
 									{showLabel && (
