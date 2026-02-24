@@ -5,13 +5,19 @@ import {
 	PopoverTrigger,
 } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
+import { LinkPlugin } from "@platejs/link/react"
 import { invoke } from "@tauri-apps/api/core"
-import { ArrowRight, InfoIcon } from "lucide-react"
+import { ArrowRight, InfoIcon, Link2 } from "lucide-react"
 import { resolve } from "pathe"
-import { useEditorRef } from "platejs/react"
+import { KEYS, PathApi } from "platejs"
+import { useEditorPlugin, useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
+import {
+	normalizeWikiTargetForDisplay,
+	resolveWikiLinkViaInvoke,
+} from "@/components/editor/ui/link-toolbar-utils"
 import { useStore } from "@/store"
 
 const WORD_SPLIT_REGEX = /\s+/
@@ -30,6 +36,7 @@ const RELATED_NOTES_LIMIT = 5
 
 export function MoreButton() {
 	const editor = useEditorRef()
+	const { api } = useEditorPlugin(LinkPlugin)
 	const [open, setOpen] = useState(false)
 	const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
@@ -132,6 +139,98 @@ export function MoreButton() {
 		setOpen(false)
 	}
 
+	const handleInsertWikiLink = async (relPath: string, fileName: string) => {
+		if (!workspacePath) {
+			return
+		}
+
+		const fallbackTarget = normalizeWikiTargetForDisplay(relPath)
+		let wikiTarget = fallbackTarget
+
+		try {
+			const resolved = await resolveWikiLinkViaInvoke({
+				workspacePath,
+				currentNotePath: tab?.path ?? null,
+				rawTarget: relPath,
+			})
+			const canonicalTarget = normalizeWikiTargetForDisplay(
+				resolved.canonicalTarget,
+			)
+			wikiTarget = canonicalTarget || fallbackTarget
+		} catch (error) {
+			console.warn(
+				"Failed to resolve related note wiki link; using fallback:",
+				error,
+			)
+		}
+
+		if (!wikiTarget) {
+			return
+		}
+
+		const linkText = normalizeWikiTargetForDisplay(fileName) || wikiTarget
+		editor.tf.insertNodes(
+			{
+				type: KEYS.link,
+				url: wikiTarget,
+				wiki: true,
+				wikiTarget,
+				children: [{ text: linkText }],
+			},
+			{ select: true },
+		)
+
+		const hideFloatingLinkAndFocusEditor = () => {
+			api.floatingLink.hide()
+			editor.tf.focus()
+		}
+
+		const moveSelectionOutsideInsertedLink = () => {
+			const selection = editor.selection
+			if (!selection) {
+				return
+			}
+
+			const linkType = editor.getType(KEYS.link)
+			const linkEntry = editor.api.above({
+				at: selection.anchor,
+				match: { type: linkType },
+			})
+			if (!linkEntry) {
+				return
+			}
+
+			const [, path] = linkEntry
+			if (!editor.api.isEnd(selection.focus, path)) {
+				const end = editor.api.end(path)
+				if (end) {
+					editor.tf.select({ anchor: end, focus: end })
+				}
+			}
+
+			if (!editor.selection) {
+				return
+			}
+
+			// Same exit semantics as LinkExitPlugin arrowRight handler.
+			const nextStart = editor.api.start(path, { next: true })
+			if (nextStart) {
+				editor.tf.select({ anchor: nextStart, focus: nextStart })
+			} else {
+				const nextPath = PathApi.next(path)
+				editor.tf.insertNodes({ text: "" }, { at: nextPath })
+				editor.tf.select(nextPath)
+			}
+			editor.meta._linkExitedArrowRight = true
+		}
+
+		// Defer selection handling: other UI updates can overwrite selection immediately after insert.
+		setTimeout(() => {
+			moveSelectionOutsideInsertedLink()
+			hideFloatingLinkAndFocusEditor()
+		}, 0)
+	}
+
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
@@ -139,7 +238,7 @@ export function MoreButton() {
 					<InfoIcon />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-48 z-101" align="end">
+			<PopoverContent className="w-64 z-101 p-2.5" align="end">
 				<div className="space-y-1 text-xs">
 					<div className="flex justify-between items-center">
 						<span className="text-muted-foreground">Characters</span>
@@ -158,21 +257,21 @@ export function MoreButton() {
 				{backlinks.length > 0 && (
 					<>
 						<Separator className="my-3" />
-						<div className="space-y-1">
+						<div>
 							<div className="text-muted-foreground text-xs mb-1">
 								Backlinks
 							</div>
-							<div className="space-y-0.5">
+							<div>
 								{backlinks.map((entry) => (
 									<button
 										type="button"
 										key={entry.relPath}
 										onClick={() => handleNoteClick(entry.relPath)}
-										className="inline-flex justify-between gap-1 w-full text-left py-1 text-xs rounded text-muted-foreground hover:text-accent-foreground transition-colors cursor-pointer truncate"
+										className="group flex w-full items-center justify-between gap-2 px-2 py-1.5 text-xs rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-all cursor-pointer text-left"
 										title={entry.relPath}
 									>
 										<span className="truncate">{entry.fileName}</span>
-										<ArrowRight className="size-3 shrink-0" />
+										<ArrowRight className="size-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
 									</button>
 								))}
 							</div>
@@ -182,22 +281,39 @@ export function MoreButton() {
 				{relatedNotes.length > 0 && (
 					<>
 						<Separator className="my-3" />
-						<div className="space-y-1">
+						<div>
 							<div className="text-muted-foreground text-xs mb-1">
 								Related Notes
 							</div>
-							<div className="space-y-0.5">
+							<div>
 								{relatedNotes.map((entry) => (
-									<button
-										type="button"
+									<div
 										key={entry.relPath}
-										onClick={() => handleNoteClick(entry.relPath)}
-										className="inline-flex justify-between gap-1 w-full text-left py-1 text-xs rounded text-muted-foreground hover:text-accent-foreground transition-colors cursor-pointer truncate"
+										className="group flex items-center justify-between"
 										title={entry.relPath}
 									>
-										<span className="truncate">{entry.fileName}</span>
-										<ArrowRight className="size-3 shrink-0" />
-									</button>
+										<button
+											type="button"
+											onClick={() => handleNoteClick(entry.relPath)}
+											className="flex-1 text-left text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted transition-colors cursor-pointer truncate"
+										>
+											<span className="truncate">{entry.fileName}</span>
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												void handleInsertWikiLink(entry.relPath, entry.fileName)
+											}}
+											onMouseDown={(event) => {
+												event.preventDefault()
+											}}
+											className="inline-flex shrink-0 h-7 px-1.5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+											aria-label={`Link ${entry.fileName} to current note`}
+											title="Link to current note"
+										>
+											<Link2 className="size-3.5" />
+										</button>
+									</div>
 								))}
 							</div>
 						</div>
