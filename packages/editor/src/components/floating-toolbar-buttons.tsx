@@ -6,8 +6,9 @@ import {
 	DropdownMenuTrigger,
 } from "@mdit/ui/components/dropdown-menu"
 import { AIChatPlugin } from "@platejs/ai/react"
-import { unwrapLink } from "@platejs/link"
+import { unwrapLink, upsertLink } from "@platejs/link"
 import {
+	LinkPlugin,
 	useLinkToolbarButton,
 	useLinkToolbarButtonState,
 } from "@platejs/link/react"
@@ -41,7 +42,8 @@ import { ToolbarButton, ToolbarGroup } from "./toolbar"
 export function FloatingToolbarButtons() {
 	const editor = useEditorRef()
 	const readOnly = useEditorReadOnly()
-	const { api } = useEditorPlugin(AIChatPlugin)
+	const { api: aiApi } = useEditorPlugin(AIChatPlugin)
+	const { api: linkApi } = useEditorPlugin(LinkPlugin)
 
 	const state = useLinkToolbarButtonState()
 	const { props: linkButtonProps } = useLinkToolbarButton(state)
@@ -62,7 +64,7 @@ export function FloatingToolbarButtons() {
 							size="sm"
 							tooltip={`${modifierKey}+J`}
 							onClick={() => {
-								api.aiChat.show()
+								aiApi.aiChat.show()
 							}}
 							onMouseDown={(e) => {
 								e.preventDefault()
@@ -133,8 +135,46 @@ export function FloatingToolbarButtons() {
 								if (state.pressed) {
 									unwrapLink(editor)
 								} else {
-									editor.meta._linkInsertFocusRequestedAt = Date.now()
-									defaultLinkOnClick?.()
+									const selectedText = editor.selection
+										? editor.api.string(editor.selection).trim()
+										: ""
+									const seed = selectedText || ""
+									const didUpsert = upsertLink(editor, {
+										url: seed,
+										text: selectedText || undefined,
+										skipValidation: true,
+									})
+
+									if (!didUpsert) {
+										defaultLinkOnClick?.()
+										return
+									}
+
+									const linkEntry =
+										editor.api.above({
+											match: { type: editor.getType(KEYS.link) },
+										}) ??
+										editor.api.node({
+											match: { type: editor.getType(KEYS.link) },
+										})
+
+									if (linkEntry) {
+										const [, path] = linkEntry
+										editor.tf.setNodes(
+											{
+												wiki: true,
+												wikiTarget: seed || undefined,
+											},
+											{ at: path },
+										)
+
+										const end = editor.api.end(path)
+										if (end) {
+											editor.tf.select({ anchor: end, focus: end })
+										}
+									}
+
+									linkApi.floatingLink.show("edit", editor.id)
 								}
 							}}
 						>
