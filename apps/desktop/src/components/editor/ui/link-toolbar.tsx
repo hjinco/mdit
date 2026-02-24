@@ -34,7 +34,7 @@ import {
 import { LinkUrlInput } from "./link-url-input"
 
 const popoverVariants = cva(
-	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden",
+	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none",
 )
 const LINK_INSERT_FOCUS_REQUEST_TTL_MS = 1000
 
