@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { FolderIcon } from "lucide-react"
 import { type MouseEvent, useCallback, useMemo, useRef } from "react"
 import { useShallow } from "zustand/shallow"
+import { useRenameNoteWithAI } from "@/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
 import { getFolderNameFromPath } from "@/utils/path-utils"
@@ -22,7 +23,6 @@ import { SortSelector } from "./ui/sort-selector"
 export function CollectionView() {
 	const {
 		isFileExplorerOpen,
-		chatConfig,
 		currentCollectionPath,
 		setCurrentCollectionPath,
 		collectionEntries,
@@ -32,13 +32,11 @@ export function CollectionView() {
 		isSaved,
 		clearLinkedTab,
 		deleteEntries,
-		renameNoteWithAI,
 		renameEntry,
 		updateEntryModifiedDate,
 	} = useStore(
 		useShallow((state) => ({
 			isFileExplorerOpen: state.isFileExplorerOpen,
-			chatConfig: state.chatConfig,
 			currentCollectionPath: state.currentCollectionPath,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			collectionEntries: state.collectionEntries,
@@ -48,11 +46,11 @@ export function CollectionView() {
 			isSaved: state.isSaved,
 			clearLinkedTab: state.clearLinkedTab,
 			deleteEntries: state.deleteEntries,
-			renameNoteWithAI: state.renameNoteWithAI,
 			renameEntry: state.renameEntry,
 			updateEntryModifiedDate: state.updateEntryModifiedDate,
 		})),
 	)
+	const { renameNoteWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const isCollectionViewOpen = currentCollectionPath !== null
 	const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
 		storageKey: "collection-view-width",
@@ -150,14 +148,13 @@ export function CollectionView() {
 	)
 
 	const { handleEntryContextMenu } = useCollectionContextMenu({
-		chatConfig,
+		canRenameNoteWithAI,
 		renameNoteWithAI,
 		beginRenaming,
 		handleDeleteEntries,
 		selectedEntryPaths,
 		setSelectedEntryPaths,
 		setSelectionAnchorPath,
-		resetSelection,
 		invalidatePreview,
 	})
 

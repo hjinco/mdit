@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
 import { open } from "@tauri-apps/plugin-dialog"
-import { generateText } from "ai"
 import { toast } from "sonner"
 import type { StateCreator } from "zustand"
 import { FileSystemRepository } from "@/repositories/file-system-repository"
@@ -23,16 +22,8 @@ import { createWorkspaceLifecycleActions } from "./actions/workspace-lifecycle-a
 import { createWorkspaceSelectionActions } from "./actions/workspace-selection-actions"
 import { createWorkspaceTreeActions } from "./actions/workspace-tree-actions"
 import { createWorkspaceWatchActions } from "./actions/workspace-watch-actions"
-import {
-	AI_RENAME_SYSTEM_PROMPT,
-	buildRenamePrompt,
-	collectSiblingNoteNames,
-	createModelFromConfig,
-	extractAndSanitizeName,
-} from "./helpers/ai-rename-helpers"
 import type { WorkspaceActionContext } from "./workspace-action-context"
 import type {
-	AiRenameHelpers,
 	BacklinkEntry,
 	FrontmatterUtils,
 	ResolveWikiLinkResult,
@@ -115,7 +106,6 @@ export type WorkspaceSlice = WorkspaceState & {
 	createAndOpenNote: () => Promise<void>
 	deleteEntries: (paths: string[]) => Promise<void>
 	deleteEntry: (path: string) => Promise<void>
-	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
 	renameEntry: (entry: WorkspaceEntry, newName: string) => Promise<string>
 	moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
 	copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
@@ -171,14 +161,6 @@ const frontmatterUtils: FrontmatterUtils = {
 	removeFileFrontmatterProperty,
 }
 
-const aiRenameHelpers: AiRenameHelpers = {
-	AI_RENAME_SYSTEM_PROMPT,
-	buildRenamePrompt,
-	collectSiblingNoteNames,
-	createModelFromConfig,
-	extractAndSanitizeName,
-}
-
 export const createWorkspaceSlice = prepareWorkspaceSlice({
 	fileSystemRepository: new FileSystemRepository(),
 	settingsRepository: new WorkspaceSettingsRepository(),
@@ -189,10 +171,8 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 	},
 	applyWorkspaceMigrations: (workspacePath: string) =>
 		invoke<void>("apply_appdata_migrations", { workspacePath }),
-	generateText,
 	frontmatterUtils,
 	toast,
-	aiRenameHelpers,
 	linkIndexing: {
 		getBacklinks: (workspacePath: string, filePath: string) =>
 			invoke<BacklinkEntry[]>("get_backlinks_command", {

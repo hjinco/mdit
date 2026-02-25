@@ -1,7 +1,5 @@
-import { createAnthropic } from "@ai-sdk/anthropic"
-import { createGoogleGenerativeAI } from "@ai-sdk/google"
-import { createOpenAI } from "@ai-sdk/openai"
 import { type UseChatHelpers, useChat as useBaseChat } from "@ai-sdk/react"
+import { createModelFromChatConfig } from "@mdit/ai"
 import { CODEX_BASE_URL } from "@mdit/ai-auth"
 import { markdownJoinerTransform } from "@mdit/editor/utils/markdown-joiner-transform"
 import { replacePlaceholders } from "@platejs/ai"
@@ -16,7 +14,6 @@ import {
 	streamText,
 	type UIMessage,
 } from "ai"
-import { ollama } from "ollama-ai-provider-v2"
 import { createSlateEditor, RangeApi } from "platejs"
 import { useEditorRef } from "platejs/react"
 import { useEffect, useRef } from "react"
@@ -189,44 +186,6 @@ const replaceMessagePlaceholders = (
 	return { ...message, parts }
 }
 
-const createModelFromConfig = (config: ChatConfig, sessionId: string) => {
-	switch (config.provider) {
-		case "anthropic":
-			return createAnthropic({
-				apiKey: config.apiKey,
-			})(config.model)
-		case "google":
-			return createGoogleGenerativeAI({
-				apiKey: config.apiKey,
-			})(config.model)
-		case "openai":
-			return createOpenAI({
-				apiKey: config.apiKey,
-			})(config.model)
-		case "codex_oauth": {
-			const headers: Record<string, string> = {
-				originator: "mdit",
-				"User-Agent": "mdit",
-				"session-id": sessionId,
-			}
-			if (config.accountId) {
-				headers["ChatGPT-Account-Id"] = config.accountId
-			}
-
-			return createOpenAI({
-				apiKey: config.apiKey,
-				baseURL: CODEX_BASE_URL,
-				headers,
-				fetch: tauriHttpFetch,
-			})(config.model)
-		}
-		case "ollama":
-			return ollama(config.model)
-		default:
-			throw new Error(`Unsupported provider: ${config.provider}`)
-	}
-}
-
 export const useChat = () => {
 	const editor = useEditorRef()
 	const sessionIdRef = useRef(crypto.randomUUID())
@@ -253,7 +212,13 @@ export const useChat = () => {
 		transport: new DefaultChatTransport({
 			fetch: async (_, init) => {
 				const activeConfig = await resolveActiveConfig()
-				const model = createModelFromConfig(activeConfig, sessionIdRef.current)
+				const model = createModelFromChatConfig(activeConfig, {
+					codex: {
+						baseURL: CODEX_BASE_URL,
+						fetch: tauriHttpFetch,
+						sessionId: sessionIdRef.current,
+					},
+				})
 
 				const body = JSON.parse(init?.body?.toString() || "{}")
 				const { ctx, messages: messagesRaw } = body

@@ -1,0 +1,23 @@
+{
+	"name": "@mdit/ai",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"test": "vitest run"
+	},
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^2.0.39",
+		"@ai-sdk/google": "^2.0.20",
+		"@ai-sdk/openai": "^2.0.50",
+		"ai": "^6.0.0",
+		"ollama-ai-provider-v2": "^1.5.0",
+		"pathe": "^2.0.3"
+	},
+	"devDependencies": {
+		"vitest": "^4.0.9"
+	}
+}

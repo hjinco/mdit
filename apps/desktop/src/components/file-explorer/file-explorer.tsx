@@ -3,6 +3,7 @@ import { motion } from "motion/react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
+import { useRenameNoteWithAI } from "@/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
 import { addExpandedDirectory } from "@/store/workspace/helpers/expanded-directories-helpers"
@@ -55,8 +56,6 @@ export function FileExplorer() {
 		createNote,
 		createFolder,
 		deleteEntries,
-		chatConfig,
-		renameNoteWithAI,
 		renameEntry,
 		setCurrentCollectionPath,
 		tab,
@@ -84,8 +83,6 @@ export function FileExplorer() {
 			createNote: state.createNote,
 			createFolder: state.createFolder,
 			deleteEntries: state.deleteEntries,
-			chatConfig: state.chatConfig,
-			renameNoteWithAI: state.renameNoteWithAI,
 			renameEntry: state.renameEntry,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			tab: state.tab,
@@ -105,9 +102,8 @@ export function FileExplorer() {
 	const [pendingNewFolderPath, setPendingNewFolderPath] = useState<
 		string | null
 	>(null)
-	const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
-		() => new Set(),
-	)
+	const { renameNoteWithAI, aiRenamingEntryPaths, canRenameNoteWithAI } =
+		useRenameNoteWithAI()
 	const visibleEntryPaths = useMemo(() => {
 		const paths: string[] = []
 
@@ -263,9 +259,8 @@ export function FileExplorer() {
 
 	const { handleEntryContextMenu, handleRootContextMenu } =
 		useFileExplorerMenus({
-			chatConfig,
+			canRenameNoteWithAI,
 			renameNoteWithAI,
-			setAiRenamingEntryPaths,
 			beginRenaming,
 			beginNewFolder,
 			handleDeleteEntries,
