@@ -20,6 +20,7 @@ import {
 	resolveWikiLinkViaInvoke,
 } from "@/components/editor/ui/link-toolbar-utils"
 import { useStore } from "@/store"
+import { calculateReadingMinutes } from "../utils/reading-time"
 
 const WORD_SPLIT_REGEX = /\s+/
 
@@ -77,8 +78,7 @@ export function InfoButton() {
 			.trim()
 			.split(WORD_SPLIT_REGEX)
 			.filter((word) => word.length > 0).length
-		const wordsPerMinute = 300
-		const minutes = Math.round(words / wordsPerMinute)
+		const minutes = calculateReadingMinutes(words)
 
 		setStats({ characters, words, minutes })
 	}, [editor, isNoteInfoOpen])
