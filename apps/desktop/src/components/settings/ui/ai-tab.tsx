@@ -3,8 +3,8 @@ import {
 	type ApiKeyProviderId,
 	type ChatProviderId,
 	CREDENTIAL_PROVIDER_IDS,
-	type CredentialProviderId,
-} from "@mdit/ai-auth"
+	type ProviderId,
+} from "@mdit/ai"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
@@ -48,7 +48,7 @@ export function AITab() {
 		})),
 	)
 	const [providerBusy, setProviderBusy] = useState<
-		Partial<Record<CredentialProviderId, boolean>>
+		Partial<Record<ProviderId, boolean>>
 	>({})
 
 	useEffect(() => {
@@ -56,7 +56,7 @@ export function AITab() {
 	}, [fetchOllamaModels])
 
 	const runWithBusy = async (
-		provider: CredentialProviderId,
+		provider: ProviderId,
 		action: () => Promise<void>,
 	) => {
 		setProviderBusy((prev) => ({ ...prev, [provider]: true }))

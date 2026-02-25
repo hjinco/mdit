@@ -1,6 +1,5 @@
 import { type UseChatHelpers, useChat as useBaseChat } from "@ai-sdk/react"
-import { createModelFromChatConfig } from "@mdit/ai"
-import { CODEX_BASE_URL } from "@mdit/ai-auth"
+import { CODEX_BASE_URL, createModelFromChatConfig } from "@mdit/ai"
 import { markdownJoinerTransform } from "@mdit/editor/utils/markdown-joiner-transform"
 import { replacePlaceholders } from "@platejs/ai"
 import { AIChatPlugin } from "@platejs/ai/react"

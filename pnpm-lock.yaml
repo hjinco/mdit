@@ -44,12 +44,12 @@ importers:
       '@mdit/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@mdit/ai-auth':
-        specifier: workspace:*
-        version: link:../../packages/ai-auth
       '@mdit/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@mdit/credentials':
+        specifier: workspace:*
+        version: link:../../packages/credentials
       '@mdit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -374,18 +374,6 @@ importers:
         specifier: ^4.0.9
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2)
 
-  packages/ai-auth:
-    dependencies:
-      '@fabianlars/tauri-plugin-oauth':
-        specifier: ^2.0.0
-        version: 2.0.0
-      '@tauri-apps/plugin-opener':
-        specifier: ~2.5.3
-        version: 2.5.3
-      tauri-plugin-keyring-api:
-        specifier: ^0.1.1
-        version: 0.1.1
-
   packages/assets:
     dependencies:
       '@mdit/tsconfig':
@@ -395,6 +383,21 @@ importers:
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
+
+  packages/credentials:
+    dependencies:
+      '@fabianlars/tauri-plugin-oauth':
+        specifier: ^2.0.0
+        version: 2.0.0
+      '@mdit/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@tauri-apps/plugin-opener':
+        specifier: ~2.5.3
+        version: 2.5.3
+      tauri-plugin-keyring-api:
+        specifier: ^0.1.1
+        version: 0.1.1
 
   packages/editor:
     dependencies:

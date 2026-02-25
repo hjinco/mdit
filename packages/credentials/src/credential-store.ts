@@ -1,12 +1,9 @@
+import type { ApiKeyProviderId, ProviderId } from "@mdit/ai"
 import {
 	deletePassword as deletePasswordFromKeyring,
 	getPassword as getPasswordFromKeyring,
 	setPassword as setPasswordFromKeyring,
 } from "tauri-plugin-keyring-api"
-import type {
-	ApiKeyProviderId,
-	CredentialProviderId,
-} from "./provider-registry"
 
 export const AI_CREDENTIALS_SERVICE = "app.mdit"
 export const AI_CREDENTIALS_USER = "credentials"
@@ -33,7 +30,7 @@ export type ProviderCredentialMap = {
 	codex_oauth: CodexOAuthCredential
 }
 
-export type ProviderCredential = ProviderCredentialMap[CredentialProviderId]
+export type ProviderCredential = ProviderCredentialMap[ProviderId]
 
 export type AppSecretKey = "local_api_token" | "license_key"
 
@@ -44,7 +41,7 @@ export type AppSecrets = {
 
 export type CredentialStore = {
 	version: typeof CREDENTIAL_STORE_VERSION
-	providers: Partial<Record<CredentialProviderId, ProviderCredential>>
+	providers: Partial<Record<ProviderId, ProviderCredential>>
 	localApiToken?: string
 	licenseKey?: string
 }
@@ -76,7 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null
 }
 
-function isCredentialProviderId(value: unknown): value is CredentialProviderId {
+function isProviderId(value: unknown): value is ProviderId {
 	return (
 		value === "google" ||
 		value === "openai" ||
@@ -117,7 +114,7 @@ function isCodexOAuthCredential(value: unknown): value is CodexOAuthCredential {
 }
 
 function decodeCredential(
-	providerId: CredentialProviderId,
+	providerId: ProviderId,
 	value: unknown,
 ): ProviderCredential | null {
 	if (providerId === "codex_oauth") {
@@ -141,11 +138,10 @@ function decodeCredentialStore(raw: string): CredentialStore {
 			return createEmptyCredentialStore()
 		}
 
-		const providers: Partial<Record<CredentialProviderId, ProviderCredential>> =
-			{}
+		const providers: Partial<Record<ProviderId, ProviderCredential>> = {}
 
 		for (const [providerIdRaw, value] of Object.entries(providersRaw)) {
-			if (!isCredentialProviderId(providerIdRaw)) {
+			if (!isProviderId(providerIdRaw)) {
 				continue
 			}
 			const credential = decodeCredential(providerIdRaw, value)
@@ -253,7 +249,7 @@ export async function setCodexCredential(
 }
 
 export async function deleteCredential(
-	providerId: CredentialProviderId,
+	providerId: ProviderId,
 	keyringApi: KeyringApi = defaultKeyringApi,
 ): Promise<void> {
 	const store = await loadCredentialStore(keyringApi)
@@ -262,7 +258,7 @@ export async function deleteCredential(
 }
 
 export async function getCredential(
-	providerId: CredentialProviderId,
+	providerId: ProviderId,
 	keyringApi: KeyringApi = defaultKeyringApi,
 ): Promise<ProviderCredential | null> {
 	const store = await loadCredentialStore(keyringApi)
@@ -271,9 +267,9 @@ export async function getCredential(
 
 export async function listCredentialProviders(
 	keyringApi: KeyringApi = defaultKeyringApi,
-): Promise<CredentialProviderId[]> {
+): Promise<ProviderId[]> {
 	const store = await loadCredentialStore(keyringApi)
-	return Object.keys(store.providers).filter(isCredentialProviderId)
+	return Object.keys(store.providers).filter(isProviderId)
 }
 
 export async function getAppSecret(
