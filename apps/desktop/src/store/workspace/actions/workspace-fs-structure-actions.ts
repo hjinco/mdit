@@ -492,15 +492,22 @@ export const createWorkspaceFsStructureActions = (
 
 		const directoryPath = dirname(entry.path)
 		const nextPath = join(directoryPath, trimmedName)
+		const isCaseOnlyRename =
+			entry.path !== nextPath &&
+			entry.path.toLowerCase() === nextPath.toLowerCase()
 
 		if (nextPath === entry.path) {
 			return entry.path
 		}
 
-		if (await ctx.deps.fileSystemRepository.exists(nextPath)) {
+		if (
+			(await ctx.deps.fileSystemRepository.exists(nextPath)) &&
+			!isCaseOnlyRename
+		) {
 			return entry.path
 		}
 
+		// On case-insensitive filesystems (macOS default), case-only rename can report exists().
 		await ctx.deps.fileSystemRepository.rename(entry.path, nextPath)
 		ctx.get().recordFsOperation()
 
