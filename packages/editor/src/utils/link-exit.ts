@@ -45,13 +45,16 @@ export function exitLinkForwardAtSelection(
 		editor.tf.select({ anchor: end, focus: end })
 	}
 
-	const nextStart = editor.api.start(path, { next: true })
+	const nextPath = PathApi.next(path)
+	const nextStart = editor.api.start(nextPath)
 	if (nextStart) {
 		editor.tf.select({ anchor: nextStart, focus: nextStart })
 	} else {
-		const nextPath = PathApi.next(path)
 		editor.tf.insertNodes({ text: "" }, { at: nextPath })
-		editor.tf.select(nextPath)
+		const insertedStart = editor.api.start(nextPath)
+		if (insertedStart) {
+			editor.tf.select({ anchor: insertedStart, focus: insertedStart })
+		}
 	}
 
 	if (markArrowRightExit) {

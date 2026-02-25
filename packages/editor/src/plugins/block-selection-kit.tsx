@@ -4,31 +4,52 @@ import type { PlateElementProps } from "platejs/react"
 import { BlockContextMenu } from "../components/block-context-menu"
 import { BlockSelectionAfterEditable } from "../components/block-seleciton-after-editable"
 import { BlockSelection } from "../components/block-selection"
+import type { CreateLinkedNotesFromListItemsHandler } from "./block-selection-linked-notes"
 import { FRONTMATTER_KEY } from "./frontmatter-kit"
 
-export const BlockSelectionKit = [
-	BlockSelectionPlugin.configure(({ editor }) => ({
-		options: {
-			enableContextMenu: true,
-			isSelectable: (element) => {
-				return !getPluginTypes(editor, [
-					KEYS.codeLine,
-					KEYS.td,
-					FRONTMATTER_KEY,
-				]).includes(element.type)
-			},
-		},
-		render: {
-			belowRootNodes: (props) => {
-				if (!props.attributes.className?.includes("slate-selectable"))
-					return null
+export type BlockSelectionKitOptions = {
+	onCreateLinkedNotesFromListItems?: CreateLinkedNotesFromListItemsHandler
+}
 
-				return <BlockSelection {...(props as unknown as PlateElementProps)} />
+export const createBlockSelectionKit = (
+	options: BlockSelectionKitOptions = {},
+) => [
+	BlockSelectionPlugin.configure(({ editor }) => {
+		return {
+			options: {
+				enableContextMenu: true,
+				isSelectable: (element) => {
+					return !getPluginTypes(editor, [
+						KEYS.codeLine,
+						KEYS.td,
+						FRONTMATTER_KEY,
+					]).includes(element.type)
+				},
 			},
-			afterEditable: () => <BlockSelectionAfterEditable />,
-		},
-	})),
+			render: {
+				belowRootNodes: (props) => {
+					if (!props.attributes.className?.includes("slate-selectable"))
+						return null
+
+					return <BlockSelection {...(props as unknown as PlateElementProps)} />
+				},
+				afterEditable: () => <BlockSelectionAfterEditable />,
+			},
+		}
+	}),
 	BlockMenuPlugin.configure({
-		render: { aboveEditable: BlockContextMenu },
+		render: {
+			aboveEditable: (props) => (
+				<BlockContextMenu
+					onCreateLinkedNotesFromListItems={
+						options.onCreateLinkedNotesFromListItems
+					}
+				>
+					{props.children}
+				</BlockContextMenu>
+			),
+		},
 	}),
 ]
+
+export const BlockSelectionKit = createBlockSelectionKit()

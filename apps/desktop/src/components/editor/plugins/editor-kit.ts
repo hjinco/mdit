@@ -2,7 +2,7 @@ import { createAIKit } from "@mdit/editor/plugins/ai-kit"
 import { AutoformatKit } from "@mdit/editor/plugins/autoformat-kit"
 import { BasicBlocksKit } from "@mdit/editor/plugins/basic-blocks-kit"
 import { BasicMarksKit } from "@mdit/editor/plugins/basic-marks-kit"
-import { BlockSelectionKit } from "@mdit/editor/plugins/block-selection-kit"
+import { createBlockSelectionKit } from "@mdit/editor/plugins/block-selection-kit"
 import { CalloutKit } from "@mdit/editor/plugins/callout-kit"
 import { CodeBlockKit } from "@mdit/editor/plugins/code-block-kit"
 import { CodeDrawingKit } from "@mdit/editor/plugins/code-drawing-kit"
@@ -32,6 +32,7 @@ import {
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
 import { SlashInputElement } from "../ui/node-slash"
+import { createLinkedNotesFromListItems } from "./block-selection-note-linking"
 import { FilePasteKit } from "./file-paste-kit"
 import { FrontmatterKit } from "./frontmatter-kit"
 import { MarkdownKit } from "./markdown-kit"
@@ -50,6 +51,20 @@ const DndKit = [
 	}),
 ]
 
+const handleCreateLinkedNotesFromListItems = async (items: string[]) => {
+	const { workspacePath, tab, createNote } = useStore.getState()
+	if (!workspacePath) {
+		return items.map(() => null)
+	}
+
+	return createLinkedNotesFromListItems({
+		items,
+		workspacePath,
+		currentTabPath: tab?.path ?? null,
+		createNote,
+	})
+}
+
 export const EditorKit = [
 	...createAIKit({ AIMenu }),
 	...FilePasteKit,
@@ -57,7 +72,9 @@ export const EditorKit = [
 	...AutoformatKit,
 	...BasicBlocksKit,
 	...BasicMarksKit,
-	...BlockSelectionKit,
+	...createBlockSelectionKit({
+		onCreateLinkedNotesFromListItems: handleCreateLinkedNotesFromListItems,
+	}),
 	...CalloutKit,
 	...CodeBlockKit,
 	...CodeDrawingKit,
