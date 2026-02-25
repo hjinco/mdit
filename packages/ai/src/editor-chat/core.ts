@@ -1,4 +1,8 @@
-import { editSystemSelecting, generateSystemDefault, generateSystemSelecting } from "./prompts"
+import {
+	editSystemSelecting,
+	generateSystemDefault,
+	generateSystemSelecting,
+} from "./prompts"
 import type { ToolName } from "./types"
 
 export function resolveEditorChatToolName(params: {

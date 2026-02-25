@@ -5,8 +5,8 @@ import {
 	createModelFromChatConfig,
 	getEditorChatPromptTemplate,
 	getEditorChatSystemPrompt,
-	type ToolName,
 	resolveEditorChatToolName,
+	type ToolName,
 } from "@mdit/ai"
 import { markdownJoinerTransform } from "@mdit/editor/utils/markdown-joiner-transform"
 import { replacePlaceholders } from "@platejs/ai"

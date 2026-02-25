@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { getEditorChatPromptTemplate, promptDefault, promptSelecting } from "./prompts"
+import {
+	getEditorChatPromptTemplate,
+	promptDefault,
+	promptSelecting,
+} from "./prompts"
 
 describe("getEditorChatPromptTemplate", () => {
 	it("returns the selecting prompt template", () => {

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { getEditorChatSystemPrompt, resolveEditorChatToolName } from "./core"
-import { editSystemSelecting, generateSystemDefault, generateSystemSelecting } from "./prompts"
+import {
+	editSystemSelecting,
+	generateSystemDefault,
+	generateSystemSelecting,
+} from "./prompts"
 
 describe("resolveEditorChatToolName", () => {
 	it("returns the requested tool when provided", () => {
