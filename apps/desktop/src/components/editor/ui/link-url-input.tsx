@@ -1,4 +1,5 @@
 import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
+import { WIKI_LINK_PLACEHOLDER_TEXT } from "@mdit/editor/utils/wiki-link-constants"
 import { buttonVariants } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
@@ -35,6 +36,7 @@ import {
 	ensureUriEncoding,
 	flattenWorkspaceFiles,
 	formatMarkdownPath,
+	getLinkedNoteDisplayName,
 	type LinkMode,
 	normalizeMarkdownPathForDisplay,
 	normalizePathSeparators,
@@ -447,6 +449,25 @@ export function LinkUrlInput({
 							},
 							{ at: path },
 						)
+					}
+
+					const currentLinkText = editor.api.string(path)
+					if (currentLinkText === WIKI_LINK_PLACEHOLDER_TEXT) {
+						const linkedNoteDisplayName = getLinkedNoteDisplayName({
+							mode,
+							nextUrl,
+							wikiTarget,
+							isWebLink,
+						})
+						if (linkedNoteDisplayName) {
+							const start = editor.api.start(path)
+							const end = editor.api.end(path)
+							if (start && end) {
+								editor.tf.insertText(linkedNoteDisplayName, {
+									at: { anchor: start, focus: end },
+								})
+							}
+						}
 					}
 
 					const end = editor.api.end(path)

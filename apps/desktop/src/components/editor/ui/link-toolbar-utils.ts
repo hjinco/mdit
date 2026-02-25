@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core"
-import { isAbsolute, join, dirname as pathDirname, resolve } from "pathe"
+import {
+	basename,
+	isAbsolute,
+	join,
+	dirname as pathDirname,
+	resolve,
+} from "pathe"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 export type WorkspaceFileOption = {
@@ -183,6 +189,42 @@ export function normalizeMarkdownPathForDisplay(value: string): string {
 	const [pathPart, hashPart] = decoded.split("#", 2)
 	const normalized = normalizePathSeparators(pathPart)
 	return hashPart ? `${normalized}#${hashPart}` : normalized
+}
+
+export function getLinkedNoteDisplayName(options: {
+	mode: LinkMode
+	nextUrl: string
+	wikiTarget?: string | null
+	isWebLink: boolean
+}): string | null {
+	const { mode, nextUrl, wikiTarget, isWebLink } = options
+
+	if (isWebLink) {
+		return null
+	}
+
+	const rawValue = mode === "wiki" ? (wikiTarget ?? nextUrl) : nextUrl
+	const decoded = safelyDecodeUrl(rawValue.trim())
+	if (!decoded) {
+		return null
+	}
+
+	const [pathPart] = decoded.split("#", 2)
+	if (!pathPart) {
+		return null
+	}
+
+	let normalizedPath = normalizePathSeparators(pathPart)
+	normalizedPath = stripCurrentDirectoryPrefix(normalizedPath)
+	normalizedPath = stripLeadingSlashes(normalizedPath)
+	normalizedPath = stripMarkdownExtension(normalizedPath)
+
+	if (!normalizedPath) {
+		return null
+	}
+
+	const displayName = basename(normalizedPath).trim()
+	return displayName || null
 }
 
 export function toWorkspaceRelativeWikiTarget(options: {
