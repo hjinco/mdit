@@ -8,7 +8,7 @@ fn delete_paths(paths: Vec<String>) -> Result<(), trash::Error> {
 
         let mut trash_context = trash::TrashContext::new();
         trash_context.set_delete_method(DeleteMethod::NsFileManager);
-        return trash_context.delete_all(paths);
+        trash_context.delete_all(paths)
     }
 
     #[cfg(not(target_os = "macos"))]
