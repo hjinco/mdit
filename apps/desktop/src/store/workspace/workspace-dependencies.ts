@@ -56,21 +56,6 @@ export type ToastLike = {
 	error?: (...args: any[]) => any
 }
 
-export type GenerateText = (args: any) => Promise<{ text: string }>
-
-export type AiRenameHelpers = {
-	AI_RENAME_SYSTEM_PROMPT: string
-	buildRenamePrompt: (args: {
-		currentName: string
-		otherNoteNames: string[]
-		content: string
-		dirPath: string
-	}) => string
-	collectSiblingNoteNames: (dirEntries: any[], entryName: string) => string[]
-	createModelFromConfig: (config: any) => any
-	extractAndSanitizeName: (raw: string) => string
-}
-
 export type BacklinkEntry = {
 	relPath: string
 	fileName: string
@@ -112,9 +97,7 @@ export type WorkspaceDependencies = {
 	historyRepository: WorkspaceHistoryRepositoryLike
 	openDialog: OpenDialog
 	applyWorkspaceMigrations: ApplyWorkspaceMigrations
-	generateText: GenerateText
 	frontmatterUtils: FrontmatterUtils
 	toast: ToastLike
-	aiRenameHelpers: AiRenameHelpers
 	linkIndexing: LinkIndexingDependencies
 }

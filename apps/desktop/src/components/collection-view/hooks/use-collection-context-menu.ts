@@ -1,22 +1,20 @@
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
-import { useCallback, useState } from "react"
-import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
+import { useCallback } from "react"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type UseCollectionContextMenuProps = {
-	chatConfig: ChatConfig | null
+	canRenameNoteWithAI: boolean
 	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
 	beginRenaming: (entry: WorkspaceEntry) => void
 	handleDeleteEntries: (paths: string[]) => Promise<void>
 	selectedEntryPaths: Set<string>
 	setSelectedEntryPaths: (paths: Set<string>) => void
 	setSelectionAnchorPath: (path: string | null) => void
-	resetSelection: () => void
 	invalidatePreview: (path: string) => void
 }
 
 export function useCollectionContextMenu({
-	chatConfig,
+	canRenameNoteWithAI,
 	renameNoteWithAI,
 	beginRenaming,
 	handleDeleteEntries,
@@ -25,10 +23,6 @@ export function useCollectionContextMenu({
 	setSelectionAnchorPath,
 	invalidatePreview,
 }: UseCollectionContextMenuProps) {
-	const [aiRenamingEntryPaths, setAiRenamingEntryPaths] = useState<Set<string>>(
-		() => new Set(),
-	)
-
 	const showEntryMenu = useCallback(
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {
 			try {
@@ -39,27 +33,13 @@ export function useCollectionContextMenu({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: Boolean(chatConfig),
+							enabled: canRenameNoteWithAI,
 							action: async () => {
-								setAiRenamingEntryPaths((paths) => {
-									const next = new Set(paths)
-									next.add(entry.path)
-									return next
-								})
 								try {
 									await renameNoteWithAI(entry)
 									invalidatePreview(entry.path)
 								} catch (error) {
 									console.error("Failed to rename entry with AI:", error)
-								} finally {
-									setAiRenamingEntryPaths((paths) => {
-										if (!paths.has(entry.path)) {
-											return paths
-										}
-										const next = new Set(paths)
-										next.delete(entry.path)
-										return next
-									})
 								}
 							},
 						}),
@@ -103,7 +83,7 @@ export function useCollectionContextMenu({
 			beginRenaming,
 			handleDeleteEntries,
 			invalidatePreview,
-			chatConfig,
+			canRenameNoteWithAI,
 			renameNoteWithAI,
 		],
 	)
@@ -142,6 +122,5 @@ export function useCollectionContextMenu({
 
 	return {
 		handleEntryContextMenu,
-		aiRenamingEntryPaths,
 	}
 }

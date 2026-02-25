@@ -35,7 +35,6 @@ export function createWorkspaceActionTestContext() {
 		},
 		openDialog: vi.fn().mockResolvedValue(null),
 		applyWorkspaceMigrations: vi.fn().mockResolvedValue(undefined),
-		generateText: vi.fn().mockResolvedValue({ text: "renamed-note" }),
 		frontmatterUtils: {
 			updateFileFrontmatter: vi.fn().mockResolvedValue(undefined),
 			renameFileFrontmatterProperty: vi.fn().mockResolvedValue(undefined),
@@ -44,13 +43,6 @@ export function createWorkspaceActionTestContext() {
 		toast: {
 			success: vi.fn(),
 			error: vi.fn(),
-		},
-		aiRenameHelpers: {
-			AI_RENAME_SYSTEM_PROMPT: "rename-system-prompt",
-			buildRenamePrompt: vi.fn().mockReturnValue("prompt"),
-			collectSiblingNoteNames: vi.fn().mockReturnValue([]),
-			createModelFromConfig: vi.fn().mockReturnValue({}),
-			extractAndSanitizeName: vi.fn().mockReturnValue("renamed-note"),
 		},
 		linkIndexing: {
 			getBacklinks: vi.fn().mockResolvedValue([]),

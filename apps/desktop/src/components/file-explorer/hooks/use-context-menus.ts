@@ -5,12 +5,7 @@ import {
 	Submenu,
 } from "@tauri-apps/api/menu"
 import { readTextFile } from "@tauri-apps/plugin-fs"
-import {
-	type Dispatch,
-	type MouseEvent,
-	type SetStateAction,
-	useCallback,
-} from "react"
+import { type MouseEvent, useCallback } from "react"
 import { toast } from "sonner"
 import clipboard from "tauri-plugin-clipboard-api"
 import { useShallow } from "zustand/shallow"
@@ -23,7 +18,6 @@ import {
 	saveNoteAsTemplate,
 } from "@/components/file-explorer/utils/template-utils"
 import { useStore } from "@/store"
-import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"
 import { normalizePathSeparators } from "@/utils/path-utils"
@@ -36,9 +30,8 @@ const DELETE_ACCELERATOR =
 		: "Delete"
 
 type UseFileExplorerMenusProps = {
-	chatConfig: ChatConfig | null
+	canRenameNoteWithAI: boolean
 	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
-	setAiRenamingEntryPaths: Dispatch<SetStateAction<Set<string>>>
 	beginRenaming: (entry: WorkspaceEntry) => void
 	beginNewFolder: (directoryPath: string) => void
 	handleDeleteEntries: (paths: string[]) => Promise<void>
@@ -62,9 +55,8 @@ type UseFileExplorerMenusProps = {
 }
 
 export const useFileExplorerMenus = ({
-	chatConfig,
+	canRenameNoteWithAI,
 	renameNoteWithAI,
-	setAiRenamingEntryPaths,
 	beginRenaming,
 	beginNewFolder,
 	handleDeleteEntries,
@@ -162,26 +154,12 @@ export const useFileExplorerMenus = ({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: Boolean(chatConfig),
+							enabled: canRenameNoteWithAI,
 							action: async () => {
-								setAiRenamingEntryPaths((paths) => {
-									const next = new Set(paths)
-									next.add(entry.path)
-									return next
-								})
 								try {
 									await renameNoteWithAI(entry)
 								} catch (error) {
 									console.error("Failed to rename entry with AI:", error)
-								} finally {
-									setAiRenamingEntryPaths((paths) => {
-										if (!paths.has(entry.path)) {
-											return paths
-										}
-										const next = new Set(paths)
-										next.delete(entry.path)
-										return next
-									})
 								}
 							},
 						}),
@@ -238,9 +216,8 @@ export const useFileExplorerMenus = ({
 		[
 			beginRenaming,
 			handleDeleteEntries,
-			chatConfig,
+			canRenameNoteWithAI,
 			renameNoteWithAI,
-			setAiRenamingEntryPaths,
 			openImageEdit,
 			workspacePath,
 		],

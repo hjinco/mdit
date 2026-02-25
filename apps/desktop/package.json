@@ -15,9 +15,7 @@
 		"ci": "pnpm ts:check && pnpm test"
 	},
 	"dependencies": {
-		"@ai-sdk/anthropic": "^2.0.39",
-		"@ai-sdk/google": "^2.0.20",
-		"@ai-sdk/openai": "^2.0.50",
+		"@mdit/ai": "workspace:*",
 		"@ai-sdk/react": "^3.0.0",
 		"@ariakit/react": "^0.4.18",
 		"@dnd-kit/react": "^0.1.21",
@@ -86,7 +84,6 @@
 		"mime": "^4.0.7",
 		"motion": "^12.23.24",
 		"next-themes": "^0.4.6",
-		"ollama-ai-provider-v2": "^1.5.0",
 		"pathe": "^2.0.3",
 		"platejs": "^52.0.17",
 		"react": "^19.1.0",
