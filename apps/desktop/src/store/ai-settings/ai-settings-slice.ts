@@ -94,7 +94,7 @@ function isProviderId(value: unknown): value is ProviderId {
 }
 
 function isChatProviderId(value: unknown): value is ChatProviderId {
-	return value === "ollama" || isCredentialProviderId(value)
+	return value === "ollama" || isProviderId(value)
 }
 
 function isPersistedModelConfig(value: unknown): value is PersistedModelConfig {
