@@ -63,6 +63,11 @@ export function useRenameNoteWithAI() {
 								},
 							},
 			})
+		} catch (error) {
+			toast.error(`Failed to rename note with AI`, {
+				position: "bottom-left",
+			})
+			console.error("Failed to rename note with AI:", error)
 		} finally {
 			setAiRenamingEntryPaths((paths) => {
 				if (!paths.has(entry.path)) {
