@@ -84,7 +84,7 @@ type AISettingsSliceDependencies = {
 const CHAT_CONFIG_KEY = "chat-config"
 const ENABLED_CHAT_MODELS_KEY = "chat-enabled-models"
 
-function isCredentialProviderId(value: unknown): value is ProviderId {
+function isProviderId(value: unknown): value is ProviderId {
 	return (
 		value === "google" ||
 		value === "openai" ||
@@ -94,7 +94,7 @@ function isCredentialProviderId(value: unknown): value is ProviderId {
 }
 
 function isChatProviderId(value: unknown): value is ChatProviderId {
-	return value === "ollama" || isCredentialProviderId(value)
+	return value === "ollama" || isProviderId(value)
 }
 
 function isPersistedModelConfig(value: unknown): value is PersistedModelConfig {

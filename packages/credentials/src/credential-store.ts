@@ -73,7 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null
 }
 
-function isCredentialProviderId(value: unknown): value is ProviderId {
+function isProviderId(value: unknown): value is ProviderId {
 	return (
 		value === "google" ||
 		value === "openai" ||
@@ -141,7 +141,7 @@ function decodeCredentialStore(raw: string): CredentialStore {
 		const providers: Partial<Record<ProviderId, ProviderCredential>> = {}
 
 		for (const [providerIdRaw, value] of Object.entries(providersRaw)) {
-			if (!isCredentialProviderId(providerIdRaw)) {
+			if (!isProviderId(providerIdRaw)) {
 				continue
 			}
 			const credential = decodeCredential(providerIdRaw, value)
@@ -269,7 +269,7 @@ export async function listCredentialProviders(
 	keyringApi: KeyringApi = defaultKeyringApi,
 ): Promise<ProviderId[]> {
 	const store = await loadCredentialStore(keyringApi)
-	return Object.keys(store.providers).filter(isCredentialProviderId)
+	return Object.keys(store.providers).filter(isProviderId)
 }
 
 export async function getAppSecret(
