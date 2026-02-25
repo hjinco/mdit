@@ -1,3 +1,4 @@
+import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
 import { buttonVariants } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
@@ -447,11 +448,24 @@ export function LinkUrlInput({
 							{ at: path },
 						)
 					}
+
+					const end = editor.api.end(path)
+					if (end) {
+						editor.tf.select({ anchor: end, focus: end })
+					}
 				}
 
-				setHighlightedIndex(-1)
-				api.floatingLink.hide()
-				editor.tf.focus()
+				setTimeout(() => {
+					exitLinkForwardAtSelection(editor, {
+						allowFromInsideLink: true,
+						focusEditor: false,
+						markArrowRightExit: true,
+					})
+
+					setHighlightedIndex(-1)
+					api.floatingLink.hide()
+					editor.tf.focus()
+				}, 0)
 				return
 			}
 
