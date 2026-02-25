@@ -73,6 +73,54 @@ describe("workspace-fs-structure-actions", () => {
 		)
 	})
 
+	it("renameEntry allows case-only path changes when destination exists", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		deps.fileSystemRepository.exists.mockResolvedValueOnce(true)
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/folder",
+				name: "folder",
+				isDirectory: true,
+			},
+			"Folder",
+		)
+
+		expect(renamedPath).toBe("/ws/Folder")
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/Folder",
+		)
+		expect(getState().entryRenamed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				newPath: "/ws/Folder",
+				newName: "Folder",
+			}),
+		)
+	})
+
+	it("renameEntry blocks rename when destination path exists and is not case-only", async () => {
+		const { context, deps, getState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		deps.fileSystemRepository.exists.mockResolvedValueOnce(true)
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/folder",
+				name: "folder",
+				isDirectory: true,
+			},
+			"another",
+		)
+
+		expect(renamedPath).toBe("/ws/folder")
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
 	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
 		const { context, deps, ports, setState, getState } =
 			createWorkspaceActionTestContext()
