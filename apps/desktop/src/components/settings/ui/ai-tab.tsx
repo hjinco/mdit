@@ -21,7 +21,6 @@ import {
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
-	SelectValue,
 } from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
@@ -144,7 +143,14 @@ export function AITab() {
 
 	const renameSelectValue = renameConfig
 		? `${renameConfig.provider}|${renameConfig.model}`
-		: "__none__"
+		: undefined
+	const renameSelectLabel = useMemo(() => {
+		if (!renameSelectValue) return null
+		return (
+			renameOptions.find((option) => option.value === renameSelectValue)
+				?.label ?? null
+		)
+	}, [renameOptions, renameSelectValue])
 
 	const hasConnectedProviders = useMemo(() => {
 		return connectedProviders.length > 0 || ollamaModels.length > 0
@@ -223,7 +229,7 @@ export function AITab() {
 								<Select
 									value={renameSelectValue}
 									onValueChange={(value) => {
-										if (value === "__none__") {
+										if (!value || value === "__none__") {
 											clearRenameModel()
 											return
 										}
@@ -250,10 +256,14 @@ export function AITab() {
 									}}
 								>
 									<SelectTrigger size="sm">
-										<SelectValue placeholder="Select model" />
+										{renameSelectLabel ? (
+											<span className="line-clamp-1">{renameSelectLabel}</span>
+										) : (
+											<span className="text-muted-foreground">disabled</span>
+										)}
 									</SelectTrigger>
 									<SelectContent align="end">
-										<SelectItem value="__none__">Disabled</SelectItem>
+										<SelectItem value="__none__">disabled</SelectItem>
 										{renameOptions.map((option) => (
 											<SelectItem key={option.value} value={option.value}>
 												{option.label}

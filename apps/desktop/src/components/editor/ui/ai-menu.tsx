@@ -1,8 +1,4 @@
-import {
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-} from "@mdit/ui/components/popover"
+import { Popover, PopoverContent } from "@mdit/ui/components/popover"
 import { AIChatPlugin, useEditorChat } from "@platejs/ai/react"
 import { BlockSelectionPlugin, useIsSelecting } from "@platejs/selection/react"
 import { isHotkey, KEYS, type NodeEntry } from "platejs"
@@ -210,9 +206,8 @@ export function AIMenu() {
 				setOpen(open)
 			}}
 		>
-			<PopoverAnchor virtualRef={{ current: anchorElement! }} />
-
 			<PopoverContent
+				anchor={anchorElement ?? undefined}
 				// For the animation
 				key={addCommandOpen ? "addCommand" : "content"}
 				className="border-none bg-transparent backdrop-blur-none p-0 shadow-none"

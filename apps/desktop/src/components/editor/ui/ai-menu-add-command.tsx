@@ -65,7 +65,12 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
 		onClose()
 	}
 
-	const handleTemplateChange = (value: string) => {
+	const handleTemplateChange = (value: string | null) => {
+		if (!value) {
+			setTemplate("custom")
+			return
+		}
+
 		setTemplate(value)
 
 		if (value === "custom") return

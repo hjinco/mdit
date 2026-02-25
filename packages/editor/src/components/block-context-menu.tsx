@@ -236,7 +236,6 @@ export function BlockContextMenu({
 					}, 0)
 				}
 			}}
-			modal={false}
 		>
 			<ContextMenuTrigger
 				asChild
@@ -259,8 +258,7 @@ export function BlockContextMenu({
 			</ContextMenuTrigger>
 			<ContextMenuContent
 				className="w-64"
-				onCloseAutoFocus={(e) => {
-					e.preventDefault()
+				finalFocus={() => {
 					if (skipNextCloseAutoFocusRef.current) {
 						skipNextCloseAutoFocusRef.current = false
 					} else if (!isCreatingLinkedNotesRef.current) {
@@ -272,6 +270,7 @@ export function BlockContextMenu({
 					}
 
 					setValue(null)
+					return false
 				}}
 			>
 				<ContextMenuGroup>

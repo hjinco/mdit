@@ -1,11 +1,7 @@
-import {
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-} from "@mdit/ui/components/popover"
+import { Popover, PopoverContent } from "@mdit/ui/components/popover"
 import { tooltipContentVariants } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useRef, useState } from "react"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
 
@@ -28,6 +24,7 @@ export const CollectionResizer = memo(function CollectionResizer({
 		x: number
 		y: number
 	} | null>(null)
+	const anchorRef = useRef<HTMLSpanElement>(null)
 
 	const updateAnchorPoint = useCallback(
 		(event: React.PointerEvent<HTMLDivElement>) => {
@@ -78,19 +75,18 @@ export const CollectionResizer = memo(function CollectionResizer({
 			}}
 		>
 			{anchorPoint && (
-				<PopoverAnchor asChild>
-					<span
-						aria-hidden
-						style={{
-							position: "fixed",
-							top: anchorPoint.y,
-							left: anchorPoint.x,
-							width: 0,
-							height: 0,
-							pointerEvents: "none",
-						}}
-					/>
-				</PopoverAnchor>
+				<span
+					ref={anchorRef}
+					aria-hidden
+					style={{
+						position: "fixed",
+						top: anchorPoint.y,
+						left: anchorPoint.x,
+						width: 0,
+						height: 0,
+						pointerEvents: "none",
+					}}
+				/>
 			)}
 			<div
 				className="absolute top-0 -right-2 z-10 h-full w-4 cursor-col-resize bg-transparent"
@@ -101,10 +97,11 @@ export const CollectionResizer = memo(function CollectionResizer({
 			/>
 			{!isResizing && (
 				<PopoverContent
+					anchor={anchorRef}
 					align="center"
 					side="right"
 					sideOffset={8}
-					onOpenAutoFocus={(event) => event.preventDefault()}
+					initialFocus={false}
 					className={cn(tooltipContentVariants, "pr-1")}
 				>
 					<div className="flex items-center gap-1">

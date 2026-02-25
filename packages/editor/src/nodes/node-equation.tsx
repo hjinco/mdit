@@ -489,7 +489,10 @@ function EquationEnvironmentCombobox({
 			</PopoverTrigger>
 			<PopoverContent
 				className="w-[200px] p-0"
-				onCloseAutoFocus={() => setSearchValue("")}
+				finalFocus={() => {
+					setSearchValue("")
+					return true
+				}}
 				align="end"
 			>
 				<Command shouldFilter={false}>
