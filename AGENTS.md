@@ -5,17 +5,9 @@
 - `apps/desktop/src/` contains the React + TypeScript frontend.
 - `apps/desktop/src-tauri/` contains the Rust/Tauri app adapter layer (window lifecycle, plugin wiring, command registration).
 - Rust core logic is split into workspace crates under `crates/`:
-  - `crates/app-storage/` for SQLite extension, migrations, and vault persistence.
-  - `crates/note-core/` for markdown/frontmatter/preview processing.
-  - `crates/indexing-core/` for indexing, search, links, backlinks, and graph logic.
-  - `crates/image-core/` for image metadata/editing logic.
-- Build outputs are generated under `apps/desktop/dist/` (frontend), `target/` (workspace Rust builds), and `apps/desktop/src-tauri/target/` (Tauri packaging artifacts).
 
 ## Build, Test, and Development Commands
 - Run commands from the monorepo root unless noted. Root `desktop:*` scripts delegate to `apps/desktop`.
-- `pnpm desktop:dev` (or `pnpm -C apps/desktop dev`) runs the Vite dev server.
-- `pnpm desktop:build` (or `pnpm -C apps/desktop build`) typechecks and builds the frontend bundle.
-- `pnpm desktop:preview` (or `pnpm -C apps/desktop preview`) serves the production build locally.
 - `pnpm desktop:tauri build` (or `pnpm -C apps/desktop tauri build`) builds the full desktop app (frontend + Rust).
 - `pnpm desktop:test` (or `pnpm -C apps/desktop test`) runs Vitest in CI mode.
 - `pnpm desktop:test:rust` (or `pnpm -C apps/desktop test:rust`) runs `cargo test --workspace --manifest-path ../../Cargo.toml`.

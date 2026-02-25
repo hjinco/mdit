@@ -1,10 +1,10 @@
 {
 	"name": "mdit",
 	"scripts": {
-		"desktop:dev": "pnpm -C apps/desktop dev",
 		"desktop:build": "pnpm -C apps/desktop build",
 		"desktop:preview": "pnpm -C apps/desktop preview",
 		"desktop:tauri": "pnpm -C apps/desktop tauri",
+		"desktop:dev": "pnpm -C apps/desktop tauri:dev",
 		"desktop:test": "pnpm -C apps/desktop test",
 		"desktop:test:rust": "pnpm -C apps/desktop test:rust",
 		"desktop:ts:check": "pnpm -C apps/desktop ts:check",

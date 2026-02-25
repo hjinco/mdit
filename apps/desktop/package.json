@@ -9,6 +9,7 @@
 		"build": "pnpm ts:check && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
+		"tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
 		"test": "vitest run",
 		"test:rust": "cargo test --workspace --manifest-path ../../Cargo.toml",
 		"ci": "pnpm ts:check && pnpm test"
