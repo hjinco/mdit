@@ -492,13 +492,12 @@ export const createWorkspaceFsStructureActions = (
 
 		const directoryPath = dirname(entry.path)
 		const nextPath = join(directoryPath, trimmedName)
-		const isCaseOnlyRename =
-			entry.path !== nextPath &&
-			entry.path.toLowerCase() === nextPath.toLowerCase()
 
 		if (nextPath === entry.path) {
 			return entry.path
 		}
+
+		const isCaseOnlyRename = entry.path.toLowerCase() === nextPath.toLowerCase()
 
 		if (
 			(await ctx.deps.fileSystemRepository.exists(nextPath)) &&
