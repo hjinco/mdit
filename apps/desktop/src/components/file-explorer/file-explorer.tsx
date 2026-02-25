@@ -373,6 +373,7 @@ export function FileExplorer() {
 								<TreeNode
 									key={entry.path}
 									entry={entry}
+									activeTabPath={tab?.path ?? null}
 									depth={0}
 									expandedDirectories={expandedDirectories}
 									onDirectoryClick={toggleDirectory}

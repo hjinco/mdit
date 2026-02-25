@@ -11,6 +11,7 @@ const INDENTATION_WIDTH = 12
 
 type TreeNodeProps = {
 	entry: WorkspaceEntry
+	activeTabPath: string | null
 	depth: number
 	expandedDirectories: string[]
 	onDirectoryClick: (path: string) => void
@@ -35,6 +36,7 @@ type TreeNodeProps = {
 
 export function TreeNode({
 	entry,
+	activeTabPath,
 	depth,
 	expandedDirectories,
 	onDirectoryClick,
@@ -89,6 +91,7 @@ export function TreeNode({
 		() => !entry.isDirectory && extension.toLowerCase() === ".md",
 		[entry.isDirectory, extension],
 	)
+	const isActiveNote = isMarkdown && entry.path === activeTabPath
 
 	const showExtension = !isMarkdown && extension
 
@@ -426,6 +429,7 @@ export function TreeNode({
 								<TreeNode
 									key={child.path}
 									entry={child}
+									activeTabPath={activeTabPath}
 									depth={depth + 1}
 									expandedDirectories={expandedDirectories}
 									onDirectoryClick={onDirectoryClick}
@@ -455,6 +459,7 @@ export function TreeNode({
 					className={cn(
 						getEntryButtonClassName({
 							isSelected,
+							isActive: isActiveNote,
 							isDragging,
 							isRenaming,
 							isAiRenaming,
@@ -463,6 +468,7 @@ export function TreeNode({
 						showExtension && "pr-1",
 					)}
 					style={{ paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px` }}
+					aria-current={isActiveNote ? "page" : undefined}
 					disabled={isBusy}
 				>
 					<div
@@ -481,7 +487,7 @@ export function TreeNode({
 								inputRef={inputRef}
 								handleRenameKeyDown={handleRenameKeyDown}
 								handleRenameBlur={handleRenameBlur}
-								className="pt-[1px]"
+								className="pt-px"
 							/>
 						)}
 					</div>
