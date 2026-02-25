@@ -73,7 +73,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null
 }
 
-function isCredentialProviderId(value: unknown): value is ProviderId {
+function isProviderId(value: unknown): value is ProviderId {
 	return (
 		value === "google" ||
 		value === "openai" ||
