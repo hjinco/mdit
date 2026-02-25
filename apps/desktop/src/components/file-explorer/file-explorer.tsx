@@ -301,6 +301,21 @@ export function FileExplorer() {
 		[setCurrentCollectionPath],
 	)
 
+	const handleExplorerPointerDownCapture = useCallback(
+		(event: React.PointerEvent<HTMLElement>) => {
+			const target = event.target as HTMLElement | null
+			if (
+				target?.tagName === "INPUT" ||
+				target?.tagName === "TEXTAREA" ||
+				target?.isContentEditable
+			) {
+				return
+			}
+			fileExplorerRef.current?.focus()
+		},
+		[],
+	)
+
 	return (
 		<>
 			<TopMenu
@@ -313,6 +328,7 @@ export function FileExplorer() {
 			<motion.aside
 				ref={fileExplorerRef}
 				className="relative shrink-0 overflow-hidden"
+				tabIndex={-1}
 				animate={{ width: isOpen ? width : 0 }}
 				initial={false}
 				transition={
@@ -338,6 +354,7 @@ export function FileExplorer() {
 							workspaceExternalDropRef(node)
 						}}
 						className="flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom"
+						onPointerDownCapture={handleExplorerPointerDownCapture}
 						onContextMenu={handleRootContextMenu}
 						onClick={() => {
 							setSelectedEntryPaths(new Set())
