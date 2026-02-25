@@ -5,6 +5,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@mdit/ui/components/dropdown-menu"
+import { TooltipProvider } from "@mdit/ui/components/tooltip"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { unwrapLink, upsertLink } from "@platejs/link"
 import {
@@ -13,7 +14,6 @@ import {
 	useLinkToolbarButtonState,
 } from "@platejs/link/react"
 import { insertInlineEquation } from "@platejs/math"
-import { TooltipProvider } from "@radix-ui/react-tooltip"
 import {
 	BoldIcon,
 	Code2Icon,
@@ -66,7 +66,7 @@ export function FloatingToolbarButtons() {
 							onClick={() => {
 								aiApi.aiChat.show()
 							}}
-							onMouseDown={(e) => {
+							onMouseDown={(e: React.MouseEvent) => {
 								e.preventDefault()
 							}}
 						>

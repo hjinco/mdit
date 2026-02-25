@@ -129,8 +129,12 @@
 	}
 
 	body {
-		@apply text-foreground overflow-hidden overscroll-none antialiased;
+		@apply relative text-foreground overflow-hidden overscroll-none antialiased;
 	}
+}
+
+.root {
+	isolation: isolate;
 }
 
 @layer utilities {

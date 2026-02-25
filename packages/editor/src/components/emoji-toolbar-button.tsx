@@ -1,6 +1,11 @@
 import type { Emoji } from "@emoji-mart/data"
 import { Button } from "@mdit/ui/components/button"
 import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@mdit/ui/components/popover"
+import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
@@ -18,7 +23,6 @@ import {
 	type UseEmojiPickerType,
 	useEmojiDropdownMenuState,
 } from "@platejs/emoji/react"
-import * as Popover from "@radix-ui/react-popover"
 import {
 	AppleIcon,
 	ClockIcon,
@@ -76,12 +80,12 @@ export function EmojiPopover({
 	setIsOpen: (open: boolean) => void
 }) {
 	return (
-		<Popover.Root open={isOpen} onOpenChange={setIsOpen}>
-			<Popover.Trigger asChild>{control}</Popover.Trigger>
-			<Popover.Portal>
-				<Popover.Content className="z-100">{children}</Popover.Content>
-			</Popover.Portal>
-		</Popover.Root>
+		<Popover open={isOpen} onOpenChange={setIsOpen}>
+			<PopoverTrigger asChild>{control}</PopoverTrigger>
+			<PopoverContent className="z-100 w-auto border-none bg-transparent p-0 shadow-none backdrop-blur-none">
+				{children}
+			</PopoverContent>
+		</Popover>
 	)
 }
 
@@ -113,7 +117,7 @@ export function EmojiPicker({
 		<div
 			className={cn(
 				"flex flex-col rounded-xl bg-popover text-popover-foreground",
-				"h-[23rem] w-80 border shadow-md",
+				"h-92 w-80 border shadow-md",
 			)}
 		>
 			<EmojiPickerNavigation

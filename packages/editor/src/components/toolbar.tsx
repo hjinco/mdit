@@ -1,13 +1,14 @@
+import { Toggle as TogglePrimitive } from "@base-ui/react/toggle"
+import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group"
+import { Toolbar as ToolbarPrimitive } from "@base-ui/react/toolbar"
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import {
 	DropdownMenuLabel,
 	DropdownMenuRadioGroup,
 	DropdownMenuSeparator,
 } from "@mdit/ui/components/dropdown-menu"
 import { Separator } from "@mdit/ui/components/separator"
-import { TooltipTrigger } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
-import * as ToolbarPrimitive from "@radix-ui/react-toolbar"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 import { cva, type VariantProps } from "class-variance-authority"
 import { ChevronDown } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -27,9 +28,9 @@ export function Toolbar({
 export function ToolbarToggleGroup({
 	className,
 	...props
-}: React.ComponentProps<typeof ToolbarPrimitive.ToolbarToggleGroup>) {
+}: React.ComponentProps<typeof ToggleGroupPrimitive>) {
 	return (
-		<ToolbarPrimitive.ToolbarToggleGroup
+		<ToggleGroupPrimitive
 			className={cn("flex items-center", className)}
 			{...props}
 		/>
@@ -60,9 +61,8 @@ export function ToolbarSeparator({
 	)
 }
 
-// From toggleVariants
 const toolbarButtonVariants = cva(
-	"inline-flex items-center justify-center gap-2 rounded-md text-sm whitespace-nowrap text-foreground/80 transition-[color,box-shadow] outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-checked:bg-accent aria-checked:text-accent-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
+	"inline-flex items-center justify-center gap-2 rounded-md text-sm whitespace-nowrap text-foreground/80 transition-[color,box-shadow] outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-accent data-pressed:text-accent-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 cursor-pointer",
 	{
 		defaultVariants: {
 			size: "default",
@@ -100,7 +100,7 @@ const dropdownArrowVariants = cva(
 			},
 			variant: {
 				default:
-					"bg-transparent hover:bg-muted hover:text-muted-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
+					"bg-transparent hover:bg-muted hover:text-muted-foreground data-pressed:bg-accent data-pressed:text-accent-foreground",
 				outline:
 					"border border-l-0 border-input bg-transparent hover:bg-accent hover:text-accent-foreground",
 			},
@@ -111,10 +111,7 @@ const dropdownArrowVariants = cva(
 type ToolbarButtonProps = {
 	isDropdown?: boolean
 	pressed?: boolean
-} & Omit<
-	React.ComponentPropsWithoutRef<typeof ToolbarToggleItem>,
-	"asChild" | "value"
-> &
+} & React.ComponentPropsWithoutRef<"button"> &
 	VariantProps<typeof toolbarButtonVariants>
 
 export const ToolbarButton = withTooltip(function ToolbarButton({
@@ -126,37 +123,35 @@ export const ToolbarButton = withTooltip(function ToolbarButton({
 	variant,
 	...props
 }: ToolbarButtonProps) {
+	const { value, ...toggleProps } = props
+
 	return typeof pressed === "boolean" ? (
-		<ToolbarToggleGroup disabled={props.disabled} value="single" type="single">
-			<ToolbarToggleItem
-				className={cn(
-					toolbarButtonVariants({
-						size,
-						variant,
-					}),
-					isDropdown && "justify-between gap-1 pr-1",
-					className,
-				)}
-				value={pressed ? "single" : ""}
-				{...props}
-			>
-				{isDropdown ? (
-					<>
-						<div className="flex flex-1 items-center gap-2 whitespace-nowrap">
-							{children}
-						</div>
-						<div>
-							<ChevronDown
-								className="size-3.5 text-muted-foreground"
-								data-icon
-							/>
-						</div>
-					</>
-				) : (
-					children
-				)}
-			</ToolbarToggleItem>
-		</ToolbarToggleGroup>
+		<ToolbarToggleItem
+			pressed={pressed}
+			value={typeof value === "string" ? value : undefined}
+			className={cn(
+				toolbarButtonVariants({
+					size,
+					variant,
+				}),
+				isDropdown && "justify-between gap-1 pr-1",
+				className,
+			)}
+			{...toggleProps}
+		>
+			{isDropdown ? (
+				<>
+					<div className="flex flex-1 items-center gap-2 whitespace-nowrap">
+						{children}
+					</div>
+					<div>
+						<ChevronDown className="size-3.5 text-muted-foreground" data-icon />
+					</div>
+				</>
+			) : (
+				children
+			)}
+		</ToolbarToggleItem>
 	) : (
 		<ToolbarPrimitive.Button
 			className={cn(
@@ -247,10 +242,10 @@ export function ToolbarToggleItem({
 	size = "sm",
 	variant,
 	...props
-}: React.ComponentProps<typeof ToolbarPrimitive.ToggleItem> &
+}: React.ComponentProps<typeof TogglePrimitive> &
 	VariantProps<typeof toolbarButtonVariants>) {
 	return (
-		<ToolbarPrimitive.ToggleItem
+		<TogglePrimitive
 			className={cn(toolbarButtonVariants({ size, variant }), className)}
 			{...props}
 		/>
@@ -288,7 +283,10 @@ type TooltipProps<T extends React.ElementType> = {
 		React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>,
 		"children"
 	>
-	tooltipTriggerProps?: React.ComponentPropsWithoutRef<typeof TooltipTrigger>
+	tooltipTriggerProps?: Omit<
+		React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>,
+		"children" | "render"
+	>
 } & React.ComponentProps<T>
 
 function withTooltip<T extends React.ElementType>(Component: T) {
@@ -310,9 +308,11 @@ function withTooltip<T extends React.ElementType>(Component: T) {
 		if (tooltip && mounted) {
 			return (
 				<TooltipPrimitive.Root data-slot="tooltip" {...tooltipProps}>
-					<TooltipTrigger asChild {...tooltipTriggerProps}>
-						{component}
-					</TooltipTrigger>
+					<TooltipPrimitive.Trigger
+						data-slot="tooltip-trigger"
+						render={component as React.ReactElement}
+						{...tooltipTriggerProps}
+					/>
 
 					<TooltipContent {...tooltipContentProps}>{tooltip}</TooltipContent>
 				</TooltipPrimitive.Root>
@@ -326,25 +326,35 @@ function withTooltip<T extends React.ElementType>(Component: T) {
 function TooltipContent({
 	children,
 	className,
-	// CHANGE
 	sideOffset = 4,
+	side = "top",
+	align = "center",
+	alignOffset = 0,
 	...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: TooltipPrimitive.Popup.Props &
+	Pick<
+		TooltipPrimitive.Positioner.Props,
+		"align" | "alignOffset" | "side" | "sideOffset"
+	>) {
 	return (
 		<TooltipPrimitive.Portal>
-			<TooltipPrimitive.Content
-				className={cn(
-					"z-9999 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md bg-primary px-3 py-1.5 text-xs text-balance text-primary-foreground",
-					className,
-				)}
-				data-slot="tooltip-content"
+			<TooltipPrimitive.Positioner
+				side={side}
+				align={align}
 				sideOffset={sideOffset}
-				{...props}
+				alignOffset={alignOffset}
 			>
-				{children}
-				{/* CHANGE */}
-				{/* <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-primary fill-primary" /> */}
-			</TooltipPrimitive.Content>
+				<TooltipPrimitive.Popup
+					className={cn(
+						"z-9999 w-fit origin-(--transform-origin) rounded-md bg-primary px-3 py-1.5 text-xs text-balance text-primary-foreground",
+						className,
+					)}
+					data-slot="tooltip-content"
+					{...props}
+				>
+					{children}
+				</TooltipPrimitive.Popup>
+			</TooltipPrimitive.Positioner>
 		</TooltipPrimitive.Portal>
 	)
 }

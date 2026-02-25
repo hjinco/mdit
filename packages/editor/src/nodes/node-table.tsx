@@ -1,4 +1,5 @@
 import { Popover, PopoverContent } from "@mdit/ui/components/popover"
+import { TooltipProvider } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
 import {
 	BlockSelectionPlugin,
@@ -12,8 +13,6 @@ import {
 	useTableElement,
 	useTableMergeState,
 } from "@platejs/table/react"
-import { PopoverAnchor } from "@radix-ui/react-popover"
-import { TooltipProvider } from "@radix-ui/react-tooltip"
 import { cva } from "class-variance-authority"
 import {
 	ArrowDown,
@@ -45,6 +44,7 @@ import {
 	useSelected,
 	withHOC,
 } from "platejs/react"
+import { useRef } from "react"
 import { blockSelectionVariants } from "../components/block-selection"
 import { ResizeHandle } from "../components/resize-handle"
 import { Toolbar, ToolbarButton, ToolbarGroup } from "../components/toolbar"
@@ -102,8 +102,10 @@ export const TableElement = withHOC(
 
 function TableFloatingToolbar({
 	children,
+	className,
 	...props
 }: React.ComponentProps<typeof PopoverContent>) {
+	const anchorRef = useRef<HTMLDivElement>(null)
 	const { tf } = useEditorPlugin(TablePlugin)
 	const selected = useSelected()
 	const element = useElement<TTableElement>()
@@ -121,17 +123,17 @@ function TableFloatingToolbar({
 			open={isFocusedLast && (canMerge || canSplit || collapsedInside)}
 			modal={false}
 		>
-			<PopoverAnchor asChild>{children}</PopoverAnchor>
+			<div ref={anchorRef}>{children}</div>
 			<PopoverContent
-				asChild
-				onOpenAutoFocus={(e) => e.preventDefault()}
-				contentEditable={false}
+				anchor={anchorRef}
+				initialFocus={false}
+				className={cn(
+					"scrollbar-hide w-auto max-w-[80vw] overflow-x-auto rounded-md border bg-popover p-1 shadow-md print:hidden backdrop-blur-none",
+					className,
+				)}
 				{...props}
 			>
-				<Toolbar
-					className="scrollbar-hide flex w-auto max-w-[80vw] flex-row overflow-x-auto rounded-md border bg-popover p-1 shadow-md print:hidden"
-					contentEditable={false}
-				>
+				<Toolbar className="flex w-auto flex-row" contentEditable={false}>
 					<TooltipProvider>
 						<ToolbarGroup>
 							{/* <ColorDropdownMenu tooltip="Background color">
@@ -140,7 +142,7 @@ function TableFloatingToolbar({
 							{canMerge && (
 								<ToolbarButton
 									onClick={() => tf.table.merge()}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Merge cells"
 								>
 									<CombineIcon />
@@ -149,7 +151,7 @@ function TableFloatingToolbar({
 							{canSplit && (
 								<ToolbarButton
 									onClick={() => tf.table.split()}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Split cell"
 								>
 									<SquareSplitHorizontalIcon />
@@ -183,7 +185,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.insert.tableRow({ before: true })
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Insert row before"
 								>
 									<ArrowUp />
@@ -192,7 +194,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.insert.tableRow()
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Insert row after"
 								>
 									<ArrowDown />
@@ -201,7 +203,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.remove.tableRow()
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Delete row"
 								>
 									<XIcon />
@@ -215,7 +217,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.insert.tableColumn({ before: true })
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Insert column before"
 								>
 									<ArrowLeft />
@@ -224,7 +226,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.insert.tableColumn()
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Insert column after"
 								>
 									<ArrowRight />
@@ -233,7 +235,7 @@ function TableFloatingToolbar({
 									onClick={() => {
 										tf.remove.tableColumn()
 									}}
-									onMouseDown={(e) => e.preventDefault()}
+									onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
 									tooltip="Delete column"
 								>
 									<XIcon />

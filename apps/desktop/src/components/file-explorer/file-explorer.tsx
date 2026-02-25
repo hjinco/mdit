@@ -327,7 +327,7 @@ export function FileExplorer() {
 			/>
 			<motion.aside
 				ref={fileExplorerRef}
-				className="relative shrink-0 overflow-hidden"
+				className="relative shrink-0 overflow-hidden focus:outline-none focus-visible:outline-none"
 				tabIndex={-1}
 				animate={{ width: isOpen ? width : 0 }}
 				initial={false}

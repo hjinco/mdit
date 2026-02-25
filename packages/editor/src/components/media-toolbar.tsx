@@ -1,9 +1,5 @@
 import { Button } from "@mdit/ui/components/button"
-import {
-	Popover,
-	PopoverAnchor,
-	PopoverContent,
-} from "@mdit/ui/components/popover"
+import { Popover, PopoverContent } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
 import {
 	FloatingMedia as FloatingMediaPrimitive,
@@ -23,7 +19,7 @@ import {
 	useRemoveNodeButton,
 	useSelected,
 } from "platejs/react"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { CaptionButton } from "./caption"
 
 const inputVariants = cva(
@@ -56,6 +52,7 @@ export function MediaToolbar({
 		!isImagePreviewOpen &&
 		!hide
 	const isEditing = useFloatingMediaValue("isEditing")
+	const anchorRef = useRef<HTMLDivElement>(null)
 	const element = useElement()
 	const { props: buttonProps } = useRemoveNodeButton({ element })
 
@@ -73,11 +70,12 @@ export function MediaToolbar({
 
 	return (
 		<Popover open={open} modal={false}>
-			<PopoverAnchor>{children}</PopoverAnchor>
+			<div ref={anchorRef}>{children}</div>
 
 			<PopoverContent
+				anchor={anchorRef}
 				className="w-auto p-1"
-				onOpenAutoFocus={(e) => e.preventDefault()}
+				initialFocus={false}
 			>
 				{isEditing ? (
 					<div className="flex w-[330px] flex-col">

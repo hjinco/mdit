@@ -5,7 +5,6 @@ import {
 	useTodoListElement,
 	useTodoListElementState,
 } from "@platejs/list/react"
-import type { CheckedState } from "@radix-ui/react-checkbox"
 import type { TListElement } from "platejs"
 import { KEYS } from "platejs"
 import {
@@ -55,11 +54,10 @@ function TodoMarker(props: PlateElementProps) {
 	const state = useTodoListElementState({ element: props.element })
 	const { checkboxProps } = useTodoListElement(state)
 	const readOnly = useReadOnly()
-	const { onCheckedChange, ...restCheckboxProps } = checkboxProps
+	const { checked, onCheckedChange, ...restCheckboxProps } = checkboxProps
 
 	const handleCheckedChange = useCallback(
-		(value: CheckedState) => {
-			if (value === "indeterminate") return
+		(value: boolean) => {
 			onCheckedChange(value)
 		},
 		[onCheckedChange],
@@ -72,6 +70,7 @@ function TodoMarker(props: PlateElementProps) {
 					"absolute top-1 -left-6",
 					readOnly && "pointer-events-none",
 				)}
+				checked={checked === true}
 				onCheckedChange={handleCheckedChange}
 				{...restCheckboxProps}
 			/>

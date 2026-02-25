@@ -132,8 +132,8 @@ export function IndexingTab() {
 	])
 
 	const handleEmbeddingModelChange = useCallback(
-		async (value: string) => {
-			if (!workspacePath) {
+		async (value: string | null) => {
+			if (!workspacePath || !value) {
 				return
 			}
 
