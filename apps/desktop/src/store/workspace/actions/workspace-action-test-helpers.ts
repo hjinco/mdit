@@ -94,7 +94,7 @@ export function createWorkspaceActionTestContext() {
 		isSaved: true,
 		tab: null,
 		currentCollectionPath: null,
-		renameConfig: null,
+		chatConfig: null,
 		refreshCodexOAuthForTarget: vi.fn().mockResolvedValue(undefined),
 		updateEntries: vi.fn((entriesOrAction: any) => {
 			const nextEntries =

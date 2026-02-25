@@ -36,7 +36,7 @@ const DELETE_ACCELERATOR =
 		: "Delete"
 
 type UseFileExplorerMenusProps = {
-	renameConfig: ChatConfig | null
+	chatConfig: ChatConfig | null
 	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
 	setAiRenamingEntryPaths: Dispatch<SetStateAction<Set<string>>>
 	beginRenaming: (entry: WorkspaceEntry) => void
@@ -62,7 +62,7 @@ type UseFileExplorerMenusProps = {
 }
 
 export const useFileExplorerMenus = ({
-	renameConfig,
+	chatConfig,
 	renameNoteWithAI,
 	setAiRenamingEntryPaths,
 	beginRenaming,
@@ -162,7 +162,7 @@ export const useFileExplorerMenus = ({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: Boolean(renameConfig),
+							enabled: Boolean(chatConfig),
 							action: async () => {
 								setAiRenamingEntryPaths((paths) => {
 									const next = new Set(paths)
@@ -238,7 +238,7 @@ export const useFileExplorerMenus = ({
 		[
 			beginRenaming,
 			handleDeleteEntries,
-			renameConfig,
+			chatConfig,
 			renameNoteWithAI,
 			setAiRenamingEntryPaths,
 			openImageEdit,

@@ -4,7 +4,7 @@ import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type UseCollectionContextMenuProps = {
-	renameConfig: ChatConfig | null
+	chatConfig: ChatConfig | null
 	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
 	beginRenaming: (entry: WorkspaceEntry) => void
 	handleDeleteEntries: (paths: string[]) => Promise<void>
@@ -16,7 +16,7 @@ type UseCollectionContextMenuProps = {
 }
 
 export function useCollectionContextMenu({
-	renameConfig,
+	chatConfig,
 	renameNoteWithAI,
 	beginRenaming,
 	handleDeleteEntries,
@@ -39,7 +39,7 @@ export function useCollectionContextMenu({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: Boolean(renameConfig),
+							enabled: Boolean(chatConfig),
 							action: async () => {
 								setAiRenamingEntryPaths((paths) => {
 									const next = new Set(paths)
@@ -103,7 +103,7 @@ export function useCollectionContextMenu({
 			beginRenaming,
 			handleDeleteEntries,
 			invalidatePreview,
-			renameConfig,
+			chatConfig,
 			renameNoteWithAI,
 		],
 	)

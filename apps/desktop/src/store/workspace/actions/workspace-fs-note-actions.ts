@@ -54,9 +54,9 @@ export const createWorkspaceFsNoteActions = (
 	renameNoteWithAI: async (entry) => {
 		await ctx.get().refreshCodexOAuthForTarget()
 
-		const { renameConfig } = ctx.get()
+		const { chatConfig } = ctx.get()
 
-		if (!renameConfig) {
+		if (!chatConfig) {
 			return
 		}
 
@@ -76,7 +76,7 @@ export const createWorkspaceFsNoteActions = (
 		)
 
 		const model = ctx.deps.aiRenameHelpers.createModelFromConfig({
-			...renameConfig,
+			...chatConfig,
 			sessionId: crypto.randomUUID(),
 		})
 		const aiResponse = await ctx.deps.generateText({

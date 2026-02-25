@@ -150,7 +150,7 @@ describe("ai-settings-slice credential store", () => {
 })
 
 describe("ai-settings-slice persistence", () => {
-	it("stores chat/rename config in localStorage without apiKey", async () => {
+	it("stores chat config in localStorage without apiKey", async () => {
 		const { store } = createAISettingsTestStore({
 			initialCredentials: {
 				openai: { type: "api_key", apiKey: "openai-secret" },
@@ -159,15 +159,10 @@ describe("ai-settings-slice persistence", () => {
 
 		await store.getState().initializeAISettings()
 		await store.getState().selectModel("openai", "gpt-5.2")
-		await store.getState().selectRenameModel("openai", "gpt-5")
 
 		expect(JSON.parse(localStorage.getItem("chat-config") || "{}")).toEqual({
 			provider: "openai",
 			model: "gpt-5.2",
-		})
-		expect(JSON.parse(localStorage.getItem("rename-config") || "{}")).toEqual({
-			provider: "openai",
-			model: "gpt-5",
 		})
 
 		expect(store.getState().chatConfig).toEqual({
@@ -181,10 +176,6 @@ describe("ai-settings-slice persistence", () => {
 		localStorage.setItem(
 			"chat-config",
 			JSON.stringify({ provider: "openai", model: "gpt-5.2" }),
-		)
-		localStorage.setItem(
-			"rename-config",
-			JSON.stringify({ provider: "anthropic", model: "claude-sonnet-4-5" }),
 		)
 		localStorage.setItem(
 			"chat-enabled-models",
@@ -209,8 +200,6 @@ describe("ai-settings-slice persistence", () => {
 			model: "gpt-5.2",
 			apiKey: "openai-secret",
 		})
-		expect(store.getState().renameConfig).toBeNull()
-		expect(localStorage.getItem("rename-config")).toBeNull()
 		expect(store.getState().enabledChatModels).toEqual([
 			{ provider: "openai", model: "gpt-5.2" },
 			{ provider: "ollama", model: "llama3.2" },

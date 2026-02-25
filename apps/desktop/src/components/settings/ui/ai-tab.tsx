@@ -16,27 +16,12 @@ import {
 	FieldSet,
 } from "@mdit/ui/components/field"
 import { Input } from "@mdit/ui/components/input"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-} from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
-
-function isCredentialProviderId(value: string): value is CredentialProviderId {
-	return (
-		value === "google" ||
-		value === "openai" ||
-		value === "anthropic" ||
-		value === "codex_oauth"
-	)
-}
 
 export function AITab() {
 	const {
@@ -48,9 +33,6 @@ export function AITab() {
 		connectCodexOAuth,
 		disconnectProvider,
 		fetchOllamaModels,
-		renameConfig,
-		selectRenameModel,
-		clearRenameModel,
 		toggleModelEnabled,
 	} = useStore(
 		useShallow((state) => ({
@@ -62,9 +44,6 @@ export function AITab() {
 			connectCodexOAuth: state.connectCodexOAuth,
 			disconnectProvider: state.disconnectProvider,
 			fetchOllamaModels: state.fetchOllamaModels,
-			renameConfig: state.renameConfig,
-			selectRenameModel: state.selectRenameModel,
-			clearRenameModel: state.clearRenameModel,
 			toggleModelEnabled: state.toggleModelEnabled,
 		})),
 	)
@@ -106,51 +85,6 @@ export function AITab() {
 			{ provider: "ollama", models: ollamaModels },
 		]
 	}, [apiModels, ollamaModels])
-
-	const renameOptions = useMemo(() => {
-		const options: Array<{ value: string; label: string }> = []
-
-		connectedProviders.forEach((provider) => {
-			const models = apiModels[provider] ?? []
-			models.forEach((model) => {
-				options.push({
-					value: `${provider}|${model}`,
-					label: model,
-				})
-			})
-		})
-
-		ollamaModels.forEach((model) => {
-			options.push({
-				value: `ollama|${model}`,
-				label: model,
-			})
-		})
-
-		if (renameConfig) {
-			const value = `${renameConfig.provider}|${renameConfig.model}`
-			const exists = options.some((option) => option.value === value)
-			if (!exists) {
-				options.push({
-					value,
-					label: renameConfig.model,
-				})
-			}
-		}
-
-		return options.sort((a, b) => a.label.localeCompare(b.label))
-	}, [connectedProviders, apiModels, ollamaModels, renameConfig])
-
-	const renameSelectValue = renameConfig
-		? `${renameConfig.provider}|${renameConfig.model}`
-		: undefined
-	const renameSelectLabel = useMemo(() => {
-		if (!renameSelectValue) return null
-		return (
-			renameOptions.find((option) => option.value === renameSelectValue)
-				?.label ?? null
-		)
-	}, [renameOptions, renameSelectValue])
 
 	const hasConnectedProviders = useMemo(() => {
 		return connectedProviders.length > 0 || ollamaModels.length > 0
@@ -223,56 +157,6 @@ export function AITab() {
 								No chat models available. Connect a provider to get started.
 							</div>
 						)}
-						<FieldGroup className="gap-0 mt-6">
-							<Field orientation="horizontal">
-								<FieldLabel>Rename with AI</FieldLabel>
-								<Select
-									value={renameSelectValue}
-									onValueChange={(value) => {
-										if (!value || value === "__none__") {
-											clearRenameModel()
-											return
-										}
-										const separatorIndex = value.indexOf("|")
-										if (separatorIndex === -1) {
-											clearRenameModel()
-											return
-										}
-										const provider = value.slice(0, separatorIndex)
-										const model = value.slice(separatorIndex + 1)
-										if (!provider || !model) {
-											clearRenameModel()
-											return
-										}
-										if (provider === "ollama") {
-											selectRenameModel(provider, model)
-											return
-										}
-										if (isCredentialProviderId(provider)) {
-											selectRenameModel(provider, model)
-											return
-										}
-										clearRenameModel()
-									}}
-								>
-									<SelectTrigger size="sm">
-										{renameSelectLabel ? (
-											<span className="line-clamp-1">{renameSelectLabel}</span>
-										) : (
-											<span className="text-muted-foreground">disabled</span>
-										)}
-									</SelectTrigger>
-									<SelectContent align="end">
-										<SelectItem value="__none__">disabled</SelectItem>
-										{renameOptions.map((option) => (
-											<SelectItem key={option.value} value={option.value}>
-												{option.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</Field>
-						</FieldGroup>
 					</FieldGroup>
 				</div>
 			</FieldSet>

@@ -22,7 +22,7 @@ import { SortSelector } from "./ui/sort-selector"
 export function CollectionView() {
 	const {
 		isFileExplorerOpen,
-		renameConfig,
+		chatConfig,
 		currentCollectionPath,
 		setCurrentCollectionPath,
 		collectionEntries,
@@ -38,7 +38,7 @@ export function CollectionView() {
 	} = useStore(
 		useShallow((state) => ({
 			isFileExplorerOpen: state.isFileExplorerOpen,
-			renameConfig: state.renameConfig,
+			chatConfig: state.chatConfig,
 			currentCollectionPath: state.currentCollectionPath,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			collectionEntries: state.collectionEntries,
@@ -150,7 +150,7 @@ export function CollectionView() {
 	)
 
 	const { handleEntryContextMenu } = useCollectionContextMenu({
-		renameConfig,
+		chatConfig,
 		renameNoteWithAI,
 		beginRenaming,
 		handleDeleteEntries,

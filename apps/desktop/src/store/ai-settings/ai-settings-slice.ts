@@ -32,12 +32,9 @@ type PersistedModelConfig = {
 	model: string
 }
 
-type ModelConfigStateKey = "chatConfig" | "renameConfig"
-
 export type AISettingsSlice = {
 	connectedProviders: CredentialProviderId[]
 	chatConfig: ChatConfig | null
-	renameConfig: ChatConfig | null
 	apiModels: ApiModels
 	ollamaModels: string[]
 	enabledChatModels: EnabledChatModels
@@ -48,8 +45,6 @@ export type AISettingsSlice = {
 	refreshCodexOAuthForTarget: () => Promise<void>
 	fetchOllamaModels: () => Promise<void>
 	selectModel: (provider: ChatProviderId, model: string) => Promise<void>
-	selectRenameModel: (provider: ChatProviderId, model: string) => Promise<void>
-	clearRenameModel: () => void
 	toggleModelEnabled: (
 		provider: ChatProviderId,
 		model: string,
@@ -87,7 +82,6 @@ type AISettingsSliceDependencies = {
 }
 
 const CHAT_CONFIG_KEY = "chat-config"
-const RENAME_CONFIG_KEY = "rename-config"
 const ENABLED_CHAT_MODELS_KEY = "chat-enabled-models"
 
 function isCredentialProviderId(value: unknown): value is CredentialProviderId {
@@ -275,14 +269,6 @@ export const prepareAISettingsSlice =
 				}
 			}
 
-			if (prev.renameConfig?.provider === provider) {
-				nextState.renameConfig = {
-					...prev.renameConfig,
-					apiKey,
-					accountId,
-				}
-			}
-
 			return nextState
 		}
 
@@ -301,10 +287,6 @@ export const prepareAISettingsSlice =
 				localStorage.removeItem(CHAT_CONFIG_KEY)
 				nextState.chatConfig = null
 			}
-			if (prev.renameConfig?.provider === provider) {
-				localStorage.removeItem(RENAME_CONFIG_KEY)
-				nextState.renameConfig = null
-			}
 
 			const enabledChatModels = prev.enabledChatModels.filter(
 				(item) => item.provider !== provider,
@@ -321,8 +303,6 @@ export const prepareAISettingsSlice =
 		}
 
 		const selectConfigModel = async (
-			configKey: ModelConfigStateKey,
-			storageKey: string,
 			provider: ChatProviderId,
 			model: string,
 		): Promise<void> => {
@@ -340,8 +320,8 @@ export const prepareAISettingsSlice =
 						model,
 						apiKey: "",
 					}
-					writePersistedModelConfig(storageKey, config)
-					return { [configKey]: config }
+					writePersistedModelConfig(CHAT_CONFIG_KEY, config)
+					return { chatConfig: config }
 				})
 				return
 			}
@@ -351,14 +331,13 @@ export const prepareAISettingsSlice =
 			if (!config) {
 				return
 			}
-			writePersistedModelConfig(storageKey, config)
-			set({ [configKey]: config })
+			writePersistedModelConfig(CHAT_CONFIG_KEY, config)
+			set({ chatConfig: config })
 		}
 
 		return {
 			connectedProviders: [],
 			chatConfig: null,
-			renameConfig: null,
 			apiModels: API_MODELS_MAP,
 			ollamaModels: [],
 			enabledChatModels: readPersistedEnabledChatModels(),
@@ -403,10 +382,7 @@ export const prepareAISettingsSlice =
 					return resolved
 				}
 
-				const [chatConfig, renameConfig] = await Promise.all([
-					resolvePersistedConfig(CHAT_CONFIG_KEY),
-					resolvePersistedConfig(RENAME_CONFIG_KEY),
-				])
+				const chatConfig = await resolvePersistedConfig(CHAT_CONFIG_KEY)
 
 				const persistedEnabled = readPersistedEnabledChatModels()
 				const filteredEnabled = persistedEnabled.filter(
@@ -430,7 +406,6 @@ export const prepareAISettingsSlice =
 				set({
 					connectedProviders,
 					chatConfig,
-					renameConfig,
 					enabledChatModels: filteredEnabled,
 				})
 			},
@@ -480,8 +455,7 @@ export const prepareAISettingsSlice =
 			refreshCodexOAuthForTarget: async () => {
 				const currentState = get()
 				const hasCodexTarget =
-					currentState.chatConfig?.provider === "codex_oauth" ||
-					currentState.renameConfig?.provider === "codex_oauth"
+					currentState.chatConfig?.provider === "codex_oauth"
 				if (!hasCodexTarget) {
 					return
 				}
@@ -538,21 +512,7 @@ export const prepareAISettingsSlice =
 			},
 
 			selectModel: async (provider: ChatProviderId, model: string) => {
-				await selectConfigModel("chatConfig", CHAT_CONFIG_KEY, provider, model)
-			},
-
-			selectRenameModel: async (provider: ChatProviderId, model: string) => {
-				await selectConfigModel(
-					"renameConfig",
-					RENAME_CONFIG_KEY,
-					provider,
-					model,
-				)
-			},
-
-			clearRenameModel: () => {
-				localStorage.removeItem(RENAME_CONFIG_KEY)
-				set({ renameConfig: null })
+				await selectConfigModel(provider, model)
 			},
 
 			toggleModelEnabled: (
@@ -589,15 +549,6 @@ export const prepareAISettingsSlice =
 					) {
 						localStorage.removeItem(CHAT_CONFIG_KEY)
 						nextState.chatConfig = null
-					}
-
-					if (
-						!checked &&
-						prev.renameConfig?.provider === provider &&
-						prev.renameConfig?.model === model
-					) {
-						localStorage.removeItem(RENAME_CONFIG_KEY)
-						nextState.renameConfig = null
 					}
 
 					return nextState

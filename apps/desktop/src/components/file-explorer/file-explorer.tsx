@@ -55,6 +55,7 @@ export function FileExplorer() {
 		createNote,
 		createFolder,
 		deleteEntries,
+		chatConfig,
 		renameNoteWithAI,
 		renameEntry,
 		setCurrentCollectionPath,
@@ -83,6 +84,7 @@ export function FileExplorer() {
 			createNote: state.createNote,
 			createFolder: state.createFolder,
 			deleteEntries: state.deleteEntries,
+			chatConfig: state.chatConfig,
 			renameNoteWithAI: state.renameNoteWithAI,
 			renameEntry: state.renameEntry,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
@@ -96,7 +98,6 @@ export function FileExplorer() {
 			resetSelection: state.resetSelection,
 		})),
 	)
-	const renameConfig = useStore((state) => state.renameConfig)
 	const openImagePreview = useStore((state) => state.openImagePreview)
 	const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
 		null,
@@ -262,7 +263,7 @@ export function FileExplorer() {
 
 	const { handleEntryContextMenu, handleRootContextMenu } =
 		useFileExplorerMenus({
-			renameConfig,
+			chatConfig,
 			renameNoteWithAI,
 			setAiRenamingEntryPaths,
 			beginRenaming,
