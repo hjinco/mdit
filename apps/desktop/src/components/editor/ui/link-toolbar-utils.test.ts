@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-state"
 import {
 	flattenWorkspaceFiles,
+	getLinkedNoteDisplayName,
 	stripFileExtensionForDisplay,
 } from "./link-toolbar-utils"
 
@@ -55,5 +56,59 @@ describe("link-toolbar-utils", () => {
 				relativePathLower: "readme.md",
 			},
 		])
+	})
+
+	it("derives display names from wiki targets and markdown paths", () => {
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "wiki",
+				nextUrl: "docs/guide",
+				wikiTarget: "docs/guide",
+				isWebLink: false,
+			}),
+		).toBe("guide")
+
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "wiki",
+				nextUrl: "docs/guide#section",
+				wikiTarget: "docs/guide#section",
+				isWebLink: false,
+			}),
+		).toBe("guide")
+
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "markdown",
+				nextUrl: "./docs/guide.md",
+				isWebLink: false,
+			}),
+		).toBe("guide")
+
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "markdown",
+				nextUrl: "../docs/guide.mdx#h2",
+				isWebLink: false,
+			}),
+		).toBe("guide")
+	})
+
+	it("returns null for anchor-only or web links", () => {
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "markdown",
+				nextUrl: "#local-anchor",
+				isWebLink: false,
+			}),
+		).toBeNull()
+
+		expect(
+			getLinkedNoteDisplayName({
+				mode: "wiki",
+				nextUrl: "https://example.com",
+				isWebLink: true,
+			}),
+		).toBeNull()
 	})
 })

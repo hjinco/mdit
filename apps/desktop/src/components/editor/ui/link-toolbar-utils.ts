@@ -185,6 +185,43 @@ export function normalizeMarkdownPathForDisplay(value: string): string {
 	return hashPart ? `${normalized}#${hashPart}` : normalized
 }
 
+export function getLinkedNoteDisplayName(options: {
+	mode: LinkMode
+	nextUrl: string
+	wikiTarget?: string | null
+	isWebLink: boolean
+}): string | null {
+	const { mode, nextUrl, wikiTarget, isWebLink } = options
+
+	if (isWebLink) {
+		return null
+	}
+
+	const rawValue = mode === "wiki" ? (wikiTarget ?? nextUrl) : nextUrl
+	const decoded = safelyDecodeUrl(rawValue.trim())
+	if (!decoded) {
+		return null
+	}
+
+	const [pathPart] = decoded.split("#", 2)
+	if (!pathPart) {
+		return null
+	}
+
+	let normalizedPath = normalizePathSeparators(pathPart)
+	normalizedPath = stripCurrentDirectoryPrefix(normalizedPath)
+	normalizedPath = stripLeadingSlashes(normalizedPath)
+	normalizedPath = stripMarkdownExtension(normalizedPath)
+
+	if (!normalizedPath) {
+		return null
+	}
+
+	const segments = normalizedPath.split("/").filter(Boolean)
+	const displayName = segments.at(-1)?.trim() ?? ""
+	return displayName || null
+}
+
 export function toWorkspaceRelativeWikiTarget(options: {
 	input: string
 	workspacePath: string | null

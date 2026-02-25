@@ -1,5 +1,6 @@
 import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
 import { KATEX_ENVIRONMENTS } from "@mdit/editor/utils/katex"
+import { WIKI_LINK_PLACEHOLDER_TEXT } from "@mdit/editor/utils/wiki-link-constants"
 import type { AutoformatRule } from "@platejs/autoformat"
 import {
 	AutoformatPlugin,
@@ -14,8 +15,6 @@ import { insertEmptyCodeBlock } from "@platejs/code-block"
 import { toggleList } from "@platejs/list"
 import { insertInlineEquation } from "@platejs/math"
 import { KEYS } from "platejs"
-
-const WIKILINK_PLACEHOLDER = "Note"
 
 const autoformatMarks: AutoformatRule[] = [
 	{
@@ -258,7 +257,7 @@ const autoformatWikiCustom: AutoformatRule[] = [
 					url: "",
 					wiki: true,
 					wikiTarget: "",
-					children: [{ text: WIKILINK_PLACEHOLDER }],
+					children: [{ text: WIKI_LINK_PLACEHOLDER_TEXT }],
 				},
 				{ select: true },
 			)

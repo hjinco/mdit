@@ -16,6 +16,7 @@ import {
 	type ValueType,
 } from "@mdit/editor/utils/frontmatter-value-utils"
 import { insertBlock, insertInlineElement } from "@mdit/editor/utils/transforms"
+import { WIKI_LINK_PLACEHOLDER_TEXT } from "@mdit/editor/utils/wiki-link-constants"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { EmojiInputPlugin } from "@platejs/emoji/react"
 import { IconSitemap } from "@tabler/icons-react"
@@ -482,7 +483,7 @@ const groups: Group[] = [
 							url: "",
 							wiki: true,
 							wikiTarget: "",
-							children: [{ text: "Note" }],
+							children: [{ text: WIKI_LINK_PLACEHOLDER_TEXT }],
 						},
 						{ select: true },
 					)
