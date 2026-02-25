@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core"
-import { isAbsolute, join, dirname as pathDirname, resolve } from "pathe"
+import {
+	basename,
+	isAbsolute,
+	join,
+	dirname as pathDirname,
+	resolve,
+} from "pathe"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 export type WorkspaceFileOption = {
@@ -217,8 +223,7 @@ export function getLinkedNoteDisplayName(options: {
 		return null
 	}
 
-	const segments = normalizedPath.split("/").filter(Boolean)
-	const displayName = segments.at(-1)?.trim() ?? ""
+	const displayName = basename(normalizedPath).trim()
 	return displayName || null
 }
 
