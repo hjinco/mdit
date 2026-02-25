@@ -1,6 +1,22 @@
 use std::fs;
 use std::path::Path;
 
+fn delete_paths(paths: Vec<String>) -> Result<(), trash::Error> {
+    #[cfg(target_os = "macos")]
+    {
+        use trash::macos::{DeleteMethod, TrashContextExtMacos};
+
+        let mut trash_context = trash::TrashContext::new();
+        trash_context.set_delete_method(DeleteMethod::NsFileManager);
+        return trash_context.delete_all(paths);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        trash::delete_all(paths)
+    }
+}
+
 fn copy_recursive(source: &Path, destination: &Path) -> Result<(), std::io::Error> {
     let metadata = fs::metadata(source)?;
 
@@ -33,7 +49,7 @@ pub fn copy(source_path: String, destination_path: String) -> Result<(), String>
 
 #[tauri::command]
 pub fn move_to_trash(path: String) -> Result<(), String> {
-    trash::delete(path).map_err(|error| format!("Failed to delete file: {}", error))
+    delete_paths(vec![path]).map_err(|error| format!("Failed to delete file: {}", error))
 }
 
 #[tauri::command]
@@ -42,5 +58,5 @@ pub fn move_many_to_trash(paths: Vec<String>) -> Result<(), String> {
         return Ok(());
     }
 
-    trash::delete_all(paths).map_err(|error| format!("Failed to delete files: {}", error))
+    delete_paths(paths).map_err(|error| format!("Failed to delete files: {}", error))
 }
