@@ -121,14 +121,10 @@ export function BlockContextMenu({
 			return
 		}
 
-		const selectionNodes = getListSelectionNodes(
-			editor
-				.getApi(BlockSelectionPlugin)
-				.blockSelection.getNodes() as BlockSelectionNodeEntry[],
-		)
-		if (!selectionNodes) {
+		if (!selectedListNodes) {
 			return
 		}
+		const selectionNodes = selectedListNodes
 
 		const listItemTexts = selectionNodes.map(([, path]) =>
 			editor.api.string(path).trim(),
@@ -213,7 +209,7 @@ export function BlockContextMenu({
 		} finally {
 			isCreatingLinkedNotesRef.current = false
 		}
-	}, [editor, onCreateLinkedNotesFromListItems, readOnly])
+	}, [editor, onCreateLinkedNotesFromListItems, readOnly, selectedListNodes])
 
 	const turnIntoItems = [
 		{ key: KEYS.p, icon: TypeIcon, label: "Paragraph" },
