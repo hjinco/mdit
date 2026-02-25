@@ -2,8 +2,10 @@ import {
 	API_MODELS_MAP,
 	type ApiKeyProviderId,
 	type ChatProviderId,
+	type ProviderId,
+} from "@mdit/ai"
+import {
 	type CodexOAuthCredential,
-	type CredentialProviderId,
 	deleteCredential as deleteCredentialFromStore,
 	getCredential as getCredentialFromStore,
 	isCodexCredentialExpiringSoon,
@@ -13,7 +15,7 @@ import {
 	setApiKeyCredential,
 	setCodexCredential,
 	startCodexBrowserOAuth,
-} from "@mdit/ai-auth"
+} from "@mdit/credentials"
 import type { StateCreator } from "zustand"
 import { fetchOllamaModels as fetchOllamaModelsFromApi } from "@/lib/ollama"
 
@@ -24,7 +26,7 @@ export type ChatConfig = {
 	accountId?: string
 }
 
-export type ApiModels = Record<CredentialProviderId, string[]>
+export type ApiModels = Record<ProviderId, string[]>
 export type EnabledChatModels = { provider: ChatProviderId; model: string }[]
 
 type PersistedModelConfig = {
@@ -33,7 +35,7 @@ type PersistedModelConfig = {
 }
 
 export type AISettingsSlice = {
-	connectedProviders: CredentialProviderId[]
+	connectedProviders: ProviderId[]
 	chatConfig: ChatConfig | null
 	apiModels: ApiModels
 	ollamaModels: string[]
@@ -41,7 +43,7 @@ export type AISettingsSlice = {
 	initializeAISettings: () => Promise<void>
 	connectProvider: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
 	connectCodexOAuth: () => Promise<void>
-	disconnectProvider: (provider: CredentialProviderId) => Promise<void>
+	disconnectProvider: (provider: ProviderId) => Promise<void>
 	refreshCodexOAuthForTarget: () => Promise<void>
 	fetchOllamaModels: () => Promise<void>
 	selectModel: (provider: ChatProviderId, model: string) => Promise<void>
@@ -54,16 +56,14 @@ export type AISettingsSlice = {
 
 type AISettingsSliceDependencies = {
 	fetchOllamaModels: typeof fetchOllamaModelsFromApi
-	listCredentialProviders: () => Promise<CredentialProviderId[]>
-	getCredential: (
-		providerId: CredentialProviderId,
-	) => Promise<ProviderCredential | null>
+	listCredentialProviders: () => Promise<ProviderId[]>
+	getCredential: (providerId: ProviderId) => Promise<ProviderCredential | null>
 	setApiKeyCredential: (
 		providerId: ApiKeyProviderId,
 		apiKey: string,
 	) => Promise<void>
 	setCodexCredential: (credential: CodexOAuthCredential) => Promise<void>
-	deleteCredential: (providerId: CredentialProviderId) => Promise<void>
+	deleteCredential: (providerId: ProviderId) => Promise<void>
 	startCodexBrowserOAuth: () => Promise<{
 		accessToken: string
 		refreshToken: string
@@ -84,7 +84,7 @@ type AISettingsSliceDependencies = {
 const CHAT_CONFIG_KEY = "chat-config"
 const ENABLED_CHAT_MODELS_KEY = "chat-enabled-models"
 
-function isCredentialProviderId(value: unknown): value is CredentialProviderId {
+function isCredentialProviderId(value: unknown): value is ProviderId {
 	return (
 		value === "google" ||
 		value === "openai" ||
@@ -242,15 +242,15 @@ export const prepareAISettingsSlice =
 	> =>
 	(set, get) => {
 		const withConnectedProvider = (
-			providers: CredentialProviderId[],
-			provider: CredentialProviderId,
-		): CredentialProviderId[] => {
+			providers: ProviderId[],
+			provider: ProviderId,
+		): ProviderId[] => {
 			return providers.includes(provider) ? providers : [...providers, provider]
 		}
 
 		const syncCredentialToConfigs = (
 			prev: AISettingsSlice,
-			provider: CredentialProviderId,
+			provider: ProviderId,
 			apiKey: string,
 			accountId?: string,
 		): Partial<AISettingsSlice> => {
@@ -274,7 +274,7 @@ export const prepareAISettingsSlice =
 
 		const clearProviderState = (
 			prev: AISettingsSlice,
-			provider: CredentialProviderId,
+			provider: ProviderId,
 		): Partial<AISettingsSlice> => {
 			const connectedProviders = prev.connectedProviders.filter(
 				(item) => item !== provider,
@@ -444,7 +444,7 @@ export const prepareAISettingsSlice =
 				})
 			},
 
-			disconnectProvider: async (provider: CredentialProviderId) => {
+			disconnectProvider: async (provider: ProviderId) => {
 				await deleteCredential(provider)
 
 				set((prev) => {

@@ -8,9 +8,6 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 
 const CODEX_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const CODEX_ISSUER = "https://auth.openai.com"
-export const CODEX_API_ENDPOINT =
-	"https://chatgpt.com/backend-api/codex/responses"
-export const CODEX_BASE_URL = CODEX_API_ENDPOINT.replace(/\/responses\/?$/, "")
 
 const OAUTH_TIMEOUT_MS = 5 * 60 * 1000
 const DEFAULT_REFRESH_WINDOW_MS = 2 * 60 * 1000

@@ -1,4 +1,4 @@
-import { deleteAppSecret, getAppSecret, setAppSecret } from "@mdit/ai-auth"
+import { deleteAppSecret, getAppSecret, setAppSecret } from "@mdit/credentials"
 import {
 	deletePassword as deletePasswordFromKeyring,
 	getPassword as getPasswordFromKeyring,

@@ -1,5 +1,4 @@
-import { createRenameNoteWithAICore } from "@mdit/ai"
-import { CODEX_BASE_URL } from "@mdit/ai-auth"
+import { CODEX_BASE_URL, createRenameNoteWithAICore } from "@mdit/ai"
 import { exists, readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import { useCallback, useState } from "react"

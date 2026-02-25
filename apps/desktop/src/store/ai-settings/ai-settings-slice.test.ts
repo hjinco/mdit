@@ -1,4 +1,5 @@
-import type { CodexOAuthCredential, CredentialProviderId } from "@mdit/ai-auth"
+import type { ProviderId } from "@mdit/ai"
+import type { CodexOAuthCredential } from "@mdit/credentials"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
 import {
@@ -38,10 +39,7 @@ const ensureLocalStorage = () => {
 }
 
 type CredentialsMap = Partial<
-	Record<
-		CredentialProviderId,
-		{ type: "api_key"; apiKey: string } | CodexOAuthCredential
-	>
+	Record<ProviderId, { type: "api_key"; apiKey: string } | CodexOAuthCredential>
 >
 
 function createAISettingsTestStore({
@@ -70,23 +68,20 @@ function createAISettingsTestStore({
 	const deps = {
 		fetchOllamaModels: vi.fn().mockResolvedValue(["llama3.2"]),
 		listCredentialProviders: vi.fn(
-			async () => Object.keys(credentials) as CredentialProviderId[],
+			async () => Object.keys(credentials) as ProviderId[],
 		),
-		getCredential: vi.fn(async (provider: CredentialProviderId) => {
+		getCredential: vi.fn(async (provider: ProviderId) => {
 			return credentials[provider] ?? null
 		}),
 		setApiKeyCredential: vi.fn(
-			async (
-				provider: Exclude<CredentialProviderId, "codex_oauth">,
-				apiKey: string,
-			) => {
+			async (provider: Exclude<ProviderId, "codex_oauth">, apiKey: string) => {
 				credentials[provider] = { type: "api_key", apiKey }
 			},
 		),
 		setCodexCredential: vi.fn(async (credential: CodexOAuthCredential) => {
 			credentials.codex_oauth = credential
 		}),
-		deleteCredential: vi.fn(async (provider: CredentialProviderId) => {
+		deleteCredential: vi.fn(async (provider: ProviderId) => {
 			delete credentials[provider]
 		}),
 		startCodexBrowserOAuth: vi.fn().mockResolvedValue({

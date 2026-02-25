@@ -1,12 +1,8 @@
-export type CredentialProviderId =
-	| "google"
-	| "openai"
-	| "anthropic"
-	| "codex_oauth"
+export type ProviderId = "google" | "openai" | "anthropic" | "codex_oauth"
 
-export type ApiKeyProviderId = Exclude<CredentialProviderId, "codex_oauth">
+export type ApiKeyProviderId = Exclude<ProviderId, "codex_oauth">
 
-export type ChatProviderId = CredentialProviderId | "ollama"
+export type ChatProviderId = ProviderId | "ollama"
 
 export type ProviderAuthKind = "api_key" | "oauth" | "host_url"
 
@@ -74,7 +70,7 @@ export const AI_PROVIDER_DEFINITIONS: ProviderDefinitionMap = {
 	},
 }
 
-export const API_MODELS_MAP: Record<CredentialProviderId, string[]> = {
+export const API_MODELS_MAP: Record<ProviderId, string[]> = {
 	google: [
 		"gemini-3-flash-preview",
 		"gemini-2.5-flash",
@@ -87,4 +83,4 @@ export const API_MODELS_MAP: Record<CredentialProviderId, string[]> = {
 
 export const CREDENTIAL_PROVIDER_IDS = Object.keys(
 	API_MODELS_MAP,
-) as Array<CredentialProviderId>
+) as Array<ProviderId>
