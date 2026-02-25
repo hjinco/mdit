@@ -82,7 +82,7 @@ export function flattenWorkspaceFiles(
 
 			files.push({
 				absolutePath: node.path,
-				displayName: node.name,
+				displayName: stripFileExtensionForDisplay(node.name),
 				relativePath: normalizedRelative,
 				relativePathLower: normalizedRelative.toLowerCase(),
 			})
@@ -94,6 +94,15 @@ export function flattenWorkspaceFiles(
 	files.sort((a, b) => a.relativePathLower.localeCompare(b.relativePathLower))
 
 	return files
+}
+
+export function stripFileExtensionForDisplay(value: string): string {
+	const lastDotIndex = value.lastIndexOf(".")
+	if (lastDotIndex <= 0) {
+		return value
+	}
+
+	return value.slice(0, lastDotIndex)
 }
 
 // Convert all path separators to forward slashes and remove duplicates/trailing slashes

@@ -43,6 +43,7 @@ import {
 	resolveWikiLinkViaInvoke,
 	safelyDecodeUrl,
 	stripCurrentDirectoryPrefix,
+	stripFileExtensionForDisplay,
 	stripLeadingSlashes,
 	toWorkspaceRelativeWikiTarget,
 	type WorkspaceFileOption,
@@ -276,7 +277,7 @@ export function LinkUrlInput({
 
 				const mappedEntries = entries.map((entry) => ({
 					absolutePath: resolve(workspacePath, entry.relPath),
-					displayName: entry.fileName,
+					displayName: stripFileExtensionForDisplay(entry.fileName),
 					relativePath: entry.relPath,
 					relativePathLower: entry.relPath.toLowerCase(),
 				}))
@@ -918,10 +919,10 @@ export function LinkUrlInput({
 												}}
 												onClick={() => handleSelectSuggestion(file)}
 											>
-												<span className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
+												<div className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
 													<FileIcon className="size-3.5 shrink-0" />
-													{file.displayName}
-												</span>
+													<span className="truncate">{file.displayName}</span>
+												</div>
 												<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
 													{file.relativePath}
 												</span>
