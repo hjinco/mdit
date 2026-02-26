@@ -19,11 +19,13 @@ describe("toPublicOperation", () => {
 				status: "moved",
 				currentDirectoryPath: "/ws/inbox",
 				destinationDirPath: "/ws/projects",
+				newPath: "/ws/projects/todo (1).md",
 			}),
 		).toEqual({
 			path: "/ws/inbox/todo.md",
 			status: "moved",
 			destinationDirPath: "/ws/projects",
+			newPath: "/ws/projects/todo (1).md",
 		})
 
 		expect(

@@ -17,15 +17,19 @@ describe("workspace-fs-transfer-actions", () => {
 	it("moveEntry blocks moving a locked source path", async () => {
 		const { context, setState, deps } = createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsTransferActions(context)
+		const onMoved = vi.fn()
 		setState({
 			workspacePath: "/ws",
 			aiLockedEntryPaths: new Set(["/ws/source/a.md"]),
 		})
 
-		const result = await actions.moveEntry("/ws/source/a.md", "/ws/dest")
+		const result = await actions.moveEntry("/ws/source/a.md", "/ws/dest", {
+			onMoved,
+		})
 
 		expect(result).toBe(false)
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+		expect(onMoved).not.toHaveBeenCalled()
 	})
 
 	it("moveEntry blocks moving a directory that contains a locked descendant", async () => {
@@ -76,10 +80,65 @@ describe("workspace-fs-transfer-actions", () => {
 		errorSpy.mockRestore()
 	})
 
+	it("moveEntry keeps success result when onMoved callback throws", async () => {
+		const { context, setState, deps, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsTransferActions(context)
+		const onMoved = vi.fn(() => {
+			throw new Error("callback failed")
+		})
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/source",
+					name: "source",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/source/a.txt",
+							name: "a.txt",
+							isDirectory: false,
+						},
+					],
+				},
+				{
+					path: "/ws/dest",
+					name: "dest",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		const result = await actions.moveEntry("/ws/source/a.txt", "/ws/dest", {
+			onMoved,
+		})
+
+		expect(result).toBe(true)
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/source/a.txt",
+			"/ws/dest/a.txt",
+		)
+		expect(getState().entryMoved).toHaveBeenCalledWith({
+			sourcePath: "/ws/source/a.txt",
+			destinationDirPath: "/ws/dest",
+			newPath: "/ws/dest/a.txt",
+			isDirectory: false,
+			refreshContent: false,
+		})
+		expect(onMoved).toHaveBeenCalledWith("/ws/dest/a.txt")
+		expect(errorSpy).toHaveBeenCalled()
+		errorSpy.mockRestore()
+	})
+
 	it("moveEntry auto-renames when destination file already exists", async () => {
 		const { context, setState, deps, getState } =
 			createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsTransferActions(context)
+		const onMoved = vi.fn()
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -112,6 +171,7 @@ describe("workspace-fs-transfer-actions", () => {
 
 		const result = await actions.moveEntry("/ws/source/a.md", "/ws/dest", {
 			onConflict: "auto-rename",
+			onMoved,
 		})
 
 		expect(result).toBe(true)
@@ -126,5 +186,6 @@ describe("workspace-fs-transfer-actions", () => {
 			isDirectory: false,
 			refreshContent: false,
 		})
+		expect(onMoved).toHaveBeenCalledWith("/ws/dest/a (1).md")
 	})
 })

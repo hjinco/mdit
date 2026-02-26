@@ -14,6 +14,7 @@ function setupTools(params?: {
 		options?: {
 			onConflict?: "fail" | "auto-rename"
 			allowLockedSourcePath?: boolean
+			onMoved?: (newPath: string) => void
 		},
 	) => Promise<boolean>
 	entriesToProcess?: MoveNoteWithAIEntry[]
@@ -120,6 +121,41 @@ describe("createMoveNoteTools", () => {
 			status: "failed",
 			destinationDirPath: "/ws/projects",
 			reason: "moveEntry returned false",
+		})
+	})
+
+	it("stores newPath from moveEntry callback when move succeeds", async () => {
+		const tools = setupTools({
+			candidateDirectories: ["/ws", "/ws/inbox", "/ws/projects"],
+			moveEntry: vi.fn().mockImplementation(
+				async (
+					_sourcePath: string,
+					_destinationPath: string,
+					options?: {
+						onConflict?: "fail" | "auto-rename"
+						allowLockedSourcePath?: boolean
+						onMoved?: (newPath: string) => void
+					},
+				) => {
+					options?.onMoved?.("/ws/projects/todo (1).md")
+					return true
+				},
+			),
+		})
+
+		const result = await tools.move_note.execute?.(
+			{
+				sourcePath: "/ws/inbox/todo.md",
+				destinationDirPath: "/ws/projects",
+			},
+			toolExecutionOptions,
+		)
+
+		expect(result).toEqual({
+			path: "/ws/inbox/todo.md",
+			status: "moved",
+			destinationDirPath: "/ws/projects",
+			newPath: "/ws/projects/todo (1).md",
 		})
 	})
 })

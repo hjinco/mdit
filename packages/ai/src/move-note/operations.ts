@@ -10,6 +10,7 @@ export type InternalOperationState = {
 	status: "pending" | "moved" | "unchanged" | "failed"
 	currentDirectoryPath: string
 	destinationDirPath?: string
+	newPath?: string
 	reason?: string
 }
 
@@ -39,6 +40,7 @@ export function toPublicOperation(
 		...(operation.destinationDirPath
 			? { destinationDirPath: operation.destinationDirPath }
 			: {}),
+		...(operation.newPath ? { newPath: operation.newPath } : {}),
 		...(operation.reason ? { reason: operation.reason } : {}),
 	}
 }

@@ -107,10 +107,10 @@ describe("createMoveNoteWithAICore", () => {
 		expect(moveEntry).toHaveBeenCalledWith(
 			"/ws/inbox/plan.md",
 			"/ws/projects",
-			{
+			expect.objectContaining({
 				onConflict: "auto-rename",
 				allowLockedSourcePath: true,
-			},
+			}),
 		)
 		expect(readTextFile).toHaveBeenCalledWith("/ws/inbox/plan.md")
 		expect(readTextFile).toHaveBeenCalledWith("/ws/inbox/todo.md")

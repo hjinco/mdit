@@ -16,6 +16,7 @@ export type MoveNoteWithAIFileSystemPorts = {
 		options?: {
 			onConflict?: "fail" | "auto-rename"
 			allowLockedSourcePath?: boolean
+			onMoved?: (newPath: string) => void
 		},
 	) => Promise<boolean>
 }
@@ -26,6 +27,7 @@ export type MoveNoteWithAIOperation = {
 	path: string
 	status: "moved" | "unchanged" | "failed"
 	destinationDirPath?: string
+	newPath?: string
 	reason?: string
 }
 

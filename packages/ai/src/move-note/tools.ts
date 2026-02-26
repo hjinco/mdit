@@ -137,6 +137,9 @@ export function createMoveNoteTools(params: {
 					{
 						onConflict: "auto-rename",
 						allowLockedSourcePath: true,
+						onMoved: (newPath) => {
+							operation.newPath = newPath
+						},
 					},
 				)
 

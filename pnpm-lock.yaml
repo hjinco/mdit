@@ -23,6 +23,9 @@ importers:
       '@ariakit/react':
         specifier: ^0.4.18
         version: 0.4.21(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@base-ui/react':
+        specifier: ^1.2.0
+        version: 1.2.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@dnd-kit/react':
         specifier: ^0.1.21
         version: 0.1.21(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

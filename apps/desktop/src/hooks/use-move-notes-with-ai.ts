@@ -2,11 +2,17 @@ import {
 	CODEX_BASE_URL,
 	createMoveNoteWithAICore,
 	isMarkdownPath,
+	type MoveNoteWithAIBatchResult,
 } from "@mdit/ai"
 import { readTextFile } from "@tauri-apps/plugin-fs"
 import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
-import { useCallback } from "react"
+import { basename, dirname, join } from "pathe"
+import { createElement, useCallback } from "react"
 import { toast } from "sonner"
+import {
+	AIMoveResultsToast,
+	type AIMoveResultToastItem,
+} from "@/components/file-explorer/ui/ai-move-results-toast"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { normalizePathSeparators } from "@/utils/path-utils"
@@ -57,6 +63,25 @@ function isMarkdownEntry(entry: WorkspaceEntry) {
 	return !entry.isDirectory && isMarkdownPath(entry.path)
 }
 
+export function buildAIMoveResultToastItems(
+	result: MoveNoteWithAIBatchResult,
+): AIMoveResultToastItem[] {
+	return result.operations
+		.filter((operation) => operation.status === "moved")
+		.map((operation) => {
+			const destinationDirPath =
+				operation.destinationDirPath ?? dirname(operation.path)
+
+			return {
+				sourcePath: operation.path,
+				destinationDirPath,
+				newPath:
+					operation.newPath ??
+					join(destinationDirPath, basename(operation.path)),
+			}
+		})
+}
+
 export function useMoveNotesWithAI() {
 	const chatConfig = useStore((state) => state.chatConfig)
 	const canMoveNotesWithAI = Boolean(chatConfig)
@@ -92,6 +117,7 @@ export function useMoveNotesWithAI() {
 			let movedCount = 0
 			let unchangedCount = 0
 			let failedCount = entriesToMove.length
+			let batchResult: MoveNoteWithAIBatchResult | null = null
 
 			try {
 				useStore.getState().lockAiEntries(entryPaths)
@@ -108,6 +134,7 @@ export function useMoveNotesWithAI() {
 					return
 				}
 
+				batchResult = result
 				movedCount = result.movedCount
 				unchangedCount = result.unchangedCount
 				failedCount = result.failedCount
@@ -127,12 +154,59 @@ export function useMoveNotesWithAI() {
 				useStore.getState().unlockAiEntries(entryPaths)
 			}
 
+			if (!batchResult) {
+				return
+			}
+
+			const movedItems = buildAIMoveResultToastItems(batchResult)
+			toast.custom(
+				(toastId) =>
+					createElement(AIMoveResultsToast, {
+						workspacePath,
+						movedCount,
+						unchangedCount,
+						failedCount,
+						items: movedItems,
+						onOpenPath: (path: string) => {
+							useStore.getState().openTab(path)
+						},
+						onConfirm: () => toast.dismiss(toastId),
+						onUndo: async (item: AIMoveResultToastItem) => {
+							const sourceDirectoryPath = dirname(item.sourcePath)
+							try {
+								const didUndo = await useStore
+									.getState()
+									.moveEntry(item.newPath, sourceDirectoryPath, {
+										onConflict: "fail",
+									})
+								if (!didUndo) {
+									toast.error(
+										`Failed to undo AI move for "${basename(item.sourcePath)}".`,
+										{ position: "bottom-left" },
+									)
+								}
+								return didUndo
+							} catch (error) {
+								console.error("Failed to undo AI move:", error)
+								toast.error(
+									`Failed to undo AI move for "${basename(item.sourcePath)}".`,
+									{ position: "bottom-left" },
+								)
+								return false
+							}
+						},
+					}),
+				{
+					position: "bottom-left",
+					duration: Number.POSITIVE_INFINITY,
+					closeButton: false,
+				},
+			)
+
 			const summary = `AI folder move complete: moved ${movedCount}, unchanged ${unchangedCount}, failed ${failedCount}.`
 			if (failedCount > 0) {
 				toast.error(summary, { position: "bottom-left" })
-				return
 			}
-			toast.success(summary, { position: "bottom-left" })
 		},
 		[],
 	)

@@ -119,6 +119,7 @@ export type WorkspaceSlice = WorkspaceState & {
 		options?: {
 			onConflict?: "fail" | "auto-rename"
 			allowLockedSourcePath?: boolean
+			onMoved?: (newPath: string) => void
 		},
 	) => Promise<boolean>
 	copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>

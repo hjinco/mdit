@@ -92,6 +92,7 @@ export const createWorkspaceFsTransferActions = (
 		options?: {
 			onConflict?: "fail" | "auto-rename"
 			allowLockedSourcePath?: boolean
+			onMoved?: (newPath: string) => void
 		},
 	) => {
 		const { workspacePath, aiLockedEntryPaths } = ctx.get()
@@ -206,6 +207,16 @@ export const createWorkspaceFsTransferActions = (
 				isDirectory,
 				refreshContent: shouldRefreshTab,
 			})
+			try {
+				options?.onMoved?.(newPath)
+			} catch (callbackError) {
+				console.error(
+					"onMoved callback failed after successful move:",
+					sourcePath,
+					destinationPath,
+					callbackError,
+				)
+			}
 
 			return true
 		} catch (error) {
