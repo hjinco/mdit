@@ -58,9 +58,12 @@ describe("createMoveNoteTools", () => {
 			readTextFile: vi.fn().mockResolvedValue(longContent),
 		})
 
-		const result = await tools.read_note.execute?.({
-			path: "/ws/inbox/todo.md",
-		}, toolExecutionOptions)
+		const result = await tools.read_note.execute?.(
+			{
+				path: "/ws/inbox/todo.md",
+			},
+			toolExecutionOptions,
+		)
 
 		expect(result).toEqual({
 			path: "/ws/inbox/todo.md",
@@ -72,10 +75,13 @@ describe("createMoveNoteTools", () => {
 		const tools = setupTools()
 
 		await expect(
-			tools.move_note.execute?.({
-				sourcePath: "/ws/unknown.md",
-				destinationDirPath: "/ws/inbox",
-			}, toolExecutionOptions),
+			tools.move_note.execute?.(
+				{
+					sourcePath: "/ws/unknown.md",
+					destinationDirPath: "/ws/inbox",
+				},
+				toolExecutionOptions,
+			),
 		).rejects.toThrow("move_note sourcePath is not in target list.")
 	})
 
@@ -83,10 +89,13 @@ describe("createMoveNoteTools", () => {
 		const tools = setupTools()
 
 		await expect(
-			tools.move_note.execute?.({
-				sourcePath: "/ws/inbox/todo.md",
-				destinationDirPath: "/ws/forbidden",
-			}, toolExecutionOptions),
+			tools.move_note.execute?.(
+				{
+					sourcePath: "/ws/inbox/todo.md",
+					destinationDirPath: "/ws/forbidden",
+				},
+				toolExecutionOptions,
+			),
 		).rejects.toThrow(
 			"move_note destinationDirPath is not in candidate directories.",
 		)
@@ -98,10 +107,13 @@ describe("createMoveNoteTools", () => {
 			moveEntry: vi.fn().mockResolvedValue(false),
 		})
 
-		const result = await tools.move_note.execute?.({
-			sourcePath: "/ws/inbox/todo.md",
-			destinationDirPath: "/ws/projects",
-		}, toolExecutionOptions)
+		const result = await tools.move_note.execute?.(
+			{
+				sourcePath: "/ws/inbox/todo.md",
+				destinationDirPath: "/ws/projects",
+			},
+			toolExecutionOptions,
+		)
 
 		expect(result).toEqual({
 			path: "/ws/inbox/todo.md",

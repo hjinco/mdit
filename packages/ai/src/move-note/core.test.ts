@@ -22,20 +22,32 @@ describe("createMoveNoteWithAICore", () => {
 			runAgent: async ({ tools }) => {
 				await tools.list_targets.execute?.({}, toolExecutionOptions)
 				await tools.list_directories.execute?.({}, toolExecutionOptions)
-				await tools.read_note.execute?.({
-					path: "/ws/inbox/plan.md",
-				}, toolExecutionOptions)
-				await tools.move_note.execute?.({
-					sourcePath: "/ws/inbox/plan.md",
-					destinationDirPath: "/ws/projects",
-				}, toolExecutionOptions)
-				await tools.read_note.execute?.({
-					path: "/ws/inbox/todo.md",
-				}, toolExecutionOptions)
-				await tools.move_note.execute?.({
-					sourcePath: "/ws/inbox/todo.md",
-					destinationDirPath: "/ws/inbox",
-				}, toolExecutionOptions)
+				await tools.read_note.execute?.(
+					{
+						path: "/ws/inbox/plan.md",
+					},
+					toolExecutionOptions,
+				)
+				await tools.move_note.execute?.(
+					{
+						sourcePath: "/ws/inbox/plan.md",
+						destinationDirPath: "/ws/projects",
+					},
+					toolExecutionOptions,
+				)
+				await tools.read_note.execute?.(
+					{
+						path: "/ws/inbox/todo.md",
+					},
+					toolExecutionOptions,
+				)
+				await tools.move_note.execute?.(
+					{
+						sourcePath: "/ws/inbox/todo.md",
+						destinationDirPath: "/ws/inbox",
+					},
+					toolExecutionOptions,
+				)
 
 				const finishOutput = await tools.finish_organization.execute?.(
 					{},
@@ -112,10 +124,13 @@ describe("createMoveNoteWithAICore", () => {
 			},
 			createModel: vi.fn().mockReturnValue("mock-model"),
 			runAgent: async ({ tools }) => {
-				await tools.move_note.execute?.({
-					sourcePath: "/ws/inbox/todo.md",
-					destinationDirPath: "/ws/forbidden",
-				}, toolExecutionOptions)
+				await tools.move_note.execute?.(
+					{
+						sourcePath: "/ws/inbox/todo.md",
+						destinationDirPath: "/ws/forbidden",
+					},
+					toolExecutionOptions,
+				)
 				return { steps: [] }
 			},
 		})
@@ -188,10 +203,13 @@ describe("createMoveNoteWithAICore", () => {
 			},
 			createModel: vi.fn().mockReturnValue("mock-model"),
 			runAgent: async ({ tools }) => {
-				await tools.move_note.execute?.({
-					sourcePath: "/ws/inbox/todo.md",
-					destinationDirPath: "/ws/projects",
-				}, toolExecutionOptions)
+				await tools.move_note.execute?.(
+					{
+						sourcePath: "/ws/inbox/todo.md",
+						destinationDirPath: "/ws/projects",
+					},
+					toolExecutionOptions,
+				)
 				const finishOutput = await tools.finish_organization.execute?.(
 					{},
 					toolExecutionOptions,
