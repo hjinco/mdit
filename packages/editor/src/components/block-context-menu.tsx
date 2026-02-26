@@ -239,6 +239,18 @@ export function BlockContextMenu({
 		>
 			<ContextMenuTrigger
 				asChild
+				onContextMenuCapture={(event) => {
+					// Plate block-selection prevents bubbling on focused blocks unless
+					// the event target is explicitly marked as context-menu-allowed.
+					const target = event.target
+					if (!(target instanceof HTMLElement)) return
+					if (target.dataset.plateOpenContextMenu !== undefined) return
+
+					target.dataset.plateOpenContextMenu = "true"
+					setTimeout(() => {
+						delete target.dataset.plateOpenContextMenu
+					}, 0)
+				}}
 				onContextMenu={(event) => {
 					const dataset = (event.target as HTMLElement).dataset
 					const disabled =
