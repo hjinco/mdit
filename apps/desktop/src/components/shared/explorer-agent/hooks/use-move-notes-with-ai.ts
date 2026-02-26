@@ -10,9 +10,9 @@ import { basename, dirname, join } from "pathe"
 import { createElement, useCallback } from "react"
 import { toast } from "sonner"
 import {
-	AIMoveResultsToast,
-	type AIMoveResultToastItem,
-} from "@/components/file-explorer/ui/ai-move-results-toast"
+	AIBatchResultsToast,
+	type AIBatchResultToastItem,
+} from "@/components/shared/explorer-agent/ai-batch-results-toast"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { normalizePathSeparators } from "@/utils/path-utils"
@@ -65,7 +65,7 @@ function isMarkdownEntry(entry: WorkspaceEntry) {
 
 export function buildAIMoveResultToastItems(
 	result: MoveNoteWithAIBatchResult,
-): AIMoveResultToastItem[] {
+): AIBatchResultToastItem[] {
 	return result.operations
 		.filter((operation) => operation.status === "moved")
 		.map((operation) => {
@@ -73,9 +73,9 @@ export function buildAIMoveResultToastItems(
 				operation.destinationDirPath ?? dirname(operation.path)
 
 			return {
-				sourcePath: operation.path,
-				destinationDirPath,
-				newPath:
+				id: operation.path,
+				fromPath: operation.path,
+				openPath:
 					operation.newPath ??
 					join(destinationDirPath, basename(operation.path)),
 			}
@@ -161,27 +161,29 @@ export function useMoveNotesWithAI() {
 			const movedItems = buildAIMoveResultToastItems(batchResult)
 			toast.custom(
 				(toastId) =>
-					createElement(AIMoveResultsToast, {
+					createElement(AIBatchResultsToast, {
 						workspacePath,
-						movedCount,
+						successCount: movedCount,
+						successLabel: "moved",
 						unchangedCount,
 						failedCount,
+						emptyMessage: "No notes were moved.",
 						items: movedItems,
 						onOpenPath: (path: string) => {
 							useStore.getState().openTab(path)
 						},
 						onConfirm: () => toast.dismiss(toastId),
-						onUndo: async (item: AIMoveResultToastItem) => {
-							const sourceDirectoryPath = dirname(item.sourcePath)
+						onUndo: async (item: AIBatchResultToastItem) => {
+							const sourceDirectoryPath = dirname(item.fromPath)
 							try {
 								const didUndo = await useStore
 									.getState()
-									.moveEntry(item.newPath, sourceDirectoryPath, {
+									.moveEntry(item.openPath, sourceDirectoryPath, {
 										onConflict: "fail",
 									})
 								if (!didUndo) {
 									toast.error(
-										`Failed to undo AI move for "${basename(item.sourcePath)}".`,
+										`Failed to undo AI move for "${basename(item.fromPath)}".`,
 										{ position: "bottom-left" },
 									)
 								}
@@ -189,7 +191,7 @@ export function useMoveNotesWithAI() {
 							} catch (error) {
 								console.error("Failed to undo AI move:", error)
 								toast.error(
-									`Failed to undo AI move for "${basename(item.sourcePath)}".`,
+									`Failed to undo AI move for "${basename(item.fromPath)}".`,
 									{ position: "bottom-left" },
 								)
 								return false

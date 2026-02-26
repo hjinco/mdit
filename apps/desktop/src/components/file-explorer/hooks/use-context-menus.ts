@@ -17,6 +17,7 @@ import {
 	getTemplateFiles,
 	saveNoteAsTemplate,
 } from "@/components/file-explorer/utils/template-utils"
+import { collectAIRenameTargets } from "@/components/shared/explorer-agent/ai-rename-targets"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"
@@ -31,7 +32,7 @@ const DELETE_ACCELERATOR =
 
 type UseFileExplorerMenusProps = {
 	canRenameNoteWithAI: boolean
-	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
+	renameNotesWithAI: (entries: WorkspaceEntry[]) => Promise<void>
 	canMoveNotesWithAI: boolean
 	moveNotesWithAI: (entries: WorkspaceEntry[]) => Promise<void>
 	beginRenaming: (entry: WorkspaceEntry) => void
@@ -59,7 +60,7 @@ type UseFileExplorerMenusProps = {
 
 export const useFileExplorerMenus = ({
 	canRenameNoteWithAI,
-	renameNoteWithAI,
+	renameNotesWithAI,
 	canMoveNotesWithAI,
 	moveNotesWithAI,
 	beginRenaming,
@@ -108,6 +109,9 @@ export const useFileExplorerMenus = ({
 				const targets =
 					selectionPaths.length > 0 ? selectionPaths : [entry.path]
 				const hasLockedTargets = hasLockedPathConflict(targets)
+				const aiRenameTargets = collectAIRenameTargets(targets, (path) =>
+					entryMap.get(path),
+				)
 				const aiMoveTargets = Array.from(
 					new Map(
 						selectionPaths
@@ -194,10 +198,13 @@ export const useFileExplorerMenus = ({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: canRenameNoteWithAI && !hasLockedTargets,
+							enabled:
+								canRenameNoteWithAI &&
+								aiRenameTargets.length > 0 &&
+								!hasLockedTargets,
 							action: async () => {
 								try {
-									await renameNoteWithAI(entry)
+									await renameNotesWithAI(aiRenameTargets)
 								} catch (error) {
 									console.error("Failed to rename entry with AI:", error)
 								}
@@ -278,7 +285,7 @@ export const useFileExplorerMenus = ({
 			handleDeleteEntries,
 			hasLockedPathConflict,
 			canRenameNoteWithAI,
-			renameNoteWithAI,
+			renameNotesWithAI,
 			canMoveNotesWithAI,
 			moveNotesWithAI,
 			entryMap,

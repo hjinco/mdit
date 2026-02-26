@@ -2,9 +2,9 @@ import { useDroppable } from "@dnd-kit/react"
 import { motion } from "motion/react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
+import { useMoveNotesWithAI } from "@/components/shared/explorer-agent/hooks/use-move-notes-with-ai"
+import { useRenameNoteWithAI } from "@/components/shared/explorer-agent/hooks/use-rename-note-with-ai"
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
-import { useMoveNotesWithAI } from "@/hooks/use-move-notes-with-ai"
-import { useRenameNoteWithAI } from "@/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
 import { addExpandedDirectory } from "@/store/workspace/helpers/expanded-directories-helpers"
@@ -109,7 +109,7 @@ export function FileExplorer() {
 	const [pendingNewFolderPath, setPendingNewFolderPath] = useState<
 		string | null
 	>(null)
-	const { renameNoteWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
+	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const { moveNotesWithAI, canMoveNotesWithAI } = useMoveNotesWithAI()
 	const visibleEntryPaths = useMemo(() => {
 		const paths: string[] = []
@@ -291,7 +291,7 @@ export function FileExplorer() {
 	const { handleEntryContextMenu, handleRootContextMenu } =
 		useFileExplorerMenus({
 			canRenameNoteWithAI,
-			renameNoteWithAI,
+			renameNotesWithAI,
 			canMoveNotesWithAI,
 			moveNotesWithAI,
 			beginRenaming,

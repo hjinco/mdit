@@ -1,33 +1,58 @@
-import { streamText } from "ai"
 import { dirname } from "pathe"
 import { createModelFromChatConfig } from "../model/create-model"
+import { buildProviderRequestOptions } from "../runtime/provider-request-options"
 import {
-	buildProviderRequestOptions,
-	type ProviderRequestOptions,
-} from "../runtime/provider-request-options"
+	type RunRenameAgentFn,
+	runRenameAgentWithDefaults,
+} from "./agent-runner"
 import { AI_RENAME_SYSTEM_PROMPT } from "./constants"
+import { collectEntriesToProcess } from "./entries"
+import { isFinishRenameSuccessResult } from "./finish"
+import {
+	countOperations,
+	createOperationByPath,
+	hasPendingOperations,
+	toPublicOperation,
+} from "./operations"
 import { buildRenamePrompt } from "./prompt"
-import { extractAndSanitizeName } from "./sanitize"
 import { collectSiblingNoteNames } from "./sibling-notes"
+import {
+	type CreateRenameNoteToolsParams,
+	createRenameNoteTools,
+	type RenameNoteTools,
+} from "./tools"
 import type {
+	RenameNoteWithAIBatchResult,
 	RenameNoteWithAIChatConfig,
 	RenameNoteWithAICodexOptions,
 	RenameNoteWithAIEntry,
 	RenameNoteWithAIFileSystemPorts,
-	RenameNoteWithAIResult,
 } from "./types"
-import { generateUniqueFileName } from "./unique-file-name"
 
-type StreamTextFn = (
-	args: {
-		model: any
-		prompt: string
-	} & ProviderRequestOptions,
-) => {
-	text: PromiseLike<string>
+type CreateModelFn = (config: RenameNoteWithAIChatConfig) => unknown
+type CreateToolsFn = (params: CreateRenameNoteToolsParams) => RenameNoteTools
+
+function buildFailedBatchResult({
+	entriesToProcess,
+	dirPath,
+	reason,
+}: {
+	entriesToProcess: RenameNoteWithAIEntry[]
+	dirPath: string
+	reason: string
+}): RenameNoteWithAIBatchResult {
+	return {
+		renamedCount: 0,
+		unchangedCount: 0,
+		failedCount: entriesToProcess.length,
+		operations: entriesToProcess.map((entry) => ({
+			path: entry.path,
+			status: "failed" as const,
+			reason,
+		})),
+		dirPath,
+	}
 }
-
-type CreateModelFn = (config: RenameNoteWithAIChatConfig) => any
 
 export function createModelFromRenameConfig(
 	config: RenameNoteWithAIChatConfig,
@@ -39,67 +64,125 @@ export function createModelFromRenameConfig(
 export const createRenameNoteWithAICore = ({
 	fileSystem,
 	codex,
-	streamTextFn,
 	createModel,
+	runAgent,
+	createTools,
 }: {
 	fileSystem: RenameNoteWithAIFileSystemPorts
 	codex?: RenameNoteWithAICodexOptions
-	streamTextFn?: StreamTextFn
 	createModel?: CreateModelFn
+	runAgent?: RunRenameAgentFn
+	createTools?: CreateToolsFn
 }) => {
-	const runStreamText: StreamTextFn = (args) => streamText(args)
 	const resolveModel: CreateModelFn =
 		createModel ?? ((config) => createModelFromRenameConfig(config, codex))
+	const executeAgent: RunRenameAgentFn = runAgent ?? runRenameAgentWithDefaults
+	const buildTools: CreateToolsFn = createTools ?? createRenameNoteTools
 
 	return {
 		suggestRename: async ({
-			entry,
+			entries,
 			chatConfig,
 		}: {
-			entry: RenameNoteWithAIEntry
+			entries: RenameNoteWithAIEntry[]
 			chatConfig: RenameNoteWithAIChatConfig | null
-		}): Promise<RenameNoteWithAIResult | null> => {
-			if (!chatConfig || entry.isDirectory || !entry.path.endsWith(".md")) {
+		}): Promise<RenameNoteWithAIBatchResult | null> => {
+			const entriesToProcess = collectEntriesToProcess(entries)
+			if (!chatConfig || entriesToProcess.length === 0) {
 				return null
 			}
 
-			const dirPath = dirname(entry.path)
-			const rawContent = await fileSystem.readTextFile(entry.path)
+			const dirPathSet = new Set(
+				entriesToProcess.map((entry) => dirname(entry.path)),
+			)
+			if (dirPathSet.size !== 1) {
+				throw new Error(
+					"All rename targets must be notes from the same folder.",
+				)
+			}
+			const dirPath = Array.from(dirPathSet)[0]
+
 			const dirEntries = await fileSystem.readDir(dirPath)
-			const otherNoteNames = collectSiblingNoteNames(dirEntries, entry.name)
-			const prompt = buildRenamePrompt({
-				currentName: entry.name,
-				otherNoteNames,
-				content: rawContent,
+			const targetNameSet = new Set(entriesToProcess.map((entry) => entry.name))
+			const siblingNoteNames = collectSiblingNoteNames(
+				dirEntries,
+				targetNameSet,
+			)
+			const entryPathSet = new Set(entriesToProcess.map((entry) => entry.path))
+			const operationByPath = createOperationByPath(entriesToProcess)
+			const suggestionByPath = new Map<string, string>()
+
+			const tools = buildTools({
+				fileSystem,
+				entriesToProcess,
 				dirPath,
+				dirEntries,
+				siblingNoteNames,
+				entryPathSet,
+				operationByPath,
+				suggestionByPath,
 			})
-			const streamTextArgs = {
-				model: resolveModel(chatConfig),
-				prompt,
-				...buildProviderRequestOptions(
-					chatConfig.provider,
-					AI_RENAME_SYSTEM_PROMPT,
-				),
-			}
-
-			const streamResult = (streamTextFn ?? runStreamText)(streamTextArgs)
-			const aiText = await streamResult.text
-
-			const suggestedBaseName = extractAndSanitizeName(aiText)
-			if (!suggestedBaseName) {
-				throw new Error("The AI did not return a usable name.")
-			}
-
-			const { fileName: finalFileName } = await generateUniqueFileName(
-				`${suggestedBaseName}.md`,
+			const prompt = buildRenamePrompt({
 				dirPath,
-				fileSystem.exists,
+				entries: entriesToProcess,
+			})
+			const providerRequestOptions = buildProviderRequestOptions(
+				chatConfig.provider,
+				AI_RENAME_SYSTEM_PROMPT,
 			)
 
-			return {
-				finalFileName,
-				suggestedBaseName,
-				dirPath,
+			try {
+				const result = await executeAgent({
+					model: resolveModel(chatConfig),
+					prompt,
+					providerRequestOptions,
+					tools,
+				})
+
+				const didFinishSuccessfully = result.steps.some((step) =>
+					step.toolResults.some((toolResult) =>
+						isFinishRenameSuccessResult(toolResult),
+					),
+				)
+				if (!didFinishSuccessfully) {
+					return buildFailedBatchResult({
+						entriesToProcess,
+						dirPath,
+						reason: "Agent finished without successful finish_rename.",
+					})
+				}
+
+				const operations = entriesToProcess.map((entry) => {
+					const operation = operationByPath.get(entry.path)
+					if (!operation) {
+						throw new Error("Operation result missing for target entry.")
+					}
+					return operation
+				})
+				if (hasPendingOperations(operations)) {
+					return buildFailedBatchResult({
+						entriesToProcess,
+						dirPath,
+						reason: "Agent finished before processing all target notes.",
+					})
+				}
+
+				const publicOperations = operations.map(toPublicOperation)
+				const counts = countOperations(publicOperations)
+				return {
+					...counts,
+					operations: publicOperations,
+					dirPath,
+				}
+			} catch (error) {
+				return buildFailedBatchResult({
+					entriesToProcess,
+					dirPath,
+					reason:
+						error instanceof Error
+							? error.message
+							: "Failed to run rename agent.",
+				})
 			}
 		},
 	}

@@ -1,12 +1,15 @@
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { useCallback } from "react"
+import { collectAIRenameTargets } from "@/components/shared/explorer-agent/ai-rename-targets"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type UseCollectionContextMenuProps = {
 	canRenameNoteWithAI: boolean
-	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
+	renameNotesWithAI: (entries: WorkspaceEntry[]) => Promise<void>
 	beginRenaming: (entry: WorkspaceEntry) => void
 	handleDeleteEntries: (paths: string[]) => Promise<void>
+	hasLockedPathConflict: (paths: string[]) => boolean
+	entryMap: Map<string, WorkspaceEntry>
 	selectedEntryPaths: Set<string>
 	setSelectedEntryPaths: (paths: Set<string>) => void
 	setSelectionAnchorPath: (path: string | null) => void
@@ -15,9 +18,11 @@ type UseCollectionContextMenuProps = {
 
 export function useCollectionContextMenu({
 	canRenameNoteWithAI,
-	renameNoteWithAI,
+	renameNotesWithAI,
 	beginRenaming,
 	handleDeleteEntries,
+	hasLockedPathConflict,
+	entryMap,
 	selectedEntryPaths,
 	setSelectedEntryPaths,
 	setSelectionAnchorPath,
@@ -27,17 +32,28 @@ export function useCollectionContextMenu({
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {
 			try {
 				const itemPromises: Promise<MenuItem>[] = []
+				const targets =
+					selectionPaths.length > 0 ? selectionPaths : [entry.path]
+				const hasLockedTargets = hasLockedPathConflict(targets)
+				const aiRenameTargets = collectAIRenameTargets(targets, (path) =>
+					entryMap.get(path),
+				)
 
 				if (entry.name.toLowerCase().endsWith(".md")) {
 					itemPromises.push(
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: canRenameNoteWithAI,
+							enabled:
+								canRenameNoteWithAI &&
+								aiRenameTargets.length > 0 &&
+								!hasLockedTargets,
 							action: async () => {
 								try {
-									await renameNoteWithAI(entry)
-									invalidatePreview(entry.path)
+									await renameNotesWithAI(aiRenameTargets)
+									for (const target of aiRenameTargets) {
+										void invalidatePreview(target.path)
+									}
 								} catch (error) {
 									console.error("Failed to rename entry with AI:", error)
 								}
@@ -82,9 +98,11 @@ export function useCollectionContextMenu({
 		[
 			beginRenaming,
 			handleDeleteEntries,
+			hasLockedPathConflict,
 			invalidatePreview,
 			canRenameNoteWithAI,
-			renameNoteWithAI,
+			entryMap,
+			renameNotesWithAI,
 		],
 	)
 
