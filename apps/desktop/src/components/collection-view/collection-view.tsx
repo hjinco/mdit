@@ -3,10 +3,13 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { FolderIcon } from "lucide-react"
 import { type MouseEvent, useCallback, useMemo, useRef } from "react"
 import { useShallow } from "zustand/shallow"
-import { useRenameNoteWithAI } from "@/hooks/use-rename-note-with-ai"
+import { useRenameNoteWithAI } from "@/components/shared/explorer-agent/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
-import { getFolderNameFromPath } from "@/utils/path-utils"
+import {
+	getFolderNameFromPath,
+	hasPathConflictWithLockedPaths,
+} from "@/utils/path-utils"
 import { isMac } from "@/utils/platform"
 import { useCollectionContextMenu } from "./hooks/use-collection-context-menu"
 import { useCollectionRename } from "./hooks/use-collection-rename"
@@ -34,6 +37,7 @@ export function CollectionView() {
 		deleteEntries,
 		renameEntry,
 		updateEntryModifiedDate,
+		aiLockedEntryPaths,
 	} = useStore(
 		useShallow((state) => ({
 			isFileExplorerOpen: state.isFileExplorerOpen,
@@ -48,9 +52,10 @@ export function CollectionView() {
 			deleteEntries: state.deleteEntries,
 			renameEntry: state.renameEntry,
 			updateEntryModifiedDate: state.updateEntryModifiedDate,
+			aiLockedEntryPaths: state.aiLockedEntryPaths,
 		})),
 	)
-	const { renameNoteWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
+	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const isCollectionViewOpen = currentCollectionPath !== null
 	const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({
 		storageKey: "collection-view-width",
@@ -99,6 +104,10 @@ export function CollectionView() {
 		})
 		return map
 	}, [sortedEntries])
+	const collectionEntryMap = useMemo(
+		() => new Map(sortedEntries.map((entry) => [entry.path, entry])),
+		[sortedEntries],
+	)
 
 	// Update entry metadata (preview and modified date) when the same file is saved (not when switching files)
 	useEntryUpdateOnSave(
@@ -146,12 +155,19 @@ export function CollectionView() {
 		},
 		[deleteEntries, resetSelection],
 	)
+	const hasLockedPathConflict = useCallback(
+		(paths: string[]) =>
+			hasPathConflictWithLockedPaths(paths, aiLockedEntryPaths),
+		[aiLockedEntryPaths],
+	)
 
 	const { handleEntryContextMenu } = useCollectionContextMenu({
 		canRenameNoteWithAI,
-		renameNoteWithAI,
+		renameNotesWithAI,
 		beginRenaming,
 		handleDeleteEntries,
+		hasLockedPathConflict,
+		entryMap: collectionEntryMap,
 		selectedEntryPaths,
 		setSelectedEntryPaths,
 		setSelectionAnchorPath,

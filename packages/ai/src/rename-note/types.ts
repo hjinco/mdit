@@ -20,8 +20,18 @@ export type RenameNoteWithAIFileSystemPorts = {
 
 export type RenameNoteWithAICodexOptions = AICodexModelOptions
 
-export type RenameNoteWithAIResult = {
-	finalFileName: string
-	suggestedBaseName: string
+export type RenameNoteWithAIOperation = {
+	path: string
+	status: "renamed" | "unchanged" | "failed"
+	suggestedBaseName?: string
+	finalFileName?: string
+	reason?: string
+}
+
+export type RenameNoteWithAIBatchResult = {
+	renamedCount: number
+	unchangedCount: number
+	failedCount: number
+	operations: RenameNoteWithAIOperation[]
 	dirPath: string
 }

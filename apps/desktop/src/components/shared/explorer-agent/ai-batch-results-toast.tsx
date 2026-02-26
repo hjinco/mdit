@@ -10,20 +10,22 @@ import {
 import { useState } from "react"
 import { normalizePathSeparators } from "@/utils/path-utils"
 
-export type AIMoveResultToastItem = {
-	sourcePath: string
-	destinationDirPath: string
-	newPath: string
+export type AIBatchResultToastItem = {
+	id: string
+	openPath: string
+	fromPath: string
 }
 
-type AIMoveResultsToastProps = {
+type AIBatchResultsToastProps = {
 	workspacePath: string | null
-	movedCount: number
+	successCount: number
+	successLabel: string
 	unchangedCount: number
 	failedCount: number
-	items: AIMoveResultToastItem[]
+	emptyMessage: string
+	items: AIBatchResultToastItem[]
 	onOpenPath: (path: string) => void
-	onUndo: (item: AIMoveResultToastItem) => Promise<boolean>
+	onUndo: (item: AIBatchResultToastItem) => Promise<boolean>
 	onConfirm: () => void
 }
 
@@ -51,44 +53,47 @@ const toRelativeWorkspacePath = (
 	return path
 }
 
-export function AIMoveResultsToast({
+export function AIBatchResultsToast({
 	workspacePath,
-	movedCount,
+	successCount,
+	successLabel,
 	unchangedCount,
 	failedCount,
+	emptyMessage,
 	items,
 	onOpenPath,
 	onUndo,
 	onConfirm,
-}: AIMoveResultsToastProps) {
-	const [undoStatusByPath, setUndoStatusByPath] = useState<
+}: AIBatchResultsToastProps) {
+	const [undoStatusById, setUndoStatusById] = useState<
 		Record<string, UndoStatus>
 	>({})
 
-	const handleUndoClick = async (item: AIMoveResultToastItem) => {
-		const undoStatus = undoStatusByPath[item.sourcePath]
+	const handleUndoClick = async (item: AIBatchResultToastItem) => {
+		const { id: itemId } = item
+		const undoStatus = undoStatusById[itemId]
 		if (undoStatus === "pending" || undoStatus === "done") {
 			return
 		}
 
-		setUndoStatusByPath((previous) => ({
+		setUndoStatusById((previous) => ({
 			...previous,
-			[item.sourcePath]: "pending",
+			[itemId]: "pending",
 		}))
 
 		let didUndo = false
 		try {
 			didUndo = await onUndo(item)
 		} catch (error) {
-			console.error("Failed to undo moved entry:", item, error)
+			console.error("Failed to undo AI batch operation:", itemId, error)
 		}
 
-		setUndoStatusByPath((previous) => {
+		setUndoStatusById((previous) => {
 			const next = { ...previous }
 			if (didUndo) {
-				next[item.sourcePath] = "done"
+				next[itemId] = "done"
 			} else {
-				delete next[item.sourcePath]
+				delete next[itemId]
 			}
 			return next
 		})
@@ -103,7 +108,9 @@ export function AIMoveResultsToast({
 						stroke={2.2}
 						className="text-[#4f8a5e] dark:text-[#84c495]"
 					/>
-					<span>{movedCount} moved</span>
+					<span>
+						{successCount} {successLabel}
+					</span>
 				</div>
 				{unchangedCount > 0 && (
 					<div className="flex items-center gap-2.5 px-2.5 py-1 text-[15px] leading-none">
@@ -131,20 +138,20 @@ export function AIMoveResultsToast({
 				{items.length === 0 ? (
 					<div className="py-8 text-center">
 						<p className="text-[13px] italic text-[#888883] dark:text-[#a2a29c]">
-							No notes were moved.
+							{emptyMessage}
 						</p>
 					</div>
 				) : (
 					<div>
 						{items.map((item) => {
-							const undoStatus = undoStatusByPath[item.sourcePath]
+							const undoStatus = undoStatusById[item.id]
 							const isUndoPending = undoStatus === "pending"
 							const isUndoDone = undoStatus === "done"
 							const isUndoDisabled = isUndoPending || isUndoDone
 
 							return (
 								<div
-									key={item.sourcePath}
+									key={item.id}
 									className="relative flex items-start justify-between gap-3 py-2.5"
 								>
 									<div className="min-w-0 flex-1">
@@ -156,14 +163,14 @@ export function AIMoveResultsToast({
 											<button
 												type="button"
 												className="truncate text-left text-[15px] font-medium cursor-pointer text-[#2f2f2f] transition-colors hover:text-[#191919] hover:underline dark:text-[#ededea] dark:hover:text-[#ffffff]"
-												onClick={() => onOpenPath(item.newPath)}
+												onClick={() => onOpenPath(item.openPath)}
 											>
-												{toRelativeWorkspacePath(item.newPath, workspacePath)}
+												{toRelativeWorkspacePath(item.openPath, workspacePath)}
 											</button>
 										</div>
 										<p className="mt-0.5 truncate pl-[18px] text-[12px] text-[#7f7f7b] dark:text-[#a5a5a0]">
 											from{" "}
-											{toRelativeWorkspacePath(item.sourcePath, workspacePath)}
+											{toRelativeWorkspacePath(item.fromPath, workspacePath)}
 										</p>
 									</div>
 
