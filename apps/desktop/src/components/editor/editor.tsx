@@ -18,6 +18,11 @@ import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useLinkedTabName } from "./hooks/use-linked-tab-name"
 import { EditorKit } from "./plugins/editor-kit"
+import {
+	focusEditorAtDefaultSelection,
+	restoreHistorySelection,
+	toTabHistorySelection,
+} from "./utils/history-restore-utils"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 	const tab = useStore((s) => s.tab)
@@ -73,12 +78,22 @@ function EditorContent({
 }) {
 	const isSaved = useRef(true)
 	const isInitializing = useRef(true)
-	const { setTabSaved, saveNoteContent, workspacePath, indexNote } = useStore(
+	const {
+		setTabSaved,
+		saveNoteContent,
+		workspacePath,
+		indexNote,
+		setHistorySelectionProvider,
+		consumePendingHistorySelectionRestore,
+	} = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
 			saveNoteContent: s.saveNoteContent,
 			workspacePath: s.workspacePath,
 			indexNote: s.indexNote,
+			setHistorySelectionProvider: s.setHistorySelectionProvider,
+			consumePendingHistorySelectionRestore:
+				s.consumePendingHistorySelectionRestore,
 		})),
 	)
 	const resetFocusMode = useStore((s) => s.resetFocusMode)
@@ -151,18 +166,30 @@ function EditorContent({
 	}, [handleSave, destroyOnClose])
 
 	useEffect(() => {
-		const targetIndex = editor.children.findIndex(
-			(element) => element && !editor.api.isVoid(element),
-		)
+		setHistorySelectionProvider(() => toTabHistorySelection(editor.selection))
 
-		// Default to index 0 if no non-void element is found.
-		const finalIndex = targetIndex === -1 ? 0 : targetIndex
-
-		if (editor.children.length > 0) {
-			editor.tf.select([finalIndex], { edge: "start" })
+		return () => {
+			setHistorySelectionProvider(null)
 		}
-		editor.tf.focus()
-	}, [editor])
+	}, [editor, setHistorySelectionProvider])
+
+	useEffect(() => {
+		const timeoutId = window.setTimeout(() => {
+			const pendingRestore = consumePendingHistorySelectionRestore(path)
+			if (pendingRestore.found) {
+				restoreHistorySelection(editor, pendingRestore.selection)
+
+				return
+			}
+
+			focusEditorAtDefaultSelection(editor)
+			editor.tf.focus()
+		}, 0)
+
+		return () => {
+			window.clearTimeout(timeoutId)
+		}
+	}, [consumePendingHistorySelectionRestore, editor, path])
 
 	useEffect(() => {
 		const handleMouseMove = () => {
