@@ -26,6 +26,6 @@ export function getEntryButtonClassName({
 				: "hover:bg-background/40 group-hover:bg-background/40",
 		isDragging && "opacity-50 cursor-grabbing",
 		isRenaming && "ring-1 ring-ring/50",
-		isLocked && "animate-pulse",
+		isLocked && !isRenaming && "animate-pulse",
 	)
 }

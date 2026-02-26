@@ -34,4 +34,22 @@ describe("getEntryButtonClassName", () => {
 		expect(className).not.toContain("bg-background/80")
 		expect(className).not.toContain("bg-background/60")
 	})
+
+	it("applies pulse when locked and not renaming", () => {
+		const className = getEntryButtonClassName({
+			isLocked: true,
+			isRenaming: false,
+		})
+
+		expect(className).toContain("animate-pulse")
+	})
+
+	it("does not apply pulse while renaming even when locked", () => {
+		const className = getEntryButtonClassName({
+			isLocked: true,
+			isRenaming: true,
+		})
+
+		expect(className).not.toContain("animate-pulse")
+	})
 })
