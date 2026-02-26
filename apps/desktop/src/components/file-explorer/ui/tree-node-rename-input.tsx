@@ -1,29 +1,29 @@
 import { cn } from "@mdit/ui/lib/utils"
 
 type TreeNodeRenameInputProps = {
-	draftName: string
-	setDraftName: (value: string) => void
+	value: string
+	setValue: (value: string) => void
 	inputRef: React.RefObject<HTMLInputElement | null>
-	handleRenameKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
-	handleRenameBlur: () => void
+	onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
+	onBlur: () => void
 	className?: string
 }
 
 export function TreeNodeRenameInput({
-	draftName,
-	setDraftName,
+	value,
+	setValue,
 	inputRef,
-	handleRenameKeyDown,
-	handleRenameBlur,
+	onKeyDown,
+	onBlur,
 	className,
 }: TreeNodeRenameInputProps) {
 	return (
 		<input
 			ref={inputRef}
-			value={draftName}
-			onChange={(event) => setDraftName(event.target.value)}
-			onKeyDown={handleRenameKeyDown}
-			onBlur={handleRenameBlur}
+			value={value}
+			onChange={(event) => setValue(event.target.value)}
+			onKeyDown={onKeyDown}
+			onBlur={onBlur}
 			className={cn(
 				"absolute inset-0 h-full truncate text-sm outline-none text-foreground bg-transparent",
 				className,

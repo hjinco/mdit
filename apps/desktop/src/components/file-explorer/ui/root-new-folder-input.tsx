@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
 import { TreeNodeRenameInput } from "./tree-node-rename-input"
 
 type RootNewFolderInputProps = {
@@ -13,53 +13,14 @@ export function RootNewFolderInput({
 	onCancel,
 	workspacePath,
 }: RootNewFolderInputProps) {
-	const [newFolderName, setNewFolderName] = useState("")
-	const inputRef = useRef<HTMLInputElement | null>(null)
-	const hasSubmittedRef = useRef(false)
-
-	useEffect(() => {
-		setNewFolderName("")
-		hasSubmittedRef.current = false
-		requestAnimationFrame(() => {
-			inputRef.current?.focus()
-			inputRef.current?.select()
-		})
-	}, [])
-
-	const submitNewFolder = useCallback(async () => {
-		if (hasSubmittedRef.current) {
-			return
-		}
-
-		const trimmedName = newFolderName.trim()
-
-		if (!trimmedName) {
-			hasSubmittedRef.current = true
-			onCancel()
-			return
-		}
-
-		hasSubmittedRef.current = true
-		await onSubmit(workspacePath, trimmedName)
-	}, [newFolderName, workspacePath, onCancel, onSubmit])
-
-	const handleNewFolderKeyDown = useCallback(
-		async (event: React.KeyboardEvent<HTMLInputElement>) => {
-			if (event.key === "Enter") {
-				event.preventDefault()
-				await submitNewFolder()
-			} else if (event.key === "Escape") {
-				event.preventDefault()
-				hasSubmittedRef.current = true
-				onCancel()
-			}
+	const input = useInlineEditableInput({
+		active: true,
+		initialValue: "",
+		onSubmit: async (folderName) => {
+			await onSubmit(workspacePath, folderName)
 		},
-		[onCancel, submitNewFolder],
-	)
-
-	const handleNewFolderBlur = useCallback(async () => {
-		await submitNewFolder()
-	}, [submitNewFolder])
+		onCancel,
+	})
 
 	return (
 		<li>
@@ -70,11 +31,11 @@ export function RootNewFolderInput({
 				<div className="relative flex-1 min-w-0 flex items-center">
 					<span className="text-sm opacity-0">Placeholder</span>
 					<TreeNodeRenameInput
-						draftName={newFolderName}
-						setDraftName={setNewFolderName}
-						inputRef={inputRef}
-						handleRenameKeyDown={handleNewFolderKeyDown}
-						handleRenameBlur={handleNewFolderBlur}
+						value={input.value}
+						setValue={input.setValue}
+						inputRef={input.inputRef}
+						onKeyDown={input.onKeyDown}
+						onBlur={input.onBlur}
 					/>
 				</div>
 			</div>
