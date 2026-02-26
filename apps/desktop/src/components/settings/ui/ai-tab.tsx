@@ -16,12 +16,23 @@ import {
 	FieldSet,
 } from "@mdit/ui/components/field"
 import { Input } from "@mdit/ui/components/input"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+} from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import {
+	buildChatModelSelectOptions,
+	handleChatModelSelectChange,
+	resolveSelectedChatModelSelectValue,
+} from "./ai-tab-chat-model"
 
 export function AITab() {
 	const {
@@ -29,22 +40,26 @@ export function AITab() {
 		apiModels,
 		ollamaModels,
 		enabledChatModels,
+		chatConfig,
 		connectProvider,
 		connectCodexOAuth,
 		disconnectProvider,
 		fetchOllamaModels,
 		toggleModelEnabled,
+		selectModel,
 	} = useStore(
 		useShallow((state) => ({
 			connectedProviders: state.connectedProviders,
 			apiModels: state.apiModels,
 			ollamaModels: state.ollamaModels,
 			enabledChatModels: state.enabledChatModels,
+			chatConfig: state.chatConfig,
 			connectProvider: state.connectProvider,
 			connectCodexOAuth: state.connectCodexOAuth,
 			disconnectProvider: state.disconnectProvider,
 			fetchOllamaModels: state.fetchOllamaModels,
 			toggleModelEnabled: state.toggleModelEnabled,
+			selectModel: state.selectModel,
 		})),
 	)
 	const [providerBusy, setProviderBusy] = useState<
@@ -90,6 +105,22 @@ export function AITab() {
 		return connectedProviders.length > 0 || ollamaModels.length > 0
 	}, [connectedProviders, ollamaModels])
 
+	const selectedChatModelValue = useMemo(() => {
+		return resolveSelectedChatModelSelectValue(enabledChatModels, chatConfig)
+	}, [enabledChatModels, chatConfig])
+	const chatModelSelectOptions = useMemo(() => {
+		return buildChatModelSelectOptions(enabledChatModels)
+	}, [enabledChatModels])
+	const selectedChatModelLabel = useMemo(() => {
+		if (!selectedChatModelValue) {
+			return null
+		}
+		const selectedOption = chatModelSelectOptions.find(
+			(option) => option.value === selectedChatModelValue,
+		)
+		return selectedOption?.model ?? null
+	}, [chatModelSelectOptions, selectedChatModelValue])
+
 	const credentialProviderDefinitions = useMemo(() => {
 		return CREDENTIAL_PROVIDER_IDS.map(
 			(providerId) => AI_PROVIDER_DEFINITIONS[providerId],
@@ -99,11 +130,45 @@ export function AITab() {
 	return (
 		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24">
 			<FieldSet className="border-b pb-8">
-				<FieldLegend>AI Models</FieldLegend>
+				<FieldLegend>AI</FieldLegend>
 				<FieldDescription>Enable models from AI providers</FieldDescription>
 				<div>
-					<FieldLabel>Chat</FieldLabel>
 					<FieldGroup className="gap-0 mt-2">
+						<Field orientation="horizontal" className="pt-2 pb-8">
+							<FieldContent>
+								<FieldLabel>Model</FieldLabel>
+								<FieldDescription>
+									Select the model to use for AI
+								</FieldDescription>
+							</FieldContent>
+							<Select
+								value={selectedChatModelValue}
+								onValueChange={(value) => {
+									if (!value) {
+										return
+									}
+									void handleChatModelSelectChange(value, selectModel)
+								}}
+								disabled={enabledChatModels.length === 0}
+							>
+								<SelectTrigger size="sm">
+									{selectedChatModelLabel ?? (
+										<span className="text-muted-foreground">
+											{enabledChatModels.length === 0
+												? "No enabled models"
+												: "Select model"}
+										</span>
+									)}
+								</SelectTrigger>
+								<SelectContent align="end">
+									{chatModelSelectOptions.map(({ provider, model, value }) => (
+										<SelectItem key={`${provider}-${model}`} value={value}>
+											{model}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</Field>
 						{providersMap.map(({ provider, models }) => {
 							const isConnected =
 								provider === "ollama"
