@@ -111,15 +111,9 @@ export function AITab() {
 	const chatModelSelectOptions = useMemo(() => {
 		return buildChatModelSelectOptions(enabledChatModels)
 	}, [enabledChatModels])
-	const selectedChatModelLabel = useMemo(() => {
-		if (!selectedChatModelValue) {
-			return null
-		}
-		const selectedOption = chatModelSelectOptions.find(
-			(option) => option.value === selectedChatModelValue,
-		)
-		return selectedOption?.model ?? null
-	}, [chatModelSelectOptions, selectedChatModelValue])
+	const selectedChatModelLabel = selectedChatModelValue
+		? (chatConfig?.model ?? null)
+		: null
 
 	const credentialProviderDefinitions = useMemo(() => {
 		return CREDENTIAL_PROVIDER_IDS.map(
