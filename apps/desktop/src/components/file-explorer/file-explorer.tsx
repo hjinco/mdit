@@ -3,11 +3,13 @@ import { motion } from "motion/react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
+import { useMoveNotesWithAI } from "@/hooks/use-move-notes-with-ai"
 import { useRenameNoteWithAI } from "@/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
 import { addExpandedDirectory } from "@/store/workspace/helpers/expanded-directories-helpers"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import { useFileExplorerMenus } from "./hooks/use-context-menus"
 import { useDeleteShortcut } from "./hooks/use-delete-shortcut"
 import { useEnterToRename } from "./hooks/use-enter-to-rename"
@@ -60,11 +62,14 @@ export function FileExplorer() {
 		tab,
 		openTab,
 		clearLinkedTab,
+		aiLockedEntryPaths,
 		selectedEntryPaths,
 		selectionAnchorPath,
 		setSelectedEntryPaths,
 		setSelectionAnchorPath,
 		resetSelection,
+		lockAiEntries,
+		unlockAiEntries,
 	} = useStore(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
@@ -87,11 +92,14 @@ export function FileExplorer() {
 			tab: state.tab,
 			openTab: state.openTab,
 			clearLinkedTab: state.clearLinkedTab,
+			aiLockedEntryPaths: state.aiLockedEntryPaths,
 			selectedEntryPaths: state.selectedEntryPaths,
 			selectionAnchorPath: state.selectionAnchorPath,
 			setSelectedEntryPaths: state.setSelectedEntryPaths,
 			setSelectionAnchorPath: state.setSelectionAnchorPath,
 			resetSelection: state.resetSelection,
+			lockAiEntries: state.lockAiEntries,
+			unlockAiEntries: state.unlockAiEntries,
 		})),
 	)
 	const openImagePreview = useStore((state) => state.openImagePreview)
@@ -101,8 +109,8 @@ export function FileExplorer() {
 	const [pendingNewFolderPath, setPendingNewFolderPath] = useState<
 		string | null
 	>(null)
-	const { renameNoteWithAI, aiRenamingEntryPaths, canRenameNoteWithAI } =
-		useRenameNoteWithAI()
+	const { renameNoteWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
+	const { moveNotesWithAI, canMoveNotesWithAI } = useMoveNotesWithAI()
 	const visibleEntryPaths = useMemo(() => {
 		const paths: string[] = []
 
@@ -132,6 +140,12 @@ export function FileExplorer() {
 	}, [visibleEntryPaths])
 	const entryMap = useEntryMap(entries)
 
+	const hasLockedPathConflict = useCallback(
+		(paths: string[]) =>
+			hasPathConflictWithLockedPaths(paths, aiLockedEntryPaths),
+		[aiLockedEntryPaths],
+	)
+
 	// Setup workspace root as a drop target (for internal dnd)
 	const { ref: workspaceDropRef } = useDroppable({
 		id: `droppable-${workspacePath}`,
@@ -149,26 +163,40 @@ export function FileExplorer() {
 		depth: -1,
 	})
 
-	const beginRenaming = useCallback((entry: WorkspaceEntry) => {
-		setRenamingEntryPath(entry.path)
-	}, [])
+	const beginRenaming = useCallback(
+		(entry: WorkspaceEntry) => {
+			if (hasLockedPathConflict([entry.path])) {
+				return
+			}
+			if (renamingEntryPath && renamingEntryPath !== entry.path) {
+				unlockAiEntries([renamingEntryPath])
+			}
+			lockAiEntries([entry.path])
+			setRenamingEntryPath(entry.path)
+		},
+		[hasLockedPathConflict, lockAiEntries, renamingEntryPath, unlockAiEntries],
+	)
 
 	const cancelRenaming = useCallback(() => {
+		if (renamingEntryPath) {
+			unlockAiEntries([renamingEntryPath])
+		}
 		setRenamingEntryPath(null)
-	}, [])
+	}, [renamingEntryPath, unlockAiEntries])
 
 	const handleRenameSubmit = useCallback(
 		async (entry: WorkspaceEntry, nextName: string) => {
 			try {
-				await renameEntry(entry, nextName)
+				await renameEntry(entry, nextName, { allowLockedSourcePath: true })
 				if (tab?.path === entry.path) {
 					clearLinkedTab()
 				}
 			} finally {
+				unlockAiEntries([entry.path])
 				setRenamingEntryPath(null)
 			}
 		},
-		[clearLinkedTab, renameEntry, tab?.path],
+		[clearLinkedTab, renameEntry, tab?.path, unlockAiEntries],
 	)
 
 	const beginNewFolder = useCallback(
@@ -214,16 +242,20 @@ export function FileExplorer() {
 			if (paths.length === 0) {
 				return
 			}
+			if (hasLockedPathConflict(paths)) {
+				return
+			}
 
 			await deleteEntries(paths)
 			resetSelection()
 		},
-		[deleteEntries, resetSelection],
+		[deleteEntries, hasLockedPathConflict, resetSelection],
 	)
 
 	useDeleteShortcut({
 		containerRef: fileExplorerRef,
 		selectedEntryPaths,
+		hasLockedPathConflict,
 		handleDeleteEntries,
 	})
 
@@ -260,9 +292,12 @@ export function FileExplorer() {
 		useFileExplorerMenus({
 			canRenameNoteWithAI,
 			renameNoteWithAI,
+			canMoveNotesWithAI,
+			moveNotesWithAI,
 			beginRenaming,
 			beginNewFolder,
 			handleDeleteEntries,
+			hasLockedPathConflict,
 			createNote: createNoteAndScroll,
 			workspacePath,
 			selectedEntryPaths,
@@ -375,8 +410,8 @@ export function FileExplorer() {
 									onEntryPrimaryAction={handleEntryPrimaryAction}
 									onEntryContextMenu={handleEntryContextMenu}
 									selectedEntryPaths={selectedEntryPaths}
+									aiLockedEntryPaths={aiLockedEntryPaths}
 									renamingEntryPath={renamingEntryPath}
-									aiRenamingEntryPaths={aiRenamingEntryPaths}
 									onRenameSubmit={handleRenameSubmit}
 									onRenameCancel={cancelRenaming}
 									pendingNewFolderPath={pendingNewFolderPath}

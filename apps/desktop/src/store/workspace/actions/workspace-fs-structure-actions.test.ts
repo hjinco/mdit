@@ -121,6 +121,58 @@ describe("workspace-fs-structure-actions", () => {
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
+	it("renameEntry blocks rename for locked entries", async () => {
+		const { context, deps, setState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		setState({
+			aiLockedEntryPaths: new Set(["/ws/folder/note.md"]),
+		})
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/folder/note.md",
+				name: "note.md",
+				isDirectory: false,
+			},
+			"updated.md",
+		)
+
+		expect(renamedPath).toBe("/ws/folder/note.md")
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+	})
+
+	it("renameEntry allows locked source path when explicitly enabled", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({
+			aiLockedEntryPaths: new Set(["/ws/folder/note.md"]),
+		})
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/ws/folder/note.md",
+				name: "note.md",
+				isDirectory: false,
+			},
+			"updated.md",
+			{ allowLockedSourcePath: true },
+		)
+
+		expect(renamedPath).toBe("/ws/folder/updated.md")
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/folder/note.md",
+			"/ws/folder/updated.md",
+		)
+		expect(getState().entryRenamed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				oldPath: "/ws/folder/note.md",
+				newPath: "/ws/folder/updated.md",
+			}),
+		)
+	})
+
 	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
 		const { context, deps, ports, setState, getState } =
 			createWorkspaceActionTestContext()
@@ -316,6 +368,22 @@ describe("workspace-fs-structure-actions", () => {
 		expect(getState().entriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/a.md", "/ws/b.md"],
 		})
+	})
+
+	it("deleteEntries blocks deletion when request includes locked paths", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({
+			aiLockedEntryPaths: new Set(["/ws/folder/locked.md"]),
+		})
+
+		await actions.deleteEntries(["/ws/folder"])
+
+		expect(deps.fileSystemRepository.moveToTrash).not.toHaveBeenCalled()
+		expect(deps.fileSystemRepository.moveManyToTrash).not.toHaveBeenCalled()
+		expect(getState().entriesDeleted).not.toHaveBeenCalled()
 	})
 
 	it("deleteEntries removes indexed markdown note and reindexes backlink sources", async () => {

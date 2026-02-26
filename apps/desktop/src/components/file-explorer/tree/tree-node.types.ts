@@ -13,8 +13,8 @@ export type TreeNodeProps = {
 	) => void
 	onEntryContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
 	selectedEntryPaths: Set<string>
+	aiLockedEntryPaths: Set<string>
 	renamingEntryPath: string | null
-	aiRenamingEntryPaths: Set<string>
 	onRenameSubmit: (entry: WorkspaceEntry, name: string) => void | Promise<void>
 	onRenameCancel: () => void
 	pendingNewFolderPath: string | null

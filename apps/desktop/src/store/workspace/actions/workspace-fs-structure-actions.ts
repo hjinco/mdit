@@ -1,4 +1,5 @@
 import { dirname, join, relative, resolve } from "pathe"
+import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import {
 	isPathDeletedByTargets,
 	resolveDeletedMarkdownPaths,
@@ -382,7 +383,10 @@ export const createWorkspaceFsStructureActions = (
 	},
 
 	deleteEntries: async (paths: string[]) => {
-		const { tab, workspacePath, entries } = ctx.get()
+		const { tab, workspacePath, entries, aiLockedEntryPaths } = ctx.get()
+		if (hasPathConflictWithLockedPaths(paths, aiLockedEntryPaths)) {
+			return
+		}
 		const activeTabPath = tab?.path
 
 		if (activeTabPath && paths.includes(activeTabPath)) {
@@ -481,7 +485,22 @@ export const createWorkspaceFsStructureActions = (
 		await ctx.get().deleteEntries([path])
 	},
 
-	renameEntry: async (entry, newName) => {
+	renameEntry: async (
+		entry,
+		newName,
+		options?: { allowLockedSourcePath?: boolean },
+	) => {
+		const lockPathsToCheck = options?.allowLockedSourcePath
+			? new Set(
+					Array.from(ctx.get().aiLockedEntryPaths).filter(
+						(lockedPath) => lockedPath !== entry.path,
+					),
+				)
+			: ctx.get().aiLockedEntryPaths
+		if (hasPathConflictWithLockedPaths([entry.path], lockPathsToCheck)) {
+			return entry.path
+		}
+
 		const trimmedName = sanitizeWorkspaceEntryName(newName)
 
 		if (!trimmedName || trimmedName === entry.name) {

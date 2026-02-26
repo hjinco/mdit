@@ -5,12 +5,14 @@ import { isMac } from "@/utils/platform"
 type UseDeleteShortcutOptions = {
 	containerRef: React.RefObject<HTMLElement | null>
 	selectedEntryPaths: Set<string>
+	hasLockedPathConflict: (paths: string[]) => boolean
 	handleDeleteEntries: (paths: string[]) => Promise<void>
 }
 
 export function useDeleteShortcut({
 	containerRef,
 	selectedEntryPaths,
+	hasLockedPathConflict,
 	handleDeleteEntries,
 }: UseDeleteShortcutOptions) {
 	useEffect(() => {
@@ -58,14 +60,24 @@ export function useDeleteShortcut({
 				return
 			}
 
+			const selectedPaths = Array.from(selectedEntryPaths)
+			if (hasLockedPathConflict(selectedPaths)) {
+				return
+			}
+
 			event.preventDefault()
 			event.stopPropagation()
-			handleDeleteEntries(Array.from(selectedEntryPaths))
+			handleDeleteEntries(selectedPaths)
 		}
 
 		window.addEventListener("keydown", handleKeyDown, true)
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown, true)
 		}
-	}, [containerRef, selectedEntryPaths, handleDeleteEntries])
+	}, [
+		containerRef,
+		selectedEntryPaths,
+		hasLockedPathConflict,
+		handleDeleteEntries,
+	])
 }

@@ -145,6 +145,28 @@ export const isPathInPaths = (path: string, targetPaths: string[]): boolean => {
 }
 
 /**
+ * Checks whether any path conflicts with locked paths.
+ * A conflict means either side is equal to or a descendant of the other side.
+ */
+export const hasPathConflictWithLockedPaths = (
+	paths: string[],
+	lockedPaths: Iterable<string>,
+): boolean => {
+	for (const path of paths) {
+		for (const lockedPath of lockedPaths) {
+			if (
+				isPathEqualOrDescendant(path, lockedPath) ||
+				isPathEqualOrDescendant(lockedPath, path)
+			) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+/**
  * Replaces the file extension with a new one.
  * Handles both Windows (`\`) and Unix (`/`) path separators.
  * Preserves hidden files (e.g., `.env`) by only treating dots after the basename start as extension delimiters.

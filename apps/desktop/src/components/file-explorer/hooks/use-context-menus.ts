@@ -5,7 +5,7 @@ import {
 	Submenu,
 } from "@tauri-apps/api/menu"
 import { readTextFile } from "@tauri-apps/plugin-fs"
-import { type MouseEvent, useCallback } from "react"
+import { type MouseEvent, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import clipboard from "tauri-plugin-clipboard-api"
 import { useShallow } from "zustand/shallow"
@@ -32,9 +32,12 @@ const DELETE_ACCELERATOR =
 type UseFileExplorerMenusProps = {
 	canRenameNoteWithAI: boolean
 	renameNoteWithAI: (entry: WorkspaceEntry) => Promise<void>
+	canMoveNotesWithAI: boolean
+	moveNotesWithAI: (entries: WorkspaceEntry[]) => Promise<void>
 	beginRenaming: (entry: WorkspaceEntry) => void
 	beginNewFolder: (directoryPath: string) => void
 	handleDeleteEntries: (paths: string[]) => Promise<void>
+	hasLockedPathConflict: (paths: string[]) => boolean
 	createNote: (
 		directoryPath: string,
 		options?: {
@@ -57,9 +60,12 @@ type UseFileExplorerMenusProps = {
 export const useFileExplorerMenus = ({
 	canRenameNoteWithAI,
 	renameNoteWithAI,
+	canMoveNotesWithAI,
+	moveNotesWithAI,
 	beginRenaming,
 	beginNewFolder,
 	handleDeleteEntries,
+	hasLockedPathConflict,
 	createNote,
 	workspacePath,
 	selectedEntryPaths,
@@ -77,11 +83,45 @@ export const useFileExplorerMenus = ({
 			copyEntry: state.copyEntry,
 		})),
 	)
+	const entryMap = useMemo(() => {
+		const map = new Map<string, WorkspaceEntry>()
+		const traverse = (nodes: WorkspaceEntry[]) => {
+			for (const node of nodes) {
+				const normalizedPath = normalizePathSeparators(node.path)
+				map.set(node.path, node)
+				if (normalizedPath !== node.path) {
+					map.set(normalizedPath, node)
+				}
+				if (node.children?.length) {
+					traverse(node.children)
+				}
+			}
+		}
+		traverse(entries)
+		return map
+	}, [entries])
 
 	const showEntryMenu = useCallback(
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {
 			try {
 				const itemPromises: Promise<MenuItem | PredefinedMenuItem>[] = []
+				const targets =
+					selectionPaths.length > 0 ? selectionPaths : [entry.path]
+				const hasLockedTargets = hasLockedPathConflict(targets)
+				const aiMoveTargets = Array.from(
+					new Map(
+						selectionPaths
+							.map((path) => entryMap.get(path))
+							.filter((target): target is WorkspaceEntry =>
+								Boolean(
+									target &&
+										!target.isDirectory &&
+										target.name.toLowerCase().endsWith(".md"),
+								),
+							)
+							.map((target) => [target.path, target]),
+					).values(),
+				)
 
 				itemPromises.push(
 					MenuItem.new({
@@ -154,12 +194,30 @@ export const useFileExplorerMenus = ({
 						MenuItem.new({
 							id: `rename-ai-${entry.path}`,
 							text: "Rename with AI",
-							enabled: canRenameNoteWithAI,
+							enabled: canRenameNoteWithAI && !hasLockedTargets,
 							action: async () => {
 								try {
 									await renameNoteWithAI(entry)
 								} catch (error) {
 									console.error("Failed to rename entry with AI:", error)
+								}
+							},
+						}),
+					)
+
+					itemPromises.push(
+						MenuItem.new({
+							id: `move-ai-${entry.path}`,
+							text: "Move to Folder with AI",
+							enabled:
+								canMoveNotesWithAI &&
+								aiMoveTargets.length > 0 &&
+								!hasLockedTargets,
+							action: async () => {
+								try {
+									await moveNotesWithAI(aiMoveTargets)
+								} catch (error) {
+									console.error("Failed to move entries with AI:", error)
 								}
 							},
 						}),
@@ -170,6 +228,7 @@ export const useFileExplorerMenus = ({
 					MenuItem.new({
 						id: `rename-${entry.path}`,
 						text: "Rename",
+						enabled: !hasLockedTargets,
 						action: async () => {
 							beginRenaming(entry)
 						},
@@ -194,6 +253,7 @@ export const useFileExplorerMenus = ({
 						id: `delete-${entry.path}`,
 						text: "Delete",
 						accelerator: DELETE_ACCELERATOR,
+						enabled: !hasLockedTargets,
 						action: async () => {
 							const targets =
 								selectionPaths.length > 0 ? selectionPaths : [entry.path]
@@ -216,8 +276,12 @@ export const useFileExplorerMenus = ({
 		[
 			beginRenaming,
 			handleDeleteEntries,
+			hasLockedPathConflict,
 			canRenameNoteWithAI,
 			renameNoteWithAI,
+			canMoveNotesWithAI,
+			moveNotesWithAI,
+			entryMap,
 			openImageEdit,
 			workspacePath,
 		],
@@ -228,6 +292,9 @@ export const useFileExplorerMenus = ({
 			const directoryPath = directoryEntry.path
 			const normalizedDirectoryPath = normalizePathSeparators(directoryPath)
 			const isPinned = pinnedDirectories.includes(normalizedDirectoryPath)
+			const targets =
+				selectionPaths.length > 0 ? selectionPaths : [directoryPath]
+			const hasLockedTargets = hasLockedPathConflict(targets)
 
 			// Check if clipboard contains files
 			let clipboardFiles: string[] = []
@@ -371,6 +438,7 @@ export const useFileExplorerMenus = ({
 						await MenuItem.new({
 							id: `rename-directory-${directoryPath}`,
 							text: "Rename",
+							enabled: !hasLockedTargets,
 							action: async () => {
 								beginRenaming(directoryEntry)
 							},
@@ -384,6 +452,7 @@ export const useFileExplorerMenus = ({
 							id: `delete-directory-${directoryPath}`,
 							text: "Delete",
 							accelerator: DELETE_ACCELERATOR,
+							enabled: !hasLockedTargets,
 							action: async () => {
 								const targets =
 									selectionPaths.length > 0 ? selectionPaths : [directoryPath]
@@ -407,6 +476,7 @@ export const useFileExplorerMenus = ({
 			beginNewFolder,
 			createNote,
 			handleDeleteEntries,
+			hasLockedPathConflict,
 			workspacePath,
 			pinnedDirectories,
 			pinDirectory,

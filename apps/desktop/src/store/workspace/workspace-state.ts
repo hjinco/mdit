@@ -20,6 +20,7 @@ export type WorkspaceState = {
 	isMigrationsComplete: boolean
 	pinnedDirectories: string[]
 	lastFsOperationTime: number | null
+	aiLockedEntryPaths: Set<string>
 	selectedEntryPaths: Set<string>
 	selectionAnchorPath: string | null
 	unwatchFn: UnwatchFn | null
@@ -38,6 +39,7 @@ export const buildWorkspaceState = (
 	isMigrationsComplete: false,
 	pinnedDirectories: [],
 	lastFsOperationTime: null,
+	aiLockedEntryPaths: new Set(),
 	selectedEntryPaths: new Set(),
 	selectionAnchorPath: null,
 	unwatchFn: null,

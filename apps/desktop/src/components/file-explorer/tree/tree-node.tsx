@@ -21,8 +21,8 @@ export function TreeNode(props: TreeNodeProps) {
 						onEntryPrimaryAction={props.onEntryPrimaryAction}
 						onEntryContextMenu={props.onEntryContextMenu}
 						selectedEntryPaths={props.selectedEntryPaths}
+						aiLockedEntryPaths={props.aiLockedEntryPaths}
 						renamingEntryPath={props.renamingEntryPath}
-						aiRenamingEntryPaths={props.aiRenamingEntryPaths}
 						onRenameSubmit={props.onRenameSubmit}
 						onRenameCancel={props.onRenameCancel}
 						pendingNewFolderPath={props.pendingNewFolderPath}
