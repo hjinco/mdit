@@ -1,7 +1,8 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
+import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
@@ -19,8 +20,8 @@ export function DirectoryTreeNode({
 	onEntryPrimaryAction,
 	onEntryContextMenu,
 	selectedEntryPaths,
+	aiLockedEntryPaths,
 	renamingEntryPath,
-	aiRenamingEntryPaths,
 	onRenameSubmit,
 	onRenameCancel,
 	pendingNewFolderPath,
@@ -31,8 +32,11 @@ export function DirectoryTreeNode({
 }: DirectoryTreeNodeProps) {
 	const hasChildren = (entry.children?.length ?? 0) > 0
 	const isRenaming = renamingEntryPath === entry.path
-	const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
-	const isBusy = isRenaming || isAiRenaming
+	const isLocked = useMemo(
+		() => hasPathConflictWithLockedPaths([entry.path], aiLockedEntryPaths),
+		[aiLockedEntryPaths, entry.path],
+	)
+	const isBusy = isRenaming || isLocked
 	const isExpanded = expandedDirectories.includes(entry.path)
 	const isSelected = selectedEntryPaths.has(entry.path)
 
@@ -160,7 +164,7 @@ export function DirectoryTreeNode({
 								isSelected,
 								isDragging,
 								isRenaming,
-								isAiRenaming,
+								isLocked,
 								widthClass: "flex-1",
 							}),
 						)}

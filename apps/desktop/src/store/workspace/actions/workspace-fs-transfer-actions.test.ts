@@ -14,6 +14,34 @@ describe("workspace-fs-transfer-actions", () => {
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
 	})
 
+	it("moveEntry blocks moving a locked source path", async () => {
+		const { context, setState, deps } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsTransferActions(context)
+		setState({
+			workspacePath: "/ws",
+			aiLockedEntryPaths: new Set(["/ws/source/a.md"]),
+		})
+
+		const result = await actions.moveEntry("/ws/source/a.md", "/ws/dest")
+
+		expect(result).toBe(false)
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+	})
+
+	it("moveEntry blocks moving a directory that contains a locked descendant", async () => {
+		const { context, setState, deps } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsTransferActions(context)
+		setState({
+			workspacePath: "/ws",
+			aiLockedEntryPaths: new Set(["/ws/source/a.md"]),
+		})
+
+		const result = await actions.moveEntry("/ws/source", "/ws/dest")
+
+		expect(result).toBe(false)
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+	})
+
 	it("copyEntry returns false when fs copy fails", async () => {
 		const { context, setState, deps, getState } =
 			createWorkspaceActionTestContext()
@@ -46,5 +74,57 @@ describe("workspace-fs-transfer-actions", () => {
 		expect(result).toBe(false)
 		expect(getState().entryImported).not.toHaveBeenCalled()
 		errorSpy.mockRestore()
+	})
+
+	it("moveEntry auto-renames when destination file already exists", async () => {
+		const { context, setState, deps, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsTransferActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/source",
+					name: "source",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/source/a.md",
+							name: "a.md",
+							isDirectory: false,
+						},
+					],
+				},
+				{
+					path: "/ws/dest",
+					name: "dest",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+		deps.fileSystemRepository.exists.mockImplementation(
+			async (path: string) => {
+				return path === "/ws/dest/a.md"
+			},
+		)
+		deps.fileSystemRepository.readTextFile.mockResolvedValueOnce("# moved")
+
+		const result = await actions.moveEntry("/ws/source/a.md", "/ws/dest", {
+			onConflict: "auto-rename",
+		})
+
+		expect(result).toBe(true)
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/ws/source/a.md",
+			"/ws/dest/a (1).md",
+		)
+		expect(getState().entryMoved).toHaveBeenCalledWith({
+			sourcePath: "/ws/source/a.md",
+			destinationDirPath: "/ws/dest",
+			newPath: "/ws/dest/a (1).md",
+			isDirectory: false,
+			refreshContent: false,
+		})
 	})
 })

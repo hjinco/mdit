@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { useCallback, useMemo } from "react"
+import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 import type { TreeNodeProps } from "./tree-node.types"
@@ -15,14 +16,17 @@ export function FileTreeNode({
 	onEntryPrimaryAction,
 	onEntryContextMenu,
 	selectedEntryPaths,
+	aiLockedEntryPaths,
 	renamingEntryPath,
-	aiRenamingEntryPaths,
 	onRenameSubmit,
 	onRenameCancel,
 }: TreeNodeProps) {
 	const isRenaming = renamingEntryPath === entry.path
-	const isAiRenaming = aiRenamingEntryPaths.has(entry.path)
-	const isBusy = isRenaming || isAiRenaming
+	const isLocked = useMemo(
+		() => hasPathConflictWithLockedPaths([entry.path], aiLockedEntryPaths),
+		[aiLockedEntryPaths, entry.path],
+	)
+	const isBusy = isRenaming || isLocked
 	const isSelected = selectedEntryPaths.has(entry.path)
 
 	const extension = useMemo(() => {
@@ -121,7 +125,7 @@ export function FileTreeNode({
 						isActive: isActiveNote,
 						isDragging,
 						isRenaming,
-						isAiRenaming,
+						isLocked,
 						widthClass: "w-full",
 					}),
 					showExtension && "pr-1",

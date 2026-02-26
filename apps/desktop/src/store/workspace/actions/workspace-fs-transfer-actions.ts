@@ -1,6 +1,7 @@
 import { basename, dirname, join } from "pathe"
 import {
 	getFileNameFromPath,
+	hasPathConflictWithLockedPaths,
 	isPathEqualOrDescendant,
 } from "@/utils/path-utils"
 import {
@@ -85,10 +86,27 @@ const importTransferredEntry = async (
 export const createWorkspaceFsTransferActions = (
 	ctx: WorkspaceActionContext,
 ): Pick<WorkspaceSlice, "moveEntry" | "copyEntry" | "moveExternalEntry"> => ({
-	moveEntry: async (sourcePath: string, destinationPath: string) => {
-		const { workspacePath } = ctx.get()
+	moveEntry: async (
+		sourcePath: string,
+		destinationPath: string,
+		options?: {
+			onConflict?: "fail" | "auto-rename"
+			allowLockedSourcePath?: boolean
+		},
+	) => {
+		const { workspacePath, aiLockedEntryPaths } = ctx.get()
 
 		if (!workspacePath) throw new Error("Workspace path is not set")
+		const lockPathsToCheck = options?.allowLockedSourcePath
+			? new Set(
+					Array.from(aiLockedEntryPaths).filter(
+						(lockedPath) => lockedPath !== sourcePath,
+					),
+				)
+			: aiLockedEntryPaths
+		if (hasPathConflictWithLockedPaths([sourcePath], lockPathsToCheck)) {
+			return false
+		}
 
 		if (sourcePath === destinationPath) {
 			return false
@@ -119,10 +137,21 @@ export const createWorkspaceFsTransferActions = (
 
 			const isDirectory = entryToMove.isDirectory
 			const entryName = basename(sourcePath)
-			const newPath = join(destinationPath, entryName)
+			const onConflict = options?.onConflict ?? "fail"
+			let newPath = join(destinationPath, entryName)
 
 			if (await ctx.deps.fileSystemRepository.exists(newPath)) {
-				return false
+				if (onConflict === "fail") {
+					return false
+				}
+
+				const generated = await generateUniqueFileName(
+					entryName,
+					destinationPath,
+					ctx.deps.fileSystemRepository.exists,
+					{ pattern: "parentheses" },
+				)
+				newPath = generated.fullPath
 			}
 
 			let markdownRewriteContext: {

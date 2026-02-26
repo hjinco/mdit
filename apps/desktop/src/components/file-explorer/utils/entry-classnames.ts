@@ -5,7 +5,7 @@ type GetEntryButtonClassNameParams = {
 	isActive?: boolean
 	isDragging?: boolean
 	isRenaming?: boolean
-	isAiRenaming?: boolean
+	isLocked?: boolean
 	widthClass?: "flex-1" | "w-full"
 }
 
@@ -14,7 +14,7 @@ export function getEntryButtonClassName({
 	isActive = false,
 	isDragging = false,
 	isRenaming = false,
-	isAiRenaming = false,
+	isLocked = false,
 	widthClass = "w-full",
 }: GetEntryButtonClassNameParams = {}) {
 	return cn(
@@ -26,6 +26,6 @@ export function getEntryButtonClassName({
 				: "hover:bg-background/40 group-hover:bg-background/40",
 		isDragging && "opacity-50 cursor-grabbing",
 		isRenaming && "ring-1 ring-ring/50",
-		isAiRenaming && "animate-pulse",
+		isLocked && "animate-pulse",
 	)
 }

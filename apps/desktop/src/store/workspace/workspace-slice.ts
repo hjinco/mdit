@@ -106,14 +106,29 @@ export type WorkspaceSlice = WorkspaceState & {
 	createAndOpenNote: () => Promise<void>
 	deleteEntries: (paths: string[]) => Promise<void>
 	deleteEntry: (path: string) => Promise<void>
-	renameEntry: (entry: WorkspaceEntry, newName: string) => Promise<string>
-	moveEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
+	renameEntry: (
+		entry: WorkspaceEntry,
+		newName: string,
+		options?: {
+			allowLockedSourcePath?: boolean
+		},
+	) => Promise<string>
+	moveEntry: (
+		sourcePath: string,
+		destinationPath: string,
+		options?: {
+			onConflict?: "fail" | "auto-rename"
+			allowLockedSourcePath?: boolean
+		},
+	) => Promise<boolean>
 	copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
 	moveExternalEntry: (
 		sourcePath: string,
 		destinationPath: string,
 	) => Promise<boolean>
 	updateEntryModifiedDate: (path: string) => Promise<void>
+	lockAiEntries: (paths: string[]) => void
+	unlockAiEntries: (paths: string[]) => void
 	setSelectedEntryPaths: (paths: Set<string>) => void
 	setSelectionAnchorPath: (path: string | null) => void
 	resetSelection: () => void
