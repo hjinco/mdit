@@ -1,7 +1,7 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
-import { useCallback, useRef } from "react"
+import { useCallback } from "react"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
@@ -129,11 +129,9 @@ export function DirectoryTreeNode({
 		onCancel: onNewFolderCancel,
 	})
 
-	const buttonRef = useRef<HTMLButtonElement | null>(null)
 	const handleButtonRef = useCallback(
 		(node: HTMLButtonElement | null) => {
 			draggableRef(node)
-			buttonRef.current = node
 		},
 		[draggableRef],
 	)
