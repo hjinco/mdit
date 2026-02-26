@@ -1,24 +1,27 @@
-export function removePathFromHistory(
-	history: string[],
+type HistoryEntryLike = {
+	path: string
+}
+
+export function removePathFromHistory<T extends HistoryEntryLike>(
+	history: T[],
 	historyIndex: number,
 	pathToRemove: string,
-): { history: string[]; historyIndex: number } {
-	const filteredHistory = history.filter((path) => path !== pathToRemove)
-
-	const removedBeforeIndex = history
+): { history: T[]; historyIndex: number } {
+	const nextHistory = history.filter((entry) => entry.path !== pathToRemove)
+	const removedEntriesBeforeOrAtIndex = history
 		.slice(0, historyIndex + 1)
-		.filter((path) => path === pathToRemove).length
+		.filter((entry) => entry.path === pathToRemove).length
 
-	let nextIndex = historyIndex - removedBeforeIndex
+	let nextHistoryIndex = historyIndex - removedEntriesBeforeOrAtIndex
 
-	if (filteredHistory.length === 0) {
-		nextIndex = -1
-	} else if (nextIndex < 0) {
-		nextIndex = 0
+	if (nextHistory.length === 0) {
+		nextHistoryIndex = -1
+	} else if (nextHistoryIndex < 0) {
+		nextHistoryIndex = 0
 	}
 
 	return {
-		history: filteredHistory,
-		historyIndex: nextIndex,
+		history: nextHistory,
+		historyIndex: nextHistoryIndex,
 	}
 }
