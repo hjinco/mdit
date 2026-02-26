@@ -1,11 +1,5 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- This is a pnpm workspace monorepo. The desktop app lives in `apps/desktop/`.
-- `apps/desktop/src/` contains the React + TypeScript frontend.
-- `apps/desktop/src-tauri/` contains the Rust/Tauri app adapter layer (window lifecycle, plugin wiring, command registration).
-- Rust core logic is split into workspace crates under `crates/`:
-
 ## Build, Test, and Development Commands
 - Run commands from the monorepo root unless noted. Root `desktop:*` scripts delegate to `apps/desktop`.
 - `pnpm desktop:tauri build` (or `pnpm -C apps/desktop tauri build`) builds the full desktop app (frontend + Rust).
@@ -13,10 +7,6 @@
 - `pnpm desktop:test:rust` (or `pnpm -C apps/desktop test:rust`) runs `cargo test --workspace --manifest-path ../../Cargo.toml`.
 - `pnpm desktop:ts:check` (or `pnpm -C apps/desktop ts:check`) runs TypeScript type checks only.
 - `pnpm lint` runs Biome checks; `pnpm lint:fix` auto-fixes.
-
-## Prerequisites & Configuration
-- Requires Node.js (latest LTS), pnpm, and a Rust toolchain for Tauri.
-- Store API keys or local model config outside the repo (env/local settings).
 
 ## LLM Working Principles
 Behavioral guidelines to reduce common LLM coding mistakes. These rules complement the project-specific instructions above.
