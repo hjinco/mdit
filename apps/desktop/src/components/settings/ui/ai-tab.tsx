@@ -155,8 +155,8 @@ export function AITab() {
 									)}
 								</SelectTrigger>
 								<SelectContent align="end">
-									{chatModelSelectOptions.map(({ provider, model, value }) => (
-										<SelectItem key={`${provider}-${model}`} value={value}>
+									{chatModelSelectOptions.map(({ model, value }) => (
+										<SelectItem key={value} value={value}>
 											{model}
 										</SelectItem>
 									))}
