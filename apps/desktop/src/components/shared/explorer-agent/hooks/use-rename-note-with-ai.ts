@@ -62,22 +62,23 @@ function buildAppliedBatchResult({
 	dirPath: string
 	operations: AppliedRenameOperation[]
 }): AppliedRenameBatchResult {
-	let renamedCount = 0
-	let unchangedCount = 0
-	let failedCount = 0
-	for (const operation of operations) {
-		if (operation.status === "renamed") {
-			renamedCount += 1
-			continue
-		}
-		if (operation.status === "unchanged") {
-			unchangedCount += 1
-			continue
-		}
-		if (operation.status === "failed") {
-			failedCount += 1
-		}
-	}
+	const { renamedCount, unchangedCount, failedCount } = operations.reduce(
+		(acc, operation) => {
+			if (operation.status === "renamed") {
+				acc.renamedCount += 1
+			} else if (operation.status === "unchanged") {
+				acc.unchangedCount += 1
+			} else if (operation.status === "failed") {
+				acc.failedCount += 1
+			}
+			return acc
+		},
+		{
+			renamedCount: 0,
+			unchangedCount: 0,
+			failedCount: 0,
+		},
+	)
 
 	return {
 		renamedCount,
