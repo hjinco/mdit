@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useMemo } from "react"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 import type { TreeNodeProps } from "./tree-node.types"
@@ -100,11 +100,9 @@ export function FileTreeNode({
 		onCancel: onRenameCancel,
 	})
 
-	const buttonRef = useRef<HTMLButtonElement | null>(null)
 	const handleButtonRef = useCallback(
 		(node: HTMLButtonElement | null) => {
 			draggableRef(node)
-			buttonRef.current = node
 		},
 		[draggableRef],
 	)
