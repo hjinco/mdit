@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 
 type UseAutoExpandOnHoverOptions = {
 	isOver: boolean
@@ -15,25 +15,17 @@ export function useAutoExpandOnHover({
 	hasChildren,
 	onExpand,
 }: UseAutoExpandOnHoverOptions) {
-	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
 	useEffect(() => {
-		if (isOver && isDirectory && !isExpanded && hasChildren) {
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-			}
-			timeoutRef.current = setTimeout(() => {
-				onExpand()
-			}, 500)
-		} else if (timeoutRef.current) {
-			clearTimeout(timeoutRef.current)
-			timeoutRef.current = null
+		if (!(isOver && isDirectory && !isExpanded && hasChildren)) {
+			return
 		}
 
+		const timeoutId = setTimeout(() => {
+			onExpand()
+		}, 500)
+
 		return () => {
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current)
-			}
+			clearTimeout(timeoutId)
 		}
 	}, [hasChildren, isDirectory, isExpanded, isOver, onExpand])
 }
