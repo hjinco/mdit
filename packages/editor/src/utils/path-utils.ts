@@ -9,4 +9,3 @@ export const normalizePathSeparators = (path: string): string => {
 	}
 	return collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed
 }
-
