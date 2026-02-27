@@ -1,5 +1,9 @@
 export type { LicenseCore } from "./license-core"
 export { createLicenseCore } from "./license-core"
+export {
+	type CreatePolarLicenseApiOptions,
+	createPolarLicenseApi,
+} from "./polar-license-api"
 export type {
 	LicenseApiPort,
 	LicenseRuntimePort,

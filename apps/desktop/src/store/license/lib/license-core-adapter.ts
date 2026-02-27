@@ -1,7 +1,7 @@
 import { deleteAppSecret, getAppSecret, setAppSecret } from "@mdit/credentials"
 import {
 	createLicenseCore,
-	type LicenseApiPort,
+	createPolarLicenseApi,
 	type LicenseCore,
 	type LicenseRuntimePort,
 	type LicenseStoragePort,
@@ -10,15 +10,12 @@ import {
 	deletePassword as deletePasswordFromKeyring,
 	getPassword as getPasswordFromKeyring,
 } from "tauri-plugin-keyring-api"
-import {
-	activateLicenseKey,
-	deactivateLicenseKey,
-	validateLicenseKey,
-} from "./license-api"
 
 const LEGACY_LICENSE_SERVICE = "app.mdit.license.lifetime"
 const LEGACY_LICENSE_USER = "mdit"
 const ACTIVATION_ID_STORAGE_KEY = "license-activation-id"
+const POLAR_API_BASE_URL = import.meta.env.VITE_POLAR_API_BASE_URL
+const ORGANIZATION_ID = import.meta.env.VITE_POLAR_ORGANIZATION_ID
 
 const storagePort: LicenseStoragePort = {
 	getLicenseKey: async () => getAppSecret("license_key"),
@@ -33,18 +30,18 @@ const storagePort: LicenseStoragePort = {
 	deleteActivationId: () => localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY),
 }
 
-const apiPort: LicenseApiPort = {
-	activateLicenseKey,
-	validateLicenseKey,
-	deactivateLicenseKey,
-}
+const apiPort = createPolarLicenseApi({
+	baseUrl: POLAR_API_BASE_URL ?? "",
+	organizationId: ORGANIZATION_ID ?? "",
+	fetch: (input, init) => fetch(input, init),
+	getClientMeta: () => ({
+		platform: globalThis.navigator?.platform ?? null,
+		userAgent: globalThis.navigator?.userAgent ?? null,
+	}),
+})
 
 const runtimePort: LicenseRuntimePort = {
-	isConfigured: () => {
-		const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
-		const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
-		return Boolean(polarApiBaseUrl && organizationId)
-	},
+	isConfigured: () => Boolean(POLAR_API_BASE_URL && ORGANIZATION_ID),
 }
 
 export const createDesktopLicenseCore = (): LicenseCore => {
