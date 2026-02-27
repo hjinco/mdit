@@ -51,7 +51,8 @@ export const createDesktopLinkHost = (
 
 		try {
 			return useStore.getState().getIndexingConfig(workspacePath)
-		} catch {
+		} catch (error) {
+			console.error("Failed to get indexing config from store:", error)
 			return null
 		}
 	}

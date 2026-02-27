@@ -119,6 +119,9 @@ describe("link-toolbar-utils", () => {
 		).toBe(true)
 		expect(isPathInsideWorkspaceRoot("/workspace", "/workspace")).toBe(true)
 		expect(
+			isPathInsideWorkspaceRoot("/workspace/../etc/passwd", "/workspace"),
+		).toBe(false)
+		expect(
 			isPathInsideWorkspaceRoot("/workspace-archive/guide.md", "/workspace"),
 		).toBe(false)
 		expect(

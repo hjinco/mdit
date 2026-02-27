@@ -415,7 +415,7 @@ export function isPathInsideWorkspaceRoot(
 		return false
 	}
 
-	const normalizedAbsolute = normalizePathSeparators(absolutePath)
+	const normalizedAbsolute = normalizePathSeparators(resolve(absolutePath))
 	return (
 		normalizedAbsolute === normalizedWorkspaceRoot ||
 		normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
