@@ -1,4 +1,9 @@
 import {
+	FRONTMATTER_FOCUS_EVENT,
+	type FrontmatterFocusTarget,
+	takePendingFrontmatterFocusTarget,
+} from "@mdit/editor/utils/frontmatter-focus"
+import {
 	convertValueToType,
 	datePattern,
 	formatLocalDate,
@@ -43,8 +48,6 @@ import type {
 	HTMLInputTypeAttribute,
 } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
 import { FrontmatterArray } from "./node-frontmatter-array"
 
 export const KB_NAV_ATTR = "data-kb-nav"
@@ -384,12 +387,6 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 	const keyboardNavFlagRef = useRef(false)
 	const addButtonRef = useRef<HTMLButtonElement | null>(null)
 	const editor = useEditorRef()
-	const { frontmatterFocusTarget, setFrontmatterFocusTarget } = useStore(
-		useShallow((s) => ({
-			frontmatterFocusTarget: s.frontmatterFocusTarget,
-			setFrontmatterFocusTarget: s.setFrontmatterFocusTarget,
-		})),
-	)
 
 	const [tableData, setTableData] = useState(data)
 
@@ -827,41 +824,58 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		updateTableData((items) => [...items, newRow])
 	}
 
-	useEffect(() => {
-		if (frontmatterFocusTarget === "none") return
-
-		const resetTarget = () => setFrontmatterFocusTarget("none")
-
-		if (frontmatterFocusTarget === "addButton") {
-			keyboardNavFlagRef.current = true
-			focusAddButton()
-			requestAnimationFrame(resetTarget)
-			return
-		}
-
-		if (frontmatterFocusTarget === "firstCell") {
-			const firstRowId = rowOrderRef.current[0]
-			if (!firstRowId) {
-				resetTarget()
+	const applyFocusTarget = useCallback(
+		(target: FrontmatterFocusTarget) => {
+			if (target === "addButton") {
+				keyboardNavFlagRef.current = true
+				focusAddButton()
 				return
 			}
+
+			const firstRowId = rowOrderRef.current[0]
+			if (!firstRowId) return
+
 			keyboardNavFlagRef.current = true
 			const preferred: ColumnId[] = ["key", "value", "type", "actions"]
 			for (const col of preferred) {
 				if (cellRefs.current[firstRowId]?.[col]) {
 					focusCell(firstRowId, col)
-					requestAnimationFrame(resetTarget)
 					return
 				}
 			}
-			resetTarget()
+		},
+		[focusAddButton, focusCell],
+	)
+
+	useEffect(() => {
+		const pendingTarget = takePendingFrontmatterFocusTarget(editor.id)
+		if (pendingTarget) {
+			requestAnimationFrame(() => {
+				applyFocusTarget(pendingTarget)
+			})
 		}
-	}, [
-		focusAddButton,
-		focusCell,
-		frontmatterFocusTarget,
-		setFrontmatterFocusTarget,
-	])
+
+		const handleFrontmatterFocus = (event: Event) => {
+			const detail = (
+				event as CustomEvent<{
+					editorId?: string
+					target?: FrontmatterFocusTarget
+				}>
+			).detail
+			if (!detail?.target || detail.editorId !== editor.id) return
+
+			takePendingFrontmatterFocusTarget(editor.id)
+			applyFocusTarget(detail.target)
+		}
+
+		window.addEventListener(FRONTMATTER_FOCUS_EVENT, handleFrontmatterFocus)
+		return () => {
+			window.removeEventListener(
+				FRONTMATTER_FOCUS_EVENT,
+				handleFrontmatterFocus,
+			)
+		}
+	}, [applyFocusTarget, editor.id])
 
 	return (
 		<div

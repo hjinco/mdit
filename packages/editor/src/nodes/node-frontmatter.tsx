@@ -3,6 +3,8 @@ import { PlateElement, useEditorRef } from "platejs/react"
 import { useCallback } from "react"
 import { FrontmatterTable, type KVRow } from "./node-frontmatter-table"
 
+export type FrontmatterRow = KVRow
+
 export type TFrontmatterElement = {
 	type: "frontmatter"
 	data: KVRow[]

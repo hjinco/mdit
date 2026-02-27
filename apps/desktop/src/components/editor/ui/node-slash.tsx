@@ -9,8 +9,11 @@ import {
 	InlineComboboxInput,
 	InlineComboboxItem,
 } from "@mdit/editor/components/inline-combobox"
+import type { FrontmatterRow as KVRow } from "@mdit/editor/nodes/node-frontmatter"
 import { CODE_DRAWING_KEY } from "@mdit/editor/plugins/code-drawing-kit"
+import { FRONTMATTER_KEY } from "@mdit/editor/plugins/frontmatter-kit"
 import { applyPreviousCodeBlockLanguage } from "@mdit/editor/utils/code-block-language"
+import { requestFrontmatterFocus } from "@mdit/editor/utils/frontmatter-focus"
 import {
 	datePattern,
 	type ValueType,
@@ -48,9 +51,7 @@ import type { PlateEditor, PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
 import YAML from "yaml"
 import { useStore } from "@/store"
-import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 import { buildImageLinkData } from "../utils/image-link"
-import type { KVRow } from "./node-frontmatter-table"
 
 const MAX_REFERENCED_NOTES = 5
 
@@ -247,7 +248,6 @@ const groups: Group[] = [
 					if (editor.api.some({ match: { type: FRONTMATTER_KEY } })) return
 
 					const defaults = await collectFrontmatterDefaults()
-					useStore.getState().setFrontmatterFocusTarget("firstCell")
 					editor.tf.replaceNodes(
 						{
 							type: FRONTMATTER_KEY,
@@ -256,6 +256,7 @@ const groups: Group[] = [
 						},
 						{ at: [0] },
 					)
+					requestFrontmatterFocus(editor.id, "firstCell")
 				},
 			},
 		],

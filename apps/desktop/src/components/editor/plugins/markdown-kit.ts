@@ -1,5 +1,7 @@
 import remarkWikiLink from "@flowershow/remark-wiki-link"
+import type { FrontmatterRow as KVRow } from "@mdit/editor/nodes/node-frontmatter"
 import { DATABASE_KEY } from "@mdit/editor/plugins/database-kit"
+import { FRONTMATTER_KEY } from "@mdit/editor/plugins/frontmatter-kit"
 import {
 	convertValueToType,
 	datePattern,
@@ -25,8 +27,6 @@ import {
 	hasParentTraversal,
 	WINDOWS_ABSOLUTE_REGEX,
 } from "@/components/editor/utils/link-utils"
-import type { KVRow } from "../ui/node-frontmatter-table"
-import { FRONTMATTER_KEY } from "./frontmatter-kit"
 
 const EQUATION_ENVIRONMENT_REGEX =
 	/^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
