@@ -23,10 +23,7 @@ import remarkFrontmatter from "remark-frontmatter"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import YAML from "yaml"
-import {
-	hasParentTraversal,
-	WINDOWS_ABSOLUTE_REGEX,
-} from "@/components/editor/utils/link-utils"
+import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../utils/link-utils"
 
 const EQUATION_ENVIRONMENT_REGEX =
 	/^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/

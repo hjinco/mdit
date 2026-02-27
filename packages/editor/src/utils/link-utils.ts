@@ -1,5 +1,6 @@
 import { isAbsolute } from "pathe"
-import { normalizePathSeparators } from "@/utils/path-utils"
+
+import { normalizePathSeparators } from "./path-utils"
 
 export const WINDOWS_ABSOLUTE_REGEX = /^[A-Za-z]:[\\/]/
 
