@@ -7,10 +7,6 @@ export type EditorSlice = {
 	typingBurstCount: number
 	handleTypingProgress: () => void
 	resetFocusMode: () => void
-	frontmatterFocusTarget: "none" | "firstCell" | "addButton"
-	setFrontmatterFocusTarget: (
-		frontmatterFocusTarget: EditorSlice["frontmatterFocusTarget"],
-	) => void
 }
 
 export const prepareEditorSlice =
@@ -37,12 +33,6 @@ export const prepareEditorSlice =
 			set({
 				typingBurstCount: 0,
 				isFocusMode: false,
-			})
-		},
-		frontmatterFocusTarget: "none",
-		setFrontmatterFocusTarget: (frontmatterFocusTarget) => {
-			set({
-				frontmatterFocusTarget,
 			})
 		},
 	})
