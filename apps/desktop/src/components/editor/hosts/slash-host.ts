@@ -1,6 +1,10 @@
 import type { FrontmatterRow as KVRow } from "@mdit/editor/nodes/node-frontmatter"
 import type { SlashHostDeps } from "@mdit/editor/plugins/slash-kit"
 import {
+	createDefaultFrontmatterRows,
+	createRowId,
+} from "@mdit/editor/utils/frontmatter-utils"
+import {
 	datePattern,
 	type ValueType,
 } from "@mdit/editor/utils/frontmatter-value-utils"
@@ -13,10 +17,6 @@ import { buildImageLinkData } from "../utils/image-link"
 
 const MAX_REFERENCED_NOTES = 5
 
-function createRowId() {
-	return Math.random().toString(36).slice(2, 9)
-}
-
 function detectValueType(value: unknown): ValueType | null {
 	if (value instanceof Date) return "date"
 	if (typeof value === "string" && datePattern.test(value)) return "date"
@@ -24,7 +24,7 @@ function detectValueType(value: unknown): ValueType | null {
 	if (typeof value === "boolean") return "boolean"
 	if (typeof value === "number" && Number.isFinite(value)) return "number"
 	if (Array.isArray(value)) return "array"
-	if (value === null || value === undefined) return "string"
+	if (value === null || value === undefined) return null
 	if (typeof value === "string") return "string"
 
 	return null
@@ -56,17 +56,6 @@ function defaultValueForType(type: ValueType): unknown {
 	}
 }
 
-function createDefaultFrontmatterRows(): KVRow[] {
-	return [
-		{
-			id: createRowId(),
-			key: "title",
-			type: "string",
-			value: "",
-		},
-	]
-}
-
 type DesktopSlashHostRuntimeDeps = {
 	openDialog: typeof open
 	readDirectory: typeof readDir
@@ -89,7 +78,7 @@ export const createDesktopSlashHost = (
 	const getFrontmatterDefaults = async (): Promise<KVRow[]> => {
 		const tabPath = runtimeDeps.getTabPath()
 		if (!tabPath) {
-			return []
+			return createDefaultFrontmatterRows()
 		}
 
 		try {

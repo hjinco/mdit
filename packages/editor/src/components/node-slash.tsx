@@ -24,12 +24,12 @@ import type { NodeComponent } from "platejs"
 import { KEYS, PointApi, type TComboboxInputElement } from "platejs"
 import type { PlateEditor, PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
-import type { FrontmatterRow as KVRow } from "../nodes/node-frontmatter"
 import { CODE_DRAWING_KEY } from "../plugins/code-drawing-kit"
 import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 import type { SlashHostDeps } from "../plugins/slash-kit-types"
 import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
 import { requestFrontmatterFocus } from "../utils/frontmatter-focus"
+import { createDefaultFrontmatterRows } from "../utils/frontmatter-utils"
 import { insertBlock, insertInlineElement } from "../utils/transforms"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "../utils/wiki-link-constants"
 import {
@@ -41,21 +41,6 @@ import {
 	InlineComboboxInput,
 	InlineComboboxItem,
 } from "./inline-combobox"
-
-function createRowId() {
-	return Math.random().toString(36).slice(2, 9)
-}
-
-function createDefaultFrontmatterRows(): KVRow[] {
-	return [
-		{
-			id: createRowId(),
-			key: "title",
-			type: "string",
-			value: "",
-		},
-	]
-}
 
 function insertImageNode(
 	editor: PlateEditor,
