@@ -271,7 +271,7 @@ export function ScreenCaptureProvider({
 			{isCapturing && (
 				<>
 					<div
-						className="fixed inset-0 z-[9999] cursor-crosshair"
+						className="fixed inset-0 z-9999 cursor-crosshair"
 						style={{
 							borderWidth:
 								typeof borderWidth === "string"
@@ -284,7 +284,7 @@ export function ScreenCaptureProvider({
 					/>
 					{isMouseDown && (
 						<div
-							className="fixed z-[10000] pointer-events-none"
+							className="fixed z-10000 pointer-events-none"
 							style={{
 								left: `${crossHairsLeft}px`,
 								top: `${crossHairsTop}px`,
