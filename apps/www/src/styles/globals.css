@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@mdit/ui/styles/theme.css";
+
+@source "../**/*.{astro,html,js,jsx,ts,tsx,md,mdx}";
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../packages/editor/src/**/*.{ts,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	html {
+		scroll-behavior: smooth;
+	}
+
+	body {
+		@apply bg-background text-foreground antialiased;
+	}
+
+	img {
+		@apply select-none;
+	}
+}
+
+@keyframes pulse-subtle {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.95;
+		transform: scale(1.02);
+	}
+}
+
+.animate-pulse-subtle {
+	animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.content-body {
+	line-height: 1.7;
+	color: var(--foreground);
+}
+
+.content-body h2,
+.content-body h3,
+.content-body h4 {
+	margin-top: 1.75rem;
+	margin-bottom: 0.75rem;
+	font-weight: 600;
+	color: color-mix(in oklab, var(--foreground) 90%, transparent);
+}
+
+.content-body p,
+.content-body ul,
+.content-body ol {
+	margin-bottom: 1rem;
+}
+
+.content-body ul,
+.content-body ol {
+	padding-left: 1.25rem;
+}

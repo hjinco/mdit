@@ -1,0 +1,38 @@
+{
+	"name": "www",
+	"type": "module",
+	"version": "0.0.1",
+	"scripts": {
+		"dev": "astro dev",
+		"build": "astro build",
+		"ts:check": "astro check",
+		"preview": "astro build && wrangler dev",
+		"astro": "astro",
+		"deploy": "astro build && wrangler deploy",
+		"cf-typegen": "wrangler types"
+	},
+	"dependencies": {
+		"@base-ui/react": "^1.2.0",
+		"@astrojs/cloudflare": "^12.6.12",
+		"@astrojs/react": "^4.4.1",
+		"@mdit/editor": "workspace:*",
+		"@mdit/ui": "workspace:*",
+		"astro": "^5.17.1",
+		"lucide-react": "^0.546.0",
+		"motion": "^12.34.2",
+		"platejs": "^52.0.17",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4"
+	},
+	"devDependencies": {
+		"@astrojs/check": "^0.9.4",
+		"@tailwindcss/vite": "^4.1.12",
+		"@types/node": "^24.10.13",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"tailwindcss": "^4.1.12",
+		"typescript": "^5.9.3",
+		"tw-animate-css": "^1.3.7",
+		"wrangler": "^4.69.0"
+	}
+}

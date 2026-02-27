@@ -1,0 +1,32 @@
+---
+import { toLocalePath } from "../../i18n/paths"
+import type { ChangelogEntry } from "../../lib/content/mappers"
+import { formatDate } from "../../lib/date/format"
+
+interface Props {
+	entry: ChangelogEntry
+}
+
+const { entry } = Astro.props
+const href = toLocalePath(entry.locale, `/changelog/${entry.slug}`)
+
+const typeLabel = {
+	feature: "Feature",
+	improvement: "Improvement",
+	fix: "Fix",
+}[entry.type]
+---
+
+<article class="border border-border rounded-xl p-5 bg-background hover:shadow-md transition-shadow">
+	<div class="flex items-center justify-between gap-3 mb-3">
+		<p class="text-sm text-muted-foreground">{formatDate(entry.date)}</p>
+		<span class="text-xs rounded-md bg-muted px-2 py-1 text-muted-foreground">
+			{typeLabel}
+		</span>
+	</div>
+	<h2 class="text-xl font-semibold text-foreground/90 mb-2">
+		<a href={href} class="hover:underline">{entry.title}</a>
+	</h2>
+	<p class="text-muted-foreground mb-2">{entry.summary}</p>
+	{entry.version && <p class="text-sm text-muted-foreground">Version: {entry.version}</p>}
+</article>

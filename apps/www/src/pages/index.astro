@@ -1,0 +1,22 @@
+---
+import CTA from "../components/marketing/cta.astro"
+import HomeContent from "../components/marketing/home-content.astro"
+import PricingBottomSection from "../components/marketing/pricing-bottom-section.astro"
+import { DEFAULT_LOCALE } from "../i18n/locales"
+import { toLocalePath } from "../i18n/paths"
+import MarketingLayout from "../layouts/MarketingLayout.astro"
+import { SITE_DESCRIPTION, SITE_TITLE } from "../lib/site/consts"
+
+const locale = DEFAULT_LOCALE
+---
+
+<MarketingLayout
+	title={SITE_TITLE}
+	description={SITE_DESCRIPTION}
+	canonicalPath={toLocalePath(locale, "/")}
+	locale={locale}
+>
+	<HomeContent />
+	<PricingBottomSection />
+	<CTA />
+</MarketingLayout>

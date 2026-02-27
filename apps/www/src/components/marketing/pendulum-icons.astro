@@ -1,0 +1,166 @@
+---
+import gitIcon from "../../assets/git-icon.svg"
+import googleDriveIcon from "../../assets/google-drive-icon.webp"
+import icloudIcon from "../../assets/icloud-icon.svg"
+---
+
+<div class="absolute top-16 md:top-20 left-0 w-full h-full">
+  {/* Left String & Icon (iCloud) */}
+  <div
+    id="pendulum-left"
+    class="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center origin-top z-50"
+  >
+    <div class="w-px h-12 md:h-16 bg-border origin-top"></div>
+    <div
+      class="w-12 h-12 md:w-14 md:h-14 bg-background rounded-lg shadow-md border flex items-center justify-center -mt-1 cursor-grab active:cursor-grabbing"
+    >
+      <img
+        src={icloudIcon.src}
+        alt="iCloud"
+        class="w-8 h-8"
+        draggable="false"
+      />
+    </div>
+  </div>
+
+  {/* Center String & Icon (Google Drive) */}
+  <div
+    id="pendulum-center"
+    class="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center origin-top z-40"
+  >
+    <div class="w-px h-24 md:h-32 bg-border origin-top"></div>
+    <div
+      class="w-12 h-12 md:w-14 md:h-14 bg-background rounded-lg shadow-md border flex items-center justify-center -mt-1 cursor-grab active:cursor-grabbing"
+    >
+      <img
+        src={googleDriveIcon.src}
+        alt="Google Drive"
+        class="w-8 h-8"
+        draggable="false"
+      />
+    </div>
+  </div>
+
+  {/* Right String & Icon (Git) */}
+  <div
+    id="pendulum-right"
+    class="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center origin-top z-30"
+  >
+    <div class="w-px h-36 md:h-48 bg-border origin-top"></div>
+    <div
+      class="w-12 h-12 md:w-14 md:h-14 bg-background rounded-lg shadow-md border flex items-center justify-center -mt-1 cursor-grab active:cursor-grabbing"
+    >
+      <img src={gitIcon.src} alt="Git" class="w-8 h-8" draggable="false" />
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pendulum Physics Simulation
+  class Pendulum {
+    element: HTMLElement;
+    angle: number;
+    velocity: number;
+    acceleration: number;
+    originX: number;
+    originY: number;
+    length: number;
+    damping: number;
+    gravity: number;
+    dragging: boolean;
+
+    constructor(element: HTMLElement, initialAngle: number, length: number) {
+      this.element = element;
+      this.angle = initialAngle * (Math.PI / 180); // Convert to radians
+      this.velocity = 0;
+      this.acceleration = 0;
+      this.length = length;
+      this.damping = 0.98; // Air resistance
+      this.gravity = 0.4;
+      this.dragging = false;
+      this.originX = 0;
+      this.originY = 0;
+
+      this.updateOrigin();
+      window.addEventListener("resize", () => this.updateOrigin());
+    }
+
+    updateOrigin() {
+      const rect = this.element.getBoundingClientRect();
+      // Origin is top center of the element
+      this.originX = rect.left + rect.width / 2;
+      this.originY = rect.top;
+    }
+
+    applyForce(force: number) {
+      this.velocity += force;
+    }
+
+    update() {
+      if (!this.dragging) {
+        // Simple pendulum physics
+        // Acceleration = -gravity * sin(angle)
+        this.acceleration =
+          (-this.gravity / this.length) * Math.sin(this.angle);
+
+        // Add some random subtle movement to make it feel alive
+        if (Math.abs(this.velocity) < 0.001 && Math.abs(this.angle) < 0.01) {
+          this.velocity += (Math.random() - 0.5) * 0.002;
+        }
+
+        this.velocity += this.acceleration;
+        this.velocity *= this.damping;
+        this.angle += this.velocity;
+      }
+
+      // Apply rotation
+      const degrees = this.angle * (180 / Math.PI);
+      this.element.style.transform = `rotate(${degrees}deg)`;
+    }
+  }
+
+  // Initialize pendulums
+  const pendulums: Pendulum[] = [];
+  const leftEl = document.getElementById("pendulum-left");
+  const centerEl = document.getElementById("pendulum-center");
+  const rightEl = document.getElementById("pendulum-right");
+
+  if (leftEl) pendulums.push(new Pendulum(leftEl, -40, 70));
+  if (centerEl) pendulums.push(new Pendulum(centerEl, 0, 120));
+  if (rightEl) pendulums.push(new Pendulum(rightEl, 40, 170));
+
+  // Mouse interaction
+  let lastMouseX = 0;
+  let mouseVelocityX = 0;
+
+  document.addEventListener("mousemove", (e) => {
+    mouseVelocityX = e.clientX - lastMouseX;
+    lastMouseX = e.clientX;
+
+    pendulums.forEach((p) => {
+      const rect = p.element.lastElementChild?.getBoundingClientRect(); // Get icon rect
+      if (rect) {
+        // Check if mouse is inside the icon
+        if (
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom
+        ) {
+          // Apply force based on mouse velocity
+          // Limit the force to avoid crazy spinning
+          const force = Math.max(Math.min(mouseVelocityX * 0.005, 0.1), -0.1);
+          p.applyForce(force);
+        }
+      }
+    });
+  });
+
+  // Animation loop
+  function animate() {
+    pendulums.forEach((p) => p.update());
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>

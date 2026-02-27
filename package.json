@@ -8,6 +8,7 @@
 		"desktop:test": "pnpm -C apps/desktop test",
 		"desktop:test:rust": "pnpm -C apps/desktop test:rust",
 		"desktop:ts:check": "pnpm -C apps/desktop ts:check",
+		"www:ts:check": "pnpm -C apps/www ts:check",
 		"desktop:ci": "pnpm -C apps/desktop run ci",
 		"lint": "biome check .",
 		"lint:fix": "biome check . --write",

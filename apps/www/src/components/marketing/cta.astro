@@ -1,0 +1,28 @@
+---
+import { Animated } from "./animated"
+import { DownloadButton } from "./download-button"
+---
+
+<div class="my-8 max-w-2xl mx-auto text-center">
+  <div class="p-12">
+    <Animated
+      client:load
+      as="h3"
+      className="text-2xl sm:text-3xl font-medium text-foreground/80 mb-6 flex flex-col gap-2"
+    >
+      <span>Start a better note-taking</span>
+      <span>experience today</span>
+    </Animated>
+    <Animated
+      client:load
+      as="p"
+      delay={0.1}
+      className="text-muted-foreground mb-8"
+    >
+      No login, no credit card required. Only 15MB download size
+    </Animated>
+    <DownloadButton variant="default" size="lg">
+      Download & Try Now
+    </DownloadButton>
+  </div>
+</div>

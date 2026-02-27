@@ -1,0 +1,43 @@
+---
+import { render } from "astro:content"
+import ContentToc from "../../components/content/content-toc.astro"
+import { DEFAULT_LOCALE } from "../../i18n/locales"
+import { toLocalePath } from "../../i18n/paths"
+import ContentLayout from "../../layouts/ContentLayout.astro"
+import type { BlogPost } from "../../lib/content/mappers"
+import { getBlogPosts } from "../../lib/content/queries"
+import { formatDate } from "../../lib/date/format"
+
+export async function getStaticPaths() {
+	const posts = await getBlogPosts({ locale: DEFAULT_LOCALE })
+
+	return posts.map((post) => ({
+		params: { slug: post.slug },
+		props: { post },
+	}))
+}
+
+const { post } = Astro.props as { post: BlogPost }
+const { Content, headings } = await render(post.entry)
+---
+
+<ContentLayout
+	title={`${post.title} | Mdit Blog`}
+	description={post.description}
+	canonicalPath={toLocalePath(post.locale, `/blog/${post.slug}`)}
+	locale={post.locale}
+>
+	<article class="mb-10">
+		<header class="mb-8 border-b border-border pb-6">
+			<p class="text-sm text-muted-foreground mb-3">{formatDate(post.publishedAt)}</p>
+			<h1 class="text-4xl font-semibold text-foreground/90 mb-3">{post.title}</h1>
+			<p class="text-muted-foreground text-lg">{post.description}</p>
+		</header>
+
+		<div class="content-body">
+			<Content />
+		</div>
+	</article>
+
+	<ContentToc headings={headings} />
+</ContentLayout>

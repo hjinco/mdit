@@ -1,0 +1,55 @@
+---
+import { render } from "astro:content"
+import ContentToc from "../../components/content/content-toc.astro"
+import { DEFAULT_LOCALE } from "../../i18n/locales"
+import { toLocalePath } from "../../i18n/paths"
+import ContentLayout from "../../layouts/ContentLayout.astro"
+import type { ChangelogEntry } from "../../lib/content/mappers"
+import { getChangelogEntries } from "../../lib/content/queries"
+import { formatDate } from "../../lib/date/format"
+
+export async function getStaticPaths() {
+	const entries = await getChangelogEntries({ locale: DEFAULT_LOCALE })
+
+	return entries.map((entry) => ({
+		params: { slug: entry.slug },
+		props: { entry },
+	}))
+}
+
+const { entry } = Astro.props as { entry: ChangelogEntry }
+const { Content, headings } = await render(entry.entry)
+
+const typeLabel = {
+	feature: "Feature",
+	improvement: "Improvement",
+	fix: "Fix",
+}[entry.type]
+---
+
+<ContentLayout
+	title={`${entry.title} | Mdit Changelog`}
+	description={entry.summary}
+	canonicalPath={toLocalePath(entry.locale, `/changelog/${entry.slug}`)}
+	locale={entry.locale}
+>
+	<article class="mb-10">
+		<header class="mb-8 border-b border-border pb-6">
+			<div class="flex items-center gap-3 mb-3">
+				<p class="text-sm text-muted-foreground">{formatDate(entry.date)}</p>
+				<span class="text-xs rounded-md bg-muted px-2 py-1 text-muted-foreground">
+					{typeLabel}
+				</span>
+			</div>
+			<h1 class="text-4xl font-semibold text-foreground/90 mb-3">{entry.title}</h1>
+			<p class="text-muted-foreground text-lg">{entry.summary}</p>
+			{entry.version && <p class="text-sm text-muted-foreground mt-2">Version: {entry.version}</p>}
+		</header>
+
+		<div class="content-body">
+			<Content />
+		</div>
+	</article>
+
+	<ContentToc headings={headings} />
+</ContentLayout>

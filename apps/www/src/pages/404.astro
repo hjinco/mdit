@@ -1,0 +1,29 @@
+---
+import { DEFAULT_LOCALE } from "../i18n/locales"
+import { toLocalePath } from "../i18n/paths"
+import ContentLayout from "../layouts/ContentLayout.astro"
+
+const locale = DEFAULT_LOCALE
+---
+
+<ContentLayout
+	title="Page Not Found | Mdit"
+	description="The page you requested does not exist."
+	canonicalPath={toLocalePath(locale, "/404")}
+	locale={locale}
+	noindex
+>
+	<section class="text-center py-24">
+		<p class="text-sm text-muted-foreground mb-3">404</p>
+		<h1 class="text-4xl font-semibold text-foreground/90 mb-4">Page not found</h1>
+		<p class="text-muted-foreground mb-8">The page you requested does not exist.</p>
+		<div class="flex items-center justify-center gap-4">
+			<a href={toLocalePath(locale, "/")} class="text-sm font-medium text-foreground hover:underline">
+				Go home
+			</a>
+			<a href={toLocalePath(locale, "/blog")} class="text-sm font-medium text-foreground hover:underline">
+				Read blog
+			</a>
+		</div>
+	</section>
+</ContentLayout>

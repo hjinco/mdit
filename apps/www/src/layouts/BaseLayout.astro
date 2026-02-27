@@ -1,0 +1,33 @@
+---
+import SEO from "../components/common/seo.astro"
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales"
+import { type PageMetaInput, resolvePageMeta } from "../lib/seo/meta"
+import "../styles/globals.css"
+
+interface Props extends PageMetaInput {
+	lang?: Locale
+	bodyClass?: string
+}
+
+const {
+	lang = DEFAULT_LOCALE,
+	bodyClass = "m-0 w-full h-full font-sans bg-white text-neutral-800 antialiased",
+	...metaInput
+} = Astro.props
+
+const meta = resolvePageMeta(metaInput)
+---
+
+<html lang={lang}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<SEO {...meta} />
+		<slot name="head" />
+	</head>
+	<body class={bodyClass}>
+		<slot />
+	</body>
+</html>

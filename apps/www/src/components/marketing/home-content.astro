@@ -1,0 +1,559 @@
+---
+import aiWritingImage from "../../assets/ai-writing.png"
+import codeblockImage from "../../assets/codeblock.png"
+import fileSystem from "../../assets/file-system.png"
+import gitIcon from "../../assets/git-icon.svg"
+import googleDriveIcon from "../../assets/google-drive-icon.webp"
+import icloudIcon from "../../assets/icloud-icon.svg"
+import mditIcon from "../../assets/mdit-icon.svg"
+import slashImage from "../../assets/slash.png"
+import smartSearchImage from "../../assets/smart-search.png"
+import tableImage from "../../assets/table.png"
+import { Animated } from "./animated"
+import { DownloadButton } from "./download-button"
+import { EditorPlayground } from "./editor-playground"
+import PrivacySection from "./privacy-section.astro"
+
+const content = {
+	title: "Markdown Notes, light and easy",
+	subtitleLine1: "A pretty, minimal editor.",
+	subtitleLine2: "Write with a clean, simple feel.",
+	downloadButtonText: "Download",
+	onlyDesktopText: "Available on Mac, Windows, and Linux",
+	features: [
+		{
+			title: "Beautifully Simple Note-taking",
+			description:
+				"Focus on your ideas, not the formatting. Type naturally and see your notes come to life with a clean, intuitive design.",
+		},
+		{
+			title: "100% Data Independence",
+			description:
+				"Your notes are yours. They live on your computer as standard files, giving you full control without monthly subscriptions or lock-in to proprietary formats.",
+		},
+	],
+	slashTitle: "Write at the Speed of Thought",
+	slashDescription:
+		"Just type '/' to add headers, lists, and more without taking your hands off the keyboard.",
+	fileSystemTitle: "Future-Proof Your Ideas",
+	fileSystemDescription:
+		"No proprietary formats. Just plain text files that will outlive any app.",
+	syncTitle: "Sync Your Way",
+	syncDescription:
+		"Use iCloud, Google Drive, or whatever you prefer. Your data stays in your control.",
+	tableTitle: "Tables Made Effortless",
+	tableDescription:
+		"Create and edit tables visually without wrestling with syntax.",
+	codeblockTitle: "Developer-Friendly",
+	codeblockDescription:
+		"Beautiful syntax highlighting for your code snippets when you need it.",
+	aiTitle: "Private AI Assistant",
+	aiDescription:
+		"Get AI help without compromising privacy. Connect your own API key to ensure zero data leakage to third-party app servers.",
+	aiWritingTitle: "Overcome Writer's Block",
+	aiWritingDescription:
+		"Draft, refine, and polish your thoughts with on-demand AI assistance.",
+	smartSearchTitle: "Find Anything Instantly",
+	smartSearchDescription:
+		"Search by keyword or meaning. Never lose a thought again.",
+}
+---
+
+<main class="pt-32 pb-0 md:pb-12">
+  <div class="max-w-5xl mx-auto w-full text-left py-16 md:py-40 px-4">
+    <Animated
+      client:load
+      as="h1"
+      className="text-3xl sm:text-4xl md:text-6xl font-medium leading-tight mb-4 tracking-tight text-foreground/80"
+    >
+      {content.title}
+    </Animated>
+
+    <Animated
+      client:load
+      as="p"
+      delay={0.1}
+      className="text-lg text-muted-foreground mb-8"
+    >
+      <span>{content.subtitleLine1}</span>
+      <br />
+      <span>{content.subtitleLine2}</span>
+    </Animated>
+
+    <div
+      class="flex flex-col gap-8 justify-center items-center mb-24 max-w-[1000px] mx-auto"
+    >
+      <div
+        class="flex flex-col sm:flex-row gap-3 justify-center items-center my-4 mr-auto w-full"
+      >
+        <div
+          class="flex gap-3 justify-center items-center my-4 mr-auto w-full max-w-2xl"
+        >
+          <DownloadButton size="lg">{content.downloadButtonText}</DownloadButton
+          >
+          <span class="text-sm text-muted-foreground/80">
+            {content.onlyDesktopText}
+          </span>
+        </div>
+      </div>
+
+      <div
+        class="w-full mt-4 md:mt-8 h-[500px] md:h-[600px] border border-border/50 bg-background rounded-2xl shadow-xl overflow-hidden relative"
+      >
+        <EditorPlayground client:only="react">
+          <div
+            slot="fallback"
+            class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-linear-to-b from-muted/30 to-background px-6 text-center"
+          >
+            <div class="text-sm font-medium text-foreground/70">
+              Loading editor playground...
+            </div>
+            <p class="max-w-sm text-sm text-foreground/55 leading-relaxed">
+              This demo runs in your browser and supports core editing features.
+            </p>
+          </div>
+        </EditorPlayground>
+      </div>
+    </div>
+  </div>
+
+  <section
+    class="w-full py-12 md:py-24 mt-8 md:mt-32 bg-linear-to-b from-muted/70 via-background to-background"
+  >
+    <div class="max-w-5xl mx-auto flex flex-col px-4">
+      <div class="overflow-hidden">
+        <div class="text-start leading-tight">
+          <Animated client:load as="div" className="mb-2">
+            <span class="inline text-blue-400 text-sm font-semibold">UX</span>
+          </Animated>
+          <Animated
+            client:load
+            as="h3"
+            delay={0.1}
+            className="text-2xl md:text-4xl font-semibold text-foreground/90 mb-2 md:mb-4"
+          >
+            {content.features[0].title}
+          </Animated>
+          <Animated
+            client:load
+            as="p"
+            delay={0.2}
+            className="max-w-lg text-lg text-muted-foreground mb-12"
+          >
+            {content.features[0].description}
+          </Animated>
+        </div>
+
+        <div
+          class="flex flex-col md:flex-row mt-12 justify-center items-center"
+        >
+          <div class="flex-1 py-4 pr-4 md:py-12 md:pr-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.slashTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground mb-6"
+            >
+              {content.slashDescription}
+            </Animated>
+          </div>
+          <div class="flex-1 md:p-12">
+            <div class="group relative inline-block md:m-6">
+              <img
+                src={slashImage.src}
+                alt="Slash Command"
+                class="hover:-translate-y-2 transition-transform duration-300"
+                draggable="false"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top, white 0%, white 10%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row border-t md:mt-8">
+          <div
+            class="flex-1 border-b md:border-b-0 md:border-r pr-4 py-8 md:py-12 md:pr-12"
+          >
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.tableTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground mb-8"
+            >
+              {content.tableDescription}
+            </Animated>
+            <div class="group relative inline-block p-4">
+              <img
+                src={tableImage.src}
+                alt="Table Editing"
+                class="rotate-x-12 -rotate-y-20 hover:rotate-x-0 hover:rotate-y-0 transition-transform duration-300"
+                draggable="false"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top left, white 0%, white 5%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 px-4 py-8 md:p-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.codeblockTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground mb-8"
+            >
+              {content.codeblockDescription}
+            </Animated>
+            <div class="group relative inline-block p-4">
+              <img
+                src={codeblockImage.src}
+                alt="Codeblock Editing"
+                class="rotate-x-12 -rotate-y-20 hover:rotate-x-0 hover:rotate-y-0 transition-transform duration-300"
+                draggable="false"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top left, white 0%, white 5%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section
+    class="w-full py-12 md:py-24 bg-linear-to-b from-muted/70 via-background to-background"
+  >
+    <div class="max-w-5xl mx-auto flex flex-col px-4">
+      <div class="overflow-hidden">
+        <div class="text-start leading-tight">
+          <div class="mb-4">
+            <span class="inline text-lime-500 text-sm font-semibold"
+              >Data Ownership</span
+            >
+          </div>
+          <h3
+            class="text-2xl md:text-4xl font-semibold text-foreground/90 mb-2 md:mb-4"
+          >
+            {content.features[1].title}
+          </h3>
+          <p class="max-w-lg text-lg text-muted-foreground mb-12">
+            {content.features[1].description}
+          </p>
+        </div>
+
+        <div
+          class="flex flex-col md:flex-row mt-12 justify-center items-center"
+        >
+          <div class="flex-1 py-4 pr-4 md:py-12 md:pr-12 md:-translate-y-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.fileSystemTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground md:mb-2"
+            >
+              {content.fileSystemDescription}
+            </Animated>
+          </div>
+          <div class="flex-1 md:p-8">
+            <div class="group relative inline-block md:m-6">
+              <img
+                src={fileSystem.src}
+                alt="Local File System Storage"
+                class="hover:-translate-y-2 transition-transform duration-300"
+                draggable="false"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top, white 0%, white 15%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="flex flex-col md:flex-row-reverse mt-12 md:mt-24 justify-center items-center"
+        >
+          <div class="flex-1 py-4 pl-4 md:py-12 md:pl-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.syncTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground md:mb-2"
+            >
+              {content.syncDescription}
+            </Animated>
+          </div>
+          <div class="flex-1 md:p-8 w-full">
+            <div
+              class="relative flex items-center justify-center p-8 bg-muted/30 border border-border/50 rounded-2xl w-full hover:bg-muted/50 transition-colors group overflow-hidden"
+            >
+              <div
+                class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,var(--background)_100%)] opacity-50 rounded-2xl pointer-events-none"
+              >
+              </div>
+
+              <div
+                class="relative flex items-center justify-center gap-4 md:gap-8 z-10 w-full py-2 md:py-8"
+              >
+                <div class="flex flex-col gap-4">
+                  <div
+                    class="w-14 h-14 md:w-16 md:h-16 bg-background rounded-2xl shadow-sm border flex items-center justify-center group-hover:-translate-y-1 transition-transform duration-300"
+                  >
+                    <img
+                      src={icloudIcon.src}
+                      alt="iCloud"
+                      class="w-8 h-8 md:w-9 md:h-9"
+                      draggable="false"
+                    />
+                  </div>
+                  <div
+                    class="w-14 h-14 md:w-16 md:h-16 bg-background rounded-2xl shadow-sm border flex items-center justify-center group-hover:-translate-y-1 transition-transform duration-300 delay-75"
+                  >
+                    <img
+                      src={googleDriveIcon.src}
+                      alt="Google Drive"
+                      class="w-8 h-8 md:w-9 md:h-9"
+                      draggable="false"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  class="flex flex-col items-center justify-center gap-2 px-1 md:px-2"
+                >
+                  <svg
+                    class="w-6 h-6 md:w-8 md:h-8 text-border animate-pulse"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                    ></path>
+                  </svg>
+                </div>
+
+                <div
+                  class="w-16 h-16 md:w-20 md:h-20 bg-background rounded-3xl shadow-md border flex items-center justify-center z-10 group-hover:scale-105 transition-transform duration-300"
+                >
+                  <img
+                    src={mditIcon.src}
+                    alt="mdit"
+                    class="w-10 h-10 md:w-12 md:h-12"
+                    draggable="false"
+                  />
+                </div>
+
+                <div
+                  class="flex flex-col items-center justify-center gap-2 px-1 md:px-2"
+                >
+                  <svg
+                    class="w-6 h-6 md:w-8 md:h-8 text-border animate-pulse"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                    ></path>
+                  </svg>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                  <div
+                    class="w-14 h-14 md:w-16 md:h-16 bg-background rounded-2xl shadow-sm border flex items-center justify-center group-hover:-translate-y-1 transition-transform duration-300 delay-150"
+                  >
+                    <img
+                      src={gitIcon.src}
+                      alt="Git"
+                      class="w-8 h-8 md:w-9 md:h-9"
+                      draggable="false"
+                    />
+                  </div>
+                  <div
+                    class="w-14 h-14 md:w-16 md:h-16 bg-muted outline-dashed outline-2 outline-border outline-offset-4 rounded-2xl flex items-center justify-center opacity-50 group-hover:-translate-y-1 transition-transform duration-300 delay-200"
+                  >
+                    <svg
+                      class="w-6 h-6 md:w-8 md:h-8 text-muted-foreground"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section
+    class="w-full py-12 md:py-24 bg-linear-to-b from-muted/70 via-background to-background"
+  >
+    <div class="max-w-5xl mx-auto flex flex-col px-4">
+      <div class="overflow-hidden">
+        <div class="text-start leading-tight">
+          <div class="mb-4">
+            <span class="inline text-sm text-orange-950/60 font-semibold"
+              >Intelligence</span
+            >
+          </div>
+          <h3
+            class="text-2xl md:text-4xl font-semibold text-foreground/90 mb-2 md:mb-4"
+          >
+            {content.aiTitle}
+          </h3>
+          <p class="max-w-lg text-lg text-muted-foreground mb-12">
+            {content.aiDescription}
+          </p>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:mt-8">
+          <div class="flex-1 pr-4 py-8 md:py-12 md:pr-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.aiWritingTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground mb-8"
+            >
+              {content.aiWritingDescription}
+            </Animated>
+            <div class="group relative inline-block p-4">
+              <img
+                src={aiWritingImage.src}
+                alt="AI Writing Assistant"
+                draggable="false"
+                class="rotate-x-12 -rotate-y-20 hover:rotate-x-0 hover:rotate-y-0 transition-transform duration-300"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top left, white 0%, white 5%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 px-4 py-8 md:p-12">
+            <Animated
+              client:load
+              as="h3"
+              className="text-lg font-semibold text-foreground/90 mb-4"
+            >
+              {content.smartSearchTitle}
+            </Animated>
+            <Animated
+              client:load
+              as="p"
+              delay={0.1}
+              className="text-muted-foreground mb-12"
+            >
+              {content.smartSearchDescription}
+            </Animated>
+            <div class="group relative inline-block p-4">
+              <img
+                src={smartSearchImage.src}
+                alt="Smart Search"
+                draggable="false"
+                class="border rounded-md overflow-hidden rotate-x-12 -rotate-y-20 hover:rotate-x-0 hover:rotate-y-0 transition-transform duration-300"
+              />
+              <div
+                class="absolute inset-0 pointer-events-none group-hover:opacity-0 transition-opacity duration-300"
+                style="background: linear-gradient(to top left, white 0%, white 5%, transparent 100%);"
+              >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <PrivacySection />
+</main>
+
+<style>
+  @keyframes swing {
+    0% {
+      transform: rotate(2deg);
+    }
+    100% {
+      transform: rotate(-2deg);
+    }
+  }
+
+  .animate-swing-slow {
+    animation: swing 3s ease-in-out infinite alternate;
+  }
+
+  .animate-swing-medium {
+    animation: swing 2.5s ease-in-out infinite alternate;
+  }
+
+  .animate-swing-fast {
+    animation: swing 2s ease-in-out infinite alternate;
+  }
+</style>

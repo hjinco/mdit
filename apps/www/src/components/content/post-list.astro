@@ -1,0 +1,20 @@
+---
+import type { BlogPost } from "../../lib/content/mappers"
+import PostCard from "./post-card.astro"
+
+interface Props {
+	posts: BlogPost[]
+}
+
+const { posts } = Astro.props
+---
+
+{
+	posts.length > 0 ? (
+		<div class="grid gap-4">
+			{posts.map((post) => <PostCard post={post} />)}
+		</div>
+	) : (
+		<p class="text-muted-foreground">No blog posts yet.</p>
+	)
+}

@@ -1,0 +1,20 @@
+---
+import type { ChangelogEntry } from "../../lib/content/mappers"
+import ChangelogCard from "./changelog-card.astro"
+
+interface Props {
+	entries: ChangelogEntry[]
+}
+
+const { entries } = Astro.props
+---
+
+{
+	entries.length > 0 ? (
+		<div class="grid gap-4">
+			{entries.map((entry) => <ChangelogCard entry={entry} />)}
+		</div>
+	) : (
+		<p class="text-muted-foreground">No changelog entries yet.</p>
+	)
+}

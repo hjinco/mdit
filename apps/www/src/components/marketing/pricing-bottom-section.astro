@@ -1,0 +1,131 @@
+---
+import { CheckIcon } from "lucide-react"
+import { DownloadButton } from "./download-button"
+import FAQ from "./faq"
+
+const content = {
+	title: "Simple Pricing",
+	subtitle: "Pay once, use forever.",
+	freeTrialTitle: "Free Trial",
+	freeTrialDescription: "Try before you buy",
+	freePriceLabel: "Free",
+	freeFeatures: [
+		"Unlimited local notes",
+		"All basic editing features",
+		"100% Privacy guaranteed",
+		"No credit card required",
+	],
+	freeButtonText: "Try for Free",
+	lifetimeTitle: "Lifetime License",
+	lifetimeDescription: "Pay once, use forever",
+	lifetimePrice: "$10",
+	lifetimeFeatures: [
+		"All free features, plus:",
+		"Bring Your Own Key (OpenAI, Claude, etc.)",
+		"Local AI model support (Ollama)",
+		"Connect custom tools via MCP",
+		"Priority support",
+		"No recurring subscription fees!",
+	],
+	licenseButtonText: "Get License Key",
+}
+const licenseLink =
+	"https://buy.polar.sh/polar_cl_7bcdleYHixEM9eJTOCXdfU6CnH4fzPcUbuTdD0exUVl"
+---
+
+<section
+  id="pricing"
+  class="min-h-screen flex items-center justify-center px-4 py-20 scroll-mt-24"
+>
+  <div class="max-w-5xl w-full">
+    <div class="text-center mb-16">
+      <h2
+        class="text-3xl sm:text-4xl md:text-5xl font-medium leading-tight mb-6 tracking-tight text-foreground/80"
+      >
+        {content.title}
+      </h2>
+      <p class="text-base sm:text-lg md:text-xl text-muted-foreground">
+        {content.subtitle}
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto md:pb-12">
+      <div
+        class="p-8 rounded-md bg-secondary border border-border transition-all duration-300 hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] flex flex-col"
+      >
+        <div class="mb-6">
+          <h3 class="text-2xl font-medium text-foreground/80 mb-2">
+            {content.freeTrialTitle}
+          </h3>
+          <p class="text-muted-foreground">{content.freeTrialDescription}</p>
+        </div>
+
+        <div class="mb-8">
+          <div class="flex items-baseline gap-2 mb-2">
+            <span class="text-5xl font-medium text-foreground/80"
+              >{content.freePriceLabel}</span
+            >
+          </div>
+        </div>
+
+        <ul class="space-y-4 mb-8">
+          {
+            content.freeFeatures.map((feature) => (
+              <li class="flex items-center gap-3">
+                <CheckIcon className="w-4 h-4 text-green-600" />
+                <span class="text-foreground">{feature}</span>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="flex-1"></div>
+
+        <DownloadButton variant="default" size="lg" className="w-full">
+          {content.freeButtonText}
+        </DownloadButton>
+      </div>
+
+      <div
+        class="p-8 rounded-md bg-primary text-primary-foreground border-2 border-primary transition-all duration-300 hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] relative overflow-hidden"
+      >
+        <div class="mb-6">
+          <h3 class="text-2xl font-medium mb-2">
+            {content.lifetimeTitle}
+          </h3>
+          <p class="text-primary-foreground/70">
+            {content.lifetimeDescription}
+          </p>
+        </div>
+
+        <div class="mb-8">
+          <div class="flex items-baseline gap-3 mb-2">
+            <span class="text-5xl font-medium">{content.lifetimePrice}</span>
+          </div>
+        </div>
+
+        <ul class="space-y-4 mb-8">
+          {
+            content.lifetimeFeatures.map((feature) => (
+              <li class="flex items-center gap-3">
+                <CheckIcon className="w-4 h-4 text-green-600" />
+                <span class="text-primary-foreground">{feature}</span>
+              </li>
+            ))
+          }
+        </ul>
+
+        <DownloadButton
+          href={licenseLink}
+          variant="secondary"
+          size="lg"
+          className="w-full"
+        >
+          {content.licenseButtonText}
+        </DownloadButton>
+      </div>
+    </div>
+
+    <FAQ client:load />
+  </div>
+</section>

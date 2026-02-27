@@ -1,0 +1,30 @@
+---
+import ChangelogList from "../../components/content/changelog-list.astro"
+import { getDictionary } from "../../i18n/get-dictionary"
+import { DEFAULT_LOCALE } from "../../i18n/locales"
+import { toLocalePath } from "../../i18n/paths"
+import ContentLayout from "../../layouts/ContentLayout.astro"
+import { getChangelogEntries } from "../../lib/content/queries"
+
+const locale = DEFAULT_LOCALE
+const [entries, dictionary] = await Promise.all([
+	getChangelogEntries({ locale }),
+	getDictionary(locale),
+])
+---
+
+<ContentLayout
+	title={`${dictionary.content.changelogTitle} | Mdit`}
+	description={dictionary.content.changelogDescription}
+	canonicalPath={toLocalePath(locale, "/changelog")}
+	locale={locale}
+>
+	<section class="mb-10">
+		<h1 class="text-4xl font-semibold text-foreground/90 mb-3">
+			{dictionary.content.changelogTitle}
+		</h1>
+		<p class="text-muted-foreground">{dictionary.content.changelogDescription}</p>
+	</section>
+
+	<ChangelogList entries={entries} />
+</ContentLayout>

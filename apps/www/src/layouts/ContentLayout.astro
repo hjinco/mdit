@@ -1,0 +1,28 @@
+---
+import Footer from "../components/common/footer.astro"
+import Header from "../components/common/header.astro"
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales"
+import type { PageMetaInput } from "../lib/seo/meta"
+import BaseLayout from "./BaseLayout.astro"
+
+interface Props extends PageMetaInput {
+	locale?: Locale
+	containerClass?: string
+}
+
+const {
+	locale = DEFAULT_LOCALE,
+	containerClass = "max-w-3xl mx-auto px-4",
+	...meta
+} = Astro.props as Props
+---
+
+<BaseLayout {...meta} lang={locale}>
+	<Header currentPath={Astro.url.pathname} locale={locale} />
+	<main class="pt-28 pb-10">
+		<div class={containerClass}>
+			<slot />
+		</div>
+	</main>
+	<Footer locale={locale} />
+</BaseLayout>

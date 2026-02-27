@@ -1,0 +1,37 @@
+---
+import { DEFAULT_LOCALE, type Locale } from "../../i18n/locales"
+import { toLocalePath } from "../../i18n/paths"
+import { GITHUB_REPO_URL } from "../../lib/site/consts"
+
+interface Props {
+	locale?: Locale
+}
+
+const { locale = DEFAULT_LOCALE } = Astro.props as Props
+const year = new Date().getFullYear()
+const blogPath = toLocalePath(locale, "/blog")
+const changelogPath = toLocalePath(locale, "/changelog")
+---
+
+<footer class="border-t border-border mt-20">
+	<div
+		class="max-w-5xl mx-auto px-4 py-10 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between text-sm text-muted-foreground"
+	>
+		<p>© {year} Mdit. All rights reserved.</p>
+		<div class="flex items-center gap-4">
+			<a href={blogPath} class="hover:text-foreground transition-colors">Blog</a
+			>
+			<a href={changelogPath} class="hover:text-foreground transition-colors"
+				>Changelog</a
+			>
+			<a
+				href={GITHUB_REPO_URL}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="hover:text-foreground transition-colors"
+			>
+				GitHub
+			</a>
+		</div>
+	</div>
+</footer>

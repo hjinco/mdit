@@ -1,0 +1,64 @@
+---
+import Icon from "../../assets/icon.svg"
+import { getDictionary } from "../../i18n/get-dictionary"
+import { DEFAULT_LOCALE, type Locale } from "../../i18n/locales"
+import { normalizePath, toLocalePath } from "../../i18n/paths"
+import { DOWNLOAD_URL } from "../../lib/site/consts"
+
+interface Props {
+	currentPath?: string
+	locale?: Locale
+}
+
+const { currentPath = "/", locale = DEFAULT_LOCALE } = Astro.props
+const dictionary = await getDictionary(locale)
+const normalizedCurrentPath = normalizePath(currentPath)
+const homePath = toLocalePath(locale, "/")
+const blogPath = toLocalePath(locale, "/blog")
+const changelogPath = toLocalePath(locale, "/changelog")
+const isHome = normalizedCurrentPath === normalizePath(homePath)
+const pricingHref = isHome ? "#pricing" : `${homePath}#pricing`
+---
+
+<header class="fixed top-0 left-0 right-0 z-[1000] bg-white/40 backdrop-blur-md">
+	<div class="max-w-screen-lg mx-auto p-4 flex items-center justify-between">
+		<a
+			href={homePath}
+			class="text-xl md:text-2xl font-medium text-foreground/80 no-underline tracking-tight flex items-center gap-1"
+		>
+			<Icon class="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+			Mdit
+		</a>
+
+		<div class="flex items-center gap-4">
+			<a
+				href={pricingHref}
+				class="hidden sm:inline text-sm md:text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+			>
+				{dictionary.nav.pricing}
+			</a>
+			<a
+				href={blogPath}
+				class="text-sm md:text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+				aria-current={normalizedCurrentPath.startsWith(blogPath) ? "page" : undefined}
+			>
+				{dictionary.nav.blog}
+			</a>
+			<a
+				href={changelogPath}
+				class="text-sm md:text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+				aria-current={normalizedCurrentPath.startsWith(changelogPath) ? "page" : undefined}
+			>
+				{dictionary.nav.changelog}
+			</a>
+			<a
+				href={DOWNLOAD_URL}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="inline-flex h-9 items-center justify-center rounded-md bg-[#1A1A1A] px-3 text-sm font-medium text-white transition-colors hover:bg-black"
+			>
+				{dictionary.nav.download}
+			</a>
+		</div>
+	</div>
+</header>

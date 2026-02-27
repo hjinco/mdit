@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Generator: Apple Native CoreSVG 341-->
+<!DOCTYPE svg
+PUBLIC "-//W3C//DTD SVG 1.1//EN"
+       "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24.3309 17.8197">
+ <defs>
+  <linearGradient id="gradient1" x1="5" x2="5" y2="16.4459" gradientUnits="userSpaceOnUse">
+   <stop offset="0" stop-color="#81d4fc" stop-opacity="1"/>
+   <stop offset="1" stop-color="#55bef0" stop-opacity="1"/>
+  </linearGradient>
+ </defs>
+ <g>
+  <rect height="17.8197" opacity="0" width="24.3309" x="0" y="0"/>
+  <path d="M18.9033 16.4459C21.7526 16.4459 23.9695 14.4148 23.9695 11.8413C23.9695 9.85108 22.8545 8.10703 20.926 7.37891C21 3.12031 17.9591 0 14.077 0C11.4184 0 9.58203 1.44932 8.4919 3.19766C6.15918 2.39766 3.56016 4.21475 3.54463 6.90068C1.39209 7.16748 0 9.04326 0 11.3746C0 14.167 2.40986 16.4368 5.62862 16.4368Z" fill="url(#gradient1)"/>
+ </g>
+</svg>
