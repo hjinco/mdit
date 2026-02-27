@@ -30,6 +30,7 @@
 		"@mdit/credentials": "workspace:*",
 		"@mdit/editor": "workspace:*",
 		"@mdit/git-sync": "workspace:*",
+		"@mdit/license": "workspace:*",
 		"@mdit/ui": "workspace:*",
 		"@platejs/ai": "^52.1.0",
 		"@platejs/autoformat": "^52.0.11",

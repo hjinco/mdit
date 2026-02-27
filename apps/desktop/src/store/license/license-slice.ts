@@ -1,20 +1,10 @@
-import { deleteAppSecret, getAppSecret, setAppSecret } from "@mdit/credentials"
-import {
-	deletePassword as deletePasswordFromKeyring,
-	getPassword as getPasswordFromKeyring,
-} from "tauri-plugin-keyring-api"
+import type {
+	LicenseActivationResponse,
+	LicenseCore,
+	LicenseValidationResponse,
+} from "@mdit/license"
 import type { StateCreator } from "zustand"
-import {
-	activateLicenseKey,
-	deactivateLicenseKey,
-	type LicenseActivationResponse,
-	type LicenseValidationResponse,
-	validateLicenseKey,
-} from "./lib/license-api"
-
-const LEGACY_LICENSE_SERVICE = "app.mdit.license.lifetime"
-const LEGACY_LICENSE_USER = "mdit"
-const ACTIVATION_ID_STORAGE_KEY = "license-activation-id"
+import { createDesktopLicenseCore } from "./lib/license-core-adapter"
 
 export type LicenseSlice = {
 	status: "valid" | "invalid" | "validating" | "activating" | "deactivating"
@@ -32,26 +22,12 @@ export type LicenseSlice = {
 }
 
 type LicenseSliceDependencies = {
-	getLicenseKey: () => Promise<string | null>
-	setLicenseKey: (key: string) => Promise<void>
-	deleteLicenseKey: () => Promise<void>
-	getLegacyLicenseKey: () => Promise<string | null>
-	deleteLegacyLicenseKey: () => Promise<void>
-	activateLicenseKey: typeof activateLicenseKey
-	validateLicenseKey: typeof validateLicenseKey
-	deactivateLicenseKey: typeof deactivateLicenseKey
+	licenseCore: LicenseCore
 }
 
 export const prepareLicenseSlice =
 	({
-		getLicenseKey,
-		setLicenseKey,
-		deleteLicenseKey,
-		getLegacyLicenseKey,
-		deleteLegacyLicenseKey,
-		activateLicenseKey,
-		validateLicenseKey,
-		deactivateLicenseKey,
+		licenseCore,
 	}: LicenseSliceDependencies): StateCreator<
 		LicenseSlice,
 		[],
@@ -72,39 +48,8 @@ export const prepareLicenseSlice =
 				}
 
 				set({ status: "validating", error: null })
-
-				const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
-				const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
-				if (!polarApiBaseUrl || !organizationId) {
-					set({ status: "valid", hasVerifiedLicense: true })
-					return
-				}
-
-				let licenseKey = await getLicenseKey()
-				if (!licenseKey) {
-					const legacyLicenseKey = await getLegacyLicenseKey()
-					if (legacyLicenseKey) {
-						await setLicenseKey(legacyLicenseKey)
-						await deleteLegacyLicenseKey()
-						licenseKey = legacyLicenseKey
-					}
-				}
-				let activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
-
-				if (!licenseKey) {
-					set({ status: "invalid", hasVerifiedLicense: false })
-					return
-				}
-
-				if (!activationId) {
-					const activationResult = await get().activateLicense(licenseKey)
-					if (!activationResult) {
-						return
-					}
-					activationId = activationResult.id
-				}
-
-				await get().validateLicense(licenseKey, activationId)
+				const nextState = await licenseCore.checkLicense(get())
+				set(nextState)
 			} catch {
 				set({
 					status: "invalid",
@@ -116,110 +61,42 @@ export const prepareLicenseSlice =
 
 		registerLicenseKey: async (key: string) => {
 			try {
-				const activationResult = await get().activateLicense(key)
-				if (!activationResult) {
-					return
-				}
-				await setLicenseKey(key)
-				const validationResult = await get().validateLicense(
-					key,
-					activationResult.id,
-				)
-				if (!validationResult) {
-					return
-				}
+				set({ status: "activating" })
+				const nextState = await licenseCore.registerLicenseKey(key)
+				set(nextState)
 			} catch {
 				set({
 					status: "invalid",
 					hasVerifiedLicense: false,
 					error: "Failed to register license key",
 				})
-				return
 			}
 		},
 
 		activateLicense: async (key: string) => {
 			set({ status: "activating" })
-			const result = await activateLicenseKey(key)
+			const result = await licenseCore.activateLicense(key)
 
-			if (!result.success) {
-				set({
-					status: "invalid",
-					hasVerifiedLicense: false,
-					error: result.error.message,
-				})
+			if (!result.data) {
+				set(result.state)
 				return null
 			}
 
-			localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, result.data.id)
 			return result.data
 		},
 
 		validateLicense: async (key: string, activationId: string) => {
 			set({ status: "validating" })
-
-			const result = await validateLicenseKey(key, activationId)
-
-			if (!result.success) {
-				if (result.isValidationError) {
-					await deleteLicenseKey()
-					localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-					set({
-						status: "invalid",
-						hasVerifiedLicense: false,
-						error: result.error.message,
-					})
-					return null
-				}
-
-				set({ status: "valid", hasVerifiedLicense: false, error: null })
-				return null
-			}
-
-			set({ status: "valid", hasVerifiedLicense: true })
+			const result = await licenseCore.validateLicense(key, activationId)
+			set(result.state)
 			return result.data
 		},
 
 		deactivateLicense: async () => {
 			try {
 				set({ status: "deactivating", error: null })
-
-				const licenseKey = await getLicenseKey()
-				const activationId = localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)
-
-				if (!licenseKey || !activationId) {
-					set({
-						status: "valid",
-						hasVerifiedLicense: false,
-						error: "No license key or activation ID found",
-					})
-					return
-				}
-
-				const result = await deactivateLicenseKey(licenseKey, activationId)
-
-				if (!result.success) {
-					if (result.isValidationError) {
-						await deleteLicenseKey()
-						localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-						set({
-							status: "invalid",
-							hasVerifiedLicense: false,
-							error: result.error.message,
-						})
-					} else {
-						set({
-							status: "valid",
-							hasVerifiedLicense: false,
-							error: result.error.message,
-						})
-					}
-					return
-				}
-
-				await deleteLicenseKey()
-				localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY)
-				set({ status: "invalid", hasVerifiedLicense: false })
+				const nextState = await licenseCore.deactivateLicense()
+				set(nextState)
 			} catch {
 				set({
 					status: "valid",
@@ -231,14 +108,5 @@ export const prepareLicenseSlice =
 	})
 
 export const createLicenseSlice = prepareLicenseSlice({
-	getLicenseKey: async () => getAppSecret("license_key"),
-	setLicenseKey: async (key: string) => setAppSecret("license_key", key),
-	deleteLicenseKey: async () => deleteAppSecret("license_key"),
-	getLegacyLicenseKey: async () =>
-		getPasswordFromKeyring(LEGACY_LICENSE_SERVICE, LEGACY_LICENSE_USER),
-	deleteLegacyLicenseKey: async () =>
-		deletePasswordFromKeyring(LEGACY_LICENSE_SERVICE, LEGACY_LICENSE_USER),
-	activateLicenseKey,
-	validateLicenseKey,
-	deactivateLicenseKey,
+	licenseCore: createDesktopLicenseCore(),
 })

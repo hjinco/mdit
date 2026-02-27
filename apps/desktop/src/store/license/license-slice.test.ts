@@ -1,3 +1,4 @@
+import { createLicenseCore, type LicenseApiPort } from "@mdit/license"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
 import { type LicenseSlice, prepareLicenseSlice } from "./license-slice"
@@ -8,6 +9,8 @@ type LocalStorageLike = Pick<
 > & {
 	length: number
 }
+
+const ACTIVATION_ID_STORAGE_KEY = "license-activation-id"
 
 const ensureLocalStorage = () => {
 	if (typeof globalThis.localStorage !== "undefined") return
@@ -36,6 +39,10 @@ const ensureLocalStorage = () => {
 function createLicenseStore({
 	getLicenseKey = vi.fn().mockResolvedValue("license-key"),
 	getLegacyLicenseKey = vi.fn().mockResolvedValue(null),
+	activateLicenseKey = vi.fn().mockResolvedValue({
+		success: true,
+		data: { id: "activation-id" },
+	}),
 	validateLicenseKey = vi.fn().mockResolvedValue({
 		success: true,
 		data: {} as any,
@@ -44,11 +51,14 @@ function createLicenseStore({
 		success: true,
 		data: undefined,
 	}),
+	runtimeConfigured = true,
 }: {
 	getLicenseKey?: () => Promise<string | null>
 	getLegacyLicenseKey?: () => Promise<string | null>
-	validateLicenseKey?: (key: string, activationId: string) => Promise<any>
-	deactivateLicenseKey?: (key: string, activationId: string) => Promise<any>
+	activateLicenseKey?: LicenseApiPort["activateLicenseKey"]
+	validateLicenseKey?: LicenseApiPort["validateLicenseKey"]
+	deactivateLicenseKey?: LicenseApiPort["deactivateLicenseKey"]
+	runtimeConfigured?: boolean
 } = {}) {
 	const deps = {
 		getLicenseKey,
@@ -56,15 +66,43 @@ function createLicenseStore({
 		deleteLicenseKey: vi.fn().mockResolvedValue(undefined),
 		getLegacyLicenseKey,
 		deleteLegacyLicenseKey: vi.fn().mockResolvedValue(undefined),
-		activateLicenseKey: vi.fn().mockResolvedValue({
-			success: true,
-			data: { id: "activation-id" },
-		}),
+		getActivationId: vi.fn(() =>
+			localStorage.getItem(ACTIVATION_ID_STORAGE_KEY),
+		),
+		setActivationId: vi.fn((id: string) =>
+			localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, id),
+		),
+		deleteActivationId: vi.fn(() =>
+			localStorage.removeItem(ACTIVATION_ID_STORAGE_KEY),
+		),
+		activateLicenseKey,
 		validateLicenseKey,
 		deactivateLicenseKey,
+		runtimeConfigured,
 	}
 
-	const createSlice = prepareLicenseSlice(deps)
+	const licenseCore = createLicenseCore({
+		storage: {
+			getLicenseKey: deps.getLicenseKey,
+			setLicenseKey: deps.setLicenseKey,
+			deleteLicenseKey: deps.deleteLicenseKey,
+			getLegacyLicenseKey: deps.getLegacyLicenseKey,
+			deleteLegacyLicenseKey: deps.deleteLegacyLicenseKey,
+			getActivationId: deps.getActivationId,
+			setActivationId: deps.setActivationId,
+			deleteActivationId: deps.deleteActivationId,
+		},
+		api: {
+			activateLicenseKey: deps.activateLicenseKey,
+			validateLicenseKey: deps.validateLicenseKey,
+			deactivateLicenseKey: deps.deactivateLicenseKey,
+		},
+		runtime: {
+			isConfigured: () => deps.runtimeConfigured,
+		},
+	})
+
+	const createSlice = prepareLicenseSlice({ licenseCore })
 	const store = createStore<LicenseSlice>()((set, get, api) =>
 		createSlice(set, get, api),
 	)
@@ -117,7 +155,7 @@ describe("license-slice hasVerifiedLicense", () => {
 
 	it("becomes false when license is deactivated", async () => {
 		const { store } = createLicenseStore()
-		localStorage.setItem("license-activation-id", "activation-id")
+		localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, "activation-id")
 
 		await store.getState().validateLicense("license-key", "activation-id")
 		expect(store.getState().hasVerifiedLicense).toBe(true)
@@ -126,7 +164,7 @@ describe("license-slice hasVerifiedLicense", () => {
 
 		expect(store.getState().status).toBe("invalid")
 		expect(store.getState().hasVerifiedLicense).toBe(false)
-		expect(localStorage.getItem("license-activation-id")).toBeNull()
+		expect(localStorage.getItem(ACTIVATION_ID_STORAGE_KEY)).toBeNull()
 	})
 
 	it("migrates legacy license key when unified key is missing", async () => {
@@ -139,18 +177,9 @@ describe("license-slice hasVerifiedLicense", () => {
 			getLegacyLicenseKey: vi.fn().mockResolvedValue("legacy-license-key"),
 			validateLicenseKey,
 		})
-		localStorage.setItem("license-activation-id", "activation-id")
-		const previousBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
-		const previousOrgId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
-		import.meta.env.VITE_POLAR_API_BASE_URL = "https://example.com"
-		import.meta.env.VITE_POLAR_ORGANIZATION_ID = "org_123"
+		localStorage.setItem(ACTIVATION_ID_STORAGE_KEY, "activation-id")
 
-		try {
-			await store.getState().checkLicense()
-		} finally {
-			import.meta.env.VITE_POLAR_API_BASE_URL = previousBaseUrl
-			import.meta.env.VITE_POLAR_ORGANIZATION_ID = previousOrgId
-		}
+		await store.getState().checkLicense()
 
 		expect(deps.setLicenseKey).toHaveBeenCalledWith("legacy-license-key")
 		expect(deps.deleteLegacyLicenseKey).toHaveBeenCalled()
