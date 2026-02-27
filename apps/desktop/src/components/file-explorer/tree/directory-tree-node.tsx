@@ -1,14 +1,15 @@
-import { useDraggable, useDroppable } from "@dnd-kit/react"
+import { useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
-import { useCallback, useMemo } from "react"
-import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
+import { useCallback } from "react"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
+import { TreeInlineEditRow } from "./tree-inline-edit-row"
 import type { DirectoryTreeNodeProps } from "./tree-node.types"
 import { TreeNodeRenameInput } from "./tree-node-rename-input"
+import { useTreeNodeInteractions } from "./use-tree-node-interactions"
 
 const INDENTATION_WIDTH = 12
 
@@ -31,23 +32,23 @@ export function DirectoryTreeNode({
 	childrenTree,
 }: DirectoryTreeNodeProps) {
 	const hasChildren = (entry.children?.length ?? 0) > 0
-	const isRenaming = renamingEntryPath === entry.path
-	const isLocked = useMemo(
-		() => hasPathConflictWithLockedPaths([entry.path], aiLockedEntryPaths),
-		[aiLockedEntryPaths, entry.path],
-	)
-	const isBusy = isRenaming || isLocked
 	const isExpanded = expandedDirectories.includes(entry.path)
-	const isSelected = selectedEntryPaths.has(entry.path)
-
-	const { ref: draggableRef, isDragging } = useDraggable({
-		id: entry.path,
-		data: {
-			path: entry.path,
-			isDirectory: entry.isDirectory,
-			name: entry.name,
-		},
-		disabled: isBusy,
+	const {
+		isRenaming,
+		isLocked,
+		isBusy,
+		isSelected,
+		isDragging,
+		setDraggableRef,
+		handlePrimaryAction,
+		handleContextMenu,
+	} = useTreeNodeInteractions({
+		entry,
+		aiLockedEntryPaths,
+		renamingEntryPath,
+		selectedEntryPaths,
+		onEntryPrimaryAction,
+		onEntryContextMenu,
 	})
 
 	const { ref: droppableRef, isDropTarget } = useDroppable({
@@ -79,16 +80,6 @@ export function DirectoryTreeNode({
 		onExpand: handleExpand,
 	})
 
-	const handlePrimaryAction = useCallback(
-		(event: React.MouseEvent<HTMLButtonElement>) => {
-			if (isBusy) {
-				return
-			}
-			onEntryPrimaryAction(entry, event)
-		},
-		[entry, isBusy, onEntryPrimaryAction],
-	)
-
 	const handleCollectionViewClick = useCallback(
 		(event: React.MouseEvent<HTMLButtonElement>) => {
 			event.stopPropagation()
@@ -98,20 +89,6 @@ export function DirectoryTreeNode({
 			onCollectionViewOpen(entry)
 		},
 		[entry, isBusy, onCollectionViewOpen],
-	)
-
-	const handleContextMenu = useCallback(
-		(event: React.MouseEvent<HTMLButtonElement>) => {
-			event.preventDefault()
-			event.stopPropagation()
-
-			if (isBusy) {
-				return
-			}
-
-			onEntryContextMenu(entry)
-		},
-		[entry, isBusy, onEntryContextMenu],
 	)
 
 	const renameInput = useInlineEditableInput({
@@ -133,13 +110,6 @@ export function DirectoryTreeNode({
 		onCancel: onNewFolderCancel,
 	})
 
-	const handleButtonRef = useCallback(
-		(node: HTMLButtonElement | null) => {
-			draggableRef(node)
-		},
-		[draggableRef],
-	)
-
 	return (
 		<li>
 			<div
@@ -154,7 +124,7 @@ export function DirectoryTreeNode({
 				)}
 				<div className="flex items-center group">
 					<button
-						ref={handleButtonRef}
+						ref={setDraggableRef}
 						type="button"
 						id={entry.path}
 						onClick={handlePrimaryAction}
@@ -224,26 +194,17 @@ export function DirectoryTreeNode({
 					</button>
 				</div>
 				{hasPendingNewFolder && (
-					<div
-						className="flex-1 flex items-center px-2 py-0.5 mt-0.5 ring-1 ring-ring/50 rounded-sm"
+					<TreeInlineEditRow
+						value={newFolderInput.value}
+						setValue={newFolderInput.setValue}
+						inputRef={newFolderInput.inputRef}
+						onKeyDown={newFolderInput.onKeyDown}
+						onBlur={newFolderInput.onBlur}
+						className="px-2 mt-0.5"
 						style={{
 							paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px`,
 						}}
-					>
-						<div className="shrink-0 pl-1.5 py-1" aria-hidden="true">
-							<ChevronRight className="size-4" />
-						</div>
-						<div className="relative flex-1 min-w-0 flex items-center">
-							<span className="text-sm opacity-0">Placeholder</span>
-							<TreeNodeRenameInput
-								value={newFolderInput.value}
-								setValue={newFolderInput.setValue}
-								inputRef={newFolderInput.inputRef}
-								onKeyDown={newFolderInput.onKeyDown}
-								onBlur={newFolderInput.onBlur}
-							/>
-						</div>
-					</div>
+					/>
 				)}
 				{hasChildren && isExpanded && (
 					<ul className="space-y-0.5 mt-0.5">{childrenTree}</ul>

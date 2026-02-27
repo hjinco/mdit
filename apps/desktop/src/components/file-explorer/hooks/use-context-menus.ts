@@ -5,7 +5,7 @@ import {
 	Submenu,
 } from "@tauri-apps/api/menu"
 import { readTextFile } from "@tauri-apps/plugin-fs"
-import { type MouseEvent, useCallback, useMemo } from "react"
+import { type MouseEvent, useCallback } from "react"
 import { toast } from "sonner"
 import clipboard from "tauri-plugin-clipboard-api"
 import { useShallow } from "zustand/shallow"
@@ -22,6 +22,7 @@ import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"
 import { normalizePathSeparators } from "@/utils/path-utils"
+import { useEntryMap } from "./use-entry-map"
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
 const REVEAL_ACCELERATOR = "CmdOrCtrl+Alt+R"
@@ -84,23 +85,7 @@ export const useFileExplorerMenus = ({
 			copyEntry: state.copyEntry,
 		})),
 	)
-	const entryMap = useMemo(() => {
-		const map = new Map<string, WorkspaceEntry>()
-		const traverse = (nodes: WorkspaceEntry[]) => {
-			for (const node of nodes) {
-				const normalizedPath = normalizePathSeparators(node.path)
-				map.set(node.path, node)
-				if (normalizedPath !== node.path) {
-					map.set(normalizedPath, node)
-				}
-				if (node.children?.length) {
-					traverse(node.children)
-				}
-			}
-		}
-		traverse(entries)
-		return map
-	}, [entries])
+	const entryMap = useEntryMap(entries)
 
 	const showEntryMenu = useCallback(
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {

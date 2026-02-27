@@ -25,6 +25,7 @@ import { SettingsMenu } from "./ui/settings-menu"
 import { TopMenu } from "./ui/top-menu"
 import { UpdateButton } from "./ui/update-button"
 import { WorkspaceDropdown } from "./ui/workspace-dropdown"
+import { collectVisibleEntryPaths } from "./utils/entry-tree"
 
 export function FileExplorer() {
 	const fileExplorerRef = useRef<HTMLElement | null>(null)
@@ -111,25 +112,10 @@ export function FileExplorer() {
 	>(null)
 	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const { moveNotesWithAI, canMoveNotesWithAI } = useMoveNotesWithAI()
-	const visibleEntryPaths = useMemo(() => {
-		const paths: string[] = []
-
-		const traverse = (nodes: WorkspaceEntry[]) => {
-			for (const node of nodes) {
-				paths.push(node.path)
-				if (
-					node.isDirectory &&
-					expandedDirectories.includes(node.path) &&
-					node.children
-				) {
-					traverse(node.children)
-				}
-			}
-		}
-
-		traverse(entries)
-		return paths
-	}, [entries, expandedDirectories])
+	const visibleEntryPaths = useMemo(
+		() => collectVisibleEntryPaths(entries, expandedDirectories),
+		[entries, expandedDirectories],
+	)
 
 	const entryOrderMap = useMemo(() => {
 		const map = new Map<string, number>()
