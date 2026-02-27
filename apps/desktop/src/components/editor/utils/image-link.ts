@@ -1,8 +1,8 @@
-import { relative } from "pathe"
 import {
 	hasParentTraversal,
 	isAbsoluteLike,
-} from "@/components/editor/utils/link-utils"
+} from "@mdit/editor/utils/link-utils"
+import { relative } from "pathe"
 import { useStore } from "@/store"
 import {
 	isPathEqualOrDescendant,

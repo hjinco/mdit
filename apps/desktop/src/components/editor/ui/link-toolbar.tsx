@@ -1,3 +1,4 @@
+import { startsWithHttpProtocol } from "@mdit/editor/utils/link-utils"
 import { flip, offset, type UseVirtualFloatingOptions } from "@platejs/floating"
 import {
 	type LinkFloatingToolbarState,
@@ -18,7 +19,6 @@ import {
 	usePluginOption,
 } from "platejs/react"
 import { type AnchorHTMLAttributes, useEffect, useMemo, useRef } from "react"
-import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
 import { useStore } from "@/store"
 import {
 	flattenWorkspaceFiles,

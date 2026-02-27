@@ -35,7 +35,7 @@ const ensureLocalStorage = () => {
 
 const createMarkdownEditor = async () => {
 	ensureLocalStorage()
-	const { MarkdownKit } = await import("./markdown-kit")
+	const { MarkdownKit } = await import("@mdit/editor/plugins/markdown-kit")
 	return createSlateEditor({ plugins: MarkdownKit })
 }
 

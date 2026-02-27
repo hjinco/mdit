@@ -1,4 +1,5 @@
 import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
+import { startsWithHttpProtocol } from "@mdit/editor/utils/link-utils"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "@mdit/editor/utils/wiki-link-constants"
 import { buttonVariants } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
@@ -29,7 +30,6 @@ import {
 	useState,
 } from "react"
 import { useShallow } from "zustand/shallow"
-import { startsWithHttpProtocol } from "@/components/editor/utils/link-utils"
 import { useStore } from "@/store"
 import {
 	createPathQueryCandidates,
