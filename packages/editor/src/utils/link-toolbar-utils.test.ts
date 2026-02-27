@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-state"
 import {
 	flattenWorkspaceFiles,
 	getLinkedNoteDisplayName,
+	isPathInsideWorkspaceRoot,
+	type LinkWorkspaceEntry,
 	stripFileExtensionForDisplay,
 } from "./link-toolbar-utils"
 
@@ -17,7 +18,7 @@ describe("link-toolbar-utils", () => {
 	})
 
 	it("flattens markdown files and strips display extensions", () => {
-		const entries: WorkspaceEntry[] = [
+		const entries: LinkWorkspaceEntry[] = [
 			{
 				path: "/workspace/docs",
 				name: "docs",
@@ -110,5 +111,21 @@ describe("link-toolbar-utils", () => {
 				isWebLink: true,
 			}),
 		).toBeNull()
+	})
+
+	it("checks whether an absolute path is inside workspace root", () => {
+		expect(
+			isPathInsideWorkspaceRoot("/workspace/docs/guide.md", "/workspace"),
+		).toBe(true)
+		expect(isPathInsideWorkspaceRoot("/workspace", "/workspace")).toBe(true)
+		expect(
+			isPathInsideWorkspaceRoot("/workspace/../etc/passwd", "/workspace"),
+		).toBe(false)
+		expect(
+			isPathInsideWorkspaceRoot("/workspace-archive/guide.md", "/workspace"),
+		).toBe(false)
+		expect(
+			isPathInsideWorkspaceRoot("/another-root/docs/guide.md", "/workspace"),
+		).toBe(false)
 	})
 })

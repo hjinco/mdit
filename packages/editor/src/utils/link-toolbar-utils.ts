@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core"
 import {
 	basename,
 	isAbsolute,
@@ -6,46 +5,26 @@ import {
 	dirname as pathDirname,
 	resolve,
 } from "pathe"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import type {
+	LinkWorkspaceEntry,
+	WorkspaceFileOption,
+} from "../plugins/link-kit-types"
 
-export type WorkspaceFileOption = {
-	absolutePath: string
-	displayName: string
-	relativePath: string
-	relativePathLower: string
-}
+export type {
+	LinkWorkspaceEntry,
+	WorkspaceFileOption,
+} from "../plugins/link-kit-types"
 
 export type LinkMode = "wiki" | "markdown"
-
-type ResolveWikiLinkResult = {
-	canonicalTarget: string
-	resolvedRelPath?: string | null
-	matchCount: number
-	disambiguated: boolean
-	unresolved: boolean
-}
-
-export type ResolveWikiLinkParams = {
-	workspacePath: string
-	currentNotePath?: string | null
-	rawTarget: string
-	workspaceRelPaths?: string[]
-}
 
 const backslashRegex = /\\/g
 const multipleSlashesRegex = /\/{2,}/g
 const trailingSlashesRegex = /\/+$/
 
-export async function resolveWikiLinkViaInvoke(
-	params: ResolveWikiLinkParams,
-): Promise<ResolveWikiLinkResult> {
-	return invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", params)
-}
-
 // Recursively traverse workspace file tree and collect all .md files for autocomplete
 // Returns flattened list with relative paths for suggestion matching
 export function flattenWorkspaceFiles(
-	entries: WorkspaceEntry[],
+	entries: LinkWorkspaceEntry[],
 	workspacePath: string | null,
 ): WorkspaceFileOption[] {
 	if (!workspacePath) {
@@ -55,7 +34,7 @@ export function flattenWorkspaceFiles(
 	const normalizedRoot = normalizeWorkspaceRoot(workspacePath)
 	const files: WorkspaceFileOption[] = []
 
-	const visit = (nodes: WorkspaceEntry[]) => {
+	const visit = (nodes: LinkWorkspaceEntry[]) => {
 		for (const node of nodes) {
 			if (node.isDirectory) {
 				if (node.children) {
@@ -425,6 +404,22 @@ export function normalizeWorkspaceRoot(workspacePath: string): string {
 	}
 	const normalized = normalizePathSeparators(workspacePath)
 	return normalized.replace(trailingSlashesRegex, "")
+}
+
+export function isPathInsideWorkspaceRoot(
+	absolutePath: string,
+	workspacePath: string,
+): boolean {
+	const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
+	if (!normalizedWorkspaceRoot) {
+		return false
+	}
+
+	const normalizedAbsolute = normalizePathSeparators(resolve(absolutePath))
+	return (
+		normalizedAbsolute === normalizedWorkspaceRoot ||
+		normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
+	)
 }
 
 export function stripLeadingSlashes(value: string): string {

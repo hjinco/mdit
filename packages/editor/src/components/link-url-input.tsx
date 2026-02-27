@@ -5,10 +5,9 @@ import { buttonVariants } from "@mdit/ui/components/button"
 import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
 import { LinkPlugin } from "@platejs/link/react"
-import { invoke } from "@tauri-apps/api/core"
 import { cva } from "class-variance-authority"
 import { Check, FileIcon, FilePlus, GlobeIcon, Link } from "lucide-react"
-import { dirname as pathDirname, relative, resolve } from "pathe"
+import { dirname as pathDirname, relative } from "pathe"
 import type { TLinkElement } from "platejs"
 import { KEYS } from "platejs"
 import {
@@ -29,8 +28,11 @@ import {
 	useMemo,
 	useState,
 } from "react"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import type {
+	LinkHostDeps,
+	LinkIndexingConfig,
+	LinkWorkspaceState,
+} from "../plugins/link-kit"
 import {
 	createPathQueryCandidates,
 	ensureUriEncoding,
@@ -43,23 +45,16 @@ import {
 	normalizeWikiTargetForDisplay,
 	parseInternalLinkTarget,
 	resolveInternalLinkPath,
-	resolveWikiLinkViaInvoke,
 	safelyDecodeUrl,
 	stripCurrentDirectoryPrefix,
-	stripFileExtensionForDisplay,
 	stripLeadingSlashes,
 	toWorkspaceRelativeWikiTarget,
 	type WorkspaceFileOption,
-} from "./link-toolbar-utils"
+} from "../utils/link-toolbar-utils"
 
 const modeButtonVariants = cva("h-6 px-2 text-xs")
 const MAX_SUGGESTIONS = 50
 const RELATED_NOTES_LIMIT = 5
-
-type RelatedNoteEntry = {
-	relPath: string
-	fileName: string
-}
 
 type SearchableWorkspaceFile = {
 	file: WorkspaceFileOption
@@ -70,32 +65,18 @@ type SearchableWorkspaceFile = {
 
 export function LinkUrlInput({
 	inputRef,
+	host,
+	workspaceState,
 }: {
 	inputRef: RefObject<HTMLInputElement | null>
+	host: LinkHostDeps
+	workspaceState: LinkWorkspaceState
 }) {
 	const editor = useEditorRef()
 	const { api, setOption } = useEditorPlugin(LinkPlugin)
-
-	const {
-		entries: workspaceEntries,
-		workspacePath,
-		tab,
-		createNote,
-		openTab,
-		getIndexingConfig,
-	} = useStore(
-		useShallow((state) => ({
-			entries: state.entries,
-			workspacePath: state.workspacePath,
-			tab: state.tab,
-			createNote: state.createNote,
-			openTab: state.openTab,
-			getIndexingConfig: state.getIndexingConfig,
-		})),
-	)
-	const indexingConfig = useStore((state) =>
-		workspacePath ? (state.configs[workspacePath] ?? null) : null,
-	)
+	const { entries: workspaceEntries, workspacePath, tab } = workspaceState
+	const [indexingConfig, setIndexingConfig] =
+		useState<LinkIndexingConfig | null>(null)
 	const hasEmbeddingConfig = Boolean(
 		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
 	)
@@ -250,10 +231,30 @@ export function LinkUrlInput({
 			return
 		}
 
-		getIndexingConfig(workspacePath).catch((error) => {
-			console.error("Failed to load indexing config:", error)
-		})
-	}, [getIndexingConfig, linkMode, trimmedValue, workspacePath])
+		if (!host.getIndexingConfig) {
+			setIndexingConfig(null)
+			return
+		}
+
+		let cancelled = false
+		void host
+			.getIndexingConfig(workspacePath)
+			.then((config) => {
+				if (!cancelled) {
+					setIndexingConfig(config)
+				}
+			})
+			.catch((error) => {
+				if (!cancelled) {
+					console.error("Failed to load indexing config:", error)
+					setIndexingConfig(null)
+				}
+			})
+
+		return () => {
+			cancelled = true
+		}
+	}, [host, linkMode, trimmedValue, workspacePath])
 
 	useEffect(() => {
 		if (
@@ -268,23 +269,21 @@ export function LinkUrlInput({
 		}
 
 		let cancelled = false
-		invoke<RelatedNoteEntry[]>("get_related_notes_command", {
-			workspacePath,
-			filePath: currentTabPath,
-			limit: RELATED_NOTES_LIMIT,
-		})
-			.then((entries) => {
-				if (cancelled) {
-					return
-				}
+		if (!host.getRelatedNotes) {
+			setRelatedSuggestions([])
+			return
+		}
 
-				const mappedEntries = entries.map((entry) => ({
-					absolutePath: resolve(workspacePath, entry.relPath),
-					displayName: stripFileExtensionForDisplay(entry.fileName),
-					relativePath: entry.relPath,
-					relativePathLower: entry.relPath.toLowerCase(),
-				}))
-				setRelatedSuggestions(mappedEntries)
+		host
+			.getRelatedNotes({
+				workspacePath,
+				currentTabPath,
+				limit: RELATED_NOTES_LIMIT,
+			})
+			.then((entries) => {
+				if (!cancelled) {
+					setRelatedSuggestions(entries)
+				}
 			})
 			.catch((error) => {
 				console.error("Failed to fetch related notes for link toolbar:", error)
@@ -299,6 +298,7 @@ export function LinkUrlInput({
 	}, [
 		currentTabPath,
 		hasEmbeddingConfig,
+		host.getRelatedNotes,
 		linkMode,
 		trimmedValue,
 		workspacePath,
@@ -497,6 +497,45 @@ export function LinkUrlInput({
 		[api, applyUrlToEditor, editor, inputRef],
 	)
 
+	const resolvePreferredWikiTarget = useCallback(
+		async ({
+			rawTarget,
+			fallbackTarget,
+			preferFallbackWhenUnresolved,
+			warnContext,
+		}: {
+			rawTarget: string
+			fallbackTarget: string
+			preferFallbackWhenUnresolved: boolean
+			warnContext: string
+		}): Promise<string> => {
+			if (!workspacePath) {
+				return fallbackTarget
+			}
+
+			try {
+				const resolved = await host.resolveWikiLink({
+					workspacePath,
+					currentNotePath: currentTabPath,
+					rawTarget,
+				})
+				const canonicalTarget = normalizeWikiTargetForDisplay(
+					resolved.canonicalTarget,
+				)
+
+				if (preferFallbackWhenUnresolved && resolved.unresolved) {
+					return fallbackTarget || canonicalTarget
+				}
+
+				return canonicalTarget || fallbackTarget
+			} catch (error) {
+				console.warn(warnContext, error)
+				return fallbackTarget
+			}
+		},
+		[currentTabPath, host, workspacePath],
+	)
+
 	const handleSelectSuggestion = useCallback(
 		(file: WorkspaceFileOption) => {
 			if (linkMode === "wiki") {
@@ -516,24 +555,17 @@ export function LinkUrlInput({
 					return
 				}
 
-				void resolveWikiLinkViaInvoke({
-					workspacePath,
-					currentNotePath: currentTabPath,
+				// Suggestions already map to an existing file; canonicalize for storage.
+				// On failure, keep the original suggestion.
+				void resolvePreferredWikiTarget({
 					rawTarget: file.relativePath,
+					fallbackTarget: fallbackValue,
+					preferFallbackWhenUnresolved: false,
+					warnContext:
+						"Failed to resolve wiki suggestion via invoke; using fallback:",
+				}).then((preferredTarget) => {
+					applySelection(preferredTarget)
 				})
-					.then((result) => {
-						const canonical = normalizeWikiTargetForDisplay(
-							result.canonicalTarget,
-						)
-						applySelection(canonical || fallbackValue)
-					})
-					.catch((error) => {
-						console.warn(
-							"Failed to resolve wiki suggestion via invoke; using fallback:",
-							error,
-						)
-						applySelection(fallbackValue)
-					})
 				return
 			}
 
@@ -556,7 +588,13 @@ export function LinkUrlInput({
 				isWebLink: false,
 			})
 		},
-		[currentTabPath, linkMode, submitLink, workspacePath],
+		[
+			currentTabPath,
+			linkMode,
+			resolvePreferredWikiTarget,
+			submitLink,
+			workspacePath,
+		],
 	)
 
 	const handleBlur = useCallback(() => {
@@ -587,36 +625,16 @@ export function LinkUrlInput({
 				? normalizedTarget
 				: normalizeWikiTargetForDisplay(trimmedValue)
 
-			if (workspacePath) {
-				try {
-					const resolved = await resolveWikiLinkViaInvoke({
-						workspacePath,
-						currentNotePath: currentTabPath,
-						rawTarget: trimmedValue,
-					})
-					const canonicalTarget = normalizeWikiTargetForDisplay(
-						resolved.canonicalTarget,
-					)
-					const preferredTarget = resolved.unresolved
-						? fallbackTarget || canonicalTarget
-						: canonicalTarget || fallbackTarget
-					if (preferredTarget) {
-						nextUrl = preferredTarget
-						nextWikiTarget = preferredTarget
-					}
-				} catch (error) {
-					console.warn(
+			if (fallbackTarget) {
+				const preferredTarget = await resolvePreferredWikiTarget({
+					rawTarget: trimmedValue,
+					fallbackTarget,
+					preferFallbackWhenUnresolved: true,
+					warnContext:
 						"Failed to resolve wiki link via invoke; using fallback:",
-						error,
-					)
-					if (fallbackTarget) {
-						nextUrl = fallbackTarget
-						nextWikiTarget = fallbackTarget
-					}
-				}
-			} else if (fallbackTarget) {
-				nextUrl = fallbackTarget
-				nextWikiTarget = fallbackTarget
+				})
+				nextUrl = preferredTarget
+				nextWikiTarget = preferredTarget
 			}
 		}
 
@@ -654,6 +672,7 @@ export function LinkUrlInput({
 		inputRef,
 		currentTabPath,
 		linkMode,
+		resolvePreferredWikiTarget,
 		suggestionsSource,
 		submitLink,
 		trimmedValue,
@@ -668,7 +687,7 @@ export function LinkUrlInput({
 
 		const fallbackName = trimmedValue || "Untitled"
 
-		const newFilePath = await createNote(targetDirectory, {
+		const newFilePath = await host.createNote(targetDirectory, {
 			initialName: fallbackName,
 			openTab: false,
 		})
@@ -698,16 +717,8 @@ export function LinkUrlInput({
 			wikiTarget: nextWikiTarget,
 		})
 
-		await openTab(newFilePath)
-	}, [
-		workspacePath,
-		currentTabPath,
-		trimmedValue,
-		linkMode,
-		submitLink,
-		createNote,
-		openTab,
-	])
+		await host.openTab(newFilePath)
+	}, [host, workspacePath, currentTabPath, trimmedValue, linkMode, submitLink])
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
