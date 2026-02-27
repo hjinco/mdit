@@ -25,6 +25,7 @@ import { TocKit } from "@mdit/editor/plugins/toc-kit"
 import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useStore } from "@/store"
+import { desktopSlashHost } from "../hosts/slash-host"
 import { AIMenu } from "../ui/ai-menu"
 import {
 	LinkFloatingToolbar,
@@ -32,7 +33,6 @@ import {
 } from "../ui/link-toolbar"
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
-import { SlashInputElement } from "../ui/node-slash"
 import { createLinkedNotesFromListItems } from "./block-selection-note-linking"
 import { FilePasteKit } from "./file-paste-kit"
 import { MarkdownKit } from "./markdown-kit"
@@ -94,7 +94,7 @@ export const EditorKit = [
 	...MathKit,
 	...createMediaKit({ ImageElement }),
 	...ShortcutsKit,
-	...createSlashKit({ SlashInputElement }),
+	...createSlashKit({ host: desktopSlashHost }),
 	...SuggestionKit,
 	...TableKit,
 	...TocKit,
