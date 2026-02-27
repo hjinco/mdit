@@ -8,7 +8,7 @@ export function Welcome() {
 	const openFolderPicker = useStore((state) => state.openFolderPicker)
 
 	return (
-		<div className="w-full h-screen flex flex-col bg-background selection:bg-primary/10">
+		<div className="w-full h-screen flex flex-col bg-[#f8fafc] selection:bg-primary/10">
 			<div
 				className="w-full h-10 shrink-0"
 				{...(isMac() && { "data-tauri-drag-region": "" })}
@@ -33,7 +33,7 @@ export function Welcome() {
 						<div className="size-10 drop-shadow-xl">
 							<Logo className="size-full" />
 						</div>
-						<h1 className="text-4xl font-bold tracking-tighter text-foreground">
+						<h1 className="text-4xl font-bold tracking-tighter text-[#0f172a]">
 							Mdit
 						</h1>
 					</motion.div>
@@ -47,7 +47,7 @@ export function Welcome() {
 								duration: 1.2,
 								ease: [0.16, 1, 0.3, 1],
 							}}
-							className="text-muted-foreground text-base leading-relaxed max-w-[240px] mx-auto"
+							className="text-[#475569] text-base leading-relaxed max-w-[240px] mx-auto"
 						>
 							Write, organize, and think with simply better notes.
 						</motion.p>
