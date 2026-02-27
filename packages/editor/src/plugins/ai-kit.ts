@@ -6,7 +6,7 @@ import {
 	streamInsertChunk,
 	useChatChunk,
 } from "@platejs/ai/react"
-import { getPluginType, KEYS, PathApi } from "platejs"
+import { ElementApi, getPluginType, KEYS, PathApi } from "platejs"
 import { type EditableSiblingComponent, usePluginOption } from "platejs/react"
 import { AILoadingBar } from "../components/ai-loading-bar"
 import { AIAnchorElement, AILeaf } from "../nodes/node-ai"
@@ -61,6 +61,35 @@ export const createAIKit = ({
 					}
 
 					if (toolName === "edit" && mode === "chat") {
+						const chatSelection = getOption("chatSelection")
+						if (chatSelection) {
+							editor.tf.setSelection(chatSelection)
+						} else {
+							const chatNodes = getOption("chatNodes")
+							const chatNodeIds = Array.isArray(chatNodes)
+								? chatNodes
+										.map((node) => node?.id)
+										.filter((id): id is string => typeof id === "string")
+								: []
+
+							if (chatNodeIds.length > 0) {
+								const selectedNodes = Array.from(
+									editor.api.nodes({
+										at: [],
+										match: (node) =>
+											ElementApi.isElement(node) &&
+											typeof node.id === "string" &&
+											chatNodeIds.includes(node.id),
+									}),
+								)
+								const range = editor.api.nodesRange(selectedNodes)
+
+								if (range) {
+									editor.tf.setSelection(range)
+								}
+							}
+						}
+
 						withAIBatch(
 							editor,
 							() => {
