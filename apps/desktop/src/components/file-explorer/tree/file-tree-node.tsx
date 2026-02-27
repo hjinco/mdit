@@ -1,11 +1,10 @@
-import { useDraggable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
-import { useCallback, useMemo } from "react"
-import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
+import { useMemo } from "react"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 import type { TreeNodeProps } from "./tree-node.types"
 import { TreeNodeRenameInput } from "./tree-node-rename-input"
+import { useTreeNodeInteractions } from "./use-tree-node-interactions"
 
 const INDENTATION_WIDTH = 12
 
@@ -21,13 +20,23 @@ export function FileTreeNode({
 	onRenameSubmit,
 	onRenameCancel,
 }: TreeNodeProps) {
-	const isRenaming = renamingEntryPath === entry.path
-	const isLocked = useMemo(
-		() => hasPathConflictWithLockedPaths([entry.path], aiLockedEntryPaths),
-		[aiLockedEntryPaths, entry.path],
-	)
-	const isBusy = isRenaming || isLocked
-	const isSelected = selectedEntryPaths.has(entry.path)
+	const {
+		isRenaming,
+		isLocked,
+		isBusy,
+		isSelected,
+		isDragging,
+		setDraggableRef,
+		handlePrimaryAction,
+		handleContextMenu,
+	} = useTreeNodeInteractions({
+		entry,
+		aiLockedEntryPaths,
+		renamingEntryPath,
+		selectedEntryPaths,
+		onEntryPrimaryAction,
+		onEntryContextMenu,
+	})
 
 	const extension = useMemo(() => {
 		if (entry.isDirectory) {
@@ -57,40 +66,6 @@ export function FileTreeNode({
 	const isActiveNote = isMarkdown && entry.path === activeTabPath
 	const showExtension = !isMarkdown && extension
 
-	const { ref: draggableRef, isDragging } = useDraggable({
-		id: entry.path,
-		data: {
-			path: entry.path,
-			isDirectory: entry.isDirectory,
-			name: entry.name,
-		},
-		disabled: isBusy,
-	})
-
-	const handlePrimaryAction = useCallback(
-		(event: React.MouseEvent<HTMLButtonElement>) => {
-			if (isBusy) {
-				return
-			}
-			onEntryPrimaryAction(entry, event)
-		},
-		[entry, isBusy, onEntryPrimaryAction],
-	)
-
-	const handleContextMenu = useCallback(
-		(event: React.MouseEvent<HTMLButtonElement>) => {
-			event.preventDefault()
-			event.stopPropagation()
-
-			if (isBusy) {
-				return
-			}
-
-			onEntryContextMenu(entry)
-		},
-		[entry, isBusy, onEntryContextMenu],
-	)
-
 	const renameInput = useInlineEditableInput({
 		active: isRenaming,
 		initialValue: baseName,
@@ -104,17 +79,10 @@ export function FileTreeNode({
 		onCancel: onRenameCancel,
 	})
 
-	const handleButtonRef = useCallback(
-		(node: HTMLButtonElement | null) => {
-			draggableRef(node)
-		},
-		[draggableRef],
-	)
-
 	return (
 		<li>
 			<button
-				ref={handleButtonRef}
+				ref={setDraggableRef}
 				type="button"
 				id={entry.path}
 				onClick={handlePrimaryAction}
