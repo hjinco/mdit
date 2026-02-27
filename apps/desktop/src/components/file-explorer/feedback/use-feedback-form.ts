@@ -1,5 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useForm } from "react-hook-form"
 import { submitFeedback } from "./feedback-api"
 import {
@@ -27,25 +27,28 @@ export function useFeedbackForm({
 		},
 	})
 
-	const resetFormState = () => {
+	const resetFormState = useCallback(() => {
 		form.reset()
 		setSubmitStatus("idle")
-	}
+	}, [form])
 
-	const onSubmit = async (values: FeedbackFormValues) => {
-		setSubmitStatus("loading")
-		try {
-			await submitFeedback(apiUrl, {
-				message: values.message,
-				email: values.email || undefined,
-				screenshot: screenshot || undefined,
-			})
-			setSubmitStatus("success")
-		} catch (error) {
-			console.error("Failed to send feedback:", error)
-			setSubmitStatus("error")
-		}
-	}
+	const onSubmit = useCallback(
+		async (values: FeedbackFormValues) => {
+			setSubmitStatus("loading")
+			try {
+				await submitFeedback(apiUrl, {
+					message: values.message,
+					email: values.email || undefined,
+					screenshot: screenshot || undefined,
+				})
+				setSubmitStatus("success")
+			} catch (error) {
+				console.error("Failed to send feedback:", error)
+				setSubmitStatus("error")
+			}
+		},
+		[apiUrl, screenshot],
+	)
 
 	return {
 		form,

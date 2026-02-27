@@ -3,10 +3,7 @@ import { z } from "zod"
 export const feedbackFormSchema = z.object({
 	message: z.string().min(1, "Message is required"),
 	email: z
-		.string()
-		.refine((val) => val === "" || z.email().safeParse(val).success, {
-			message: "Invalid email",
-		})
+		.union([z.string().email({ message: "Invalid email" }), z.literal("")])
 		.optional(),
 })
 
