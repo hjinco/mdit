@@ -1,4 +1,9 @@
+import type {
+	ResolveWikiLinkParams,
+	ResolveWikiLinkResult,
+} from "@mdit/editor/plugins/link-kit"
 import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
+import { normalizeWikiTargetForDisplay } from "@mdit/editor/utils/link-toolbar-utils"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Popover,
@@ -15,12 +20,14 @@ import { useEditorPlugin, useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
-import {
-	normalizeWikiTargetForDisplay,
-	resolveWikiLinkViaInvoke,
-} from "@/components/editor/ui/link-toolbar-utils"
 import { useStore } from "@/store"
 import { calculateReadingMinutes } from "../utils/reading-time"
+
+async function resolveWikiLinkViaInvoke(
+	params: ResolveWikiLinkParams,
+): Promise<ResolveWikiLinkResult> {
+	return invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", params)
+}
 
 const WORD_SPLIT_REGEX = /\s+/
 

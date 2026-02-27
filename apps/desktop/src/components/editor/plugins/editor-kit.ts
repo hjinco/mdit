@@ -13,6 +13,7 @@ import { createBlockDraggable, DndPlugin } from "@mdit/editor/plugins/dnd-kit"
 import { EmojiKit } from "@mdit/editor/plugins/emoji-kit"
 import { FloatingToolbarKit } from "@mdit/editor/plugins/floating-toolbar-kit"
 import { FrontmatterKit } from "@mdit/editor/plugins/frontmatter-kit"
+import type { LinkWorkspaceState } from "@mdit/editor/plugins/link-kit"
 import { createLinkKit } from "@mdit/editor/plugins/link-kit"
 import { ListKit } from "@mdit/editor/plugins/list-kit"
 import { MarkdownKit } from "@mdit/editor/plugins/markdown-kit"
@@ -25,13 +26,11 @@ import { TableKit } from "@mdit/editor/plugins/table-kit"
 import { TocKit } from "@mdit/editor/plugins/toc-kit"
 import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { AIMenu } from "../ui/ai-menu"
-import {
-	LinkFloatingToolbar,
-	linkLeafDefaultAttributes,
-} from "../ui/link-toolbar"
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
 import { createLinkedNotesFromListItems } from "./block-selection-note-linking"
@@ -65,6 +64,26 @@ const handleCreateLinkedNotesFromListItems = async (items: string[]) => {
 	})
 }
 
+const useLinkWorkspaceState = () =>
+	useStore(
+		useShallow(
+			(state): LinkWorkspaceState => ({
+				workspacePath: state.workspacePath,
+				tab: state.tab,
+				entries: state.entries,
+			}),
+		),
+	)
+
+const getLinkWorkspaceState = (): LinkWorkspaceState => {
+	const state = useStore.getState()
+	return {
+		workspacePath: state.workspacePath,
+		tab: state.tab,
+		entries: state.entries,
+	}
+}
+
 export const EditorKit = [
 	...createAIKit({ AIMenu }),
 	...FilePasteKit,
@@ -86,8 +105,9 @@ export const EditorKit = [
 	...DndKit,
 	...FloatingToolbarKit,
 	...createLinkKit({
-		LinkFloatingToolbar,
-		defaultLinkAttributes: linkLeafDefaultAttributes,
+		host: createDesktopLinkHost(),
+		useWorkspaceState: useLinkWorkspaceState,
+		getWorkspaceState: getLinkWorkspaceState,
 	}),
 	...ListKit,
 	...MarkdownKit,

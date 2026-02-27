@@ -8,7 +8,6 @@ import {
 	useFloatingLinkInsert,
 	useFloatingLinkInsertState,
 } from "@platejs/link/react"
-import { openUrl } from "@tauri-apps/plugin-opener"
 import { cva } from "class-variance-authority"
 import { join, dirname as pathDirname, resolve } from "pathe"
 import { KEYS } from "platejs"
@@ -19,18 +18,16 @@ import {
 	usePluginOption,
 } from "platejs/react"
 import { type AnchorHTMLAttributes, useEffect, useMemo, useRef } from "react"
-import { useStore } from "@/store"
+import type { LinkHostDeps, LinkWorkspaceState } from "../plugins/link-kit"
 import {
 	flattenWorkspaceFiles,
 	isJavaScriptUrl,
-	normalizePathSeparators,
-	normalizeWorkspaceRoot,
+	isPathInsideWorkspaceRoot,
 	parseInternalLinkTarget,
 	resolveInternalLinkPath,
-	resolveWikiLinkViaInvoke,
 	safelyDecodeUrl,
 	stripLeadingSlashes,
-} from "./link-toolbar-utils"
+} from "../utils/link-toolbar-utils"
 import { LinkUrlInput } from "./link-url-input"
 
 const popoverVariants = cva(
@@ -39,8 +36,12 @@ const popoverVariants = cva(
 
 export function LinkFloatingToolbar({
 	state,
+	host,
+	workspaceState,
 }: {
 	state?: LinkFloatingToolbarState
+	host: LinkHostDeps
+	workspaceState: LinkWorkspaceState
 }) {
 	const editor = useEditorRef()
 	const selection = useEditorSelection()
@@ -180,24 +181,28 @@ export function LinkFloatingToolbar({
 
 	if (hidden) return null
 
-	return (
-		<>
-			{mode === "insert" && (
-				<div ref={insertRef} className={popoverVariants()} {...insertProps}>
-					<div className="flex w-[360px] flex-col" {...inputProps}>
-						<LinkUrlInput inputRef={insertInputRef} />
-					</div>
-				</div>
-			)}
+	const toolbarProps =
+		mode === "insert"
+			? { ref: insertRef, props: insertProps, inputRef: insertInputRef }
+			: mode === "edit"
+				? { ref: editRef, props: editProps, inputRef: editInputRef }
+				: null
+	if (!toolbarProps) return null
 
-			{mode === "edit" && (
-				<div ref={editRef} className={popoverVariants()} {...editProps}>
-					<div className="flex w-[360px] flex-col" {...inputProps}>
-						<LinkUrlInput inputRef={editInputRef} />
-					</div>
-				</div>
-			)}
-		</>
+	return (
+		<div
+			ref={toolbarProps.ref}
+			className={popoverVariants()}
+			{...toolbarProps.props}
+		>
+			<div className="flex w-[360px] flex-col" {...inputProps}>
+				<LinkUrlInput
+					inputRef={toolbarProps.inputRef}
+					host={host}
+					workspaceState={workspaceState}
+				/>
+			</div>
+		</div>
 	)
 }
 
@@ -205,6 +210,8 @@ type OpenLinkOptions = {
 	href: string
 	wiki?: boolean
 	wikiTarget?: string
+	host: LinkHostDeps
+	workspaceState: LinkWorkspaceState
 }
 
 async function openLink(options: OpenLinkOptions) {
@@ -217,7 +224,7 @@ async function openLink(options: OpenLinkOptions) {
 	const isWebLink = startsWithHttpProtocol(targetUrl)
 	if (isWebLink) {
 		try {
-			await openUrl(targetUrl)
+			await options.host.openExternalLink(targetUrl)
 		} catch (error) {
 			console.error("Failed to open external link:", error)
 		}
@@ -231,10 +238,10 @@ async function openLink(options: OpenLinkOptions) {
 
 	const {
 		entries: workspaceEntries,
-		openTab,
 		tab: currentTab,
 		workspacePath,
-	} = useStore.getState()
+	} = options.workspaceState
+	const { openTab } = options.host
 
 	try {
 		if (!workspacePath) {
@@ -250,7 +257,7 @@ async function openLink(options: OpenLinkOptions) {
 
 		if (isWikiLink) {
 			try {
-				const resolved = await resolveWikiLinkViaInvoke({
+				const resolved = await options.host.resolveWikiLink({
 					workspacePath,
 					currentNotePath: currentTab?.path ?? null,
 					rawTarget,
@@ -260,15 +267,10 @@ async function openLink(options: OpenLinkOptions) {
 						workspacePath,
 						resolved.resolvedRelPath,
 					)
-					const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
-					const normalizedAbsolute = normalizePathSeparators(absoluteResolved)
-					if (
-						normalizedAbsolute !== normalizedWorkspaceRoot &&
-						!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
-					) {
+					if (!isPathInsideWorkspaceRoot(absoluteResolved, workspacePath)) {
 						console.warn(
 							"Workspace link outside of root blocked:",
-							normalizedAbsolute,
+							absoluteResolved,
 						)
 						return
 					}
@@ -315,22 +317,8 @@ async function openLink(options: OpenLinkOptions) {
 			return
 		}
 
-		const normalizedWorkspaceRoot = normalizeWorkspaceRoot(workspacePath)
-		if (!normalizedWorkspaceRoot) {
-			console.warn("Workspace root missing; link open aborted")
-			return
-		}
-
-		const normalizedAbsolute = normalizePathSeparators(absolutePath)
-
-		if (
-			normalizedAbsolute !== normalizedWorkspaceRoot &&
-			!normalizedAbsolute.startsWith(`${normalizedWorkspaceRoot}/`)
-		) {
-			console.warn(
-				"Workspace link outside of root blocked:",
-				normalizedAbsolute,
-			)
+		if (!isPathInsideWorkspaceRoot(absolutePath, workspacePath)) {
+			console.warn("Workspace link outside of root blocked:", absolutePath)
 			return
 		}
 
@@ -340,8 +328,11 @@ async function openLink(options: OpenLinkOptions) {
 	}
 }
 
-export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> =
-	{
+export function createLinkLeafDefaultAttributes(
+	host: LinkHostDeps,
+	getWorkspaceState: () => LinkWorkspaceState,
+): AnchorHTMLAttributes<HTMLAnchorElement> {
+	return {
 		onMouseDown: (event) => {
 			const { currentTarget } = event
 			const url = currentTarget.dataset.linkUrl || currentTarget.href
@@ -367,6 +358,8 @@ export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> 
 				href: url,
 				wiki: currentTarget.dataset.wiki === "true",
 				wikiTarget: currentTarget.dataset.wikiTarget || undefined,
+				host,
+				workspaceState: getWorkspaceState(),
 			})
 		},
 		onClick: (event) => {
@@ -375,3 +368,4 @@ export const linkLeafDefaultAttributes: AnchorHTMLAttributes<HTMLAnchorElement> 
 			event.nativeEvent.stopImmediatePropagation?.()
 		},
 	}
+}

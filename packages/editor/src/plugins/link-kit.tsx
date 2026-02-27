@@ -1,8 +1,59 @@
 import { LinkPlugin } from "@platejs/link/react"
 import { createPlatePlugin } from "platejs/react"
-import type { AnchorHTMLAttributes, ComponentType } from "react"
+import type { AnchorHTMLAttributes } from "react"
+import {
+	createLinkLeafDefaultAttributes,
+	LinkFloatingToolbar,
+} from "../components/link-toolbar"
 import { LinkElement } from "../nodes/node-link"
 import { exitLinkForwardAtSelection } from "../utils/link-exit"
+import type {
+	LinkIndexingConfig,
+	LinkWorkspaceState,
+	ResolveWikiLinkParams,
+	ResolveWikiLinkResult,
+	WorkspaceFileOption,
+} from "./link-kit-types"
+
+export type {
+	LinkIndexingConfig,
+	LinkWorkspaceEntry,
+	LinkWorkspaceState,
+	ResolveWikiLinkParams,
+	ResolveWikiLinkResult,
+	WorkspaceFileOption,
+} from "./link-kit-types"
+
+export type LinkHostDeps = {
+	openExternalLink: (href: string) => Promise<void> | void
+	openTab: (
+		path: string,
+		skipHistory?: boolean,
+		force?: boolean,
+		options?: {
+			allowCreate?: boolean
+		},
+	) => Promise<void> | void
+	createNote: (
+		directoryPath: string,
+		options?: {
+			initialName?: string
+			initialContent?: string
+			openTab?: boolean
+		},
+	) => Promise<string>
+	resolveWikiLink: (
+		params: ResolveWikiLinkParams,
+	) => Promise<ResolveWikiLinkResult>
+	getIndexingConfig?: (
+		workspacePath: string | null,
+	) => Promise<LinkIndexingConfig | null>
+	getRelatedNotes?: (input: {
+		workspacePath: string
+		currentTabPath: string
+		limit: number
+	}) => Promise<WorkspaceFileOption[]>
+}
 
 type LinkLeafAttributes = Pick<
 	AnchorHTMLAttributes<HTMLAnchorElement>,
@@ -28,12 +79,21 @@ const LinkExitPlugin = createPlatePlugin({
 })
 
 export const createLinkKit = ({
-	LinkFloatingToolbar,
-	defaultLinkAttributes,
+	host,
+	useWorkspaceState,
+	getWorkspaceState,
 }: {
-	LinkFloatingToolbar: ComponentType
-	defaultLinkAttributes?: LinkLeafAttributes
+	host: LinkHostDeps
+	useWorkspaceState: () => LinkWorkspaceState
+	getWorkspaceState: () => LinkWorkspaceState
 }) => {
+	const FloatingToolbar = () => {
+		const workspaceState = useWorkspaceState()
+		return <LinkFloatingToolbar host={host} workspaceState={workspaceState} />
+	}
+
+	const defaultLinkAttributes: LinkLeafAttributes =
+		createLinkLeafDefaultAttributes(host, getWorkspaceState)
 	return [
 		LinkExitPlugin,
 		LinkPlugin.configure({
@@ -48,7 +108,7 @@ export const createLinkKit = ({
 						defaultLinkAttributes={defaultLinkAttributes}
 					/>
 				),
-				afterEditable: () => <LinkFloatingToolbar />,
+				afterEditable: FloatingToolbar,
 			},
 		}),
 	]
