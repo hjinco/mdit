@@ -1,11 +1,15 @@
 import { SlashInputPlugin, SlashPlugin } from "@platejs/slash-command/react"
-import { KEYS, type NodeComponent } from "platejs"
+import { KEYS } from "platejs"
+import { createSlashInputElement } from "../components/node-slash"
+import type { SlashHostDeps } from "./slash-kit-types"
 
-export const createSlashKit = ({
-	SlashInputElement,
-}: {
-	SlashInputElement: NodeComponent
-}) => [
+export type { SlashHostDeps } from "./slash-kit-types"
+
+type CreateSlashKitOptions = {
+	host?: SlashHostDeps
+}
+
+export const createSlashKit = ({ host }: CreateSlashKitOptions = {}) => [
 	SlashPlugin.configure({
 		options: {
 			triggerQuery: (editor) => {
@@ -35,5 +39,5 @@ export const createSlashKit = ({
 			},
 		},
 	}),
-	SlashInputPlugin.withComponent(SlashInputElement),
+	SlashInputPlugin.withComponent(createSlashInputElement(host)),
 ]
