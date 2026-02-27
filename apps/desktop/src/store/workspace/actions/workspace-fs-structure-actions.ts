@@ -1,5 +1,8 @@
 import { dirname, join, relative, resolve } from "pathe"
-import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
+import {
+	hasPathConflictWithLockedPaths,
+	isPathEqualOrDescendant,
+} from "@/utils/path-utils"
 import {
 	isPathDeletedByTargets,
 	resolveDeletedMarkdownPaths,
@@ -389,7 +392,10 @@ export const createWorkspaceFsStructureActions = (
 		}
 		const activeTabPath = tab?.path
 
-		if (activeTabPath && paths.includes(activeTabPath)) {
+		if (
+			activeTabPath &&
+			paths.some((path) => isPathEqualOrDescendant(activeTabPath, path))
+		) {
 			await waitForUnsavedTabToSettle(activeTabPath, ctx.get)
 		}
 
@@ -507,7 +513,10 @@ export const createWorkspaceFsStructureActions = (
 			return entry.path
 		}
 
-		await waitForUnsavedTabToSettle(entry.path, ctx.get)
+		const activeTabPath = ctx.get().tab?.path
+		if (activeTabPath && isPathEqualOrDescendant(activeTabPath, entry.path)) {
+			await waitForUnsavedTabToSettle(activeTabPath, ctx.get)
+		}
 
 		const directoryPath = dirname(entry.path)
 		const nextPath = join(directoryPath, trimmedName)

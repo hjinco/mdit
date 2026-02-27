@@ -198,6 +198,45 @@ describe("workspace-fs-structure-actions", () => {
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
+	it("renameEntry waits for unsaved active tab under renamed directory", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({
+			isSaved: false,
+			tab: { path: "/ws/folder/note.md" },
+		})
+
+		vi.useFakeTimers()
+
+		try {
+			const renamePromise = actions.renameEntry(
+				{
+					path: "/ws/folder",
+					name: "folder",
+					isDirectory: true,
+				},
+				"renamed",
+			)
+
+			await vi.advanceTimersByTimeAsync(199)
+			expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+
+			setState({ isSaved: true })
+			await vi.advanceTimersByTimeAsync(1)
+
+			const renamedPath = await renamePromise
+			expect(renamedPath).toBe("/ws/renamed")
+			expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+				"/ws/folder",
+				"/ws/renamed",
+			)
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
 	it("renameEntry rewrites backlinks and refreshes link index for markdown notes", async () => {
 		const { context, deps, getState, setState } =
 			createWorkspaceActionTestContext()
@@ -368,6 +407,36 @@ describe("workspace-fs-structure-actions", () => {
 		expect(getState().entriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/a.md", "/ws/b.md"],
 		})
+	})
+
+	it("deleteEntries waits for unsaved active tab under deleted directory", async () => {
+		const { context, deps, getState, setState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsStructureActions(context)
+		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
+		setState({
+			isSaved: false,
+			tab: { path: "/ws/folder/note.md" },
+		})
+
+		vi.useFakeTimers()
+
+		try {
+			const deletePromise = actions.deleteEntries(["/ws/folder"])
+
+			await vi.advanceTimersByTimeAsync(199)
+			expect(deps.fileSystemRepository.moveToTrash).not.toHaveBeenCalled()
+
+			setState({ isSaved: true })
+			await vi.advanceTimersByTimeAsync(1)
+
+			await deletePromise
+			expect(deps.fileSystemRepository.moveToTrash).toHaveBeenCalledWith(
+				"/ws/folder",
+			)
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 
 	it("deleteEntries blocks deletion when request includes locked paths", async () => {
