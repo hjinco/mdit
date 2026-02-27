@@ -40,7 +40,9 @@ export function TreeInlineEditRow({
 				<ChevronRight className="size-4" />
 			</div>
 			<div className="relative flex-1 min-w-0 flex items-center">
-				<span className="text-sm opacity-0">Placeholder</span>
+				<span className="text-sm opacity-0" aria-hidden="true">
+					Placeholder
+				</span>
 				<TreeNodeRenameInput
 					value={value}
 					setValue={setValue}
