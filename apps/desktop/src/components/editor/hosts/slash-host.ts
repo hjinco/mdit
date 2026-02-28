@@ -1,13 +1,11 @@
-import type { FrontmatterRow as KVRow } from "@mdit/editor/nodes/node-frontmatter"
-import type { SlashHostDeps } from "@mdit/editor/plugins/slash-kit"
+import type { FrontmatterRow as KVRow } from "@mdit/editor/frontmatter"
 import {
 	createDefaultFrontmatterRows,
 	createRowId,
-} from "@mdit/editor/utils/frontmatter-utils"
-import {
 	datePattern,
 	type ValueType,
-} from "@mdit/editor/utils/frontmatter-value-utils"
+} from "@mdit/editor/frontmatter"
+import type { SlashHostDeps } from "@mdit/editor/plugins/slash-kit"
 import { open } from "@tauri-apps/plugin-dialog"
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { dirname, resolve } from "pathe"

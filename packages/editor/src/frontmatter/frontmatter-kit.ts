@@ -1,8 +1,8 @@
 import { PointApi } from "platejs"
 import { createPlatePlugin } from "platejs/react"
 import { memo } from "react"
-import { FrontmatterElement } from "../nodes/node-frontmatter"
-import { requestFrontmatterFocus } from "../utils/frontmatter-focus"
+import { requestFrontmatterFocus } from "./frontmatter-focus"
+import { FrontmatterElement } from "./node-frontmatter"
 
 export const FRONTMATTER_KEY = "frontmatter"
 

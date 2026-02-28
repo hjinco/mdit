@@ -3,7 +3,7 @@ import {
 	formatLocalDate,
 	parseYMDToLocalDate,
 	type ValueType,
-} from "@mdit/editor/utils/frontmatter-value-utils"
+} from "@mdit/editor/frontmatter"
 import { Button } from "@mdit/ui/components/button"
 import { Calendar } from "@mdit/ui/components/calendar"
 import { Checkbox } from "@mdit/ui/components/checkbox"

@@ -74,7 +74,7 @@ export function FrontmatterArray({
 		>
 			{items.map((item, index) => (
 				<span
-					key={item}
+					key={`${item}-${index}`}
 					className="group inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-1 text-sm text-foreground cursor-default"
 				>
 					<span className="max-w-[12rem] truncate" title={item}>

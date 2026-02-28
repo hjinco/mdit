@@ -1,15 +1,3 @@
-import {
-	FRONTMATTER_FOCUS_EVENT,
-	type FrontmatterFocusTarget,
-	takePendingFrontmatterFocusTarget,
-} from "@mdit/editor/utils/frontmatter-focus"
-import {
-	convertValueToType,
-	datePattern,
-	formatLocalDate,
-	parseYMDToLocalDate,
-	type ValueType,
-} from "@mdit/editor/utils/frontmatter-value-utils"
 import { Button } from "@mdit/ui/components/button"
 import { Calendar } from "@mdit/ui/components/calendar"
 import {
@@ -48,6 +36,18 @@ import type {
 	HTMLInputTypeAttribute,
 } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+	FRONTMATTER_FOCUS_EVENT,
+	type FrontmatterFocusTarget,
+	takePendingFrontmatterFocusTarget,
+} from "./frontmatter-focus"
+import {
+	convertValueToType,
+	datePattern,
+	formatLocalDate,
+	parseYMDToLocalDate,
+	type ValueType,
+} from "./frontmatter-value-utils"
 import { FrontmatterArray } from "./node-frontmatter-array"
 
 export const KB_NAV_ATTR = "data-kb-nav"
@@ -61,6 +61,7 @@ export type KVRow = {
 
 const columnsOrder = ["type", "key", "value", "actions"] as const
 type ColumnId = (typeof columnsOrder)[number]
+type CellPosition = { rowIndex: number; colIndex: number }
 
 export type FocusRegistration = {
 	rowId: string
@@ -184,30 +185,25 @@ function InlineEditableField({
 		}, 0)
 	}, [isEditing])
 
+	const restoreRegisteredFocus = () => {
+		setTimeout(() => {
+			if (registeredNodeRef.current) {
+				registeredNodeRef.current.setAttribute(KB_NAV_ATTR, "true")
+				registeredNodeRef.current.focus({ preventScroll: true })
+			}
+		}, 0)
+	}
+
 	const commitAndClose = (nextValue?: string, preserveFocus?: boolean) => {
 		const resolved = nextValue ?? inputRef.current?.value ?? ""
 		onCommit(resolved)
 		setIsEditing(false)
-		if (preserveFocus) {
-			setTimeout(() => {
-				if (registeredNodeRef.current) {
-					registeredNodeRef.current.setAttribute(KB_NAV_ATTR, "true")
-					registeredNodeRef.current.focus({ preventScroll: true })
-				}
-			}, 0)
-		}
+		if (preserveFocus) restoreRegisteredFocus()
 	}
 
 	const cancelEditing = (preserveFocus?: boolean) => {
 		setIsEditing(false)
-		if (preserveFocus) {
-			setTimeout(() => {
-				if (registeredNodeRef.current) {
-					registeredNodeRef.current.setAttribute(KB_NAV_ATTR, "true")
-					registeredNodeRef.current.focus({ preventScroll: true })
-				}
-			}, 0)
-		}
+		if (preserveFocus) restoreRegisteredFocus()
 	}
 
 	const focusAttrs = focusRegistration
@@ -405,6 +401,27 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		[onChange],
 	)
 
+	const registerCellRef = useCallback(
+		(rowId: string, columnId: ColumnId, node: HTMLElement | null) => {
+			if (!cellRefs.current[rowId]) {
+				cellRefs.current[rowId] = {}
+			}
+			cellRefs.current[rowId][columnId] = node
+		},
+		[],
+	)
+
+	const createFocusRegistration = useCallback(
+		(rowId: string, columnId: ColumnId): FocusRegistration => ({
+			rowId,
+			columnId,
+			register: (node) => {
+				registerCellRef(rowId, columnId, node)
+			},
+		}),
+		[registerCellRef],
+	)
+
 	const columns = useMemo<ColumnDef<KVRow>[]>(
 		() => [
 			{
@@ -428,16 +445,10 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 						<TypeSelect
 							value={row.original.type}
 							onValueChange={updateType}
-							focusRegistration={{
-								rowId: row.original.id,
-								columnId: "type",
-								register: (node) => {
-									if (!cellRefs.current[row.original.id]) {
-										cellRefs.current[row.original.id] = {}
-									}
-									cellRefs.current[row.original.id].type = node
-								},
-							}}
+							focusRegistration={createFocusRegistration(
+								row.original.id,
+								"type",
+							)}
 						/>
 					)
 				},
@@ -458,16 +469,10 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 							value={row.original.key ?? ""}
 							placeholder="Property name"
 							onCommit={updateKey}
-							focusRegistration={{
-								rowId: row.original.id,
-								columnId: "key",
-								register: (node) => {
-									if (!cellRefs.current[row.original.id]) {
-										cellRefs.current[row.original.id] = {}
-									}
-									cellRefs.current[row.original.id].key = node
-								},
-							}}
+							focusRegistration={createFocusRegistration(
+								row.original.id,
+								"key",
+							)}
 						/>
 					)
 				},
@@ -493,16 +498,10 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 							type={row.original.type}
 							value={row.original.value}
 							onValueChange={updateValue}
-							focusRegistration={{
-								rowId: row.original.id,
-								columnId: "value",
-								register: (node) => {
-									if (!cellRefs.current[row.original.id]) {
-										cellRefs.current[row.original.id] = {}
-									}
-									cellRefs.current[row.original.id].value = node
-								},
-							}}
+							focusRegistration={createFocusRegistration(
+								row.original.id,
+								"value",
+							)}
 						/>
 					)
 				},
@@ -523,10 +522,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 							onClick={removeRow}
 							className="rounded-sm text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:opacity-100 data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] transition-opacity"
 							ref={(node) => {
-								if (!cellRefs.current[row.original.id]) {
-									cellRefs.current[row.original.id] = {}
-								}
-								cellRefs.current[row.original.id].actions = node
+								registerCellRef(row.original.id, "actions", node)
 							}}
 							data-row-id={row.original.id}
 							data-col-id="actions"
@@ -537,7 +533,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 				},
 			},
 		],
-		[updateTableData],
+		[createFocusRegistration, registerCellRef, updateTableData],
 	)
 
 	const table = useReactTable({
@@ -547,6 +543,23 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 	})
 
 	rowOrderRef.current = table.getRowModel().rows.map((row) => row.original.id)
+
+	const getCellPosition = useCallback(
+		(target: HTMLElement | null): CellPosition | null => {
+			if (!target) return null
+
+			const rowId = target.dataset.rowId
+			const columnId = target.dataset.colId as ColumnId | undefined
+			if (!rowId || !columnId) return null
+
+			const rowIndex = rowOrderRef.current.indexOf(rowId)
+			const colIndex = columnsOrder.indexOf(columnId)
+			if (rowIndex === -1 || colIndex === -1) return null
+
+			return { rowIndex, colIndex }
+		},
+		[],
+	)
 
 	const focusCell = useCallback((rowId: string, columnId: ColumnId) => {
 		const target = cellRefs.current[rowId]?.[columnId]
@@ -564,6 +577,23 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 			})
 		}
 	}, [])
+
+	const focusCellByIndex = useCallback(
+		(rowIndex: number, colIndex: number) => {
+			if (
+				rowIndex < 0 ||
+				rowIndex >= rowOrderRef.current.length ||
+				colIndex < 0 ||
+				colIndex >= columnsOrder.length
+			) {
+				return false
+			}
+
+			focusCell(rowOrderRef.current[rowIndex], columnsOrder[colIndex])
+			return true
+		},
+		[focusCell],
+	)
 
 	const focusAddButton = useCallback(() => {
 		const target = addButtonRef.current
@@ -623,18 +653,11 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		(event: React.KeyboardEvent) => {
 			if (event.key !== "Tab") return
 			const target = event.target as HTMLElement | null
-			if (!target) return
+			const current = getCellPosition(target)
+			if (!current) return
 
-			const rowId = target.dataset.rowId
-			const columnId = target.dataset.colId as ColumnId | undefined
-			if (!rowId || !columnId) return
-
-			const rowIndex = rowOrderRef.current.indexOf(rowId)
-			const colIndex = columnsOrder.indexOf(columnId)
-			if (rowIndex === -1 || colIndex === -1) return
-
-			let nextRowIndex = rowIndex
-			let nextColIndex = colIndex + (event.shiftKey ? -1 : 1)
+			let nextRowIndex = current.rowIndex
+			let nextColIndex = current.colIndex + (event.shiftKey ? -1 : 1)
 
 			if (nextColIndex >= columnsOrder.length) {
 				nextColIndex = 0
@@ -652,7 +675,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 			) {
 				if (
 					!event.shiftKey &&
-					rowIndex === rowOrderRef.current.length - 1 &&
+					current.rowIndex === rowOrderRef.current.length - 1 &&
 					nextRowIndex >= rowOrderRef.current.length
 				) {
 					event.preventDefault()
@@ -664,11 +687,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 
 			event.preventDefault()
 			keyboardNavFlagRef.current = true
-			const nextRowId = rowOrderRef.current[nextRowIndex]
-			const nextColId = columnsOrder[nextColIndex]
-			focusCell(nextRowId, nextColId)
+			focusCellByIndex(nextRowIndex, nextColIndex)
 		},
-		[focusAddButton, focusCell],
+		[focusAddButton, focusCellByIndex, getCellPosition],
 	)
 
 	const handleArrowNavigation = useCallback(
@@ -686,23 +707,21 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 			const target = event.target as HTMLElement | null
 			if (!target || shouldIgnoreArrowNavigation(target)) return
 
-			const rowId = target.dataset.rowId
-			const columnId = target.dataset.colId as ColumnId | undefined
-			if (!rowId || !columnId) return
+			const current = getCellPosition(target)
+			if (!current) return
 
-			const rowIndex = rowOrderRef.current.indexOf(rowId)
-			const colIndex = columnsOrder.indexOf(columnId)
-			if (rowIndex === -1 || colIndex === -1) return
-
-			if (key === "ArrowDown" && rowIndex === rowOrderRef.current.length - 1) {
+			if (
+				key === "ArrowDown" &&
+				current.rowIndex === rowOrderRef.current.length - 1
+			) {
 				event.preventDefault()
 				keyboardNavFlagRef.current = true
 				focusAddButton()
 				return
 			}
 
-			let nextRowIndex = rowIndex
-			let nextColIndex = colIndex
+			let nextRowIndex = current.rowIndex
+			let nextColIndex = current.colIndex
 
 			if (key === "ArrowUp") nextRowIndex -= 1
 			if (key === "ArrowDown") nextRowIndex += 1
@@ -720,11 +739,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 
 			event.preventDefault()
 			keyboardNavFlagRef.current = true
-			const nextRowId = rowOrderRef.current[nextRowIndex]
-			const nextColId = columnsOrder[nextColIndex]
-			focusCell(nextRowId, nextColId)
+			focusCellByIndex(nextRowIndex, nextColIndex)
 		},
-		[focusAddButton, focusCell],
+		[focusAddButton, focusCellByIndex, getCellPosition],
 	)
 
 	const handleKeyDownCapture = useCallback((event: React.KeyboardEvent) => {

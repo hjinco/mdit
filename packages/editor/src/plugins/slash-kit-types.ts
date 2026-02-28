@@ -1,4 +1,4 @@
-import type { FrontmatterRow as KVRow } from "../nodes/node-frontmatter"
+import type { FrontmatterRow as KVRow } from "../frontmatter"
 
 export type SlashResolvedImageLink = {
 	url: string

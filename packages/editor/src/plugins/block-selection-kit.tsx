@@ -4,8 +4,8 @@ import type { PlateElementProps } from "platejs/react"
 import { BlockContextMenu } from "../components/block-context-menu"
 import { BlockSelectionAfterEditable } from "../components/block-seleciton-after-editable"
 import { BlockSelection } from "../components/block-selection"
+import { FRONTMATTER_KEY } from "../frontmatter"
 import type { CreateLinkedNotesFromListItemsHandler } from "./block-selection-linked-notes"
-import { FRONTMATTER_KEY } from "./frontmatter-kit"
 
 export type BlockSelectionKitOptions = {
 	onCreateLinkedNotesFromListItems?: CreateLinkedNotesFromListItemsHandler
