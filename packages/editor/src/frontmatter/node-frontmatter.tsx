@@ -24,6 +24,12 @@ export function FrontmatterElement(
 
 			if (nextRows.length === 0) {
 				editor.tf.removeNodes({ at: path })
+				requestAnimationFrame(() => {
+					if (editor.children.length > 0) {
+						editor.tf.select([0], { edge: "start" })
+					}
+					editor.tf.focus()
+				})
 				return
 			}
 			editor.tf.setNodes({ data: nextRows }, { at: path })
