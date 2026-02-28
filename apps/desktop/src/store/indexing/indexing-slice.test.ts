@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
-import type { IndexingPort, InvokeFunction } from "./indexing-ports"
+import { createTauriIndexingPort, type InvokeFunction } from "./indexing-ports"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 import type {
 	IndexingConfig,
@@ -9,37 +9,6 @@ import type {
 } from "./indexing-types"
 
 type TestStoreState = IndexingSlice & { ollamaModels: string[] }
-
-const createTestIndexingPort = (
-	invoke: InvokeFunction,
-	workspacePath: string,
-): IndexingPort => ({
-	getIndexingMeta: () =>
-		invoke<IndexingMeta>("get_indexing_meta_command", {
-			workspacePath,
-		}),
-	getIndexingConfig: () =>
-		invoke<IndexingConfig | null>("get_vault_embedding_config_command", {
-			workspacePath,
-		}),
-	setIndexingConfig: (embeddingProvider: string, embeddingModel: string) =>
-		invoke<void>("set_vault_embedding_config_command", {
-			workspacePath,
-			embeddingProvider,
-			embeddingModel,
-		}),
-	indexWorkspace: (forceReindex: boolean) =>
-		invoke<WorkspaceIndexSummary>("index_workspace_command", {
-			workspacePath,
-			forceReindex,
-		}),
-	indexNote: (notePath: string, options?: { includeEmbeddings?: boolean }) =>
-		invoke<WorkspaceIndexSummary>("index_note_command", {
-			workspacePath,
-			notePath,
-			includeEmbeddings: options?.includeEmbeddings ?? true,
-		}),
-})
 
 function createIndexingStore({
 	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
@@ -50,7 +19,7 @@ function createIndexingStore({
 } = {}) {
 	const createSlice = prepareIndexingSlice({
 		createIndexingPort: (workspacePath) =>
-			createTestIndexingPort(invoke, workspacePath),
+			createTauriIndexingPort(invoke, workspacePath),
 		timerUtils: {
 			setInterval: vi.fn().mockReturnValue(1),
 			clearInterval: vi.fn(),
