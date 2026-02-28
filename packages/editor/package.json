@@ -17,11 +17,14 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@ai-sdk/react": "^3.0.0",
+		"@hookform/resolvers": "^5.2.2",
 		"@ariakit/react": "^0.4.21",
 		"@base-ui/react": "^1.2.0",
 		"@dnd-kit/react": "^0.1.21",
 		"@emoji-mart/data": "^1.2.1",
 		"@flowershow/remark-wiki-link": "^3.4.0",
+		"@mdit/ai": "workspace:*",
 		"@mdit/tsconfig": "workspace:*",
 		"@mdit/ui": "workspace:*",
 		"@platejs/ai": "^52.1.0",
@@ -54,6 +57,7 @@
 		"@udecode/cn": "^49.0.15",
 		"ai": "^6.0.91",
 		"class-variance-authority": "^0.7.1",
+		"cmdk": "^1.1.1",
 		"katex": "^0.16.28",
 		"lowlight": "^3.3.0",
 		"lucide-react": "^0.539.0",
@@ -63,11 +67,13 @@
 		"platejs": "^52.0.17",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
+		"react-hook-form": "^7.71.1",
 		"react-textarea-autosize": "^8.5.9",
 		"remark-frontmatter": "^5.0.0",
 		"remark-gfm": "^4.0.1",
 		"remark-math": "^6.0.0",
-		"yaml": "^2.8.2"
+		"yaml": "^2.8.2",
+		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@types/react": "^19.2.14",

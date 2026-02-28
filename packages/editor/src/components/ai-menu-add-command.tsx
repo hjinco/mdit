@@ -20,11 +20,11 @@ import { Textarea } from "@mdit/ui/components/textarea"
 import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
-import type { Command } from "../hooks/use-ai-commands"
 import {
 	DEFAULT_SELECTION_COMMAND_TEMPLATE_MAP,
 	DEFAULT_SELECTION_COMMAND_TEMPLATES,
 } from "./ai-default-commands"
+import type { AIMenuCommand } from "./ai-menu.types"
 
 const formSchema = z.object({
 	label: z.string().min(1, "Label is required"),
@@ -34,7 +34,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 type Props = {
-	onAdd: (command: Command) => void
+	onAdd: (command: AIMenuCommand) => void
 	onClose: () => void
 }
 
@@ -104,7 +104,7 @@ export function AIMenuAddCommand({ onAdd, onClose }: Props) {
 								<SelectTrigger className="w-full justify-between">
 									<SelectValue placeholder="Choose a template" />
 								</SelectTrigger>
-								<SelectContent>
+								<SelectContent className="w-(--anchor-width) min-w-0">
 									<SelectItem value="custom">Custom</SelectItem>
 									{DEFAULT_SELECTION_COMMAND_TEMPLATES.map((item) => (
 										<SelectItem key={item.value} value={item.value}>

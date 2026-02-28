@@ -4,25 +4,33 @@ import { cn } from "@mdit/ui/lib/utils"
 import { Command as CommandPrimitive } from "cmdk"
 import { ArrowUpIcon, Loader2Icon } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
-import type { Command as TCommand } from "../hooks/use-ai-commands"
+import type {
+	AIMenuCommand,
+	AIMenuEnabledChatModel,
+	AIMenuRuntime,
+	AIMenuStorage,
+	EditorChatState,
+} from "./ai-menu.types"
 import { AIMenuItems } from "./ai-menu-items"
 import { AIModelSelector } from "./ai-model-selector"
 
-type EditorChatState = "cursorCommand" | "cursorSuggestion" | "selectionCommand"
-
 const MAX_VISIBLE_LINES = 4
 interface AIMenuContentProps {
-	chatConfig: ChatConfig | null
+	chatConfig: AIMenuRuntime["chatConfig"]
+	enabledChatModels: AIMenuEnabledChatModel[]
 	modelPopoverOpen: boolean
 	isLoading: boolean
 	messages: any[]
-	commands: TCommand[]
+	commands: AIMenuCommand[]
 	input: string
 	value: string
 	menuState: EditorChatState
+	storage: AIMenuStorage
 	isLicenseValid: boolean
+	canOpenModelSettings: boolean
 	onModelPopoverOpenChange: (open: boolean) => void
+	onSelectModel: (provider: string, model: string) => void
+	onOpenModelSettings: () => void
 	onValueChange: (value: string) => void
 	onInputChange: (value: string) => void
 	onInputClick: () => void
@@ -34,6 +42,7 @@ interface AIMenuContentProps {
 
 export function AIMenuContent({
 	chatConfig,
+	enabledChatModels,
 	modelPopoverOpen,
 	isLoading,
 	messages,
@@ -41,8 +50,12 @@ export function AIMenuContent({
 	input,
 	value,
 	menuState,
+	storage,
 	isLicenseValid,
+	canOpenModelSettings,
 	onModelPopoverOpenChange,
+	onSelectModel,
+	onOpenModelSettings,
 	onValueChange,
 	onInputChange,
 	onInputClick,
@@ -250,8 +263,13 @@ export function AIMenuContent({
 
 					<div className="flex items-center justify-end gap-2 pr-2">
 						<AIModelSelector
+							chatConfig={chatConfig}
+							enabledChatModels={enabledChatModels}
 							modelPopoverOpen={modelPopoverOpen}
 							onModelPopoverOpenChange={onModelPopoverOpenChange}
+							onSelectModel={onSelectModel}
+							canOpenModelSettings={canOpenModelSettings}
+							onOpenModelSettings={onOpenModelSettings}
 						/>
 						<Button
 							type="button"
@@ -281,6 +299,7 @@ export function AIMenuContent({
 						input={input}
 						setInput={onInputChange}
 						setValue={onValueChange}
+						storage={storage}
 						disabled={!chatConfig || !isLicenseValid}
 						menuState={menuState}
 						onAddCommandOpen={onAddCommandOpen}

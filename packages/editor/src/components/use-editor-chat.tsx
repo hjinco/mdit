@@ -1,18 +1,16 @@
 import { type UseChatHelpers, useChat as useBaseChat } from "@ai-sdk/react"
 import {
 	buildProviderRequestOptions,
-	CODEX_BASE_URL,
+	type ChatProviderId,
 	createModelFromChatConfig,
 	getEditorChatPromptTemplate,
 	getEditorChatSystemPrompt,
 	resolveEditorChatToolName,
 	type ToolName,
 } from "@mdit/ai"
-import { markdownJoinerTransform } from "@mdit/editor/utils/markdown-joiner-transform"
 import { replacePlaceholders } from "@platejs/ai"
 import { AIChatPlugin } from "@platejs/ai/react"
 import { serializeMd } from "@platejs/markdown"
-import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import {
 	convertToModelMessages,
 	createUIMessageStream,
@@ -21,31 +19,49 @@ import {
 	streamText,
 	type UIMessage,
 } from "ai"
-import { createSlateEditor, RangeApi } from "platejs"
+import { type createSlateEditor, RangeApi } from "platejs"
 import { useEditorRef } from "platejs/react"
 import { useEffect, useRef } from "react"
-import { toast } from "sonner"
-import { EditorKit } from "@/components/editor/plugins/editor-kit"
-import { useStore } from "@/store"
-import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
+import { markdownJoinerTransform } from "../utils/markdown-joiner-transform"
 
 export type { ToolName } from "@mdit/ai"
+
 export type TComment = {
 	blockId: string
 	comment: string
 	content: string
 }
+
 export type MessageDataPart = {
 	toolName: ToolName
 	comment?: TComment
 }
+
 export type Chat = UseChatHelpers<ChatMessage>
 export type ChatMessage = UIMessage<{}, MessageDataPart>
+
+export type EditorChatConfig = {
+	provider: ChatProviderId
+	model: string
+	apiKey: string
+	accountId?: string
+}
+
+type TempEditor = ReturnType<typeof createSlateEditor>
+
+export type EditorChatHostDeps = {
+	resolveActiveConfig: () => Promise<EditorChatConfig>
+	codexBaseUrl: string
+	fetch: typeof fetch
+	onError?: (error: Error) => void
+	createSessionId: () => string
+	createTempEditor: (ctx: { children: any; selection: any }) => TempEditor
+}
 
 const SELECTION_START = "<Selection>"
 const SELECTION_END = "</Selection>"
 
-const addSelection = (editor: ReturnType<typeof createSlateEditor>) => {
+const addSelection = (editor: TempEditor) => {
 	if (!editor.selection) return
 
 	if (editor.api.isExpanded()) {
@@ -63,10 +79,7 @@ const addSelection = (editor: ReturnType<typeof createSlateEditor>) => {
 	}
 }
 
-const removeEscapeSelection = (
-	editor: ReturnType<typeof createSlateEditor>,
-	text: string,
-) => {
+const removeEscapeSelection = (editor: TempEditor, text: string) => {
 	let newText = text
 		.replace(`\\${SELECTION_START}`, SELECTION_START)
 		.replace(`\\${SELECTION_END}`, SELECTION_END)
@@ -74,14 +87,12 @@ const removeEscapeSelection = (
 	// If the selection is on a void element, inserting the placeholder will fail, and the string must be replaced manually.
 	if (!newText.includes(SELECTION_END)) {
 		const [_, end] = RangeApi.edges(editor.selection!)
-
 		const node = editor.api.block({ at: end.path })
 
 		if (!node) return newText
 
 		if (editor.api.isVoid(node[0])) {
 			const voidString = serializeMd(editor, { value: [node[0]] })
-
 			const idx = newText.lastIndexOf(voidString)
 
 			if (idx !== -1) {
@@ -98,7 +109,7 @@ const removeEscapeSelection = (
 }
 
 const replaceMessagePlaceholders = (
-	editor: ReturnType<typeof createSlateEditor>,
+	editor: TempEditor,
 	message: ChatMessage,
 	{ isSelecting }: { isSelecting: boolean },
 ): ChatMessage => {
@@ -121,36 +132,20 @@ const replaceMessagePlaceholders = (
 	return { ...message, parts }
 }
 
-export const useChat = () => {
+export const useEditorChat = (host: EditorChatHostDeps): Chat => {
 	const editor = useEditorRef()
-	const sessionIdRef = useRef(crypto.randomUUID())
-
-	const resolveActiveConfig = async (): Promise<ChatConfig> => {
-		const currentConfig = useStore.getState().chatConfig
-		if (!currentConfig) {
-			throw new Error("LLM config not found")
-		}
-		if (currentConfig.provider !== "codex_oauth") {
-			return currentConfig
-		}
-
-		await useStore.getState().refreshCodexOAuthForTarget()
-		const refreshedConfig = useStore.getState().chatConfig
-		if (!refreshedConfig || refreshedConfig.provider !== "codex_oauth") {
-			throw new Error("Codex OAuth credential not found")
-		}
-		return refreshedConfig
-	}
+	const sessionIdRef = useRef(host.createSessionId())
 
 	const chat = useBaseChat<ChatMessage>({
 		id: "editor",
 		transport: new DefaultChatTransport({
 			fetch: async (_, init) => {
-				const activeConfig = await resolveActiveConfig()
+				const activeConfig = await host.resolveActiveConfig()
 				const model = createModelFromChatConfig(activeConfig, {
 					codex: {
-						baseURL: CODEX_BASE_URL,
-						fetch: tauriHttpFetch,
+						baseURL: host.codexBaseUrl,
+						fetch: host.fetch,
+						createSessionId: () => sessionIdRef.current,
 						sessionId: sessionIdRef.current,
 					},
 				})
@@ -164,14 +159,10 @@ export const useChat = () => {
 				}
 
 				const { children, selection, toolName: toolNameParam } = ctx
-
-				// Create a temporary editor with the current state
-				const tempEditor = createSlateEditor({
-					plugins: EditorKit,
+				const tempEditor = host.createTempEditor({
+					children,
 					selection,
-					value: children,
 				})
-
 				const isSelecting = tempEditor.api.isExpanded()
 
 				const stream = createUIMessageStream<ChatMessage>({
@@ -181,7 +172,6 @@ export const useChat = () => {
 						const lastIndex = messagesRaw.findIndex(
 							(message: ChatMessage) => message.role === "user",
 						)
-
 						const messages = [...messagesRaw]
 
 						messages[lastIndex] = replaceMessagePlaceholders(
@@ -257,13 +247,13 @@ export const useChat = () => {
 				return createUIMessageStreamResponse({ stream })
 			},
 		}),
-		onData(data) {
+		onData(data: any) {
 			if (data.type === "data-toolName") {
 				editor.setOption(AIChatPlugin, "toolName", data.data)
 			}
 		},
-		onError(error) {
-			toast.error(error.message)
+		onError(error: Error) {
+			host.onError?.(error)
 		},
 	})
 
