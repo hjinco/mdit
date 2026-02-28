@@ -45,8 +45,8 @@ import {
 	withHOC,
 } from "platejs/react"
 import { useRef } from "react"
-import { ResizeHandle } from "../media/resize-handle"
 import { blockSelectionVariants } from "../selection/block-selection"
+import { ResizeHandle } from "../shared/resize-handle"
 import { Toolbar, ToolbarButton, ToolbarGroup } from "../shared/toolbar"
 
 export const TableElement = withHOC(

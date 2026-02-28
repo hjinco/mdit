@@ -13,7 +13,7 @@ import {
 	mediaResizeHandleVariants,
 	Resizable,
 	ResizeHandle,
-} from "../media/resize-handle"
+} from "../shared/resize-handle"
 
 export type MediaImageWorkspaceState = {
 	tabPath: string | null

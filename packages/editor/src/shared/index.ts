@@ -10,6 +10,11 @@ export {
 	InlineComboboxRow,
 } from "./inline-combobox"
 export {
+	mediaResizeHandleVariants,
+	Resizable,
+	ResizeHandle,
+} from "./resize-handle"
+export {
 	Toolbar,
 	ToolbarButton,
 	ToolbarGroup,

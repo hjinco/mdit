@@ -11,8 +11,3 @@ export {
 	type MediaImageHostDeps,
 	type MediaImageWorkspaceState,
 } from "./node-media-image"
-export {
-	mediaResizeHandleVariants,
-	Resizable,
-	ResizeHandle,
-} from "./resize-handle"
