@@ -1,0 +1,35 @@
+{
+	"$schema": "https://turborepo.dev/schema.json",
+	"globalDependencies": [
+		"pnpm-lock.yaml",
+		"pnpm-workspace.yaml",
+		"biome.jsonc"
+	],
+	"tasks": {
+		"build": {
+			"dependsOn": ["^ts:check", "ts:check"],
+			"outputs": ["dist/**", ".astro/**"]
+		},
+		"ts:check": {
+			"dependsOn": ["^ts:check"],
+			"outputs": []
+		},
+		"test": {
+			"outputs": []
+		},
+		"check:rust": {
+			"cache": false
+		},
+		"test:rust": {
+			"cache": false
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"tauri:dev": {
+			"cache": false,
+			"persistent": true
+		}
+	}
+}
