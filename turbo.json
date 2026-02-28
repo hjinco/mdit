@@ -7,7 +7,7 @@
 	],
 	"tasks": {
 		"build": {
-			"dependsOn": ["^ts:check", "ts:check"],
+			"dependsOn": ["ts:check"],
 			"outputs": ["dist/**", ".astro/**"]
 		},
 		"ts:check": {
