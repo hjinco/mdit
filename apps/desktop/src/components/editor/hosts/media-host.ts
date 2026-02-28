@@ -3,11 +3,6 @@ import { convertFileSrc } from "@tauri-apps/api/core"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
-type DesktopMediaHostRuntimeDeps = {
-	useWorkspaceState: MediaHostDeps["useWorkspaceState"]
-	toFileUrl: MediaHostDeps["toFileUrl"]
-}
-
 const useDesktopWorkspaceState: MediaHostDeps["useWorkspaceState"] = () =>
 	useStore(
 		useShallow((state) => ({
@@ -16,13 +11,13 @@ const useDesktopWorkspaceState: MediaHostDeps["useWorkspaceState"] = () =>
 		})),
 	)
 
-const defaultRuntimeDeps: DesktopMediaHostRuntimeDeps = {
+const defaultRuntimeDeps: MediaHostDeps = {
 	useWorkspaceState: useDesktopWorkspaceState,
 	toFileUrl: convertFileSrc,
 }
 
 export const createDesktopMediaHost = (
-	runtimeDeps: DesktopMediaHostRuntimeDeps = defaultRuntimeDeps,
+	runtimeDeps: MediaHostDeps = defaultRuntimeDeps,
 ): MediaHostDeps => ({
 	useWorkspaceState: runtimeDeps.useWorkspaceState,
 	toFileUrl: runtimeDeps.toFileUrl,
