@@ -1,9 +1,11 @@
 import type {
 	ResolveWikiLinkParams,
 	ResolveWikiLinkResult,
-} from "@mdit/editor/plugins/link-kit"
-import { exitLinkForwardAtSelection } from "@mdit/editor/utils/link-exit"
-import { normalizeWikiTargetForDisplay } from "@mdit/editor/utils/link-toolbar-utils"
+} from "@mdit/editor/link"
+import {
+	exitLinkForwardAtSelection,
+	normalizeWikiTargetForDisplay,
+} from "@mdit/editor/link"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Popover,

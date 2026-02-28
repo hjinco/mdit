@@ -1,4 +1,4 @@
-import type { CreateLinkedNotesFromListItemsResult } from "@mdit/editor/plugins/block-selection-linked-notes"
+import type { CreateLinkedNotesFromListItemsResult } from "@mdit/editor/selection"
 import { basename, dirname } from "pathe"
 import { useStore } from "@/store"
 import {

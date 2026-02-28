@@ -1,8 +1,5 @@
-import type {
-	LinkHostDeps,
-	ResolveWikiLinkResult,
-} from "@mdit/editor/plugins/link-kit"
-import { stripFileExtensionForDisplay } from "@mdit/editor/utils/link-toolbar-utils"
+import type { LinkHostDeps, ResolveWikiLinkResult } from "@mdit/editor/link"
+import { stripFileExtensionForDisplay } from "@mdit/editor/link"
 import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { resolve } from "pathe"

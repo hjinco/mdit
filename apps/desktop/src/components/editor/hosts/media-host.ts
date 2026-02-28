@@ -1,4 +1,4 @@
-import type { MediaHostDeps } from "@mdit/editor/plugins/media-kit"
+import type { MediaHostDeps } from "@mdit/editor/media"
 import { convertFileSrc } from "@tauri-apps/api/core"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"

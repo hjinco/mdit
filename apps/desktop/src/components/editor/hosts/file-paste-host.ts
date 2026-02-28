@@ -1,4 +1,4 @@
-import type { FilePasteHostDeps } from "@mdit/editor/plugins/file-paste-kit"
+import type { FilePasteHostDeps } from "@mdit/editor/media"
 import clipboard from "tauri-plugin-clipboard-api"
 import { isImageFile } from "@/utils/file-icon"
 

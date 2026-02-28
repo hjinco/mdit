@@ -5,7 +5,7 @@ import {
 	datePattern,
 	type ValueType,
 } from "@mdit/editor/frontmatter"
-import type { SlashHostDeps } from "@mdit/editor/plugins/slash-kit"
+import type { SlashHostDeps } from "@mdit/editor/slash"
 import { open } from "@tauri-apps/plugin-dialog"
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { dirname, resolve } from "pathe"
