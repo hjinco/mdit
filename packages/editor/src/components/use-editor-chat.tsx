@@ -19,7 +19,7 @@ import {
 	streamText,
 	type UIMessage,
 } from "ai"
-import { createSlateEditor, RangeApi } from "platejs"
+import { type createSlateEditor, RangeApi } from "platejs"
 import { useEditorRef } from "platejs/react"
 import { useEffect, useRef } from "react"
 import { markdownJoinerTransform } from "../utils/markdown-joiner-transform"
@@ -55,7 +55,7 @@ export type EditorChatHostDeps = {
 	fetch: typeof fetch
 	onError?: (error: Error) => void
 	createSessionId: () => string
-	createTempEditor?: (ctx: { children: any; selection: any }) => TempEditor
+	createTempEditor: (ctx: { children: any; selection: any }) => TempEditor
 }
 
 const SELECTION_START = "<Selection>"
@@ -132,18 +132,6 @@ const replaceMessagePlaceholders = (
 	return { ...message, parts }
 }
 
-const createDefaultTempEditor = ({
-	children,
-	selection,
-}: {
-	children: any
-	selection: any
-}): TempEditor =>
-	createSlateEditor({
-		selection,
-		value: children,
-	})
-
 export const useEditorChat = (host: EditorChatHostDeps): Chat => {
 	const editor = useEditorRef()
 	const sessionIdRef = useRef(host.createSessionId())
@@ -171,7 +159,7 @@ export const useEditorChat = (host: EditorChatHostDeps): Chat => {
 				}
 
 				const { children, selection, toolName: toolNameParam } = ctx
-				const tempEditor = (host.createTempEditor ?? createDefaultTempEditor)({
+				const tempEditor = host.createTempEditor({
 					children,
 					selection,
 				})
