@@ -29,13 +29,13 @@ import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { AIMenu } from "../ui/ai-menu"
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
-import { createLinkedNotesFromListItems } from "./block-selection-note-linking"
 import { TabMetadataKit } from "./tab-metadata-kit"
 
 const AppBlockDraggable: RenderNodeWrapper = (props) => {
@@ -50,20 +50,6 @@ const DndKit = [
 		},
 	}),
 ]
-
-const handleCreateLinkedNotesFromListItems = async (items: string[]) => {
-	const { workspacePath, tab, createNote } = useStore.getState()
-	if (!workspacePath) {
-		return items.map(() => null)
-	}
-
-	return createLinkedNotesFromListItems({
-		items,
-		workspacePath,
-		currentTabPath: tab?.path ?? null,
-		createNote,
-	})
-}
 
 const useLinkWorkspaceState = () =>
 	useStore(
@@ -93,7 +79,8 @@ export const EditorKit = [
 	...BasicBlocksKit,
 	...BasicMarksKit,
 	...createBlockSelectionKit({
-		onCreateLinkedNotesFromListItems: handleCreateLinkedNotesFromListItems,
+		onCreateLinkedNotesFromListItems:
+			createDesktopBlockSelectionHost().createLinkedNotesFromListItems,
 	}),
 	...CalloutKit,
 	...CodeBlockKit,
