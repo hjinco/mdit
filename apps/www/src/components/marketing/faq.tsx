@@ -32,7 +32,7 @@ const faqItems: FAQItem[] = [
 		id: "refund",
 		question: "Do you offer refunds?",
 		answer:
-			"We offer a 30-day money-back guarantee on all lifetime licenses. If you're not satisfied with the product, simply reach out to our support team for a full refund.",
+			"We offer a 14-day money-back guarantee on all lifetime licenses. If you're not satisfied with the product, reach out to our support team at contact@mdit.app for a full refund.",
 	},
 	{
 		id: "updates",

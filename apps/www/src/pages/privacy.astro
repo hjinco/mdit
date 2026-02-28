@@ -1,0 +1,151 @@
+---
+import { DEFAULT_LOCALE } from "../i18n/locales"
+import { toLocalePath } from "../i18n/paths"
+import ContentLayout from "../layouts/ContentLayout.astro"
+import { GITHUB_REPO_URL } from "../lib/site/consts"
+
+const locale = DEFAULT_LOCALE
+---
+
+<ContentLayout
+	title="Privacy Policy | Mdit"
+	description="How Mdit handles your information."
+	canonicalPath={toLocalePath(locale, "/privacy")}
+	locale={locale}
+>
+	<article class="max-w-3xl">
+		<header class="mb-8 border-b border-border pb-6">
+			<h1 class="text-4xl font-semibold text-foreground/90 mb-3">
+				Privacy Policy
+			</h1>
+			<p class="text-muted-foreground">Effective date: February 28, 2026</p>
+		</header>
+
+		<div class="content-body">
+			<h2>1. Overview</h2>
+			<p>
+				Mdit is built with a privacy-first, local-first approach. This policy
+				explains how information is handled when you use the Mdit desktop app
+				and website.
+			</p>
+
+			<h2>2. Information we collect and process</h2>
+			<p>
+				We do not require account registration to use Mdit. By default, your
+				note content is intended to stay on your device, and we do not operate a
+				hosted note-storage service for your notes.
+			</p>
+			<p>
+				When you activate, validate, or deactivate a paid license, we process
+				the license key and activation identifier. We also send limited client
+				metadata used by the licensing flow, including platform and user agent.
+			</p>
+			<p>
+				If you submit feedback from the app, we process the feedback message and
+				any optional email address or screenshot you provide.
+			</p>
+			<p>
+				If you choose to send an in-app error report, we process report details
+				such as timestamp, app version, platform, user agent, error message,
+				stack trace, and component stack.
+			</p>
+			<p>
+				The desktop app may contact the update delivery endpoint (GitHub
+				Releases) to check for and download app updates.
+			</p>
+			<p>
+				We do not use analytics or telemetry in the app to track your writing
+				behavior. Infrastructure providers for website operations may process
+				limited technical logs needed for security and delivery.
+			</p>
+
+			<h2>3. How we use information</h2>
+			<p>
+				We use limited processed information to operate, secure, and
+				troubleshoot Mdit, to verify paid-license access, to process feedback
+				and error reports you submit, and to support update delivery.
+			</p>
+
+			<h2>4. When data may leave your device</h2>
+			<p>By default, your note content remains local on your device.</p>
+			<p>
+				Data may leave your device when you use features that require external
+				services, such as license activation or validation, feedback or error
+				reporting, AI provider integrations, or Git sync.
+			</p>
+			<p>
+				When you use AI features with a provider you select, prompts and related
+				context may be sent to that provider under that provider's terms and
+				privacy policy.
+			</p>
+			<p>
+				When you enable Git sync, note files and commit history may be pushed to
+				the remote repository you configure.
+			</p>
+
+			<h2>5. Sharing of information</h2>
+			<p>
+				We do not sell personal information. We do not share note content from a
+				hosted Mdit note server because we do not operate one.
+			</p>
+			<p>
+				Depending on the features you use, information may be processed by: our
+				licensing provider (Polar), the operator of the configured feedback or
+				error-report endpoint, GitHub Releases for update delivery, and
+				third-party AI or sync providers you choose to connect.
+			</p>
+
+			<h2>6. Data retention and your control</h2>
+			<p>
+				Because note data is stored locally by default, you control retention by
+				managing files on your device and your own backups. If you remove local
+				files, that data is no longer available in Mdit unless you restore it
+				from your backup.
+			</p>
+			<p>
+				In the desktop app, the license key is stored in your system keyring,
+				and the activation identifier is stored in local app storage.
+			</p>
+			<p>
+				For information processed by external services (such as licensing,
+				updates, feedback, or AI/sync providers), retention is limited to what
+				is needed for operational, support, security, and legal purposes and is
+				also subject to each provider's policies.
+			</p>
+			<p>
+				You can request access or deletion for data we control by contacting
+				<a href="mailto:contact@mdit.app">contact@mdit.app</a>
+				.
+			</p>
+
+			<h2>7. Third-party services</h2>
+			<p>
+				Mdit may link to or interoperate with third-party services. Their
+				privacy practices, terms, and data handling are governed by their own
+				policies.
+			</p>
+
+			<h2>8. Changes to this policy</h2>
+			<p>
+				We may update this Privacy Policy from time to time. Changes are
+				effective when published on this page.
+			</p>
+
+			<h2>9. Contact</h2>
+			<p>
+				For privacy questions or privacy requests (including access or deletion
+				requests), contact us at
+				<a href="mailto:contact@mdit.app">contact@mdit.app</a>
+				or open an issue on
+				<a
+					href={`${GITHUB_REPO_URL}/issues`}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					GitHub
+				</a>
+				.
+			</p>
+		</div>
+	</article>
+</ContentLayout>

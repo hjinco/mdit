@@ -1,0 +1,124 @@
+---
+import { DEFAULT_LOCALE } from "../i18n/locales"
+import { toLocalePath } from "../i18n/paths"
+import ContentLayout from "../layouts/ContentLayout.astro"
+import { GITHUB_REPO_URL } from "../lib/site/consts"
+
+const locale = DEFAULT_LOCALE
+---
+
+<ContentLayout
+	title="Terms of Service | Mdit"
+	description="Terms for using Mdit software and website."
+	canonicalPath={toLocalePath(locale, "/terms")}
+	locale={locale}
+>
+	<article class="max-w-3xl">
+		<header class="mb-8 border-b border-border pb-6">
+			<h1 class="text-4xl font-semibold text-foreground/90 mb-3">Terms of Service</h1>
+			<p class="text-muted-foreground">Effective date: February 28, 2026</p>
+		</header>
+
+		<div class="content-body">
+			<h2>1. Acceptance of terms</h2>
+			<p>
+				By using Mdit software or website, you agree to these Terms of Service. If you do
+				not agree, do not use Mdit.
+			</p>
+
+			<h2>2. What Mdit service includes</h2>
+			<p>
+				Mdit includes the desktop app, the official website, and paid features unlocked by a
+				valid license key. Mdit is local-first: your note content is primarily stored on
+				your device, and we do not operate a hosted note-storage service for your notes. If
+				you connect third-party licensing, AI, or sync providers, their terms, pricing, and
+				availability are governed by those providers.
+			</p>
+
+			<h2>3. Use of Mdit</h2>
+			<p>
+				You may use Mdit only in compliance with applicable laws. You are responsible for
+				how you use the software and for the content you create or store.
+			</p>
+
+			<h2>4. Paid features and license key</h2>
+			<p>
+				Some features require a paid license key. To access those features, you must provide
+				a valid key and keep it valid under the applicable purchase terms. License
+				activation and periodic validation may require an internet connection.
+			</p>
+			<p>
+				License usage is subject to activation and validation limits set by the licensing
+				system. If a key is invalid, revoked, expired, or exceeds allowed usage, paid
+				features may be limited or unavailable.
+			</p>
+
+			<h2>5. Refund policy</h2>
+			<p>
+				We offer a 14-day money-back guarantee for lifetime license purchases. Refund
+				requests made after 14 days from the purchase date may be declined, unless otherwise
+				required by applicable law.
+			</p>
+
+			<h2>6. Your data and backups</h2>
+			<p>
+				Mdit is designed for local-first usage, and note data is primarily stored on your
+				device. You are responsible for maintaining your own backups and device security.
+			</p>
+
+			<h2>7. Open-source components</h2>
+			<p>
+				Mdit may include open-source software and is distributed under applicable license
+				terms. See the repository for license details:
+				<a
+					href={`${GITHUB_REPO_URL}/blob/main/LICENSE`}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					LICENSE
+				</a>
+				.
+			</p>
+
+			<h2>8. Disclaimer of warranties</h2>
+			<p>
+				Mdit is provided "as is" without warranties of any kind, express or implied, to the
+				maximum extent permitted by law.
+			</p>
+
+			<h2>9. Limitation of liability</h2>
+			<p>
+				To the maximum extent permitted by law, Mdit and its maintainers are not liable for
+				any indirect, incidental, special, consequential, or punitive damages, or for any
+				loss of data, profits, or business interruption.
+			</p>
+
+			<h2>10. Third-party links</h2>
+			<p>
+				The website may contain links to third-party websites. We are not responsible for
+				their content, policies, or practices.
+			</p>
+
+			<h2>11. Changes to these terms</h2>
+			<p>
+				We may update these terms from time to time. Updated terms are effective when
+				published on this page.
+			</p>
+
+			<h2>12. Contact</h2>
+			<p>
+				For questions about these terms, contact us at
+				<a href="mailto:contact@mdit.app">contact@mdit.app</a>
+				or open an issue on
+				<a
+					href={`${GITHUB_REPO_URL}/issues`}
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					GitHub
+				</a>
+				.
+			</p>
+		</div>
+	</article>
+</ContentLayout>

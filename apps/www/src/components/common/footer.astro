@@ -11,6 +11,8 @@ const { locale = DEFAULT_LOCALE } = Astro.props as Props
 const year = new Date().getFullYear()
 const blogPath = toLocalePath(locale, "/blog")
 const changelogPath = toLocalePath(locale, "/changelog")
+const termsPath = toLocalePath(locale, "/terms")
+const privacyPath = toLocalePath(locale, "/privacy")
 ---
 
 <footer class="border-t border-border mt-20">
@@ -24,6 +26,12 @@ const changelogPath = toLocalePath(locale, "/changelog")
 			<a href={changelogPath} class="hover:text-foreground transition-colors"
 				>Changelog</a
 			>
+			<a href={termsPath} class="hover:text-foreground transition-colors">
+				Terms
+			</a>
+			<a href={privacyPath} class="hover:text-foreground transition-colors">
+				Privacy
+			</a>
 			<a
 				href={GITHUB_REPO_URL}
 				target="_blank"
