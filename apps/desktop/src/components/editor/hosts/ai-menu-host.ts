@@ -1,10 +1,10 @@
 import { CODEX_BASE_URL } from "@mdit/ai"
-import { useEditorChat } from "@mdit/editor/components/use-editor-chat"
 import type {
 	AIMenuCommand,
 	AIMenuHostDeps,
 	AIMenuStorage,
-} from "@mdit/editor/plugins/ai-kit"
+} from "@mdit/editor/ai"
+import { useEditorChat } from "@mdit/editor/ai"
 import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import { createSlateEditor } from "platejs"
 import { toast } from "sonner"

@@ -1,4 +1,4 @@
-import { EditorSurface } from "@mdit/editor/components/editor-surface"
+import { EditorSurface } from "@mdit/editor/shared"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { createSlateEditor, type Value } from "platejs"
 import { usePlateEditor } from "platejs/react"

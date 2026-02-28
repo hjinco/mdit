@@ -1,8 +1,8 @@
 import {
 	hasParentTraversal,
 	isAbsoluteLike,
-} from "@mdit/editor/utils/link-utils"
-import { normalizePathSeparators } from "@mdit/editor/utils/path-utils"
+	normalizePathSeparators,
+} from "@mdit/editor/link"
 import { relative } from "pathe"
 import { useStore } from "@/store"
 import { isPathEqualOrDescendant } from "@/utils/path-utils"
