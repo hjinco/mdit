@@ -32,10 +32,10 @@ import { useStore } from "@/store"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
+import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { AIMenu } from "../ui/ai-menu"
 import { DatabaseElement } from "../ui/node-database"
-import { ImageElement } from "../ui/node-media-image"
 import { TabMetadataKit } from "./tab-metadata-kit"
 
 const AppBlockDraggable: RenderNodeWrapper = (props) => {
@@ -100,7 +100,7 @@ export const EditorKit = [
 	...ListKit,
 	...MarkdownKit,
 	...MathKit,
-	...createMediaKit({ ImageElement }),
+	...createMediaKit({ host: desktopMediaHost }),
 	...ShortcutsKit,
 	...createSlashKit({ host: desktopSlashHost }),
 	...SuggestionKit,
