@@ -24,6 +24,7 @@ const renameNoteWithAICore = createRenameNoteWithAICore({
 	codex: {
 		baseURL: CODEX_BASE_URL,
 		fetch: tauriHttpFetch,
+		createSessionId: () => crypto.randomUUID(),
 	},
 })
 

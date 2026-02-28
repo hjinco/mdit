@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest"
 import { buildCodexHeaders } from "./codex-headers"
 
 describe("buildCodexHeaders", () => {
-	it("builds default codex headers and uses createSessionId", () => {
-		const createSessionId = vi.fn(() => "session-from-factory")
+	const createSessionId = vi.fn(() => "session-from-factory")
 
+	it("builds default codex headers and uses createSessionId", () => {
 		const headers = buildCodexHeaders({
 			chatConfig: {},
 			codex: {
@@ -33,6 +33,7 @@ describe("buildCodexHeaders", () => {
 				baseURL: "https://example.com",
 				fetch: vi.fn() as unknown as typeof fetch,
 				sessionId: "session-from-options",
+				createSessionId,
 				headers: {
 					originator: "custom-originator",
 					"session-id": "session-from-headers",

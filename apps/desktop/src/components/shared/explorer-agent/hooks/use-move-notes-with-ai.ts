@@ -26,6 +26,7 @@ const moveNoteWithAICore = createMoveNoteWithAICore({
 	codex: {
 		baseURL: CODEX_BASE_URL,
 		fetch: tauriHttpFetch,
+		createSessionId: () => crypto.randomUUID(),
 	},
 })
 

@@ -6,30 +6,27 @@ import {
 } from "@mdit/ui/components/dropdown-menu"
 import { cn } from "@mdit/ui/lib/utils"
 import { Check, ChevronDownIcon, ChevronRightIcon } from "lucide-react"
-import { useShallow } from "zustand/shallow"
-import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
-import { useStore } from "@/store"
+import type { AIMenuEnabledChatModel, AIMenuRuntime } from "./ai-menu.types"
 
 interface AIModelSelectorProps {
 	modelPopoverOpen: boolean
 	onModelPopoverOpenChange: (open: boolean) => void
+	chatConfig: AIMenuRuntime["chatConfig"]
+	enabledChatModels: AIMenuEnabledChatModel[]
+	onSelectModel: (provider: string, model: string) => void
+	canOpenModelSettings: boolean
+	onOpenModelSettings: () => void
 }
 
 export function AIModelSelector({
 	modelPopoverOpen,
 	onModelPopoverOpenChange,
+	chatConfig,
+	enabledChatModels,
+	onSelectModel,
+	canOpenModelSettings,
+	onOpenModelSettings,
 }: AIModelSelectorProps) {
-	const { enabledChatModels, chatConfig, selectModel, openSettingsWithTab } =
-		useStore(
-			useShallow((s) => ({
-				enabledChatModels: s.enabledChatModels,
-				chatConfig: s.chatConfig,
-				selectModel: s.selectModel,
-				openSettingsWithTab: s.openSettingsWithTab,
-			})),
-		)
-	const windowLabel = useCurrentWindowLabel()
-
 	return (
 		<div className="flex justify-end items-center gap-1.5 py-1">
 			<DropdownMenu
@@ -53,7 +50,7 @@ export function AIModelSelector({
 							return (
 								<DropdownMenuItem
 									key={`${provider}-${model}`}
-									onClick={() => selectModel(provider, model)}
+									onClick={() => onSelectModel(provider, model)}
 									className={cn(
 										"text-xs",
 										isSelected && "bg-primary/10 text-primary font-medium",
@@ -69,11 +66,8 @@ export function AIModelSelector({
 							No enabled models
 						</div>
 					)}
-					{windowLabel === "main" && (
-						<DropdownMenuItem
-							onClick={() => openSettingsWithTab("ai")}
-							className="text-xs"
-						>
+					{canOpenModelSettings && (
+						<DropdownMenuItem onClick={onOpenModelSettings} className="text-xs">
 							Add models <ChevronRightIcon className="size-3.5 ml-auto" />
 						</DropdownMenuItem>
 					)}

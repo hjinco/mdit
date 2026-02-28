@@ -29,12 +29,12 @@ import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
-import { AIMenu } from "../ui/ai-menu"
 import { DatabaseElement } from "../ui/node-database"
 import { TabMetadataKit } from "./tab-metadata-kit"
 
@@ -72,7 +72,7 @@ const getLinkWorkspaceState = (): LinkWorkspaceState => {
 }
 
 export const EditorKit = [
-	...createAIKit({ AIMenu }),
+	...createAIKit({ host: desktopAIMenuHost }),
 	...createFilePasteKit({ host: desktopFilePasteHost }),
 	...TabMetadataKit,
 	...AutoformatKit,

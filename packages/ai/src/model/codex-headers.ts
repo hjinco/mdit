@@ -10,8 +10,7 @@ export function buildCodexHeaders({
 	const headers: Record<string, string> = {
 		originator: "mdit",
 		"User-Agent": "mdit",
-		"session-id":
-			codex.sessionId ?? codex.createSessionId?.() ?? crypto.randomUUID(),
+		"session-id": codex.sessionId ?? codex.createSessionId(),
 		...(codex.headers ?? {}),
 	}
 

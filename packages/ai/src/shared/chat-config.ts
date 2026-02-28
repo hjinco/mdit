@@ -15,7 +15,7 @@ export type AIChatConfig = {
 export type AICodexModelOptions = {
 	baseURL: string
 	fetch: typeof fetch
-	createSessionId?: () => string
+	createSessionId: () => string
 	sessionId?: string
 	headers?: Record<string, string>
 }
