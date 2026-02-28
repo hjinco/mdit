@@ -176,7 +176,7 @@ function EditorContent({
 
 	useEffect(() => {
 		const previousPath = lastPathRef.current
-		const isInPlacePathChange = previousPath !== path
+		const pathDidChange = previousPath !== path
 		lastPathRef.current = path
 
 		const timeoutId = window.setTimeout(() => {
@@ -189,7 +189,7 @@ function EditorContent({
 
 			// Keep current cursor/selection when only the note path changes
 			// (e.g. auto-rename from first heading) without opening a new tab.
-			if (isInPlacePathChange) {
+			if (pathDidChange) {
 				return
 			}
 
