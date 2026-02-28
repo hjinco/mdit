@@ -1,11 +1,16 @@
 # Repository Guidelines
 
 ## Build, Test, and Development Commands
-- Run commands from the monorepo root unless noted. Root `desktop:*` scripts delegate to `apps/desktop`.
-- `pnpm desktop:tauri build` (or `pnpm -C apps/desktop tauri build`) builds the full desktop app (frontend + Rust).
-- `pnpm desktop:test` (or `pnpm -C apps/desktop test`) runs Vitest in CI mode.
-- `pnpm desktop:test:rust` (or `pnpm -C apps/desktop test:rust`) runs `cargo test --workspace --manifest-path ../../Cargo.toml`.
-- `pnpm desktop:ts:check` (or `pnpm -C apps/desktop ts:check`) runs TypeScript type checks only.
+- Run commands from the monorepo root unless noted. Root scripts use `task:scope` names.
+- `pnpm test:desktop` runs `turbo run test --filter=@mdit/desktop`.
+- `pnpm test:packages` runs `turbo run test --filter='./packages/*'`.
+- `pnpm test:all` runs `turbo run test`.
+- `pnpm check:rust:all` runs `cargo check --workspace --manifest-path Cargo.toml --locked`.
+- `pnpm test:rust:all` runs `cargo test --workspace --manifest-path Cargo.toml --locked`.
+- `pnpm test:rust:core` runs `cargo test --workspace --manifest-path Cargo.toml --exclude mdit --locked`.
+- `pnpm ts:check:desktop` runs `turbo run ts:check --filter=@mdit/desktop`.
+- `pnpm ts:check:www` runs `turbo run ts:check --filter=@mdit/www`.
+- `pnpm ts:check:all` runs `turbo run ts:check`.
 - `pnpm lint` runs Biome checks; `pnpm lint:fix` auto-fixes.
 
 ## LLM Working Principles

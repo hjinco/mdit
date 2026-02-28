@@ -1,23 +1,29 @@
 {
 	"name": "mdit",
 	"scripts": {
-		"desktop:build": "pnpm -C apps/desktop build",
-		"desktop:preview": "pnpm -C apps/desktop preview",
-		"desktop:tauri": "pnpm -C apps/desktop tauri",
-		"desktop:dev": "pnpm -C apps/desktop tauri:dev",
-		"desktop:test": "pnpm -C apps/desktop test",
-		"desktop:test:rust": "pnpm -C apps/desktop test:rust",
-		"desktop:ts:check": "pnpm -C apps/desktop ts:check",
-		"www:ts:check": "pnpm -C apps/www ts:check",
-		"desktop:ci": "pnpm -C apps/desktop run ci",
+		"build:desktop": "turbo run build --filter=@mdit/desktop",
+		"build:www": "turbo run build --filter=@mdit/www",
+		"tauri:desktop": "pnpm -C apps/desktop tauri",
+		"dev:desktop": "turbo run tauri:dev --filter=@mdit/desktop",
+		"dev:www": "turbo run dev --filter=@mdit/www",
+		"test:desktop": "turbo run test --filter=@mdit/desktop",
+		"test:packages": "turbo run test --filter='./packages/*'",
+		"test:all": "turbo run test",
+		"check:rust:all": "cargo check --workspace --manifest-path Cargo.toml --locked",
+		"test:rust:all": "cargo test --workspace --manifest-path Cargo.toml --locked",
+		"test:rust:core": "cargo test --workspace --manifest-path Cargo.toml --exclude mdit --locked",
+		"ts:check:desktop": "turbo run ts:check --filter=@mdit/desktop",
+		"ts:check:www": "turbo run ts:check --filter=@mdit/www",
+		"ts:check:all": "turbo run ts:check",
 		"lint": "biome check .",
 		"lint:fix": "biome check . --write",
-		"ci": "pnpm lint && pnpm run desktop:ci",
+		"ci": "pnpm lint && turbo run ts:check test --continue",
 		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.2",
-		"husky": "9.1.7"
+		"husky": "9.1.7",
+		"turbo": "2.8.12"
 	},
 	"packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937"
 }
