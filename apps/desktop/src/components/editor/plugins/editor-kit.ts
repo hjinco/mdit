@@ -11,6 +11,7 @@ import { createDatabaseKit } from "@mdit/editor/plugins/database-kit"
 import { DateKit } from "@mdit/editor/plugins/date-kit"
 import { createBlockDraggable, DndPlugin } from "@mdit/editor/plugins/dnd-kit"
 import { EmojiKit } from "@mdit/editor/plugins/emoji-kit"
+import { createFilePasteKit } from "@mdit/editor/plugins/file-paste-kit"
 import { FloatingToolbarKit } from "@mdit/editor/plugins/floating-toolbar-kit"
 import { FrontmatterKit } from "@mdit/editor/plugins/frontmatter-kit"
 import type { LinkWorkspaceState } from "@mdit/editor/plugins/link-kit"
@@ -28,13 +29,13 @@ import { UtilsKit } from "@mdit/editor/plugins/utils-kit"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { AIMenu } from "../ui/ai-menu"
 import { DatabaseElement } from "../ui/node-database"
 import { ImageElement } from "../ui/node-media-image"
 import { createLinkedNotesFromListItems } from "./block-selection-note-linking"
-import { FilePasteKit } from "./file-paste-kit"
 import { TabMetadataKit } from "./tab-metadata-kit"
 
 const AppBlockDraggable: RenderNodeWrapper = (props) => {
@@ -86,7 +87,7 @@ const getLinkWorkspaceState = (): LinkWorkspaceState => {
 
 export const EditorKit = [
 	...createAIKit({ AIMenu }),
-	...FilePasteKit,
+	...createFilePasteKit({ host: desktopFilePasteHost }),
 	...TabMetadataKit,
 	...AutoformatKit,
 	...BasicBlocksKit,
