@@ -105,12 +105,11 @@ function TypeSelect({
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
+			<DropdownMenuTrigger asChild {...focusAttrs}>
 				<Button
 					variant="ghost"
 					size="icon"
 					className="rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
-					{...focusAttrs}
 				>
 					<Icon className="h-4 w-4" />
 				</Button>
@@ -707,7 +706,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 			const target = event.target as HTMLElement | null
 			if (!target || shouldIgnoreArrowNavigation(target)) return
 
-			const current = getCellPosition(target)
+			const navigationTarget =
+				target.closest<HTMLElement>("[data-row-id][data-col-id]") ?? target
+			const current = getCellPosition(navigationTarget)
 			if (!current) return
 
 			if (
@@ -715,6 +716,7 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 				current.rowIndex === rowOrderRef.current.length - 1
 			) {
 				event.preventDefault()
+				event.stopPropagation()
 				keyboardNavFlagRef.current = true
 				focusAddButton()
 				return
@@ -734,10 +736,13 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 				nextColIndex < 0 ||
 				nextColIndex >= columnsOrder.length
 			) {
+				event.preventDefault()
+				event.stopPropagation()
 				return
 			}
 
 			event.preventDefault()
+			event.stopPropagation()
 			keyboardNavFlagRef.current = true
 			focusCellByIndex(nextRowIndex, nextColIndex)
 		},
