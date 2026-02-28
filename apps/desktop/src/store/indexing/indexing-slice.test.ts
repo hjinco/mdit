@@ -2,11 +2,6 @@ import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
 import { createTauriIndexingPort, type InvokeFunction } from "./indexing-ports"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
-import type {
-	IndexingConfig,
-	IndexingMeta,
-	WorkspaceIndexSummary,
-} from "./indexing-types"
 
 type TestStoreState = IndexingSlice & { ollamaModels: string[] }
 
