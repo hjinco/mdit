@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
-import {
-	IndexingService,
-	type InvokeFunction,
-} from "@/services/indexing-service"
+import { createTauriIndexingPort, type InvokeFunction } from "./indexing-ports"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
 type TestStoreState = IndexingSlice & { ollamaModels: string[] }
@@ -16,9 +13,8 @@ function createIndexingStore({
 	ollamaModels?: string[]
 } = {}) {
 	const createSlice = prepareIndexingSlice({
-		invoke,
-		createIndexingService: (invokeFn, workspacePath) =>
-			new IndexingService(invokeFn, workspacePath),
+		createIndexingPort: (workspacePath) =>
+			createTauriIndexingPort(invoke, workspacePath),
 		timerUtils: {
 			setInterval: vi.fn().mockReturnValue(1),
 			clearInterval: vi.fn(),

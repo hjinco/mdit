@@ -14,11 +14,11 @@ import { Check, Copy } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
+import { setLocalApiAuthToken } from "@/lib/local-api"
 import {
 	ensureLocalApiAuthToken,
 	rotateLocalApiAuthToken,
-} from "@/services/local-api-auth-service"
-import { setLocalApiAuthToken } from "@/services/local-api-service"
+} from "@/lib/local-api-auth"
 import { useStore } from "@/store"
 
 const REST_APIS = [

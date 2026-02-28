@@ -15,10 +15,7 @@ import { ScreenCaptureProvider } from "./contexts/screen-capture-context"
 import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
 import { useGitSync } from "./hooks/use-git-sync"
-import {
-	startLocalApiServer,
-	stopLocalApiServer,
-} from "./services/local-api-service"
+import { startLocalApiServer, stopLocalApiServer } from "./lib/local-api"
 import { useStore } from "./store"
 import { checkInternetConnectivity } from "./utils/network-utils"
 import { isLinux, isWindows10 } from "./utils/platform"

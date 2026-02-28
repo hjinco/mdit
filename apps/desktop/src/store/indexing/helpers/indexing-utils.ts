@@ -1,8 +1,4 @@
-import type { IndexingConfig } from "../indexing-slice"
-
-export type IndexingMeta = {
-	indexedDocCount: number
-}
+import type { IndexingConfig } from "../indexing-types"
 
 /**
  * Calculate indexing progress percentage

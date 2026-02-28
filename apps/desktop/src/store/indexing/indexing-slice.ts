@@ -1,35 +1,18 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core"
 import type { StateCreator } from "zustand"
 import {
-	IndexingService,
-	type InvokeFunction,
-} from "@/services/indexing-service"
-import {
-	type IndexingMeta,
 	isModelChanging,
 	parseEmbeddingModelValue,
 	shouldShowModelChangeWarning,
 } from "./helpers/indexing-utils"
-
-export type IndexingConfig = {
-	embeddingProvider: string
-	embeddingModel: string
-}
+import { createTauriIndexingPort, type IndexingPort } from "./indexing-ports"
+import type {
+	IndexingConfig,
+	IndexingMeta,
+	WorkspaceIndexSummary,
+} from "./indexing-types"
 
 type IndexingState = Record<string, boolean>
-
-export type WorkspaceIndexSummary = {
-	files_discovered: number
-	files_processed: number
-	docs_inserted: number
-	docs_deleted: number
-	segments_created: number
-	segments_updated: number
-	embeddings_written: number
-	links_written: number
-	links_deleted: number
-	skipped_files: string[]
-}
 
 type PendingModelChange = {
 	provider: string
@@ -91,11 +74,7 @@ type TimerUtils = {
 }
 
 type IndexingSliceDependencies = {
-	invoke: InvokeFunction
-	createIndexingService: (
-		invoke: InvokeFunction,
-		path: string,
-	) => IndexingService
+	createIndexingPort: (path: string) => IndexingPort
 	timerUtils?: TimerUtils
 }
 
@@ -107,8 +86,7 @@ const defaultTimerUtils: TimerUtils = {
 }
 
 export const prepareIndexingSlice = ({
-	invoke,
-	createIndexingService,
+	createIndexingPort,
 	timerUtils = defaultTimerUtils,
 }: IndexingSliceDependencies): StateCreator<
 	IndexingSlice & EmbeddingModelsState,
@@ -137,8 +115,8 @@ export const prepareIndexingSlice = ({
 				return state.configs[workspacePath]
 			}
 
-			const service = createIndexingService(invoke, workspacePath)
-			const dbConfig = await service.getIndexingConfig()
+			const indexingPort = createIndexingPort(workspacePath)
+			const dbConfig = await indexingPort.getIndexingConfig()
 
 			if (dbConfig) {
 				const config: IndexingConfig = {
@@ -170,8 +148,8 @@ export const prepareIndexingSlice = ({
 			embeddingProvider: string,
 			embeddingModel: string,
 		) => {
-			const service = createIndexingService(invoke, workspacePath)
-			await service.setIndexingConfig(embeddingProvider, embeddingModel)
+			const indexingPort = createIndexingPort(workspacePath)
+			await indexingPort.setIndexingConfig(embeddingProvider, embeddingModel)
 			const trimmedModel = embeddingModel.trim()
 
 			if (!trimmedModel) {
@@ -212,8 +190,8 @@ export const prepareIndexingSlice = ({
 			}))
 
 			try {
-				const service = createIndexingService(invoke, workspacePath)
-				const result = await service.indexWorkspace(forceReindex)
+				const indexingPort = createIndexingPort(workspacePath)
+				const result = await indexingPort.indexWorkspace(forceReindex)
 				return result
 			} finally {
 				set((state) => ({
@@ -243,8 +221,8 @@ export const prepareIndexingSlice = ({
 			}))
 
 			try {
-				const service = createIndexingService(invoke, workspacePath)
-				await service.indexNote(notePath, options)
+				const indexingPort = createIndexingPort(workspacePath)
+				await indexingPort.indexNote(notePath, options)
 				return true
 			} catch (error) {
 				console.error("Failed to index note:", error)
@@ -264,8 +242,8 @@ export const prepareIndexingSlice = ({
 			set({ isMetaLoading: true })
 
 			try {
-				const service = createIndexingService(invoke, workspacePath)
-				const meta = await service.getIndexingMeta()
+				const indexingPort = createIndexingPort(workspacePath)
+				const meta = await indexingPort.getIndexingMeta()
 
 				// Only update if we're still viewing the same workspace
 				if (currentWorkspacePath === workspacePath) {
@@ -293,8 +271,8 @@ export const prepareIndexingSlice = ({
 
 			// Load immediately and start polling
 			const poll = () => {
-				const service = createIndexingService(invoke, workspacePath)
-				service
+				const indexingPort = createIndexingPort(workspacePath)
+				indexingPort
 					.getIndexingMeta()
 					.then((meta: IndexingMeta) => {
 						if (currentWorkspacePath === workspacePath) {
@@ -393,7 +371,6 @@ export const prepareIndexingSlice = ({
 }
 
 export const createIndexingSlice = prepareIndexingSlice({
-	invoke: tauriInvoke as InvokeFunction,
-	createIndexingService: (invoke: InvokeFunction, workspacePath: string) =>
-		new IndexingService(invoke, workspacePath),
+	createIndexingPort: (workspacePath: string) =>
+		createTauriIndexingPort(tauriInvoke, workspacePath),
 })
