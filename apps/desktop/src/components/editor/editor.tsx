@@ -78,6 +78,7 @@ function EditorContent({
 }) {
 	const isSaved = useRef(true)
 	const isInitializing = useRef(true)
+	const lastPathRef = useRef(path)
 	const {
 		setTabSaved,
 		saveNoteContent,
@@ -174,11 +175,21 @@ function EditorContent({
 	}, [editor, setHistorySelectionProvider])
 
 	useEffect(() => {
+		const previousPath = lastPathRef.current
+		const isInPlacePathChange = previousPath !== path
+		lastPathRef.current = path
+
 		const timeoutId = window.setTimeout(() => {
 			const pendingRestore = consumePendingHistorySelectionRestore(path)
 			if (pendingRestore.found) {
 				restoreHistorySelection(editor, pendingRestore.selection)
 
+				return
+			}
+
+			// Keep current cursor/selection when only the note path changes
+			// (e.g. auto-rename from first heading) without opening a new tab.
+			if (isInPlacePathChange) {
 				return
 			}
 
