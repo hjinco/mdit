@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import { ensureLocalApiAuthToken } from "./local-api-auth-service"
+import { ensureLocalApiAuthToken } from "./local-api-auth"
 
 export async function startLocalApiServer(): Promise<void> {
 	const token = await ensureLocalApiAuthToken()

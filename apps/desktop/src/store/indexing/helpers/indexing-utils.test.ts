@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type { IndexingConfig } from "../indexing-slice"
+import type { IndexingConfig } from "../indexing-types"
 import {
 	buildSelectedEmbeddingModel,
 	calculateIndexingProgress,
