@@ -5,6 +5,7 @@
 	"type": "module",
 	"exports": {
 		"./components/*": "./src/components/*.tsx",
+		"./frontmatter": "./src/frontmatter/index.ts",
 		"./nodes/*": "./src/nodes/*.tsx",
 		"./plugins/*": "./src/plugins/*.ts",
 		"./plugins/block-selection-kit": "./src/plugins/block-selection-kit.tsx",

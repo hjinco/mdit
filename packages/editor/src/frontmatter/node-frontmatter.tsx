@@ -19,15 +19,14 @@ export function FrontmatterElement(
 
 	const handleDataChange = useCallback(
 		(nextRows: KVRow[]) => {
+			const path = props.api.findPath(element)
+			if (!path) return
+
 			if (nextRows.length === 0) {
-				editor.tf.removeNodes({ at: [0] })
+				editor.tf.removeNodes({ at: path })
 				return
 			}
-			const path = props.api.findPath(element)
-
-			if (path) {
-				editor.tf.setNodes({ data: nextRows }, { at: path })
-			}
+			editor.tf.setNodes({ data: nextRows }, { at: path })
 		},
 		[editor, element, props.api],
 	)

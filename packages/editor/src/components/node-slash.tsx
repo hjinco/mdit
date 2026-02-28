@@ -24,12 +24,14 @@ import type { NodeComponent } from "platejs"
 import { KEYS, PointApi, type TComboboxInputElement } from "platejs"
 import type { PlateEditor, PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
+import {
+	createDefaultFrontmatterRows,
+	FRONTMATTER_KEY,
+	requestFrontmatterFocus,
+} from "../frontmatter"
 import { CODE_DRAWING_KEY } from "../plugins/code-drawing-kit"
-import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 import type { SlashHostDeps } from "../plugins/slash-kit-types"
 import { applyPreviousCodeBlockLanguage } from "../utils/code-block-language"
-import { requestFrontmatterFocus } from "../utils/frontmatter-focus"
-import { createDefaultFrontmatterRows } from "../utils/frontmatter-utils"
 import { insertBlock, insertInlineElement } from "../utils/transforms"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "../utils/wiki-link-constants"
 import {

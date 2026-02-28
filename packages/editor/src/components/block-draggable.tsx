@@ -5,8 +5,8 @@ import { GripVertical, Plus } from "lucide-react"
 import { KEYS, PathApi } from "platejs"
 import { type PlateElementProps, usePluginOption } from "platejs/react"
 import type { MouseEvent } from "react"
+import { FRONTMATTER_KEY } from "../frontmatter"
 import { DATABASE_KEY } from "../plugins/database-kit"
-import { FRONTMATTER_KEY } from "../plugins/frontmatter-kit"
 
 const headingTopMap: Record<string, string> = {
 	[KEYS.h1]: "top-13",

@@ -2,7 +2,7 @@ import {
 	convertValueToType,
 	datePattern,
 	type ValueType,
-} from "@mdit/editor/utils/frontmatter-value-utils"
+} from "@mdit/editor/frontmatter"
 import { Button } from "@mdit/ui/components/button"
 import {
 	DropdownMenu,

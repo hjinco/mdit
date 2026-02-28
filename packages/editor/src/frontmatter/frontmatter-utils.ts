@@ -1,4 +1,4 @@
-import type { FrontmatterRow as KVRow } from "../nodes/node-frontmatter"
+import type { FrontmatterRow as KVRow } from "./node-frontmatter"
 
 export function createRowId() {
 	return Math.random().toString(36).slice(2, 9)
