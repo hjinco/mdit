@@ -378,6 +378,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		Record<string, Partial<Record<ColumnId, HTMLElement | null>>>
 	>({})
 	const rowOrderRef = useRef<string[]>([])
+	const pendingDeleteFocusRef = useRef<{ targetRowId: string | null } | null>(
+		null,
+	)
 	const lastKeyboardFocusedRef = useRef<HTMLElement | null>(null)
 	const keyboardNavFlagRef = useRef(false)
 	const addButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -420,6 +423,16 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		}),
 		[registerCellRef],
 	)
+
+	const getDeleteFocusTargetRowId = useCallback((deletedRowId: string) => {
+		const rowIndex = rowOrderRef.current.indexOf(deletedRowId)
+		if (rowIndex === -1) return null
+		return (
+			rowOrderRef.current[rowIndex - 1] ??
+			rowOrderRef.current[rowIndex + 1] ??
+			null
+		)
+	}, [])
 
 	const columns = useMemo<ColumnDef<KVRow>[]>(
 		() => [
@@ -519,6 +532,17 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 							variant="ghost"
 							size="icon"
 							onClick={removeRow}
+							onKeyDown={(event) => {
+								if (
+									event.key !== "Enter" &&
+									event.key !== " " &&
+									event.key !== "Spacebar"
+								)
+									return
+								pendingDeleteFocusRef.current = {
+									targetRowId: getDeleteFocusTargetRowId(row.original.id),
+								}
+							}}
 							className="rounded-sm text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:opacity-100 data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] transition-opacity"
 							ref={(node) => {
 								registerCellRef(row.original.id, "actions", node)
@@ -532,7 +556,12 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 				},
 			},
 		],
-		[createFocusRegistration, registerCellRef, updateTableData],
+		[
+			createFocusRegistration,
+			getDeleteFocusTargetRowId,
+			registerCellRef,
+			updateTableData,
+		],
 	)
 
 	const table = useReactTable({
@@ -868,6 +897,21 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		},
 		[focusAddButton, focusCell],
 	)
+
+	useEffect(() => {
+		const pendingDeleteFocus = pendingDeleteFocusRef.current
+		if (!pendingDeleteFocus) return
+
+		pendingDeleteFocusRef.current = null
+		keyboardNavFlagRef.current = true
+
+		if (
+			pendingDeleteFocus.targetRowId &&
+			cellRefs.current[pendingDeleteFocus.targetRowId]?.actions
+		) {
+			focusCell(pendingDeleteFocus.targetRowId, "actions")
+		}
+	})
 
 	useEffect(() => {
 		const pendingTarget = takePendingFrontmatterFocusTarget(editor.id)
