@@ -3,6 +3,7 @@ import { stripFileExtensionForDisplay } from "@mdit/editor/link"
 import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { resolve } from "pathe"
+import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
 type RelatedNoteEntry = {
@@ -11,12 +12,32 @@ type RelatedNoteEntry = {
 }
 
 type DesktopLinkHostRuntimeDeps = {
+	useWorkspaceState?: LinkHostDeps["useWorkspaceState"]
+	getWorkspaceState?: LinkHostDeps["getWorkspaceState"]
 	openExternalLink: (href: string) => Promise<void> | void
 	openTab: LinkHostDeps["openTab"]
 	createNote: LinkHostDeps["createNote"]
 	resolveWikiLink: LinkHostDeps["resolveWikiLink"]
 	getIndexingConfig?: NonNullable<LinkHostDeps["getIndexingConfig"]>
 	getRelatedNotes?: NonNullable<LinkHostDeps["getRelatedNotes"]>
+}
+
+const useDesktopWorkspaceState: LinkHostDeps["useWorkspaceState"] = () =>
+	useStore(
+		useShallow((state) => ({
+			workspacePath: state.workspacePath,
+			tab: state.tab,
+			entries: state.entries,
+		})),
+	)
+
+const getDesktopWorkspaceState: LinkHostDeps["getWorkspaceState"] = () => {
+	const state = useStore.getState()
+	return {
+		workspacePath: state.workspacePath,
+		tab: state.tab,
+		entries: state.entries,
+	}
 }
 
 const defaultRuntimeDeps: DesktopLinkHostRuntimeDeps = {
@@ -55,6 +76,10 @@ export const createDesktopLinkHost = (
 	}
 
 	return {
+		useWorkspaceState:
+			runtimeDeps.useWorkspaceState ?? useDesktopWorkspaceState,
+		getWorkspaceState:
+			runtimeDeps.getWorkspaceState ?? getDesktopWorkspaceState,
 		openExternalLink: runtimeDeps.openExternalLink,
 		openTab: runtimeDeps.openTab,
 		createNote: runtimeDeps.createNote,

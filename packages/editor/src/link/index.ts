@@ -8,6 +8,7 @@ export type {
 	ResolveWikiLinkResult,
 	WorkspaceFileOption,
 } from "./link-kit-types"
+export { type OpenEditorLinkOptions, openEditorLink } from "./link-open"
 export {
 	createPathQueryCandidates,
 	ensureUriEncoding,

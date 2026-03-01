@@ -9,8 +9,7 @@ import { CalloutKit } from "@mdit/editor/callout"
 import { BasicMarksKit, CodeBlockKit, CodeDrawingKit } from "@mdit/editor/code"
 import { DateKit } from "@mdit/editor/date"
 import { EmojiKit } from "@mdit/editor/emoji"
-import { FrontmatterKit } from "@mdit/editor/frontmatter"
-import type { LinkWorkspaceState } from "@mdit/editor/link"
+import { createFrontmatterKit } from "@mdit/editor/frontmatter"
 import { createLinkKit } from "@mdit/editor/link"
 import { AutoformatKit, MarkdownKit } from "@mdit/editor/markdown"
 import { MathKit } from "@mdit/editor/math"
@@ -27,11 +26,11 @@ import { SuggestionKit } from "@mdit/editor/suggestion"
 import { TableKit } from "@mdit/editor/table"
 import { TocKit } from "@mdit/editor/toc"
 import type { RenderNodeWrapper } from "platejs/react"
-import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
+import { createDesktopFrontmatterHost } from "../hosts/frontmatter-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
@@ -50,25 +49,10 @@ const DndKit = [
 	}),
 ]
 
-const useLinkWorkspaceState = () =>
-	useStore(
-		useShallow(
-			(state): LinkWorkspaceState => ({
-				workspacePath: state.workspacePath,
-				tab: state.tab,
-				entries: state.entries,
-			}),
-		),
-	)
-
-const getLinkWorkspaceState = (): LinkWorkspaceState => {
-	const state = useStore.getState()
-	return {
-		workspacePath: state.workspacePath,
-		tab: state.tab,
-		entries: state.entries,
-	}
-}
+const desktopLinkHost = createDesktopLinkHost()
+const desktopFrontmatterHost = createDesktopFrontmatterHost({
+	linkHost: desktopLinkHost,
+})
 
 export const EditorKit = [
 	...createAIKit({ host: desktopAIMenuHost }),
@@ -86,15 +70,11 @@ export const EditorKit = [
 	...CodeDrawingKit,
 	...CursorOverlayKit,
 	...EmojiKit,
-	...FrontmatterKit,
+	...createFrontmatterKit({ host: desktopFrontmatterHost }),
 	...DateKit,
 	...DndKit,
 	...FloatingToolbarKit,
-	...createLinkKit({
-		host: createDesktopLinkHost(),
-		useWorkspaceState: useLinkWorkspaceState,
-		getWorkspaceState: getLinkWorkspaceState,
-	}),
+	...createLinkKit({ host: desktopLinkHost }),
 	...ListKit,
 	...MarkdownKit,
 	...MathKit,

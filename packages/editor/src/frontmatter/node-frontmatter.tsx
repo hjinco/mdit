@@ -1,7 +1,13 @@
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement, useEditorRef } from "platejs/react"
 import { useCallback } from "react"
-import { FrontmatterTable, type KVRow } from "./node-frontmatter-table"
+import type { LinkWorkspaceState } from "../link/link-kit-types"
+import {
+	type FrontmatterResolveWikiLinkTargetHandler,
+	FrontmatterTable,
+	type FrontmatterWikiLinkHandler,
+	type KVRow,
+} from "./node-frontmatter-table"
 
 export type FrontmatterRow = KVRow
 
@@ -12,7 +18,11 @@ export type TFrontmatterElement = {
 }
 
 export function FrontmatterElement(
-	props: PlateElementProps<TFrontmatterElement>,
+	props: PlateElementProps<TFrontmatterElement> & {
+		onOpenWikiLink?: FrontmatterWikiLinkHandler
+		getLinkWorkspaceState?: () => LinkWorkspaceState
+		resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
+	},
 ) {
 	const editor = useEditorRef()
 	const element = props.element as TFrontmatterElement
@@ -44,7 +54,13 @@ export function FrontmatterElement(
 				contentEditable={false}
 				onContextMenu={(e) => e.stopPropagation()}
 			>
-				<FrontmatterTable data={element.data} onChange={handleDataChange} />
+				<FrontmatterTable
+					data={element.data}
+					onChange={handleDataChange}
+					onOpenWikiLink={props.onOpenWikiLink}
+					getLinkWorkspaceState={props.getLinkWorkspaceState}
+					resolveWikiLinkTarget={props.resolveWikiLinkTarget}
+				/>
 			</div>
 		</PlateElement>
 	)
