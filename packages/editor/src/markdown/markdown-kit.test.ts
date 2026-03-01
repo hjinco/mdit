@@ -1,6 +1,7 @@
 import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
+import { MarkdownKit } from "./markdown-kit"
 
 type LocalStorageLike = Pick<
 	Storage,
@@ -33,9 +34,8 @@ const ensureLocalStorage = () => {
 	globalThis.localStorage = localStorageShim as Storage
 }
 
-const createMarkdownEditor = async () => {
+const createMarkdownEditor = () => {
 	ensureLocalStorage()
-	const { MarkdownKit } = await import("./markdown-kit")
 	return createSlateEditor({ plugins: MarkdownKit })
 }
 
@@ -61,7 +61,7 @@ const extractText = (node: any): string => {
 
 describe("markdown-kit serialization", () => {
 	it("drops trailing empty paragraph on serialization", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.p,
@@ -82,7 +82,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("serializes internal links as wiki links", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.p,
@@ -104,7 +104,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("serializes internal links as markdown when not wiki", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.p,
@@ -126,7 +126,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("serializes internal images as embeds", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.img,
@@ -142,7 +142,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("serializes internal images as markdown when not wiki", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.img,
@@ -159,7 +159,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("keeps external links in standard markdown", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.p,
@@ -178,7 +178,7 @@ describe("markdown-kit serialization", () => {
 	})
 
 	it("serializes equation blocks with environment wrappers", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = [
 			{
 				type: KEYS.equation,
@@ -197,7 +197,7 @@ describe("markdown-kit serialization", () => {
 
 describe("markdown-kit deserialization", () => {
 	it("deserializes wiki links with aliases", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = deserializeMd(editor, "[[docs/guide|Guide]]")
 		const linkNode = findNodeByType(value as any[], KEYS.link)
 
@@ -210,7 +210,7 @@ describe("markdown-kit deserialization", () => {
 	})
 
 	it("deserializes markdown links as normal links", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = deserializeMd(editor, "[Guide](./docs/guide.md)")
 		const linkNode = findNodeByType(value as any[], KEYS.link)
 
@@ -223,7 +223,7 @@ describe("markdown-kit deserialization", () => {
 	})
 
 	it("deserializes embeds into image nodes", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = deserializeMd(editor, "![[assets/pic.png]]")
 		const imageNode = findNodeByType(value as any[], KEYS.img)
 
@@ -235,7 +235,7 @@ describe("markdown-kit deserialization", () => {
 	})
 
 	it("deserializes frontmatter into rows", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = deserializeMd(editor, "---\ntitle: Hello\n---\n\nBody")
 
 		const frontmatterNode = value[0] as any
@@ -252,7 +252,7 @@ describe("markdown-kit deserialization", () => {
 	})
 
 	it("deserializes equation blocks into equation nodes", async () => {
-		const editor = await createMarkdownEditor()
+		const editor = createMarkdownEditor()
 		const value = deserializeMd(
 			editor,
 			"$$\n\\begin{equation}\nE=mc^2\n\\end{equation}\n$$",
