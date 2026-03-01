@@ -18,6 +18,7 @@ import { FrontmatterWikiSuggestionPopover } from "./frontmatter-wiki-suggestion-
 import {
 	buildFrontmatterWikiSuggestions,
 	type FrontmatterWikiSuggestionEntry,
+	getFrontmatterWikiSuggestionTargetKey,
 } from "./frontmatter-wiki-suggestion-utils"
 import type { FocusRegistration } from "./node-frontmatter-table"
 
@@ -63,15 +64,6 @@ export function FrontmatterArray({
 		() => getActiveFrontmatterWikiQuery(draft, cursorPosition),
 		[cursorPosition, draft],
 	)
-	const wikiSuggestions = useMemo(() => {
-		if (!activeWikiQuery) return []
-		return buildFrontmatterWikiSuggestions(
-			workspaceFiles,
-			activeWikiQuery.query,
-		)
-	}, [activeWikiQuery, workspaceFiles])
-	const showWikiSuggestionPopover =
-		Boolean(activeWikiQuery) && wikiSuggestions.length > 0
 
 	const items = useMemo(() => {
 		if (Array.isArray(value)) {
@@ -82,6 +74,28 @@ export function FrontmatterArray({
 		}
 		return []
 	}, [value])
+	const excludedWikiTargetKeys = useMemo(() => {
+		const targetKeys = new Set<string>()
+		for (const item of items) {
+			const key = getFrontmatterWikiSuggestionTargetKey(item)
+			if (key) {
+				targetKeys.add(key)
+			}
+		}
+		return targetKeys
+	}, [items])
+	const wikiSuggestions = useMemo(() => {
+		if (!activeWikiQuery) return []
+		return buildFrontmatterWikiSuggestions(
+			workspaceFiles,
+			activeWikiQuery.query,
+			{
+				excludeTargetKeys: excludedWikiTargetKeys,
+			},
+		)
+	}, [activeWikiQuery, excludedWikiTargetKeys, workspaceFiles])
+	const showWikiSuggestionPopover =
+		Boolean(activeWikiQuery) && wikiSuggestions.length > 0
 
 	const addItems = (raw: string) => {
 		const nextItems = parseItems(raw)
