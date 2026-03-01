@@ -1,5 +1,6 @@
 import { Button } from "@mdit/ui/components/button"
 import { Calendar } from "@mdit/ui/components/calendar"
+import { Command } from "@mdit/ui/components/command"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -30,12 +31,20 @@ import {
 	XIcon,
 } from "lucide-react"
 import { useEditorRef } from "platejs/react"
-import type {
-	ComponentPropsWithoutRef,
-	ComponentType,
-	HTMLInputTypeAttribute,
+import {
+	type ComponentPropsWithoutRef,
+	type ComponentType,
+	type HTMLInputTypeAttribute,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useEffectEvent,
+	useMemo,
+	useRef,
+	useState,
 } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { LinkWorkspaceState } from "../link/link-kit-types"
+import { flattenWorkspaceFiles } from "../link/link-toolbar-utils"
 import {
 	FRONTMATTER_FOCUS_EVENT,
 	type FrontmatterFocusTarget,
@@ -48,6 +57,21 @@ import {
 	parseYMDToLocalDate,
 	type ValueType,
 } from "./frontmatter-value-utils"
+import { FrontmatterWikiInlinePreview } from "./frontmatter-wiki-inline-preview"
+import {
+	getActiveFrontmatterWikiQuery,
+	isSingleFrontmatterWikiLinkValue,
+	replaceFrontmatterWikiQuery,
+} from "./frontmatter-wiki-link-utils"
+import {
+	type ResolveFrontmatterWikiLinkTarget,
+	resolveFrontmatterWikiLinks,
+} from "./frontmatter-wiki-resolve-utils"
+import { FrontmatterWikiSuggestionPopover } from "./frontmatter-wiki-suggestion-popover"
+import {
+	buildFrontmatterWikiSuggestions,
+	type FrontmatterWikiSuggestionEntry,
+} from "./frontmatter-wiki-suggestion-utils"
 import { FrontmatterArray } from "./node-frontmatter-array"
 
 export const KB_NAV_ATTR = "data-kb-nav"
@@ -69,9 +93,19 @@ export type FocusRegistration = {
 	register: (node: HTMLElement | null) => void
 }
 
+export type FrontmatterWikiLinkHandler = (
+	target: string,
+) => void | Promise<void>
+
+export type FrontmatterResolveWikiLinkTargetHandler =
+	ResolveFrontmatterWikiLinkTarget
+
 type FrontmatterTableProps = {
 	data: KVRow[]
 	onChange: (data: KVRow[]) => void
+	onOpenWikiLink?: FrontmatterWikiLinkHandler
+	getLinkWorkspaceState?: () => LinkWorkspaceState
+	resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
 }
 
 const PROPERTY_ICONS: Record<
@@ -154,6 +188,11 @@ type InlineEditableFieldProps = {
 		ComponentPropsWithoutRef<typeof Input>,
 		"value" | "onChange" | "onBlur" | "type" | "className"
 	>
+	displayContent?: ReactNode
+	getLinkWorkspaceState?: () => LinkWorkspaceState
+	resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
+	enableWikiSuggestions?: boolean
+	wikiLinkMode?: "any" | "single"
 }
 
 const shouldIgnoreArrowNavigation = (element: HTMLElement) => {
@@ -172,15 +211,62 @@ function InlineEditableField({
 	focusRegistration,
 	buttonProps,
 	inputProps,
+	displayContent,
+	getLinkWorkspaceState,
+	resolveWikiLinkTarget,
+	enableWikiSuggestions = false,
+	wikiLinkMode = "any",
 }: InlineEditableFieldProps) {
 	const [isEditing, setIsEditing] = useState(false)
+	const [draftValue, setDraftValue] = useState(value)
+	const [cursorPosition, setCursorPosition] = useState(0)
 	const inputRef = useRef<HTMLInputElement | null>(null)
+	const wikiPopoverAnchorRef = useRef<HTMLDivElement | null>(null)
 	const registeredNodeRef = useRef<HTMLElement | null>(null)
+	const linkWorkspaceState = getLinkWorkspaceState?.()
+	const workspaceFiles = useMemo(
+		() =>
+			flattenWorkspaceFiles(
+				linkWorkspaceState?.entries ?? [],
+				linkWorkspaceState?.workspacePath ?? null,
+			),
+		[linkWorkspaceState?.entries, linkWorkspaceState?.workspacePath],
+	)
+	const activeWikiQuery = useMemo(() => {
+		if (!enableWikiSuggestions) return null
+		if (!isEditing) return null
+		return getActiveFrontmatterWikiQuery(draftValue, cursorPosition)
+	}, [cursorPosition, draftValue, enableWikiSuggestions, isEditing])
+	const wikiSuggestions = useMemo(() => {
+		if (!activeWikiQuery) return []
+		return buildFrontmatterWikiSuggestions(
+			workspaceFiles,
+			activeWikiQuery.query,
+		)
+	}, [activeWikiQuery, workspaceFiles])
+	const showWikiSuggestionPopover =
+		isEditing &&
+		enableWikiSuggestions &&
+		!!activeWikiQuery &&
+		wikiSuggestions.length > 0
+
+	useEffect(() => {
+		if (isEditing) {
+			setDraftValue(value)
+		} else {
+			setDraftValue(value)
+			setCursorPosition(value.length)
+		}
+	}, [isEditing, value])
 
 	useEffect(() => {
 		if (!isEditing) return
 		setTimeout(() => {
-			inputRef.current?.select()
+			const input = inputRef.current
+			if (!input) return
+			input.select()
+			const selectionStart = input.selectionStart ?? input.value.length
+			setCursorPosition(selectionStart)
 		}, 0)
 	}, [isEditing])
 
@@ -193,17 +279,40 @@ function InlineEditableField({
 		}, 0)
 	}
 
-	const commitAndClose = (nextValue?: string, preserveFocus?: boolean) => {
-		const resolved = nextValue ?? inputRef.current?.value ?? ""
-		onCommit(resolved)
-		setIsEditing(false)
-		if (preserveFocus) restoreRegisteredFocus()
-	}
+	const commitAndClose = useEffectEvent(
+		(nextValue?: string, preserveFocus?: boolean) => {
+			const rawValue = nextValue ?? draftValue ?? inputRef.current?.value ?? ""
+			const shouldResolveWikiLinks =
+				enableWikiSuggestions &&
+				(wikiLinkMode === "any" || isSingleFrontmatterWikiLinkValue(rawValue))
+			void resolveFrontmatterWikiLinks(
+				rawValue,
+				shouldResolveWikiLinks ? resolveWikiLinkTarget : undefined,
+			).then((resolvedValue) => {
+				onCommit(resolvedValue)
+			})
+			setIsEditing(false)
+			if (preserveFocus) restoreRegisteredFocus()
+		},
+	)
 
 	const cancelEditing = (preserveFocus?: boolean) => {
 		setIsEditing(false)
 		if (preserveFocus) restoreRegisteredFocus()
 	}
+
+	const applyWikiSuggestion = useCallback(
+		(suggestion: FrontmatterWikiSuggestionEntry) => {
+			if (!activeWikiQuery) return
+			const nextValue = replaceFrontmatterWikiQuery(
+				draftValue,
+				activeWikiQuery,
+				suggestion.target,
+			)
+			commitAndClose(nextValue, true)
+		},
+		[activeWikiQuery, draftValue],
+	)
 
 	const focusAttrs = focusRegistration
 		? {
@@ -217,33 +326,76 @@ function InlineEditableField({
 		: {}
 
 	return (
-		<div className="relative w-full h-8">
+		<div ref={wikiPopoverAnchorRef} className="relative w-full h-8">
 			{isEditing ? (
-				<Input
-					ref={(node) => {
-						inputRef.current = node
-						focusAttrs?.ref?.(node)
-					}}
-					type={inputType}
-					defaultValue={value}
-					onBlur={() => {
-						commitAndClose()
-					}}
-					onKeyDown={(e) => {
-						e.stopPropagation()
-						inputProps?.onKeyDown?.(e)
-						if (e.key === "Enter") {
-							commitAndClose(undefined, true)
-						} else if (e.key === "Escape") {
-							cancelEditing(true)
-						}
-					}}
-					className="rounded-sm bg-background dark:bg-background text-foreground absolute left-0 w-full h-8 -top-[0.5px] border-0"
-					autoFocus
-					data-row-id={focusAttrs?.["data-row-id"]}
-					data-col-id={focusAttrs?.["data-col-id"]}
-					{...inputProps}
-				/>
+				<Command
+					loop
+					shouldFilter={false}
+					className="h-auto w-full overflow-visible rounded-none bg-transparent text-inherit"
+				>
+					<Input
+						ref={(node) => {
+							inputRef.current = node
+							focusAttrs?.ref?.(node)
+						}}
+						type={inputType}
+						value={draftValue}
+						onChange={(event) => {
+							setDraftValue(event.target.value)
+							setCursorPosition(
+								event.target.selectionStart ?? event.target.value.length,
+							)
+						}}
+						onBlur={() => {
+							commitAndClose()
+						}}
+						onClick={(event) => {
+							setCursorPosition(
+								event.currentTarget.selectionStart ??
+									event.currentTarget.value.length,
+							)
+						}}
+						onSelect={(event) => {
+							setCursorPosition(
+								event.currentTarget.selectionStart ??
+									event.currentTarget.value.length,
+							)
+						}}
+						onKeyDown={(event) => {
+							const isCommandNavigationKey =
+								showWikiSuggestionPopover &&
+								(event.key === "ArrowDown" ||
+									event.key === "ArrowUp" ||
+									event.key === "Enter")
+							if (!isCommandNavigationKey) {
+								event.stopPropagation()
+							}
+							inputProps?.onKeyDown?.(event)
+
+							if (isCommandNavigationKey) {
+								return
+							}
+
+							if (event.key === "Enter") {
+								commitAndClose(undefined, true)
+							} else if (event.key === "Escape") {
+								cancelEditing(true)
+							}
+						}}
+						className="rounded-sm bg-background dark:bg-background text-foreground absolute left-0 w-full h-8 -top-[0.5px] border-0"
+						autoFocus
+						data-row-id={focusAttrs?.["data-row-id"]}
+						data-col-id={focusAttrs?.["data-col-id"]}
+						{...inputProps}
+					/>
+					{showWikiSuggestionPopover && (
+						<FrontmatterWikiSuggestionPopover
+							anchor={wikiPopoverAnchorRef.current}
+							suggestions={wikiSuggestions}
+							onSelect={applyWikiSuggestion}
+						/>
+					)}
+				</Command>
 			) : (
 				<Button
 					type="button"
@@ -253,13 +405,14 @@ function InlineEditableField({
 						"rounded-sm w-full justify-start px-3 text-left truncate data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] border-none",
 						!value && "text-muted-foreground italic",
 					)}
-					onClick={() => {
+					onClick={(event) => {
+						if (event.metaKey || event.ctrlKey) return
 						setIsEditing(true)
 					}}
 					{...focusAttrs}
 					{...buttonProps}
 				>
-					{value || placeholder}
+					{value ? (displayContent ?? value) : placeholder}
 				</Button>
 			)}
 		</div>
@@ -271,11 +424,17 @@ function ValueEditor({
 	value,
 	onValueChange,
 	focusRegistration,
+	onOpenWikiLink,
+	getLinkWorkspaceState,
+	resolveWikiLinkTarget,
 }: {
 	type: ValueType
 	value: unknown
 	onValueChange: (value: unknown) => void
 	focusRegistration?: FocusRegistration
+	onOpenWikiLink?: FrontmatterWikiLinkHandler
+	getLinkWorkspaceState?: () => LinkWorkspaceState
+	resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
 }) {
 	const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 	const stringValue = String(value ?? "")
@@ -347,6 +506,9 @@ function ValueEditor({
 					value={value}
 					onChange={onValueChange}
 					focusRegistration={focusRegistration}
+					onOpenWikiLink={onOpenWikiLink}
+					getLinkWorkspaceState={getLinkWorkspaceState}
+					resolveWikiLinkTarget={resolveWikiLinkTarget}
 				/>
 			)
 		case "number":
@@ -359,21 +521,42 @@ function ValueEditor({
 					focusRegistration={focusRegistration}
 				/>
 			)
-		case "string":
+		case "string": {
+			const shouldRenderWikiInlinePreview =
+				isSingleFrontmatterWikiLinkValue(stringValue)
 			return (
 				<InlineEditableField
 					value={stringValue}
 					placeholder="Enter text"
 					onCommit={(newValue) => onValueChange(newValue)}
 					focusRegistration={focusRegistration}
+					displayContent={
+						shouldRenderWikiInlinePreview ? (
+							<FrontmatterWikiInlinePreview
+								value={stringValue}
+								onOpenWikiLink={onOpenWikiLink}
+							/>
+						) : undefined
+					}
+					enableWikiSuggestions
+					wikiLinkMode="single"
+					getLinkWorkspaceState={getLinkWorkspaceState}
+					resolveWikiLinkTarget={resolveWikiLinkTarget}
 				/>
 			)
+		}
 		default:
 			return null
 	}
 }
 
-export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
+export function FrontmatterTable({
+	data,
+	onChange,
+	onOpenWikiLink,
+	getLinkWorkspaceState,
+	resolveWikiLinkTarget,
+}: FrontmatterTableProps) {
 	const cellRefs = useRef<
 		Record<string, Partial<Record<ColumnId, HTMLElement | null>>>
 	>({})
@@ -510,6 +693,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 							type={row.original.type}
 							value={row.original.value}
 							onValueChange={updateValue}
+							onOpenWikiLink={onOpenWikiLink}
+							getLinkWorkspaceState={getLinkWorkspaceState}
+							resolveWikiLinkTarget={resolveWikiLinkTarget}
 							focusRegistration={createFocusRegistration(
 								row.original.id,
 								"value",
@@ -559,6 +745,9 @@ export function FrontmatterTable({ data, onChange }: FrontmatterTableProps) {
 		[
 			createFocusRegistration,
 			getDeleteFocusTargetRowId,
+			getLinkWorkspaceState,
+			onOpenWikiLink,
+			resolveWikiLinkTarget,
 			registerCellRef,
 			updateTableData,
 		],

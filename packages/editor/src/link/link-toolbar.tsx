@@ -8,7 +8,6 @@ import {
 	useFloatingLinkInsertState,
 } from "@platejs/link/react"
 import { cva } from "class-variance-authority"
-import { join, dirname as pathDirname, resolve } from "pathe"
 import { KEYS } from "platejs"
 import {
 	useEditorRef,
@@ -18,17 +17,9 @@ import {
 } from "platejs/react"
 import { type AnchorHTMLAttributes, useEffect, useMemo, useRef } from "react"
 import type { LinkHostDeps, LinkWorkspaceState } from "../link/link-kit"
-import {
-	flattenWorkspaceFiles,
-	isJavaScriptUrl,
-	isPathInsideWorkspaceRoot,
-	parseInternalLinkTarget,
-	resolveInternalLinkPath,
-	safelyDecodeUrl,
-	stripLeadingSlashes,
-} from "../link/link-toolbar-utils"
+import { isJavaScriptUrl } from "../link/link-toolbar-utils"
+import { openEditorLink } from "./link-open"
 import { LinkUrlInput } from "./link-url-input"
-import { startsWithHttpProtocol } from "./link-utils"
 
 const popoverVariants = cva(
 	"z-50 w-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-hidden animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none",
@@ -206,128 +197,6 @@ export function LinkFloatingToolbar({
 	)
 }
 
-type OpenLinkOptions = {
-	href: string
-	wiki?: boolean
-	wikiTarget?: string
-	host: LinkHostDeps
-	workspaceState: LinkWorkspaceState
-}
-
-async function openLink(options: OpenLinkOptions) {
-	const decodedUrl = options.href ? safelyDecodeUrl(options.href) : ""
-	const targetUrl = decodedUrl || options.href
-	if (!targetUrl) {
-		return
-	}
-
-	const isWebLink = startsWithHttpProtocol(targetUrl)
-	if (isWebLink) {
-		try {
-			await options.host.openExternalLink(targetUrl)
-		} catch (error) {
-			console.error("Failed to open external link:", error)
-		}
-		return
-	}
-
-	if (targetUrl.startsWith("#")) {
-		// TODO: handle anchor links
-		return
-	}
-
-	const {
-		entries: workspaceEntries,
-		tab: currentTab,
-		workspacePath,
-	} = options.workspaceState
-	const { openTab } = options.host
-
-	try {
-		if (!workspacePath) {
-			return
-		}
-
-		const workspaceFiles = flattenWorkspaceFiles(
-			workspaceEntries,
-			workspacePath,
-		)
-		const isWikiLink = Boolean(options.wiki || options.wikiTarget)
-		const rawTarget = options.wikiTarget || targetUrl
-
-		if (isWikiLink) {
-			try {
-				const resolved = await options.host.resolveWikiLink({
-					workspacePath,
-					currentNotePath: currentTab?.path ?? null,
-					rawTarget,
-				})
-				if (resolved.resolvedRelPath) {
-					const absoluteResolved = resolve(
-						workspacePath,
-						resolved.resolvedRelPath,
-					)
-					if (!isPathInsideWorkspaceRoot(absoluteResolved, workspacePath)) {
-						console.warn(
-							"Workspace link outside of root blocked:",
-							absoluteResolved,
-						)
-						return
-					}
-					await openTab(absoluteResolved)
-				}
-				return
-			} catch (error) {
-				console.warn(
-					"Failed to resolve wiki link via invoke while opening; using fallback:",
-					error,
-				)
-			}
-		}
-
-		let absolutePath: string | null = null
-		const { rawPath, target } = parseInternalLinkTarget(rawTarget)
-		const resolvedPath = resolveInternalLinkPath({
-			rawPath,
-			target,
-			workspaceFiles,
-			workspacePath,
-			currentTabPath: currentTab?.path ?? null,
-		})
-
-		if (resolvedPath) {
-			await openTab(resolvedPath)
-			return
-		}
-
-		if (rawTarget.startsWith("/")) {
-			const workspaceRelativePath = stripLeadingSlashes(rawTarget)
-			absolutePath = join(workspacePath, workspaceRelativePath)
-		} else {
-			const currentPath = currentTab?.path
-			if (!currentPath) {
-				return
-			}
-
-			const currentDirectory = pathDirname(currentPath)
-			absolutePath = join(currentDirectory, rawTarget)
-		}
-
-		if (!absolutePath) {
-			return
-		}
-
-		if (!isPathInsideWorkspaceRoot(absolutePath, workspacePath)) {
-			console.warn("Workspace link outside of root blocked:", absolutePath)
-			return
-		}
-
-		await openTab(absolutePath)
-	} catch (error) {
-		console.error("Failed to open workspace link:", error)
-	}
-}
-
 export function createLinkLeafDefaultAttributes(
 	host: LinkHostDeps,
 	getWorkspaceState: () => LinkWorkspaceState,
@@ -354,7 +223,7 @@ export function createLinkLeafDefaultAttributes(
 			event.stopPropagation()
 			event.nativeEvent.stopImmediatePropagation?.()
 
-			void openLink({
+			void openEditorLink({
 				href: url,
 				wiki: currentTarget.dataset.wiki === "true",
 				wikiTarget: currentTarget.dataset.wikiTarget || undefined,

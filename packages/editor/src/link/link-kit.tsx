@@ -25,6 +25,8 @@ export type {
 } from "./link-kit-types"
 
 export type LinkHostDeps = {
+	useWorkspaceState: () => LinkWorkspaceState
+	getWorkspaceState: () => LinkWorkspaceState
 	openExternalLink: (href: string) => Promise<void> | void
 	openTab: (
 		path: string,
@@ -78,22 +80,14 @@ const LinkExitPlugin = createPlatePlugin({
 	},
 })
 
-export const createLinkKit = ({
-	host,
-	useWorkspaceState,
-	getWorkspaceState,
-}: {
-	host: LinkHostDeps
-	useWorkspaceState: () => LinkWorkspaceState
-	getWorkspaceState: () => LinkWorkspaceState
-}) => {
+export const createLinkKit = ({ host }: { host: LinkHostDeps }) => {
 	const FloatingToolbar = () => {
-		const workspaceState = useWorkspaceState()
+		const workspaceState = host.useWorkspaceState()
 		return <LinkFloatingToolbar host={host} workspaceState={workspaceState} />
 	}
 
 	const defaultLinkAttributes: LinkLeafAttributes =
-		createLinkLeafDefaultAttributes(host, getWorkspaceState)
+		createLinkLeafDefaultAttributes(host, host.getWorkspaceState)
 	return [
 		LinkExitPlugin,
 		LinkPlugin.configure({
