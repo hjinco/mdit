@@ -1,6 +1,6 @@
 import { PointApi } from "platejs"
 import { createPlatePlugin } from "platejs/react"
-import { createElement, memo } from "react"
+import { createElement } from "react"
 import type { LinkWorkspaceState } from "../link/link-kit-types"
 import { requestFrontmatterFocus } from "./frontmatter-focus"
 import { FrontmatterElement } from "./node-frontmatter"
@@ -23,16 +23,13 @@ export type CreateFrontmatterKitOptions = {
 export function createFrontmatterPlugin({
 	host,
 }: CreateFrontmatterKitOptions = {}) {
-	const FrontmatterNode = memo(
-		(props: Parameters<typeof FrontmatterElement>[0]) =>
-			createElement(FrontmatterElement, {
-				...props,
-				onOpenWikiLink: host?.onOpenWikiLink,
-				getLinkWorkspaceState: host?.getLinkWorkspaceState,
-				resolveWikiLinkTarget: host?.resolveWikiLinkTarget,
-			}),
-		() => true,
-	)
+	const FrontmatterNode = (props: Parameters<typeof FrontmatterElement>[0]) =>
+		createElement(FrontmatterElement, {
+			...props,
+			onOpenWikiLink: host?.onOpenWikiLink,
+			getLinkWorkspaceState: host?.getLinkWorkspaceState,
+			resolveWikiLinkTarget: host?.resolveWikiLinkTarget,
+		})
 
 	return createPlatePlugin({
 		key: FRONTMATTER_KEY,
