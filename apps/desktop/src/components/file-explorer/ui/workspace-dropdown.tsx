@@ -96,7 +96,7 @@ export function WorkspaceDropdown({
 											event.stopPropagation()
 											onWorkspaceRemove(path)
 										}}
-										onSelect={(event) => {
+										onClick={(event) => {
 											const item = event.currentTarget as HTMLElement
 											if (item.dataset.removeTriggered === "true") {
 												delete item.dataset.removeTriggered
