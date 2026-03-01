@@ -126,8 +126,19 @@ const PROPERTY_ICONS: Record<
 	array: IconList,
 }
 
+const PROPERTY_TYPE_OPTIONS: ReadonlyArray<{
+	value: ValueType
+	label: string
+}> = [
+	{ value: "string", label: "Text" },
+	{ value: "number", label: "Number" },
+	{ value: "boolean", label: "Boolean" },
+	{ value: "date", label: "Date" },
+	{ value: "array", label: "Array" },
+]
+
 function TypeSelect({
-	value,
+	value: currentType,
 	onValueChange,
 	onRemove,
 	focusRegistration,
@@ -137,7 +148,7 @@ function TypeSelect({
 	onRemove: () => void
 	focusRegistration?: FocusRegistration
 }) {
-	const Icon = PROPERTY_ICONS[value]
+	const Icon = PROPERTY_ICONS[currentType]
 	const focusAttrs = focusRegistration
 		? {
 				ref: focusRegistration.register,
@@ -164,41 +175,22 @@ function TypeSelect({
 						<span>Property type</span>
 					</DropdownMenuSubTrigger>
 					<DropdownMenuSubContent>
-						<DropdownMenuItem onClick={() => onValueChange("string")}>
-							<IconLetterCase className="size-4" />
-							<span>Text</span>
-							{value === "string" ? (
-								<IconCheck className="ml-auto size-4" />
-							) : null}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onValueChange("number")}>
-							<IconHash className="size-4" />
-							<span>Number</span>
-							{value === "number" ? (
-								<IconCheck className="ml-auto size-4" />
-							) : null}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onValueChange("boolean")}>
-							<IconToggleLeft className="size-4" />
-							<span>Boolean</span>
-							{value === "boolean" ? (
-								<IconCheck className="ml-auto size-4" />
-							) : null}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onValueChange("date")}>
-							<IconCalendar className="size-4" />
-							<span>Date</span>
-							{value === "date" ? (
-								<IconCheck className="ml-auto size-4" />
-							) : null}
-						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => onValueChange("array")}>
-							<IconList className="size-4" />
-							<span>Array</span>
-							{value === "array" ? (
-								<IconCheck className="ml-auto size-4" />
-							) : null}
-						</DropdownMenuItem>
+						{PROPERTY_TYPE_OPTIONS.map((option) => {
+							const OptionIcon = PROPERTY_ICONS[option.value]
+
+							return (
+								<DropdownMenuItem
+									key={option.value}
+									onClick={() => onValueChange(option.value)}
+								>
+									<OptionIcon className="size-4" />
+									<span>{option.label}</span>
+									{currentType === option.value ? (
+										<IconCheck className="ml-auto size-4" />
+									) : null}
+								</DropdownMenuItem>
+							)
+						})}
 					</DropdownMenuSubContent>
 				</DropdownMenuSub>
 				<DropdownMenuSeparator />
