@@ -56,7 +56,7 @@ pub(super) fn seed_search_fixture(harness: &Harness) {
     )
     .expect("failed to write Nebula Two.md");
 
-    indexing_core::index_workspace(
+    mdit_indexing::index_workspace(
         Path::new(&harness.workspace_path),
         Path::new(&harness.db_path),
         "",

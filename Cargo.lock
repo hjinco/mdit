@@ -2461,7 +2461,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "image-core"
+name = "image-processing"
 version = "0.1.0"
 dependencies = [
  "core-foundation 0.10.1",
@@ -2508,13 +2508,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexing-core"
+name = "indexing"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-storage",
  "blake3",
- "note-core",
+ "note",
  "ollama-rs",
  "pulldown-cmark",
  "rusqlite",
@@ -2910,12 +2910,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
-name = "local-api-core"
+name = "local-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-storage",
- "indexing-core",
+ "indexing",
  "serde",
  "thiserror 2.0.17",
 ]
@@ -3010,10 +3010,10 @@ dependencies = [
  "anyhow",
  "app-storage",
  "axum",
- "image-core",
- "indexing-core",
- "local-api-core",
- "note-core",
+ "image-processing",
+ "indexing",
+ "local-api",
+ "note",
  "objc2-app-kit",
  "rmcp",
  "serde",
@@ -3208,7 +3208,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0676bb32a98c1a483ce53e500a81ad9c3d5b3f7c920c28c24e9cb0980d0b5bc8"
 
 [[package]]
-name = "note-core"
+name = "note"
 version = "0.1.0"
 dependencies = [
  "anyhow",

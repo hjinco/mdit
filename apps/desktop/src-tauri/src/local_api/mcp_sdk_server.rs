@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use local_api_core::{
+use mdit_local_api::{
     CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNoteEntry, SearchNotesInput,
 };
 use rmcp::schemars;
@@ -36,7 +36,7 @@ impl MditMcpServer {
 impl MditMcpServer {
     #[tool(name = "list_vaults", description = "List available vaults.")]
     async fn list_vaults(&self) -> Result<Json<ListVaultsToolOutput>, McpError> {
-        let vaults = local_api_core::list_vaults(&self.db_path)
+        let vaults = mdit_local_api::list_vaults(&self.db_path)
             .map_err(local_api_error_to_mcp)?
             .into_iter()
             .map(|vault| VaultToolSummary {
@@ -57,7 +57,7 @@ impl MditMcpServer {
         &self,
         Parameters(input): Parameters<CreateNoteToolInput>,
     ) -> Result<Json<CreateNoteToolOutput>, McpError> {
-        let created = local_api_core::create_note(
+        let created = mdit_local_api::create_note(
             &self.db_path,
             CreateNoteInput {
                 vault_id: input.vault_id,
@@ -86,7 +86,7 @@ impl MditMcpServer {
         &self,
         Parameters(input): Parameters<SearchNotesToolInput>,
     ) -> Result<Json<SearchNotesToolOutput>, McpError> {
-        let output = local_api_core::search_notes(&self.db_path, input.into())
+        let output = mdit_local_api::search_notes(&self.db_path, input.into())
             .map_err(local_api_error_to_mcp)?;
 
         let results = output.results.into_iter().map(Into::into).collect();

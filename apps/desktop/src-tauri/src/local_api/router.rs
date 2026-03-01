@@ -13,7 +13,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use local_api_core::{CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNotesInput};
+use mdit_local_api::{CreateNoteInput, LocalApiError, LocalApiErrorKind, SearchNotesInput};
 use serde::{Deserialize, Serialize};
 use tower::{Layer, Service};
 
@@ -44,7 +44,7 @@ struct HealthResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ListVaultsResponse {
-    vaults: Vec<local_api_core::VaultSummary>,
+    vaults: Vec<mdit_local_api::VaultSummary>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,7 +58,7 @@ pub struct CreateNoteRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CreateNoteResponse {
-    note: local_api_core::CreatedNote,
+    note: mdit_local_api::CreatedNote,
 }
 
 #[derive(Debug, Deserialize)]
@@ -71,7 +71,7 @@ pub struct SearchNotesRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SearchNotesResponse {
-    results: Vec<local_api_core::SearchNoteEntry>,
+    results: Vec<mdit_local_api::SearchNoteEntry>,
 }
 
 #[derive(Debug, Serialize)]
@@ -111,7 +111,7 @@ async fn healthz_handler() -> Json<HealthResponse> {
 }
 
 async fn list_vaults_handler(State(state): State<LocalApiState>) -> ApiResult<ListVaultsResponse> {
-    match local_api_core::list_vaults(&state.db_path) {
+    match mdit_local_api::list_vaults(&state.db_path) {
         Ok(vaults) => Ok(Json(ListVaultsResponse { vaults })),
         Err(error) => Err(local_api_error_to_http(error)),
     }
@@ -129,7 +129,7 @@ async fn create_note_handler(
         content: request.content,
     };
 
-    match local_api_core::create_note(&state.db_path, input) {
+    match mdit_local_api::create_note(&state.db_path, input) {
         Ok(note) => Ok((StatusCode::CREATED, Json(CreateNoteResponse { note }))),
         Err(error) => Err(local_api_error_to_http(error)),
     }
@@ -140,7 +140,7 @@ async fn search_notes_handler(
     State(state): State<LocalApiState>,
     Json(request): Json<SearchNotesRequest>,
 ) -> ApiResult<SearchNotesResponse> {
-    match local_api_core::search_notes(
+    match mdit_local_api::search_notes(
         &state.db_path,
         SearchNotesInput {
             vault_id,
