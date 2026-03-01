@@ -128,6 +128,12 @@ export function App() {
 		let isActive = true
 		const shouldRunLocalApi =
 			localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
+		const setLocalApiErrorIfActive = (errorMessage: string | null) => {
+			if (!isActive) {
+				return
+			}
+			setLocalApiError(errorMessage)
+		}
 
 		const syncLocalApiServerState = async () => {
 			try {
@@ -136,18 +142,14 @@ export function App() {
 				} else {
 					await stopLocalApiServer()
 				}
-				if (!isActive) {
-					return
-				}
-				setLocalApiError(null)
+				setLocalApiErrorIfActive(null)
 			} catch (error) {
-				if (!isActive) {
-					return
-				}
 				const action = shouldRunLocalApi ? "start" : "stop"
 				const message =
 					error instanceof Error ? error.message : String(error ?? "Unknown")
-				setLocalApiError(`Failed to ${action} local API server: ${message}`)
+				setLocalApiErrorIfActive(
+					`Failed to ${action} local API server: ${message}`,
+				)
 			}
 		}
 
