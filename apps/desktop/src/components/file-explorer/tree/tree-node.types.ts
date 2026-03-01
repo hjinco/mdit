@@ -4,6 +4,7 @@ import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 export type TreeNodeProps = {
 	entry: WorkspaceEntry
 	activeTabPath: string | null
+	isFileExplorerOpen: boolean
 	depth: number
 	expandedDirectories: string[]
 	onDirectoryClick: (path: string) => void

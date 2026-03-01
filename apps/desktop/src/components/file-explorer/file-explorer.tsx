@@ -140,7 +140,7 @@ export function FileExplorer() {
 			isDirectory: true,
 			depth: -1,
 		},
-		disabled: !workspacePath,
+		disabled: !workspacePath || !isFileExplorerOpen,
 	})
 
 	// Setup external file drop zone for workspace root
@@ -390,6 +390,7 @@ export function FileExplorer() {
 									key={entry.path}
 									entry={entry}
 									activeTabPath={tab?.path ?? null}
+									isFileExplorerOpen={isFileExplorerOpen}
 									depth={0}
 									expandedDirectories={expandedDirectories}
 									onDirectoryClick={toggleDirectory}
