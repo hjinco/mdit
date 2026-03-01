@@ -5,6 +5,10 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@mdit/ui/components/dropdown-menu"
 import { Input } from "@mdit/ui/components/input"
@@ -16,20 +20,21 @@ import {
 import { Switch } from "@mdit/ui/components/switch"
 import { cn } from "@mdit/ui/lib/utils"
 import {
+	IconCalendar,
+	IconCheck,
+	IconHash,
+	IconLetterCase,
+	IconList,
+	IconToggleLeft,
+	IconTrash,
+} from "@tabler/icons-react"
+import {
 	type ColumnDef,
 	flexRender,
 	getCoreRowModel,
 	useReactTable,
 } from "@tanstack/react-table"
-import {
-	CalendarIcon,
-	HashIcon,
-	ListIcon,
-	PlusIcon,
-	ToggleLeftIcon,
-	TypeIcon,
-	XIcon,
-} from "lucide-react"
+import { PlusIcon } from "lucide-react"
 import { useEditorRef } from "platejs/react"
 import {
 	type ComponentPropsWithoutRef,
@@ -85,7 +90,7 @@ export type KVRow = {
 	type: ValueType
 }
 
-const columnsOrder = ["type", "key", "value", "actions"] as const
+const columnsOrder = ["type", "key", "value"] as const
 type ColumnId = (typeof columnsOrder)[number]
 type CellPosition = { rowIndex: number; colIndex: number }
 
@@ -114,20 +119,22 @@ const PROPERTY_ICONS: Record<
 	ValueType,
 	ComponentType<{ className?: string }>
 > = {
-	string: TypeIcon,
-	number: HashIcon,
-	boolean: ToggleLeftIcon,
-	date: CalendarIcon,
-	array: ListIcon,
+	string: IconLetterCase,
+	number: IconHash,
+	boolean: IconToggleLeft,
+	date: IconCalendar,
+	array: IconList,
 }
 
 function TypeSelect({
 	value,
 	onValueChange,
+	onRemove,
 	focusRegistration,
 }: {
 	value: ValueType
 	onValueChange: (newType: ValueType) => void
+	onRemove: () => void
 	focusRegistration?: FocusRegistration
 }) {
 	const Icon = PROPERTY_ICONS[value]
@@ -147,29 +154,57 @@ function TypeSelect({
 					size="icon"
 					className="rounded-sm data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px]"
 				>
-					<Icon className="h-4 w-4" />
+					<Icon />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start">
-				<DropdownMenuItem onClick={() => onValueChange("string")}>
-					<TypeIcon className="mr-2 h-4 w-4" />
-					<span>Text</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => onValueChange("number")}>
-					<HashIcon className="mr-2 h-4 w-4" />
-					<span>Number</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => onValueChange("boolean")}>
-					<ToggleLeftIcon className="mr-2 h-4 w-4" />
-					<span>Boolean</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => onValueChange("date")}>
-					<CalendarIcon className="mr-2 h-4 w-4" />
-					<span>Date</span>
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => onValueChange("array")}>
-					<ListIcon className="mr-2 h-4 w-4" />
-					<span>Array</span>
+				<DropdownMenuSub>
+					<DropdownMenuSubTrigger>
+						<Icon className="mr-2 size-4" />
+						<span>Property type</span>
+					</DropdownMenuSubTrigger>
+					<DropdownMenuSubContent>
+						<DropdownMenuItem onClick={() => onValueChange("string")}>
+							<IconLetterCase className="size-4" />
+							<span>Text</span>
+							{value === "string" ? (
+								<IconCheck className="ml-auto size-4" />
+							) : null}
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onValueChange("number")}>
+							<IconHash className="size-4" />
+							<span>Number</span>
+							{value === "number" ? (
+								<IconCheck className="ml-auto size-4" />
+							) : null}
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onValueChange("boolean")}>
+							<IconToggleLeft className="size-4" />
+							<span>Boolean</span>
+							{value === "boolean" ? (
+								<IconCheck className="ml-auto size-4" />
+							) : null}
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onValueChange("date")}>
+							<IconCalendar className="size-4" />
+							<span>Date</span>
+							{value === "date" ? (
+								<IconCheck className="ml-auto size-4" />
+							) : null}
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onValueChange("array")}>
+							<IconList className="size-4" />
+							<span>Array</span>
+							{value === "array" ? (
+								<IconCheck className="ml-auto size-4" />
+							) : null}
+						</DropdownMenuItem>
+					</DropdownMenuSubContent>
+				</DropdownMenuSub>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem variant="destructive" onClick={onRemove}>
+					<IconTrash />
+					<span>Remove</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
@@ -489,7 +524,7 @@ function ValueEditor({
 							data-row-id={focusRegistration?.rowId}
 							data-col-id={focusRegistration?.columnId}
 						>
-							<CalendarIcon className="mr-2 h-4 w-4" />
+							<IconCalendar className="mr-2 h-4 w-4" />
 							{dateValue ? (
 								dateValue.toLocaleDateString()
 							) : (
@@ -660,10 +695,20 @@ export function FrontmatterTable({
 						)
 					}
 
+					const removeRow = () => {
+						pendingDeleteFocusRef.current = {
+							targetRowId: getDeleteFocusTargetRowId(row.original.id),
+						}
+						updateTableData((items) =>
+							items.filter((item) => item.id !== row.original.id),
+						)
+					}
+
 					return (
 						<TypeSelect
 							value={row.original.type}
 							onValueChange={updateType}
+							onRemove={removeRow}
 							focusRegistration={createFocusRegistration(
 								row.original.id,
 								"type",
@@ -728,43 +773,6 @@ export function FrontmatterTable({
 					)
 				},
 			},
-			{
-				id: "actions",
-				cell: ({ row }) => {
-					const removeRow = () => {
-						updateTableData((items) =>
-							items.filter((item) => item.id !== row.original.id),
-						)
-					}
-
-					return (
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={removeRow}
-							onKeyDown={(event) => {
-								if (
-									event.key !== "Enter" &&
-									event.key !== " " &&
-									event.key !== "Spacebar"
-								)
-									return
-								pendingDeleteFocusRef.current = {
-									targetRowId: getDeleteFocusTargetRowId(row.original.id),
-								}
-							}}
-							className="rounded-sm text-muted-foreground hover:text-destructive hover:bg-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:opacity-100 data-[kb-nav=true]:border-ring data-[kb-nav=true]:ring-ring/50 data-[kb-nav=true]:ring-[1px] transition-opacity"
-							ref={(node) => {
-								registerCellRef(row.original.id, "actions", node)
-							}}
-							data-row-id={row.original.id}
-							data-col-id="actions"
-						>
-							<XIcon />
-						</Button>
-					)
-				},
-			},
 		],
 		[
 			createFocusRegistration,
@@ -772,7 +780,6 @@ export function FrontmatterTable({
 			getLinkWorkspaceState,
 			onOpenWikiLink,
 			resolveWikiLinkTarget,
-			registerCellRef,
 			updateTableData,
 		],
 	)
@@ -866,7 +873,7 @@ export function FrontmatterTable({
 		const lastRowId = rowOrderRef.current.at(-1)
 		if (!lastRowId) return false
 		keyboardNavFlagRef.current = true
-		const preferred: ColumnId[] = ["type", "key", "value", "actions"]
+		const preferred: ColumnId[] = ["type", "key", "value"]
 		for (const col of preferred) {
 			if (cellRefs.current[lastRowId]?.[col]) {
 				focusCell(lastRowId, col)
@@ -880,7 +887,7 @@ export function FrontmatterTable({
 		const lastRowId = rowOrderRef.current.at(-1)
 		if (!lastRowId) return false
 		keyboardNavFlagRef.current = true
-		const preferred: ColumnId[] = ["actions", "value", "key", "type"]
+		const preferred: ColumnId[] = ["value", "key", "type"]
 		for (const col of preferred) {
 			if (cellRefs.current[lastRowId]?.[col]) {
 				focusCell(lastRowId, col)
@@ -1100,7 +1107,7 @@ export function FrontmatterTable({
 			if (!firstRowId) return
 
 			keyboardNavFlagRef.current = true
-			const preferred: ColumnId[] = ["key", "value", "type", "actions"]
+			const preferred: ColumnId[] = ["key", "value", "type"]
 			for (const col of preferred) {
 				if (cellRefs.current[firstRowId]?.[col]) {
 					focusCell(firstRowId, col)
@@ -1120,9 +1127,9 @@ export function FrontmatterTable({
 
 		if (
 			pendingDeleteFocus.targetRowId &&
-			cellRefs.current[pendingDeleteFocus.targetRowId]?.actions
+			cellRefs.current[pendingDeleteFocus.targetRowId]?.type
 		) {
-			focusCell(pendingDeleteFocus.targetRowId, "actions")
+			focusCell(pendingDeleteFocus.targetRowId, "type")
 		}
 	})
 
