@@ -1,7 +1,14 @@
 import { invoke } from "@tauri-apps/api/core"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useStore } from "@/store"
-import type { QuerySearchEntry } from "@/types/query-search-entry"
+
+type QuerySearchEntry = {
+	path: string
+	name: string
+	createdAt?: number
+	modifiedAt?: number
+	similarity: number
+}
 
 export type SemanticNoteSearchResult = {
 	path: string
