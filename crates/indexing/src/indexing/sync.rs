@@ -123,7 +123,7 @@ fn process_file(
     let contents = fs::read_to_string(&file.abs_path)
         .with_context(|| format!("Failed to read file {}", file.abs_path.display()))?;
     let doc_hash = hash_content(&contents);
-    let indexed_content = note_core::format_indexing_text(&contents);
+    let indexed_content = note::format_indexing_text(&contents);
 
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);

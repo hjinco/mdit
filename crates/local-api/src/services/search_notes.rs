@@ -49,7 +49,7 @@ pub fn search_notes(
 
     let limit = resolve_limit(limit)?;
     let results =
-        indexing_core::search_notes_for_query(&workspace_path, db_path, trimmed_query, "", "")?
+        indexing::search_notes_for_query(&workspace_path, db_path, trimmed_query, "", "")?
             .into_iter()
             .take(limit)
             .map(|entry| SearchNoteEntry {
@@ -168,7 +168,7 @@ mod tests {
         fs::write(&alpha_path, build_content("nebula")).expect("failed to write Alpha.md");
         fs::write(&beta_path, build_content("nebula")).expect("failed to write Beta.md");
 
-        indexing_core::index_workspace(
+        indexing::index_workspace(
             Path::new(&harness.workspace_path),
             Path::new(&harness.db_path),
             "",

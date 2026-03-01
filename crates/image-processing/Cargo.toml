@@ -1,5 +1,5 @@
 [package]
-name = 'image-core'
+name = 'image-processing'
 version = '0.1.0'
 edition.workspace = true
 

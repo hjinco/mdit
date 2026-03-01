@@ -1,5 +1,5 @@
 [package]
-name = 'indexing-core'
+name = 'indexing'
 version = '0.1.0'
 edition.workspace = true
 
@@ -7,7 +7,7 @@ edition.workspace = true
 anyhow = '1'
 app-storage = { path = '../app-storage' }
 blake3 = '1'
-note-core = { path = '../note-core' }
+note = { path = '../note' }
 ollama-rs = '0.3.2'
 pulldown-cmark = { version = '0.13.0', default-features = false, features = ['simd'] }
 rusqlite = { version = '0.31', features = ['bundled'] }

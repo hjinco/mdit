@@ -1,5 +1,5 @@
 [package]
-name = 'note-core'
+name = 'note'
 version = '0.1.0'
 edition.workspace = true
 

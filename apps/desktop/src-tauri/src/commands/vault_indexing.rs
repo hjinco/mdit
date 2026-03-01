@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use app_storage::vault::VaultEmbeddingConfig;
-use indexing_core::{
+use mdit_indexing::{
     delete_indexed_note, get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes,
     index_note, index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_for_query,
     BacklinkEntry, GraphViewData, IndexSummary, IndexingMeta, RelatedNoteEntry,

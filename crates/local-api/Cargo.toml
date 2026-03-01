@@ -1,11 +1,11 @@
 [package]
-name = "local-api-core"
+name = "local-api"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 app-storage = { path = "../app-storage" }
-indexing-core = { path = "../indexing-core" }
+indexing = { path = "../indexing" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"

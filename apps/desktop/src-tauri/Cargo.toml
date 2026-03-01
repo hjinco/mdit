@@ -19,10 +19,10 @@ tauri-build = { version = "2.5.5", features = [] }
 
 [dependencies]
 app-storage = { path = "../../../crates/app-storage" }
-image-core = { path = "../../../crates/image-core" }
-indexing-core = { path = "../../../crates/indexing-core" }
-local-api-core = { path = "../../../crates/local-api-core" }
-note-core = { path = "../../../crates/note-core" }
+mdit-image-processing = { package = "image-processing", path = "../../../crates/image-processing" }
+mdit-indexing = { package = "indexing", path = "../../../crates/indexing" }
+mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
+mdit-note = { package = "note", path = "../../../crates/note" }
 tauri = { version = "2.10.2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
 tauri-plugin-opener = "2.5.3"
 serde = { version = "1", features = ["derive"] }
