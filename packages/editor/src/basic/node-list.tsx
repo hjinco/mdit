@@ -35,8 +35,7 @@ export const BlockList: RenderNodeWrapper = (props) => {
 }
 
 function List(props: PlateElementProps) {
-	const { listStart, listStyleType } = props.element as TListElement
-	const indent = (props.element as { indent?: number }).indent
+	const { listStart, listStyleType, indent } = props.element as TListElement & { indent?: number }
 	const { Li, Marker } = config[listStyleType] ?? {}
 	const List = isOrderedList(props.element) ? "ol" : "ul"
 	const resolvedListStyleType = resolveListStyleTypeByIndent(
