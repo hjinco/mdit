@@ -220,7 +220,7 @@ export function MoreToolbarButton() {
 			>
 				<DropdownMenuGroup>
 					<DropdownMenuItem
-						onSelect={() => {
+						onClick={() => {
 							editor.tf.toggleMark(KEYS.kbd)
 							editor.tf.collapse({ edge: "end" })
 							editor.tf.focus()
@@ -231,7 +231,7 @@ export function MoreToolbarButton() {
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
-						onSelect={() => {
+						onClick={() => {
 							editor.tf.toggleMark(KEYS.sup, {
 								remove: KEYS.sub,
 							})
@@ -243,7 +243,7 @@ export function MoreToolbarButton() {
 						{/* (⌘+,) */}
 					</DropdownMenuItem>
 					<DropdownMenuItem
-						onSelect={() => {
+						onClick={() => {
 							editor.tf.toggleMark(KEYS.sub, {
 								remove: KEYS.sup,
 							})

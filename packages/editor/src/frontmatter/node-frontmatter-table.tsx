@@ -149,23 +149,23 @@ function TypeSelect({
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start">
-				<DropdownMenuItem onSelect={() => onValueChange("string")}>
+				<DropdownMenuItem onClick={() => onValueChange("string")}>
 					<TypeIcon className="mr-2 h-4 w-4" />
 					<span>Text</span>
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => onValueChange("number")}>
+				<DropdownMenuItem onClick={() => onValueChange("number")}>
 					<HashIcon className="mr-2 h-4 w-4" />
 					<span>Number</span>
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => onValueChange("boolean")}>
+				<DropdownMenuItem onClick={() => onValueChange("boolean")}>
 					<ToggleLeftIcon className="mr-2 h-4 w-4" />
 					<span>Boolean</span>
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => onValueChange("date")}>
+				<DropdownMenuItem onClick={() => onValueChange("date")}>
 					<CalendarIcon className="mr-2 h-4 w-4" />
 					<span>Date</span>
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={() => onValueChange("array")}>
+				<DropdownMenuItem onClick={() => onValueChange("array")}>
 					<ListIcon className="mr-2 h-4 w-4" />
 					<span>Array</span>
 				</DropdownMenuItem>
