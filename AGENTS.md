@@ -11,7 +11,9 @@
 - `pnpm ts:check:desktop` runs `turbo run ts:check --filter=@mdit/desktop`.
 - `pnpm ts:check:www` runs `turbo run ts:check --filter=@mdit/www`.
 - `pnpm ts:check:all` runs `turbo run ts:check`.
-- `pnpm lint` runs Biome checks; `pnpm lint:fix` auto-fixes.
+
+- After changing TypeScript code, run `pnpm lint:fix`.
+- After changing Rust code, run `cargo fmt --all --manifest-path Cargo.toml`.
 
 ## LLM Working Principles
 Behavioral guidelines to reduce common LLM coding mistakes. These rules complement the project-specific instructions above.
