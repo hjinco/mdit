@@ -19,7 +19,7 @@ tauri-build = { version = "2.5.5", features = [] }
 
 [dependencies]
 app-storage = { path = "../../../crates/app-storage" }
-image-processing = { path = "../../../crates/image-processing" }
+mdit-image-processing = { package = "image-processing", path = "../../../crates/image-processing" }
 mdit-indexing = { package = "indexing", path = "../../../crates/indexing" }
 mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
 mdit-note = { package = "note", path = "../../../crates/note" }
