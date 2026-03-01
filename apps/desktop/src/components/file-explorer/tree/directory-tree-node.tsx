@@ -15,6 +15,7 @@ const INDENTATION_WIDTH = 12
 
 export function DirectoryTreeNode({
 	entry,
+	isFileExplorerOpen,
 	depth,
 	expandedDirectories,
 	onDirectoryClick,
@@ -58,7 +59,7 @@ export function DirectoryTreeNode({
 			isDirectory: entry.isDirectory,
 			depth,
 		},
-		disabled: !entry.isDirectory || isBusy,
+		disabled: !entry.isDirectory || isBusy || !isFileExplorerOpen,
 	})
 
 	const { isOver: isOverExternal, ref: externalDropRef } = useFolderDropZone({

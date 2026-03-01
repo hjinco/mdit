@@ -15,6 +15,7 @@ export function TreeNode(props: TreeNodeProps) {
 						key={child.path}
 						entry={child}
 						activeTabPath={props.activeTabPath}
+						isFileExplorerOpen={props.isFileExplorerOpen}
 						depth={props.depth + 1}
 						expandedDirectories={props.expandedDirectories}
 						onDirectoryClick={props.onDirectoryClick}
