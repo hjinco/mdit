@@ -26,7 +26,6 @@ export function App() {
 		isLoading,
 		initializeWorkspace,
 		initializeAISettings,
-		initializeHotkeys,
 		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
@@ -41,7 +40,6 @@ export function App() {
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
-			initializeHotkeys: s.initializeHotkeys,
 			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
@@ -91,16 +89,9 @@ export function App() {
 	}, [watchWorkspace, unwatchWorkspace, workspacePath])
 
 	useEffect(() => {
-		initializeWorkspace()
-	}, [initializeWorkspace])
-
-	useEffect(() => {
+		void initializeWorkspace()
 		void initializeAISettings()
-	}, [initializeAISettings])
-
-	useEffect(() => {
-		void initializeHotkeys()
-	}, [initializeHotkeys])
+	}, [initializeAISettings, initializeWorkspace])
 
 	useEffect(() => {
 		const checkAndValidateLicense = async () => {
@@ -128,37 +119,46 @@ export function App() {
 	}, [checkLicense])
 
 	useEffect(() => {
-		const syncLocalApiServerState = async () => {
-			if (licenseStatus === "invalid" && localApiEnabled) {
-				setLocalApiEnabled(false)
+		if (licenseStatus === "invalid" && localApiEnabled) {
+			setLocalApiEnabled(false)
+		}
+	}, [licenseStatus, localApiEnabled, setLocalApiEnabled])
+
+	useEffect(() => {
+		let isActive = true
+		const shouldRunLocalApi =
+			localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
+		const setLocalApiErrorIfActive = (errorMessage: string | null) => {
+			if (!isActive) {
+				return
 			}
+			setLocalApiError(errorMessage)
+		}
 
-			const shouldRunLocalApi =
-				localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
-
+		const syncLocalApiServerState = async () => {
 			try {
 				if (shouldRunLocalApi) {
 					await startLocalApiServer()
 				} else {
 					await stopLocalApiServer()
 				}
-				setLocalApiError(null)
+				setLocalApiErrorIfActive(null)
 			} catch (error) {
 				const action = shouldRunLocalApi ? "start" : "stop"
 				const message =
 					error instanceof Error ? error.message : String(error ?? "Unknown")
-				setLocalApiError(`Failed to ${action} local API server: ${message}`)
+				setLocalApiErrorIfActive(
+					`Failed to ${action} local API server: ${message}`,
+				)
 			}
 		}
 
 		void syncLocalApiServerState()
-	}, [
-		localApiEnabled,
-		licenseStatus,
-		hasVerifiedLicense,
-		setLocalApiEnabled,
-		setLocalApiError,
-	])
+
+		return () => {
+			isActive = false
+		}
+	}, [localApiEnabled, licenseStatus, hasVerifiedLicense, setLocalApiError])
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />
