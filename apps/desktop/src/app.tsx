@@ -26,7 +26,6 @@ export function App() {
 		isLoading,
 		initializeWorkspace,
 		initializeAISettings,
-		initializeHotkeys,
 		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
@@ -41,7 +40,6 @@ export function App() {
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
-			initializeHotkeys: s.initializeHotkeys,
 			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
@@ -91,16 +89,9 @@ export function App() {
 	}, [watchWorkspace, unwatchWorkspace, workspacePath])
 
 	useEffect(() => {
-		initializeWorkspace()
-	}, [initializeWorkspace])
-
-	useEffect(() => {
+		void initializeWorkspace()
 		void initializeAISettings()
-	}, [initializeAISettings])
-
-	useEffect(() => {
-		void initializeHotkeys()
-	}, [initializeHotkeys])
+	}, [initializeAISettings, initializeWorkspace])
 
 	useEffect(() => {
 		const checkAndValidateLicense = async () => {
@@ -128,22 +119,31 @@ export function App() {
 	}, [checkLicense])
 
 	useEffect(() => {
+		if (licenseStatus === "invalid" && localApiEnabled) {
+			setLocalApiEnabled(false)
+		}
+	}, [licenseStatus, localApiEnabled, setLocalApiEnabled])
+
+	useEffect(() => {
+		let isActive = true
+		const shouldRunLocalApi =
+			localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
+
 		const syncLocalApiServerState = async () => {
-			if (licenseStatus === "invalid" && localApiEnabled) {
-				setLocalApiEnabled(false)
-			}
-
-			const shouldRunLocalApi =
-				localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
-
 			try {
 				if (shouldRunLocalApi) {
 					await startLocalApiServer()
 				} else {
 					await stopLocalApiServer()
 				}
+				if (!isActive) {
+					return
+				}
 				setLocalApiError(null)
 			} catch (error) {
+				if (!isActive) {
+					return
+				}
 				const action = shouldRunLocalApi ? "start" : "stop"
 				const message =
 					error instanceof Error ? error.message : String(error ?? "Unknown")
@@ -152,13 +152,11 @@ export function App() {
 		}
 
 		void syncLocalApiServerState()
-	}, [
-		localApiEnabled,
-		licenseStatus,
-		hasVerifiedLicense,
-		setLocalApiEnabled,
-		setLocalApiError,
-	])
+
+		return () => {
+			isActive = false
+		}
+	}, [localApiEnabled, licenseStatus, hasVerifiedLicense, setLocalApiError])
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />
