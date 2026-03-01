@@ -72,6 +72,7 @@ import { FrontmatterWikiSuggestionPopover } from "./frontmatter-wiki-suggestion-
 import {
 	buildFrontmatterWikiSuggestions,
 	type FrontmatterWikiSuggestionEntry,
+	getFrontmatterWikiSuggestionTargetKey,
 } from "./frontmatter-wiki-suggestion-utils"
 import { FrontmatterArray } from "./node-frontmatter-array"
 
@@ -238,13 +239,23 @@ function InlineEditableField({
 		if (!isEditing) return null
 		return getActiveFrontmatterWikiQuery(draftValue, cursorPosition)
 	}, [cursorPosition, draftValue, enableWikiSuggestions, isEditing])
+	const excludedWikiTargetKeys = useMemo(() => {
+		const targetKey = getFrontmatterWikiSuggestionTargetKey(value)
+		if (!targetKey) {
+			return undefined
+		}
+		return new Set([targetKey])
+	}, [value])
 	const wikiSuggestions = useMemo(() => {
 		if (!activeWikiQuery) return []
 		return buildFrontmatterWikiSuggestions(
 			workspaceFiles,
 			activeWikiQuery.query,
+			{
+				excludeTargetKeys: excludedWikiTargetKeys,
+			},
 		)
-	}, [activeWikiQuery, workspaceFiles])
+	}, [activeWikiQuery, excludedWikiTargetKeys, workspaceFiles])
 	const showWikiSuggestionPopover =
 		isEditing &&
 		enableWikiSuggestions &&
