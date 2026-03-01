@@ -1,6 +1,7 @@
 import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
+import { MarkdownKit } from "./markdown-kit"
 
 type LocalStorageLike = Pick<
 	Storage,
@@ -35,7 +36,6 @@ const ensureLocalStorage = () => {
 
 const createMarkdownEditor = async () => {
 	ensureLocalStorage()
-	const { MarkdownKit } = await import("./markdown-kit")
 	return createSlateEditor({ plugins: MarkdownKit })
 }
 
