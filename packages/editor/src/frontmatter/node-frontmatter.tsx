@@ -1,6 +1,6 @@
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement, useEditorRef } from "platejs/react"
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import type { LinkWorkspaceState } from "../link/link-kit-types"
 import {
 	type FrontmatterResolveWikiLinkTargetHandler,
@@ -25,11 +25,13 @@ export function FrontmatterElement(
 	},
 ) {
 	const editor = useEditorRef()
-	const element = props.element as TFrontmatterElement
+	const element = props.element
+	const elementRef = useRef<TFrontmatterElement>(element)
+	elementRef.current = element
 
 	const handleDataChange = useCallback(
 		(nextRows: KVRow[]) => {
-			const path = props.api.findPath(element)
+			const path = props.api.findPath(elementRef.current)
 			if (!path) return
 
 			if (nextRows.length === 0) {
@@ -44,7 +46,7 @@ export function FrontmatterElement(
 			}
 			editor.tf.setNodes({ data: nextRows }, { at: path })
 		},
-		[editor, element, props.api],
+		[editor, props.api],
 	)
 
 	return (

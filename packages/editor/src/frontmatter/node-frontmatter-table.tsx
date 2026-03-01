@@ -50,6 +50,7 @@ import {
 	type FrontmatterFocusTarget,
 	takePendingFrontmatterFocusTarget,
 } from "./frontmatter-focus"
+import { areFrontmatterRowsEqual } from "./frontmatter-row-equality"
 import {
 	convertValueToType,
 	datePattern,
@@ -569,22 +570,34 @@ export function FrontmatterTable({
 	const addButtonRef = useRef<HTMLButtonElement | null>(null)
 	const editor = useEditorRef()
 
-	const [tableData, setTableData] = useState(data)
+	const [tableData, setTableData] = useState(() => data)
+	const onChangeRef = useRef(onChange)
+	const pendingOnChangeRef = useRef<KVRow[] | null>(null)
 
 	useEffect(() => {
-		setTableData(data)
+		onChangeRef.current = onChange
+	}, [onChange])
+
+	useEffect(() => {
+		setTableData((prev) => (areFrontmatterRowsEqual(prev, data) ? prev : data))
 	}, [data])
 
-	const updateTableData = useCallback(
-		(updater: (rows: KVRow[]) => KVRow[]) => {
-			setTableData((prev) => {
-				const next = updater(prev)
-				onChange(next)
-				return next
-			})
-		},
-		[onChange],
-	)
+	useEffect(() => {
+		const pending = pendingOnChangeRef.current
+		if (!pending) return
+		if (!areFrontmatterRowsEqual(tableData, pending)) return
+		pendingOnChangeRef.current = null
+		onChangeRef.current(tableData)
+	}, [tableData])
+
+	const updateTableData = useCallback((updater: (rows: KVRow[]) => KVRow[]) => {
+		setTableData((prev) => {
+			const next = updater(prev)
+			if (areFrontmatterRowsEqual(prev, next)) return prev
+			pendingOnChangeRef.current = next
+			return next
+		})
+	}, [])
 
 	const registerCellRef = useCallback(
 		(rowId: string, columnId: ColumnId, node: HTMLElement | null) => {
