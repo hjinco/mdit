@@ -1,4 +1,7 @@
-import type { CreateLinkedNotesFromListItemsResult } from "@mdit/editor/selection"
+import type {
+	BlockSelectionHostDeps,
+	CreateLinkedNotesFromListItemsResult,
+} from "@mdit/editor/selection"
 import { basename, dirname } from "pathe"
 import { useStore } from "@/store"
 import {
@@ -15,11 +18,7 @@ type CreateNoteFn = (
 	},
 ) => Promise<string>
 
-export type BlockSelectionHost = {
-	createLinkedNotesFromListItems: (
-		items: string[],
-	) => Promise<(CreateLinkedNotesFromListItemsResult | null)[]>
-}
+export type BlockSelectionHost = BlockSelectionHostDeps
 
 type BlockSelectionHostRuntimeDeps = {
 	getWorkspacePath: () => string | null

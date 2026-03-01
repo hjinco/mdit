@@ -2,6 +2,7 @@ export { BlockContextMenu } from "./block-context-menu"
 export { BlockSelectionAfterEditable } from "./block-seleciton-after-editable"
 export { BlockSelection, blockSelectionVariants } from "./block-selection"
 export {
+	type BlockSelectionHostDeps,
 	BlockSelectionKit,
 	type BlockSelectionKitOptions,
 	createBlockSelectionKit,

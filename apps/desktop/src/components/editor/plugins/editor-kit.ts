@@ -53,6 +53,7 @@ const desktopLinkHost = createDesktopLinkHost()
 const desktopFrontmatterHost = createDesktopFrontmatterHost({
 	linkHost: desktopLinkHost,
 })
+const desktopBlockSelectionHost = createDesktopBlockSelectionHost()
 
 export const EditorKit = [
 	...createAIKit({ host: desktopAIMenuHost }),
@@ -61,10 +62,7 @@ export const EditorKit = [
 	...AutoformatKit,
 	...BasicBlocksKit,
 	...BasicMarksKit,
-	...createBlockSelectionKit({
-		onCreateLinkedNotesFromListItems:
-			createDesktopBlockSelectionHost().createLinkedNotesFromListItems,
-	}),
+	...createBlockSelectionKit({ host: desktopBlockSelectionHost }),
 	...CalloutKit,
 	...CodeBlockKit,
 	...CodeDrawingKit,

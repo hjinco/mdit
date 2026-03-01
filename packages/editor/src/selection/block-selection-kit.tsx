@@ -7,8 +7,12 @@ import { BlockSelectionAfterEditable } from "../selection/block-seleciton-after-
 import { BlockSelection } from "../selection/block-selection"
 import type { CreateLinkedNotesFromListItemsHandler } from "./block-selection-linked-notes"
 
+export type BlockSelectionHostDeps = {
+	createLinkedNotesFromListItems?: CreateLinkedNotesFromListItemsHandler
+}
+
 export type BlockSelectionKitOptions = {
-	onCreateLinkedNotesFromListItems?: CreateLinkedNotesFromListItemsHandler
+	host?: BlockSelectionHostDeps
 }
 
 export const createBlockSelectionKit = (
@@ -42,7 +46,7 @@ export const createBlockSelectionKit = (
 			aboveEditable: (props) => (
 				<BlockContextMenu
 					onCreateLinkedNotesFromListItems={
-						options.onCreateLinkedNotesFromListItems
+						options.host?.createLinkedNotesFromListItems
 					}
 				>
 					{props.children}
