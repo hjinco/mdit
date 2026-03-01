@@ -13,6 +13,7 @@ import {
 	useReadOnly,
 } from "platejs/react"
 import { useCallback } from "react"
+import { resolveListStyleTypeByIndent } from "./list-style-utils"
 
 const config: Record<
 	string,
@@ -34,14 +35,20 @@ export const BlockList: RenderNodeWrapper = (props) => {
 }
 
 function List(props: PlateElementProps) {
-	const { listStart, listStyleType } = props.element as TListElement
+	const { listStart, listStyleType, indent } = props.element as TListElement & {
+		indent?: number
+	}
 	const { Li, Marker } = config[listStyleType] ?? {}
 	const List = isOrderedList(props.element) ? "ol" : "ul"
+	const resolvedListStyleType = resolveListStyleTypeByIndent(
+		listStyleType,
+		indent,
+	)
 
 	return (
 		<List
 			className="relative m-0 p-0"
-			style={{ listStyleType }}
+			style={{ listStyleType: resolvedListStyleType }}
 			start={listStart}
 		>
 			{Marker && <Marker {...props} />}
