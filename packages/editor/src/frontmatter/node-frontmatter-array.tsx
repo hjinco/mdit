@@ -123,14 +123,13 @@ export function FrontmatterArray({
 			activeWikiQuery,
 			suggestion.target,
 		)
-		const nextCursor = activeWikiQuery.start + suggestion.target.length + 4
-		setDraft(nextDraft)
-		setCursorPosition(nextCursor)
+		addItems(nextDraft)
+		setCursorPosition(0)
 		requestAnimationFrame(() => {
 			const input = inputRef.current
 			if (!input) return
 			input.focus()
-			input.setSelectionRange(nextCursor, nextCursor)
+			input.setSelectionRange(0, 0)
 		})
 	}
 
