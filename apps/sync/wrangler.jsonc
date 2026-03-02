@@ -8,21 +8,20 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2025-09-27",
 	"compatibility_flags": ["nodejs_compat"],
-	"migrations": [
-		{
-			"new_sqlite_classes": ["MyDurableObject"],
-			"tag": "v1"
-		}
-	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"class_name": "MyDurableObject",
-				"name": "MY_DURABLE_OBJECT"
-			}
-		]
-	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "mdit-beta",
+			"database_id": "c759bfcf-77e7-4d4d-a423-35b06f260b1a"
+		}
+	],
+	"r2_buckets": [
+		{
+			"bucket_name": "mdit-sync",
+			"binding": "BUCKET"
+		}
+	]
 }
