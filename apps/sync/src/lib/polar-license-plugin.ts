@@ -63,9 +63,14 @@ const toUserName = (license: ValidatedLicenseKey): string => {
 	return license.customer.email
 }
 
-const withErrorResponse = (
-	ctx: any,
-	status: number,
+type ErrorResponseContext<TStatus> = {
+	setStatus: (status: TStatus) => void
+	json: (body: Record<string, string>) => unknown
+}
+
+const withErrorResponse = <TStatus>(
+	ctx: ErrorResponseContext<TStatus>,
+	status: TStatus,
 	body: Record<string, string>,
 ) => {
 	ctx.setStatus(status)
