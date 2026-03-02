@@ -23,6 +23,7 @@ mdit-image-processing = { package = "image-processing", path = "../../../crates/
 mdit-indexing = { package = "indexing", path = "../../../crates/indexing" }
 mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
 mdit-note = { package = "note", path = "../../../crates/note" }
+mdit-vault-watch = { package = "vault-watch", path = "../../../crates/vault-watch" }
 tauri = { version = "2.10.2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
 tauri-plugin-opener = "2.5.3"
 serde = { version = "1", features = ["derive"] }

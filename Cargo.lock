@@ -3038,6 +3038,7 @@ dependencies = [
  "tower",
  "trash",
  "urlencoding",
+ "vault-watch",
 ]
 
 [[package]]
@@ -6724,6 +6725,15 @@ dependencies = [
  "aligned-vec",
  "num-traits",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "vault-watch"
+version = "0.1.0"
+dependencies = [
+ "notify",
+ "serde",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

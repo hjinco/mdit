@@ -1,0 +1,10 @@
+[package]
+name = "vault-watch"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+notify = "8"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
