@@ -41,10 +41,10 @@ export function ImageEditDialog() {
 			closeImageEdit: state.closeImageEdit,
 		})),
 	)
-	const { refreshWorkspaceEntries, recordFsOperation } = useStore(
+	const { refreshWorkspaceEntries, registerLocalMutation } = useStore(
 		useShallow((state) => ({
 			refreshWorkspaceEntries: state.refreshWorkspaceEntries,
-			recordFsOperation: state.recordFsOperation,
+			registerLocalMutation: state.registerLocalMutation,
 		})),
 	)
 
@@ -246,13 +246,17 @@ export function ImageEditDialog() {
 			}
 
 			await editImage(imageEditPath, options)
-			recordFsOperation()
+			if (options.outputPath) {
+				registerLocalMutation([{ path: options.outputPath, scope: "exact" }])
+			} else {
+				registerLocalMutation([{ path: imageEditPath, scope: "exact" }])
+			}
 
 			// If format changed and not saving as new file, delete the original
 			if (isFormatChanging && !saveAsNewFile) {
 				try {
 					await invoke("move_to_trash", { path: imageEditPath })
-					recordFsOperation()
+					registerLocalMutation([{ path: imageEditPath, scope: "exact" }])
 				} catch (error) {
 					const errorMessage =
 						error instanceof Error

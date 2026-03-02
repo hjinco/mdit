@@ -13,6 +13,11 @@ import { waitForUnsavedTabToSettle } from "../helpers/tab-save-helpers"
 import { generateUniqueFileName } from "../helpers/unique-filename-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry, WorkspaceSlice } from "../workspace-slice"
+import {
+	registerExactLocalMutation,
+	registerMoveLocalMutation,
+	registerPathLocalMutation,
+} from "./workspace-local-mutation-helpers"
 
 type WorkspaceEntryMetadata = {
 	createdAt?: Date
@@ -178,7 +183,11 @@ export const createWorkspaceFsTransferActions = (
 			}
 
 			await ctx.deps.fileSystemRepository.rename(sourcePath, newPath)
-			ctx.get().recordFsOperation()
+			registerMoveLocalMutation(ctx.get().registerLocalMutation, {
+				sourcePath,
+				targetPath: newPath,
+				isDirectory,
+			})
 
 			if (markdownRewriteContext) {
 				try {
@@ -193,6 +202,7 @@ export const createWorkspaceFsTransferActions = (
 							newPath,
 							updatedContent,
 						)
+						registerExactLocalMutation(ctx.get().registerLocalMutation, newPath)
 						shouldRefreshTab = true
 					}
 				} catch (error) {
@@ -262,7 +272,11 @@ export const createWorkspaceFsTransferActions = (
 			const isDirectory = sourceStat.isDirectory
 
 			await ctx.deps.fileSystemRepository.copy(sourcePath, newPath)
-			ctx.get().recordFsOperation()
+			registerPathLocalMutation(
+				ctx.get().registerLocalMutation,
+				newPath,
+				isDirectory,
+			)
 
 			if (fileName.endsWith(".md")) {
 				const sourceDirectory = dirname(sourcePath)
@@ -280,6 +294,7 @@ export const createWorkspaceFsTransferActions = (
 							newPath,
 							updatedContent,
 						)
+						registerExactLocalMutation(ctx.get().registerLocalMutation, newPath)
 					}
 				}
 			}
@@ -323,7 +338,11 @@ export const createWorkspaceFsTransferActions = (
 			const isDirectory = sourceStat.isDirectory
 
 			await ctx.deps.fileSystemRepository.rename(sourcePath, newPath)
-			ctx.get().recordFsOperation()
+			registerPathLocalMutation(
+				ctx.get().registerLocalMutation,
+				newPath,
+				isDirectory,
+			)
 
 			await importTransferredEntry(ctx, {
 				destinationDirPath: destinationPath,

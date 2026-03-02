@@ -1,3 +1,4 @@
+import type { ResolvedOrigins } from "@mdit/local-fs-origin"
 import { vi } from "vitest"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { buildWorkspaceState } from "../workspace-state"
@@ -80,6 +81,17 @@ export function createWorkspaceActionTestContext() {
 			initGitSync: vi.fn().mockResolvedValue(undefined),
 		},
 	}
+	const originJournal = {
+		register: vi.fn(),
+		resolve: vi.fn(
+			(input: { relPaths: string[] }): ResolvedOrigins => ({
+				externalRelPaths: input.relPaths,
+				localRelPaths: [],
+			}),
+		),
+		prune: vi.fn(),
+		clearWorkspace: vi.fn(),
+	}
 
 	let state: any = {
 		...buildWorkspaceState(),
@@ -104,9 +116,7 @@ export function createWorkspaceActionTestContext() {
 		createNote: vi.fn().mockResolvedValue("/ws/Untitled.md"),
 		deleteEntries: vi.fn(),
 		renameEntry: vi.fn(),
-		recordFsOperation: vi.fn(() => {
-			state = { ...state, lastFsOperationTime: Date.now() }
-		}),
+		registerLocalMutation: vi.fn(),
 		updateEntryModifiedDate: vi.fn(),
 		setSelectedEntryPaths: vi.fn((paths: Set<string>) => {
 			state = { ...state, selectedEntryPaths: paths }
@@ -136,12 +146,14 @@ export function createWorkspaceActionTestContext() {
 		get,
 		deps: deps as any,
 		ports: ports as any,
+		originJournal: originJournal as any,
 	}
 
 	return {
 		context,
 		deps,
 		ports,
+		originJournal,
 		getState: () => state,
 		setState: (patch: Record<string, unknown>) => {
 			state = { ...state, ...patch }

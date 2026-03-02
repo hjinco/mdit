@@ -1,3 +1,8 @@
+import {
+	createLocalMutationJournal,
+	DEFAULT_LOCAL_MUTATION_TTL_MS,
+	type LocalMutationTarget,
+} from "@mdit/local-fs-origin"
 import { invoke } from "@tauri-apps/api/core"
 import { open } from "@tauri-apps/plugin-dialog"
 import { toast } from "sonner"
@@ -79,7 +84,10 @@ export type WorkspaceSlice = WorkspaceState & {
 	unpinDirectory: (path: string) => Promise<void>
 	toggleDirectory: (path: string) => Promise<void>
 	clearWorkspace: () => Promise<void>
-	recordFsOperation: () => void
+	registerLocalMutation: (
+		targets: LocalMutationTarget[],
+		options?: { ttlMs?: number },
+	) => void
 	saveNoteContent: (path: string, contents: string) => Promise<void>
 	updateFrontmatter: (
 		path: string,
@@ -151,11 +159,15 @@ export const prepareWorkspaceSlice =
 		WorkspaceSlice
 	> =>
 	(set, get) => {
+		const originJournal = createLocalMutationJournal({
+			defaultTtlMs: DEFAULT_LOCAL_MUTATION_TTL_MS,
+		})
 		const actionContext: WorkspaceActionContext = {
 			set: set as any,
 			get: get as any,
 			deps: dependencies,
 			ports: createWorkspacePorts(get as any),
+			originJournal,
 		}
 
 		return {
