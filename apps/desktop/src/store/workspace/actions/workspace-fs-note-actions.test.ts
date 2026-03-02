@@ -3,15 +3,28 @@ import { createWorkspaceActionTestContext } from "./workspace-action-test-helper
 import { createWorkspaceFsNoteActions } from "./workspace-fs-note-actions"
 
 describe("workspace-fs-note-actions", () => {
-	it("recordFsOperation updates timestamp", () => {
-		const { context, getState } = createWorkspaceActionTestContext()
+	it("saveNoteContent records local mutation as exact path", async () => {
+		const { context, getState, setState } = createWorkspaceActionTestContext()
 		const actions = createWorkspaceFsNoteActions(context)
-		const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(1234)
+		setState({ workspacePath: "/ws" })
 
-		actions.recordFsOperation()
+		await actions.saveNoteContent("/ws/a.md", "content")
 
-		expect(getState().lastFsOperationTime).toBe(1234)
-		dateNowSpy.mockRestore()
+		expect(getState().registerLocalMutation).toHaveBeenCalledWith([
+			{ path: "/ws/a.md", scope: "exact" },
+		])
+	})
+
+	it("updateFrontmatter records local mutation as exact path", async () => {
+		const { context, getState, setState } = createWorkspaceActionTestContext()
+		const actions = createWorkspaceFsNoteActions(context)
+		setState({ workspacePath: "/ws" })
+
+		await actions.updateFrontmatter("/ws/a.md", { title: "next" })
+
+		expect(getState().registerLocalMutation).toHaveBeenCalledWith([
+			{ path: "/ws/a.md", scope: "exact" },
+		])
 	})
 
 	it("updateEntryModifiedDate swallows stat failures", async () => {

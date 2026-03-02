@@ -1,3 +1,8 @@
+import {
+	createLocalMutationJournal,
+	DEFAULT_LOCAL_MUTATION_TTL_MS,
+	type LocalMutationTarget,
+} from "@mdit/local-fs-origin"
 import { invoke } from "@tauri-apps/api/core"
 import { open } from "@tauri-apps/plugin-dialog"
 import { toast } from "sonner"
@@ -19,6 +24,7 @@ import { createWorkspaceFsNoteActions } from "./actions/workspace-fs-note-action
 import { createWorkspaceFsStructureActions } from "./actions/workspace-fs-structure-actions"
 import { createWorkspaceFsTransferActions } from "./actions/workspace-fs-transfer-actions"
 import { createWorkspaceLifecycleActions } from "./actions/workspace-lifecycle-actions"
+import { createWorkspaceLocalMutationActions } from "./actions/workspace-local-mutation-actions"
 import { createWorkspaceSelectionActions } from "./actions/workspace-selection-actions"
 import { createWorkspaceTreeActions } from "./actions/workspace-tree-actions"
 import { createWorkspaceWatchActions } from "./actions/workspace-watch-actions"
@@ -79,7 +85,10 @@ export type WorkspaceSlice = WorkspaceState & {
 	unpinDirectory: (path: string) => Promise<void>
 	toggleDirectory: (path: string) => Promise<void>
 	clearWorkspace: () => Promise<void>
-	recordFsOperation: () => void
+	registerLocalMutation: (
+		targets: LocalMutationTarget[],
+		options?: { ttlMs?: number },
+	) => void
 	saveNoteContent: (path: string, contents: string) => Promise<void>
 	updateFrontmatter: (
 		path: string,
@@ -151,11 +160,15 @@ export const prepareWorkspaceSlice =
 		WorkspaceSlice
 	> =>
 	(set, get) => {
+		const originJournal = createLocalMutationJournal({
+			defaultTtlMs: DEFAULT_LOCAL_MUTATION_TTL_MS,
+		})
 		const actionContext: WorkspaceActionContext = {
 			set: set as any,
 			get: get as any,
 			deps: dependencies,
 			ports: createWorkspacePorts(get as any),
+			originJournal,
 		}
 
 		return {
@@ -163,6 +176,7 @@ export const prepareWorkspaceSlice =
 			...createWorkspaceTreeActions(actionContext),
 			...createWorkspaceEntryActions(actionContext),
 			...createWorkspaceLifecycleActions(actionContext),
+			...createWorkspaceLocalMutationActions(actionContext),
 			...createWorkspaceFsNoteActions(actionContext),
 			...createWorkspaceFsStructureActions(actionContext),
 			...createWorkspaceFsTransferActions(actionContext),

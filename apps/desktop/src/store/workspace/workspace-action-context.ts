@@ -1,3 +1,4 @@
+import type { LocalMutationJournal } from "@mdit/local-fs-origin"
 import type { AISettingsSlice } from "../ai-settings/ai-settings-slice"
 import type { CollectionSlice } from "../collection/collection-slice"
 import type { GitSyncSlice } from "../git-sync/git-sync-slice"
@@ -25,4 +26,5 @@ export type WorkspaceActionContext = {
 	get: WorkspaceGetState
 	deps: WorkspaceDependencies
 	ports: WorkspacePorts
+	originJournal: LocalMutationJournal
 }

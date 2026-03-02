@@ -1,30 +1,26 @@
 import { updateEntryMetadata } from "../helpers/entry-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceSlice } from "../workspace-slice"
+import { registerExactLocalMutation } from "./workspace-local-mutation-helpers"
 
 export const createWorkspaceFsNoteActions = (
 	ctx: WorkspaceActionContext,
 ): Pick<
 	WorkspaceSlice,
-	| "recordFsOperation"
 	| "saveNoteContent"
 	| "updateFrontmatter"
 	| "renameFrontmatterProperty"
 	| "removeFrontmatterProperty"
 	| "updateEntryModifiedDate"
 > => ({
-	recordFsOperation: () => {
-		ctx.set({ lastFsOperationTime: Date.now() })
-	},
-
 	saveNoteContent: async (path: string, contents: string) => {
 		await ctx.deps.fileSystemRepository.writeTextFile(path, contents)
-		ctx.get().recordFsOperation()
+		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
 	},
 
 	updateFrontmatter: async (path: string, updates: Record<string, unknown>) => {
 		await ctx.deps.frontmatterUtils.updateFileFrontmatter(path, updates)
-		ctx.get().recordFsOperation()
+		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
 		await ctx.get().updateEntryModifiedDate(path)
 	},
 
@@ -38,13 +34,13 @@ export const createWorkspaceFsNoteActions = (
 			oldKey,
 			newKey,
 		)
-		ctx.get().recordFsOperation()
+		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
 		await ctx.get().updateEntryModifiedDate(path)
 	},
 
 	removeFrontmatterProperty: async (path: string, key: string) => {
 		await ctx.deps.frontmatterUtils.removeFileFrontmatterProperty(path, key)
-		ctx.get().recordFsOperation()
+		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
 		await ctx.get().updateEntryModifiedDate(path)
 	},
 

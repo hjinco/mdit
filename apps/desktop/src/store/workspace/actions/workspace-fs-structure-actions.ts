@@ -27,6 +27,11 @@ import { waitForUnsavedTabToSettle } from "../helpers/tab-save-helpers"
 import { generateUniqueFileName } from "../helpers/unique-filename-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceSlice } from "../workspace-slice"
+import {
+	registerExactLocalMutation,
+	registerMoveLocalMutation,
+	registerSubtreeLocalMutations,
+} from "./workspace-local-mutation-helpers"
 
 const rewriteBacklinkDocument = async (
 	ctx: WorkspaceActionContext,
@@ -117,7 +122,7 @@ const rewriteBacklinkDocument = async (
 		input.sourcePath,
 		updatedContent,
 	)
-	ctx.get().recordFsOperation()
+	registerExactLocalMutation(ctx.get().registerLocalMutation, input.sourcePath)
 	return true
 }
 
@@ -294,7 +299,7 @@ export const createWorkspaceFsStructureActions = (
 			await ctx.deps.fileSystemRepository.mkdir(folderPath, {
 				recursive: true,
 			})
-			ctx.get().recordFsOperation()
+			registerExactLocalMutation(ctx.get().registerLocalMutation, folderPath)
 
 			await ctx.get().entryCreated({
 				parentPath: directoryPath,
@@ -340,7 +345,7 @@ export const createWorkspaceFsStructureActions = (
 			filePath,
 			options?.initialContent ?? "",
 		)
-		ctx.get().recordFsOperation()
+		registerExactLocalMutation(ctx.get().registerLocalMutation, filePath)
 
 		const now = new Date()
 
@@ -446,7 +451,7 @@ export const createWorkspaceFsStructureActions = (
 		} else {
 			await ctx.deps.fileSystemRepository.moveManyToTrash(paths)
 		}
-		ctx.get().recordFsOperation()
+		registerSubtreeLocalMutations(ctx.get().registerLocalMutation, paths)
 
 		await ctx.get().entriesDeleted({ paths })
 
@@ -536,7 +541,11 @@ export const createWorkspaceFsStructureActions = (
 
 		// On case-insensitive filesystems (macOS default), case-only rename can report exists().
 		await ctx.deps.fileSystemRepository.rename(entry.path, nextPath)
-		ctx.get().recordFsOperation()
+		registerMoveLocalMutation(ctx.get().registerLocalMutation, {
+			sourcePath: entry.path,
+			targetPath: nextPath,
+			isDirectory: entry.isDirectory,
+		})
 
 		const workspacePath = ctx.get().workspacePath
 		const shouldSyncBacklinks =

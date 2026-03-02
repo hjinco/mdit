@@ -30,15 +30,22 @@ describe("workspace-watch-actions", () => {
 		getCurrentWindowMock.mockReturnValue({ listen: listenMock })
 	})
 
+	const flushQueue = async () => {
+		await Promise.resolve()
+		await Promise.resolve()
+	}
+
 	it("unwatchWorkspace runs unwatch function and clears state", () => {
-		const { context, setState, getState } = createWorkspaceActionTestContext()
+		const { context, setState, getState, originJournal } =
+			createWorkspaceActionTestContext()
 		const actions = createWorkspaceWatchActions(context)
 		const unwatch = vi.fn()
-		setState({ unwatchFn: unwatch })
+		setState({ unwatchFn: unwatch, workspacePath: "/ws" })
 
 		actions.unwatchWorkspace()
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
+		expect(originJournal.clearWorkspace).toHaveBeenCalledWith("/ws")
 		expect(getState().unwatchFn).toBeNull()
 	})
 
@@ -179,6 +186,153 @@ describe("workspace-watch-actions", () => {
 
 		expect(invokeMock).toHaveBeenCalledWith("start_vault_watch_command", {
 			workspacePath: "/ws",
+		})
+	})
+
+	it("ignores non-rescan local-only batches", async () => {
+		const { context, setState, getState, originJournal, deps } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({ workspacePath: "/ws" })
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: [],
+			localRelPaths: ["docs/local.md"],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 1,
+					vaultRelCreated: ["docs/local.md"],
+					vaultRelModified: [],
+					vaultRelRemoved: [],
+					vaultRelRenamed: [],
+					rescan: false,
+					emittedAtUnixMs: 1000,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(originJournal.resolve).toHaveBeenCalledWith({
+			workspacePath: "/ws",
+			relPaths: ["docs/local.md"],
+		})
+		expect(deps.fileSystemRepository.readDir).not.toHaveBeenCalled()
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
+	})
+
+	it("applies only external paths for mixed non-rescan batches", async () => {
+		const { context, setState, originJournal, deps } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/external.md"],
+			localRelPaths: ["docs/local.md"],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 2,
+					vaultRelCreated: ["docs/local.md", "docs/external.md"],
+					vaultRelModified: [],
+					vaultRelRemoved: [],
+					vaultRelRenamed: [],
+					rescan: false,
+					emittedAtUnixMs: 1001,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(deps.fileSystemRepository.readDir).toHaveBeenCalledWith("/ws/docs")
+	})
+
+	it("always refreshes on rescan batches without origin filtering", async () => {
+		const { context, setState, getState, originJournal } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({ workspacePath: "/ws" })
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 3,
+					vaultRelCreated: [],
+					vaultRelModified: [],
+					vaultRelRemoved: [],
+					vaultRelRenamed: [],
+					rescan: true,
+					emittedAtUnixMs: 1002,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(originJournal.resolve).not.toHaveBeenCalled()
+		expect(getState().refreshWorkspaceEntries).toHaveBeenCalledTimes(1)
+	})
+
+	it("filters hidden paths before origin resolution", async () => {
+		const { context, setState, originJournal } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({ workspacePath: "/ws" })
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: [],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 4,
+					vaultRelCreated: ["visible.md", ".hidden/secret.md"],
+					vaultRelModified: [],
+					vaultRelRemoved: [],
+					vaultRelRenamed: [],
+					rescan: false,
+					emittedAtUnixMs: 1003,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(originJournal.resolve).toHaveBeenCalledWith({
+			workspacePath: "/ws",
+			relPaths: ["visible.md"],
 		})
 	})
 })

@@ -19,7 +19,6 @@ export type WorkspaceState = {
 	expandedDirectories: string[]
 	isMigrationsComplete: boolean
 	pinnedDirectories: string[]
-	lastFsOperationTime: number | null
 	aiLockedEntryPaths: Set<string>
 	selectedEntryPaths: Set<string>
 	selectionAnchorPath: string | null
@@ -38,7 +37,6 @@ export const buildWorkspaceState = (
 	expandedDirectories: [],
 	isMigrationsComplete: false,
 	pinnedDirectories: [],
-	lastFsOperationTime: null,
 	aiLockedEntryPaths: new Set(),
 	selectedEntryPaths: new Set(),
 	selectionAnchorPath: null,

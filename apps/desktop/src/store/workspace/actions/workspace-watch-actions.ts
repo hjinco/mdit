@@ -45,7 +45,6 @@ type CleanupWatchSessionOptions = {
 }
 
 const VAULT_WATCH_BATCH_EVENT = "vault-watch-batch"
-const FS_OPERATION_COOLDOWN_MS = 5000
 
 const collectChangedPaths = (payload: VaultWatchBatchPayload): string[] => {
 	const renamedPaths = payload.batch.vaultRelRenamed.flatMap((entry) => [
@@ -310,15 +309,6 @@ const createBatchRefreshEnqueuer = (
 	}
 }
 
-const hasRecentFsOperation = (ctx: WorkspaceActionContext): boolean => {
-	const lastFsOpTime = ctx.get().lastFsOperationTime
-	if (lastFsOpTime === null) {
-		return false
-	}
-
-	return Date.now() - lastFsOpTime < FS_OPERATION_COOLDOWN_MS
-}
-
 const enqueueBatchPayloadRefresh = (
 	ctx: WorkspaceActionContext,
 	workspacePath: string,
@@ -330,10 +320,6 @@ const enqueueBatchPayloadRefresh = (
 		return
 	}
 
-	if (hasRecentFsOperation(ctx)) {
-		return
-	}
-
 	if (payload.batch.rescan) {
 		enqueueBatchRefresh(payload.batch, () =>
 			ctx.get().refreshWorkspaceEntries(),
@@ -341,9 +327,17 @@ const enqueueBatchPayloadRefresh = (
 		return
 	}
 
+	const { externalRelPaths } = ctx.originJournal.resolve({
+		workspacePath,
+		relPaths: visibleChangedPaths,
+	})
+	if (externalRelPaths.length === 0) {
+		return
+	}
+
 	const directoryPaths = collectRefreshDirectoryPaths(
 		workspacePath,
-		visibleChangedPaths,
+		externalRelPaths,
 	)
 
 	if (directoryPaths.length === 0) {
@@ -432,6 +426,7 @@ export const createWorkspaceWatchActions = (
 		}
 
 		await deactivateCurrentWatchSession(ctx)
+		ctx.originJournal.clearWorkspace(workspacePath)
 
 		const appWindow = getCurrentWindow()
 		const activeRef = { current: true }
@@ -499,6 +494,10 @@ export const createWorkspaceWatchActions = (
 	},
 
 	unwatchWorkspace: () => {
+		const workspacePath = ctx.get().workspacePath
+		if (workspacePath) {
+			ctx.originJournal.clearWorkspace(workspacePath)
+		}
 		void deactivateCurrentWatchSession(ctx)
 	},
 })
