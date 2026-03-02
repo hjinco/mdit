@@ -3,7 +3,7 @@ import { cn } from "@mdit/ui/lib/utils"
 import { upsertLink } from "@platejs/link"
 import { LinkPlugin } from "@platejs/link/react"
 import { cva } from "class-variance-authority"
-import { Check, FileIcon, FilePlus, GlobeIcon, Link } from "lucide-react"
+import { Check, FileIcon, GlobeIcon, Link } from "lucide-react"
 import { dirname as pathDirname, relative } from "pathe"
 import type { TLinkElement } from "platejs"
 import { KEYS } from "platejs"
@@ -926,11 +926,10 @@ export function LinkUrlInput({
 										onMouseEnter={() => setHighlightedIndex(0)}
 										onClick={handleCreateNote}
 									>
-										<span className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
-											<FilePlus className="size-3.5 shrink-0" />
+										<span className="text-sm font-medium max-w-full truncate">
 											Create new note "{trimmedValue}"
 										</span>
-										<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
+										<span className="text-xs text-muted-foreground max-w-full truncate">
 											{currentRelativeDir}
 										</span>
 									</div>
@@ -950,7 +949,7 @@ export function LinkUrlInput({
 												id={`${listboxId}-${index}`}
 												data-selected={isHighlighted}
 												className={cn(
-													"relative flex cursor-default select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
+													"relative flex cursor-pointer select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
 													"data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
 													isHighlighted
 														? "bg-accent text-accent-foreground"
@@ -965,11 +964,10 @@ export function LinkUrlInput({
 												}}
 												onClick={() => handleSelectSuggestion(file)}
 											>
-												<div className="text-sm font-medium max-w-full flex items-center gap-1.5 truncate">
-													<FileIcon className="size-3.5 shrink-0" />
-													<span className="truncate">{file.displayName}</span>
+												<div className="text-sm font-medium max-w-full truncate">
+													<span>{file.displayName}</span>
 												</div>
-												<span className="text-xs text-muted-foreground max-w-full truncate pl-5">
+												<span className="text-xs text-muted-foreground max-w-full truncate">
 													{file.relativePath}
 												</span>
 											</div>
