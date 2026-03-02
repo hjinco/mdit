@@ -42,6 +42,7 @@ pub fn run() {
         .plugin(WindowStateBuilder::default().build())
         .manage(local_api::LocalApiRuntimeState::default())
         .manage(local_api::LocalApiAuthState::default())
+        .manage(commands::vault_watch::VaultWatchRuntimeState::default())
         .invoke_handler(tauri::generate_handler![
             app::window_lifecycle::show_main_window,
             commands::filesystem::copy,
@@ -65,6 +66,8 @@ pub fn run() {
             commands::vault_indexing::remove_vault_workspace_command,
             commands::vault_indexing::get_vault_embedding_config_command,
             commands::vault_indexing::set_vault_embedding_config_command,
+            commands::vault_watch::start_vault_watch_command,
+            commands::vault_watch::stop_vault_watch_command,
             commands::local_api::start_local_api_server_command,
             commands::local_api::set_local_api_auth_token_command,
             commands::local_api::stop_local_api_server_command,

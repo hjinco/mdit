@@ -1,4 +1,4 @@
-import type { UnwatchFn } from "@tauri-apps/plugin-fs"
+type UnwatchFn = () => void | Promise<void>
 
 export type WorkspaceEntry = {
 	path: string

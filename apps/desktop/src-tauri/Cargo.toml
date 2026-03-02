@@ -23,6 +23,7 @@ mdit-image-processing = { package = "image-processing", path = "../../../crates/
 mdit-indexing = { package = "indexing", path = "../../../crates/indexing" }
 mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
 mdit-note = { package = "note", path = "../../../crates/note" }
+mdit-vault-watch = { package = "vault-watch", path = "../../../crates/vault-watch" }
 tauri = { version = "2.10.2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
 tauri-plugin-opener = "2.5.3"
 serde = { version = "1", features = ["derive"] }
@@ -37,7 +38,7 @@ rmcp = { version = "0.16.0", features = [
 tokio = { version = "1", features = ["net", "rt", "sync"] }
 tower = "0.5.2"
 tauri-plugin-dialog = "2.6.0"
-tauri-plugin-fs = { version = "2.4.5", features = ["watch"] }
+tauri-plugin-fs = { version = "2.4.5" }
 tauri-plugin-keyring = "0.1.0"
 tauri-plugin-oauth = "2.0.0"
 tauri-plugin-process = "2.3.1"
