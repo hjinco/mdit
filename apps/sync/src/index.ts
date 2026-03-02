@@ -1,16 +1,12 @@
-import { DurableObject } from "cloudflare:workers"
-
-export class MyDurableObject extends DurableObject<Env> {
-	async sayHello(name: string): Promise<string> {
-		return `Hello, ${name}!`
-	}
-}
+import { auth } from "./lib/auth"
 
 export default {
-	async fetch(_request, env, _ctx): Promise<Response> {
-		const stub = env.MY_DURABLE_OBJECT.getByName("foo")
-		const greeting = await stub.sayHello("world")
+	async fetch(request, _env, _ctx): Promise<Response> {
+		const url = new URL(request.url)
+		if (url.pathname.startsWith("/api/auth")) {
+			return auth.handler(request)
+		}
 
-		return new Response(greeting)
+		return new Response("Not found", { status: 404 })
 	},
 } satisfies ExportedHandler<Env>
