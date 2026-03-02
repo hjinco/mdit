@@ -74,19 +74,25 @@ export function replaceHistoryPath<T extends HistoryEntryLike>(
 	const normalizedOldPath = normalizePathSeparators(oldPath)
 	const normalizedNewPath = normalizePathSeparators(newPath)
 
-	return history.map((entry) =>
-		normalizePathSeparators(entry.path) === normalizedOldPath
-			? {
-					...entry,
-					path: normalizedNewPath,
-				}
-			: normalizePathSeparators(entry.path).startsWith(`${normalizedOldPath}/`)
-				? {
-						...entry,
-						path: `${normalizedNewPath}${normalizePathSeparators(
-							entry.path,
-						).slice(normalizedOldPath.length)}`,
-					}
-				: entry,
-	)
+	return history.map((entry) => {
+		const normalizedEntryPath = normalizePathSeparators(entry.path)
+
+		if (normalizedEntryPath === normalizedOldPath) {
+			return {
+				...entry,
+				path: normalizedNewPath,
+			}
+		}
+
+		if (normalizedEntryPath.startsWith(`${normalizedOldPath}/`)) {
+			return {
+				...entry,
+				path: `${normalizedNewPath}${normalizedEntryPath.slice(
+					normalizedOldPath.length,
+				)}`,
+			}
+		}
+
+		return entry
+	})
 }
