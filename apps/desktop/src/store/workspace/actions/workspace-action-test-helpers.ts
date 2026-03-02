@@ -65,7 +65,7 @@ export function createWorkspaceActionTestContext() {
 			closeTab: vi.fn(),
 			renameTab: vi.fn().mockResolvedValue(undefined),
 			updateHistoryPath: vi.fn(),
-			removePathFromHistory: vi.fn(),
+			removePathsFromHistory: vi.fn(),
 			clearHistory: vi.fn(),
 		},
 		collection: {

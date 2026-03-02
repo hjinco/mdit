@@ -1,3 +1,5 @@
+import { normalizePathSeparators } from "@/utils/path-utils"
+
 type HistoryEntryLike = {
 	path: string
 }
@@ -69,12 +71,22 @@ export function replaceHistoryPath<T extends HistoryEntryLike>(
 	oldPath: string,
 	newPath: string,
 ): T[] {
+	const normalizedOldPath = normalizePathSeparators(oldPath)
+	const normalizedNewPath = normalizePathSeparators(newPath)
+
 	return history.map((entry) =>
-		entry.path === oldPath
+		normalizePathSeparators(entry.path) === normalizedOldPath
 			? {
 					...entry,
-					path: newPath,
+					path: normalizedNewPath,
 				}
-			: entry,
+			: normalizePathSeparators(entry.path).startsWith(`${normalizedOldPath}/`)
+				? {
+						...entry,
+						path: `${normalizedNewPath}${normalizePathSeparators(
+							entry.path,
+						).slice(normalizedOldPath.length)}`,
+					}
+				: entry,
 	)
 }
