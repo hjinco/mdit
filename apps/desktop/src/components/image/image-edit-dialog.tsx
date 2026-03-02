@@ -246,11 +246,8 @@ export function ImageEditDialog() {
 			}
 
 			await editImage(imageEditPath, options)
-			if (options.outputPath) {
-				registerLocalMutation([{ path: options.outputPath, scope: "exact" }])
-			} else {
-				registerLocalMutation([{ path: imageEditPath, scope: "exact" }])
-			}
+			const mutatedPath = options.outputPath ?? imageEditPath
+			registerLocalMutation([{ path: mutatedPath, scope: "exact" }])
 
 			// If format changed and not saving as new file, delete the original
 			if (isFormatChanging && !saveAsNewFile) {

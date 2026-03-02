@@ -1,4 +1,3 @@
-import type { LocalMutationTarget } from "@mdit/local-fs-origin"
 import { updateEntryMetadata } from "../helpers/entry-helpers"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceSlice } from "../workspace-slice"
@@ -8,29 +7,12 @@ export const createWorkspaceFsNoteActions = (
 	ctx: WorkspaceActionContext,
 ): Pick<
 	WorkspaceSlice,
-	| "registerLocalMutation"
 	| "saveNoteContent"
 	| "updateFrontmatter"
 	| "renameFrontmatterProperty"
 	| "removeFrontmatterProperty"
 	| "updateEntryModifiedDate"
 > => ({
-	registerLocalMutation: (
-		targets: LocalMutationTarget[],
-		options?: { ttlMs?: number },
-	) => {
-		const workspacePath = ctx.get().workspacePath
-		if (!workspacePath || targets.length === 0) {
-			return
-		}
-
-		ctx.originJournal.register({
-			workspacePath,
-			targets,
-			ttlMs: options?.ttlMs,
-		})
-	},
-
 	saveNoteContent: async (path: string, contents: string) => {
 		await ctx.deps.fileSystemRepository.writeTextFile(path, contents)
 		registerExactLocalMutation(ctx.get().registerLocalMutation, path)

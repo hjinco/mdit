@@ -24,6 +24,7 @@ import { createWorkspaceFsNoteActions } from "./actions/workspace-fs-note-action
 import { createWorkspaceFsStructureActions } from "./actions/workspace-fs-structure-actions"
 import { createWorkspaceFsTransferActions } from "./actions/workspace-fs-transfer-actions"
 import { createWorkspaceLifecycleActions } from "./actions/workspace-lifecycle-actions"
+import { createWorkspaceLocalMutationActions } from "./actions/workspace-local-mutation-actions"
 import { createWorkspaceSelectionActions } from "./actions/workspace-selection-actions"
 import { createWorkspaceTreeActions } from "./actions/workspace-tree-actions"
 import { createWorkspaceWatchActions } from "./actions/workspace-watch-actions"
@@ -175,6 +176,7 @@ export const prepareWorkspaceSlice =
 			...createWorkspaceTreeActions(actionContext),
 			...createWorkspaceEntryActions(actionContext),
 			...createWorkspaceLifecycleActions(actionContext),
+			...createWorkspaceLocalMutationActions(actionContext),
 			...createWorkspaceFsNoteActions(actionContext),
 			...createWorkspaceFsStructureActions(actionContext),
 			...createWorkspaceFsTransferActions(actionContext),
