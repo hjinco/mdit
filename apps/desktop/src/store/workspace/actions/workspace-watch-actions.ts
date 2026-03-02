@@ -155,8 +155,6 @@ const replaceMultipleDirectoryChildren = (
 		return normalizedDirectoryChildrenByPath.get(normalizedWorkspacePath) ?? []
 	}
 
-	let replaced = false
-
 	const replaceInTree = (list: WorkspaceEntry[]): WorkspaceEntry[] => {
 		let changed = false
 
@@ -167,7 +165,6 @@ const replaceMultipleDirectoryChildren = (
 
 			const normalizedEntryPath = normalizePathSeparators(entry.path)
 			if (normalizedDirectoryChildrenByPath.has(normalizedEntryPath)) {
-				replaced = true
 				changed = true
 				return {
 					...entry,
@@ -192,7 +189,7 @@ const replaceMultipleDirectoryChildren = (
 	}
 
 	const updatedEntries = replaceInTree(entries)
-	return replaced ? updatedEntries : entries
+	return updatedEntries
 }
 
 export const replaceDirectoryChildren = (
