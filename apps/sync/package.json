@@ -1,0 +1,20 @@
+{
+	"name": "@mdit/sync",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.12.18",
+		"@mdit/tsconfig": "workspace:*",
+		"@types/node": "^25.3.3",
+		"@typescript/native-preview": "7.0.0-dev.20260220.1",
+		"vitest": "~3.2.4",
+		"wrangler": "^4.69.0"
+	}
+}
