@@ -1,16 +1,27 @@
+import { isPathEqualOrDescendant } from "@/utils/path-utils"
+
 type HistoryEntryLike = {
 	path: string
 }
 
-export function removePathFromHistory<T extends HistoryEntryLike>(
+export function removePathsFromHistory<T extends HistoryEntryLike>(
 	history: T[],
 	historyIndex: number,
-	pathToRemove: string,
+	pathsToRemove: string[],
 ): { history: T[]; historyIndex: number } {
-	const nextHistory = history.filter((entry) => entry.path !== pathToRemove)
+	if (pathsToRemove.length === 0) {
+		return { history, historyIndex }
+	}
+
+	const shouldRemovePath = (entryPath: string): boolean =>
+		pathsToRemove.some((pathToRemove) =>
+			isPathEqualOrDescendant(entryPath, pathToRemove),
+		)
+
+	const nextHistory = history.filter((entry) => !shouldRemovePath(entry.path))
 	const removedEntriesBeforeOrAtIndex = history
 		.slice(0, historyIndex + 1)
-		.filter((entry) => entry.path === pathToRemove).length
+		.filter((entry) => shouldRemovePath(entry.path)).length
 
 	let nextHistoryIndex = historyIndex - removedEntriesBeforeOrAtIndex
 

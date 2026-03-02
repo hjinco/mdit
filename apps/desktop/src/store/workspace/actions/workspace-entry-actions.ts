@@ -115,9 +115,7 @@ export const createWorkspaceEntryActions = (
 			ctx.ports.tab.closeTab(tab.path)
 		}
 
-		for (const path of paths) {
-			ctx.ports.tab.removePathFromHistory(path)
-		}
+		ctx.ports.tab.removePathsFromHistory(paths)
 
 		ctx.get().updateEntries(removeEntriesFromState(entries, paths))
 

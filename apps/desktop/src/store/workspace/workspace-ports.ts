@@ -9,7 +9,7 @@ export type WorkspacePorts = {
 		| "closeTab"
 		| "renameTab"
 		| "updateHistoryPath"
-		| "removePathFromHistory"
+		| "removePathsFromHistory"
 		| "clearHistory"
 	>
 	collection: Pick<
@@ -34,7 +34,7 @@ export const createWorkspacePorts = (
 		closeTab: (...args) => get().closeTab(...args),
 		renameTab: (...args) => get().renameTab(...args),
 		updateHistoryPath: (...args) => get().updateHistoryPath(...args),
-		removePathFromHistory: (...args) => get().removePathFromHistory(...args),
+		removePathsFromHistory: (...args) => get().removePathsFromHistory(...args),
 		clearHistory: (...args) => get().clearHistory(...args),
 	},
 	collection: {

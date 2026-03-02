@@ -3,7 +3,10 @@ import { relative } from "pathe"
 import type { StateCreator } from "zustand"
 import type { WorkspaceSettings } from "@/lib/settings-utils"
 import { saveSettings } from "@/lib/settings-utils"
-import { getFileNameWithoutExtension } from "@/utils/path-utils"
+import {
+	getFileNameWithoutExtension,
+	isPathEqualOrDescendant,
+} from "@/utils/path-utils"
 import type { WorkspaceSlice } from "../workspace/workspace-slice"
 import {
 	appendHistoryEntry,
@@ -14,7 +17,7 @@ import {
 	areHistorySelectionsEqual,
 	cloneHistorySelection,
 } from "./utils/history-selection-utils"
-import { removePathFromHistory } from "./utils/history-utils"
+import { removePathsFromHistory as removePathsFromHistoryEntries } from "./utils/history-utils"
 
 let tabIdCounter = 0
 
@@ -109,7 +112,7 @@ export type TabSlice = {
 	canGoBack: () => boolean
 	canGoForward: () => boolean
 	updateHistoryPath: (oldPath: string, newPath: string) => void
-	removePathFromHistory: (path: string) => void
+	removePathsFromHistory: (paths: string[]) => void
 	clearHistory: () => void
 }
 
@@ -482,16 +485,21 @@ export const prepareTabSlice =
 			},
 			updateHistoryPath: (oldPath: string, newPath: string) => {
 				const state = get()
-				set({ history: replaceHistoryPath(state.history, oldPath, newPath) })
+				set({
+					history: replaceHistoryPath(state.history, oldPath, newPath),
+				})
 			},
-			removePathFromHistory: (path: string) => {
+			removePathsFromHistory: (paths) => {
 				const state = get()
-				const { history, historyIndex } = removePathFromHistory(
+				const { history, historyIndex } = removePathsFromHistoryEntries(
 					state.history,
 					state.historyIndex,
-					path,
+					paths,
 				)
-				const isCurrentTabDeleted = state.tab?.path === path
+				const tabPath = state.tab?.path
+				const isCurrentTabDeleted =
+					!!tabPath &&
+					paths.some((path) => isPathEqualOrDescendant(tabPath, path))
 
 				if (isCurrentTabDeleted) {
 					if (history.length > 0) {
