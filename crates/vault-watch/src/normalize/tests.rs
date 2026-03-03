@@ -47,6 +47,7 @@ fn maps_create_modify_remove_to_expected_buckets() {
     assert_eq!(batch.vault_rel_created, vec!["a.md"]);
     assert_eq!(batch.vault_rel_modified, vec!["b.md"]);
     assert_eq!(batch.vault_rel_removed, vec!["c.md"]);
+    assert!(batch.vault_rel_removed_dirs.is_empty());
 }
 
 #[test]
@@ -72,7 +73,27 @@ fn create_and_remove_same_path_is_promoted_to_modify() {
     let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert!(batch.vault_rel_created.is_empty());
     assert!(batch.vault_rel_removed.is_empty());
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert_eq!(batch.vault_rel_modified, vec!["a.md"]);
+}
+
+#[test]
+fn folder_remove_is_recorded_in_removed_dirs() {
+    let root = Path::new("/vault");
+    let mut pending = PendingBatch::default();
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    pending.apply_notify_event(
+        root,
+        &event(EventKind::Remove(RemoveKind::Folder), &["/vault/docs"]),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(batch.vault_rel_removed, vec!["docs"]);
+    assert_eq!(batch.vault_rel_removed_dirs, vec!["docs"]);
 }
 
 #[test]
@@ -107,6 +128,7 @@ fn rename_from_to_is_paired_within_window() {
     assert_eq!(batch.vault_rel_renamed[0].to_rel, "new.md");
     assert!(batch.vault_rel_created.is_empty());
     assert!(batch.vault_rel_removed.is_empty());
+    assert!(batch.vault_rel_removed_dirs.is_empty());
 }
 
 #[test]
@@ -129,6 +151,7 @@ fn stale_rename_from_falls_back_to_remove() {
 
     let batch = pending.take_batch(3, 100).expect("batch should exist");
     assert_eq!(batch.vault_rel_removed, vec!["old.md"]);
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert!(batch.vault_rel_renamed.is_empty());
 }
 
@@ -160,6 +183,7 @@ fn rename_to_outside_vault_is_treated_as_remove() {
 
     let batch = pending.take_batch(4, 100).expect("batch should exist");
     assert_eq!(batch.vault_rel_removed, vec!["old.md"]);
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert!(batch.vault_rel_renamed.is_empty());
     assert!(!batch.rescan);
 }
@@ -183,6 +207,7 @@ fn rename_both_with_to_outside_vault_is_treated_as_remove() {
 
     let batch = pending.take_batch(5, 100).expect("batch should exist");
     assert_eq!(batch.vault_rel_removed, vec!["old.md"]);
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert!(batch.vault_rel_created.is_empty());
     assert!(batch.vault_rel_modified.is_empty());
     assert!(batch.vault_rel_renamed.is_empty());
@@ -209,6 +234,7 @@ fn rename_both_with_from_outside_vault_is_treated_as_create() {
     let batch = pending.take_batch(6, 100).expect("batch should exist");
     assert_eq!(batch.vault_rel_created, vec!["new.md"]);
     assert!(batch.vault_rel_removed.is_empty());
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert!(batch.vault_rel_modified.is_empty());
     assert!(batch.vault_rel_renamed.is_empty());
     assert!(!batch.rescan);
@@ -226,5 +252,6 @@ fn overflow_rescan_clears_details() {
     assert!(batch.vault_rel_created.is_empty());
     assert!(batch.vault_rel_modified.is_empty());
     assert!(batch.vault_rel_removed.is_empty());
+    assert!(batch.vault_rel_removed_dirs.is_empty());
     assert!(batch.vault_rel_renamed.is_empty());
 }

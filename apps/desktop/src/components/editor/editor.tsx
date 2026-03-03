@@ -89,16 +89,12 @@ function EditorContent({
 	const {
 		setTabSaved,
 		saveNoteContent,
-		workspacePath,
-		indexNote,
 		setHistorySelectionProvider,
 		consumePendingHistorySelectionRestore,
 	} = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
 			saveNoteContent: s.saveNoteContent,
-			workspacePath: s.workspacePath,
-			indexNote: s.indexNote,
 			setHistorySelectionProvider: s.setHistorySelectionProvider,
 			consumePendingHistorySelectionRestore:
 				s.consumePendingHistorySelectionRestore,
@@ -113,44 +109,20 @@ function EditorContent({
 
 	const { handleRenameAfterSave } = useAutoRenameOnSave(path)
 
-	const runSaveIndexing = useCallback(
-		async (notePath: string) => {
-			if (!workspacePath) {
-				return
-			}
-
-			await indexNote(workspacePath, notePath, { includeEmbeddings: false })
-		},
-		[workspacePath, indexNote],
-	)
-
 	const handleSave = useCallback(async () => {
 		if (isSaved.current) return
 		await saveNoteContent(path, editor.api.markdown.serialize())
 			.then(async () => {
 				isSaved.current = true
 				setTabSaved(true)
-				const finalPath = await handleRenameAfterSave()
-
-				try {
-					await runSaveIndexing(finalPath)
-				} catch (error) {
-					console.error("Failed to index note on save:", error)
-				}
+				await handleRenameAfterSave()
 			})
 			.catch(() => {
 				isSaved.current = false
 				setTabSaved(false)
 				toast.error("Failed to save note")
 			})
-	}, [
-		editor,
-		path,
-		setTabSaved,
-		handleRenameAfterSave,
-		saveNoteContent,
-		runSaveIndexing,
-	])
+	}, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent])
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow()

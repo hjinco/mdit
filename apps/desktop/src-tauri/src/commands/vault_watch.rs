@@ -1,8 +1,7 @@
 use std::sync::Mutex;
 
-use mdit_vault_watch::{
-    start_vault_watch, EventBatchPayload, VaultWatcherHandle, WatchConfig, VAULT_WATCH_BATCH_EVENT,
-};
+use mdit_vault_indexer::{start_vault_indexer, VaultIndexerConfig, VaultIndexerHandle};
+use mdit_vault_watch::{EventBatchPayload, VAULT_WATCH_BATCH_EVENT};
 use tauri::{AppHandle, Emitter, Runtime, State};
 
 #[derive(Default)]
@@ -20,7 +19,7 @@ impl VaultWatchRuntimeState {
 
 struct VaultWatchSession {
     workspace_path: String,
-    handle: VaultWatcherHandle,
+    handle: VaultIndexerHandle,
 }
 
 fn stop_session(session: VaultWatchSession, error_message: &str) -> Result<(), String> {
@@ -50,16 +49,23 @@ pub fn start_vault_watch_command<R: Runtime>(
         stop_session(active, "Failed to stop existing vault watcher")?;
     }
 
+    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let emit_workspace_path = workspace_path.clone();
     let emit_handle = app_handle.clone();
-    let handle = start_vault_watch(&workspace_path, WatchConfig::default(), move |batch| {
-        let payload = EventBatchPayload {
-            workspace_path: emit_workspace_path.clone(),
-            batch,
-        };
-        let _ = emit_handle.emit_to("main", VAULT_WATCH_BATCH_EVENT, payload);
-    })
-    .map_err(|error| format!("Failed to start vault watcher: {}", error))?;
+
+    let handle = start_vault_indexer(
+        &workspace_path,
+        &db_path,
+        VaultIndexerConfig::default(),
+        move |batch| {
+            let payload = EventBatchPayload {
+                workspace_path: emit_workspace_path.clone(),
+                batch,
+            };
+            let _ = emit_handle.emit_to("main", VAULT_WATCH_BATCH_EVENT, payload);
+        },
+    )
+    .map_err(|error| format!("Failed to start vault indexer: {}", error))?;
 
     let (replaced_session, redundant_session) = {
         let mut watcher = state.lock_watcher()?;
