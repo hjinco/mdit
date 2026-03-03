@@ -1,7 +1,7 @@
 import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
-import { MarkdownKit } from "./markdown-kit"
+import { MarkdownKit, MarkdownKitNoMdx } from "./markdown-kit"
 
 type LocalStorageLike = Pick<
 	Storage,
@@ -34,9 +34,9 @@ const ensureLocalStorage = () => {
 	globalThis.localStorage = localStorageShim as Storage
 }
 
-const createMarkdownEditor = () => {
+const createMarkdownEditor = ({ mdx = true }: { mdx?: boolean } = {}) => {
 	ensureLocalStorage()
-	return createSlateEditor({ plugins: MarkdownKit })
+	return createSlateEditor({ plugins: mdx ? MarkdownKit : MarkdownKitNoMdx })
 }
 
 const findNodeByType = (nodes: any[], type: string): any | null => {
@@ -264,5 +264,20 @@ describe("markdown-kit deserialization", () => {
 			environment: "equation",
 			texExpression: "E=mc^2",
 		})
+	})
+})
+
+describe("markdown-kit invalid mdx input", () => {
+	it("does not crash on invalid mdx when mdx mode is enabled", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "<callout icon={>Broken</callout>")
+		expect(extractText(value[0] as any)).toContain("Broken")
+	})
+
+	it("treats invalid mdx syntax as plain text when mdx mode is disabled", async () => {
+		const editor = createMarkdownEditor({ mdx: false })
+		const value = deserializeMd(editor, "<callout icon={>Broken</callout>")
+
+		expect(extractText(value[0] as any)).toContain("Broken")
 	})
 })

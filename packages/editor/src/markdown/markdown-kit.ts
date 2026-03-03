@@ -162,14 +162,20 @@ function isEmptyParagraph(node: MdastNode | undefined): boolean {
 	})
 }
 
-export const MarkdownKit = [
+export type CreateMarkdownKitOptions = {
+	mdx?: boolean
+}
+
+export const createMarkdownKit = ({
+	mdx = true,
+}: CreateMarkdownKitOptions = {}) => [
 	MarkdownPlugin.configure({
 		options: {
 			disallowedNodes: [KEYS.slashCommand],
 			remarkPlugins: [
 				remarkMath,
 				remarkGfm,
-				remarkMdx,
+				...(mdx ? [remarkMdx] : []),
 				remarkMention,
 				remarkFrontmatter,
 				remarkWikiLink,
@@ -441,3 +447,6 @@ export const MarkdownKit = [
 		},
 	}),
 ]
+
+export const MarkdownKit = createMarkdownKit()
+export const MarkdownKitNoMdx = createMarkdownKit({ mdx: false })
