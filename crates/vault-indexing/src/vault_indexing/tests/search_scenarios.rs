@@ -47,7 +47,7 @@ fn given_bm25_only_scores_when_ranking_then_bm25_only_ranking_is_used() {
 
 #[test]
 fn given_small_or_missing_files_when_materializing_ranked_candidates_then_only_real_notes_remain() {
-    let harness = IndexingHarness::new("mdit-indexing-search-materialize");
+    let harness = IndexingHarness::new("mdit-vault-indexing-search-materialize");
     harness.write_note("tiny.md", "too small");
     harness.write_note("full.md", &"content ".repeat(80));
 
@@ -76,7 +76,7 @@ fn given_small_or_missing_files_when_materializing_ranked_candidates_then_only_r
 
 #[test]
 fn given_empty_query_or_missing_embedding_inputs_when_searching_then_it_returns_without_errors() {
-    let harness = IndexingHarness::new("mdit-indexing-search-guards");
+    let harness = IndexingHarness::new("mdit-vault-indexing-search-guards");
 
     let empty_result = search_notes_for_query(
         harness.root(),

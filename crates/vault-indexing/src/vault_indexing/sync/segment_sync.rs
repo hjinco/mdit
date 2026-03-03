@@ -271,7 +271,7 @@ mod tests {
     use rusqlite::{params, Connection};
 
     use super::upsert_embedding;
-    use crate::indexing::IndexSummary;
+    use crate::vault_indexing::IndexSummary;
 
     fn open_connection() -> Connection {
         app_storage::sqlite_ext::register_auto_extension().expect("failed to register sqlite-vec");

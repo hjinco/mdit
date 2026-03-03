@@ -29,7 +29,7 @@ impl IndexingHarness {
         root.push(format!("{prefix}-{}", unique_id()));
         std::fs::create_dir_all(&root).expect("failed to create temp workspace");
 
-        let db_path = root.join("indexing-test.sqlite");
+        let db_path = root.join("vault-indexing-test.sqlite");
         migrations::run_migrations_at(&db_path).expect("failed to run test migrations");
 
         Self { root, db_path }

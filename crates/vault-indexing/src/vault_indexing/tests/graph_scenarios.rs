@@ -3,7 +3,7 @@ use super::test_support::IndexingHarness;
 
 #[test]
 fn given_resolved_and_unresolved_links_when_loading_graph_then_both_node_types_are_returned() {
-    let harness = IndexingHarness::new("mdit-indexing-graph-resolved-unresolved");
+    let harness = IndexingHarness::new("mdit-vault-indexing-graph-resolved-unresolved");
     harness.write_note(
         "source.md",
         "[[target]]\n[[target]]\n[[missing]]\n[[missing]]\n",
@@ -39,7 +39,7 @@ fn given_resolved_and_unresolved_links_when_loading_graph_then_both_node_types_a
 
 #[test]
 fn given_vault_not_indexed_when_loading_graph_then_it_returns_empty_data() {
-    let harness = IndexingHarness::new("mdit-indexing-graph-empty");
+    let harness = IndexingHarness::new("mdit-vault-indexing-graph-empty");
     harness.write_note("orphan.md", "# Orphan\n");
 
     let graph = get_graph_view_data(harness.root(), harness.db_path())
@@ -51,7 +51,7 @@ fn given_vault_not_indexed_when_loading_graph_then_it_returns_empty_data() {
 
 #[test]
 fn given_duplicate_edges_when_loading_graph_then_each_pair_is_returned_once() {
-    let harness = IndexingHarness::new("mdit-indexing-graph-dedupe");
+    let harness = IndexingHarness::new("mdit-vault-indexing-graph-dedupe");
     harness.write_note(
         "source.md",
         "[[target]]\n[[target]]\n[Alias](target.md)\n[[target|Other]]\n",

@@ -3,7 +3,7 @@ use super::test_support::IndexingHarness;
 #[test]
 fn given_deleted_preferred_wiki_target_when_reindexing_workspace_then_link_rebinds_to_remaining_target(
 ) {
-    let harness = IndexingHarness::new("mdit-indexing-sync-rebind-target");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-rebind-target");
     harness.write_note("source.md", "[[note]]\n");
     harness.write_note("a/note.md", "# A Note\n");
     harness.write_note("b/note.md", "# B Note\n");
@@ -24,7 +24,7 @@ fn given_deleted_preferred_wiki_target_when_reindexing_workspace_then_link_rebin
 #[test]
 fn given_deleted_note_when_reindexing_workspace_then_deleted_doc_is_pruned_and_source_link_stays_unresolved(
 ) {
-    let harness = IndexingHarness::new("mdit-indexing-sync-prune-doc");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-prune-doc");
     harness.write_note("a.md", "[[b]]\n");
     harness.write_note("b.md", "# B\n");
 
@@ -43,7 +43,7 @@ fn given_deleted_note_when_reindexing_workspace_then_deleted_doc_is_pruned_and_s
 
 #[test]
 fn given_content_changed_without_embeddings_when_reindexing_then_doc_content_is_updated() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-content-update");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-content-update");
     harness.write_note(
         "a.md",
         &["---", "title: Old Title", "---", "Old body sentence."].join("\n"),
@@ -78,7 +78,7 @@ fn given_content_changed_without_embeddings_when_reindexing_then_doc_content_is_
 
 #[test]
 fn given_hash_missing_when_source_stat_matches_then_reindex_restores_hash() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-missing-hash");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-missing-hash");
     harness.write_note("a.md", "# A\nBody\n");
 
     harness.run_workspace_index();
@@ -94,7 +94,7 @@ fn given_hash_missing_when_source_stat_matches_then_reindex_restores_hash() {
 
 #[test]
 fn given_stale_source_stat_when_content_unchanged_then_reindex_updates_source_stat() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-source-stat-refresh");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-source-stat-refresh");
     harness.write_note("a.md", "# Stable\nBody\n");
 
     harness.run_workspace_index();
@@ -125,7 +125,7 @@ fn given_stale_source_stat_when_content_unchanged_then_reindex_updates_source_st
 
 #[test]
 fn given_unrelated_doc_insert_when_reindexing_then_unrelated_wiki_sources_are_not_refreshed() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-unrelated-insert");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-unrelated-insert");
     harness.write_note("source.md", "[[target]]\n");
     harness.write_note("target.md", "# Target\n");
 
@@ -143,7 +143,7 @@ fn given_unrelated_doc_insert_when_reindexing_then_unrelated_wiki_sources_are_no
 #[test]
 fn given_inserted_doc_matches_unresolved_markdown_target_path_then_target_doc_id_is_bound_without_source_refresh(
 ) {
-    let harness = IndexingHarness::new("mdit-indexing-sync-markdown-bind");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-markdown-bind");
     harness.write_note("source.md", "[Go](new.md)\n");
 
     harness.run_workspace_index();
@@ -166,7 +166,7 @@ fn given_inserted_doc_matches_unresolved_markdown_target_path_then_target_doc_id
 
 #[test]
 fn given_wiki_basename_dependency_when_target_deleted_then_only_dependent_sources_rebind() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-dependency-target-delete");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-dependency-target-delete");
     harness.write_note("source-note.md", "[[note]]\n");
     harness.write_note("source-other.md", "[[other]]\n");
     harness.write_note("note.md", "# Note\n");
@@ -189,7 +189,7 @@ fn given_wiki_basename_dependency_when_target_deleted_then_only_dependent_source
 
 #[test]
 fn given_wiki_path_suffix_dependency_when_target_deleted_then_only_dependent_sources_rebind() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-query-key-path-delete");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-query-key-path-delete");
     harness.write_note("source-team.md", "[[team/note]]\n");
     harness.write_note("source-other.md", "[[other/note]]\n");
     harness.write_note("docs/team/note.md", "# Team Note\n");
@@ -215,7 +215,7 @@ fn given_wiki_path_suffix_dependency_when_target_deleted_then_only_dependent_sou
 
 #[test]
 fn given_source_links_changed_when_reindexing_then_wiki_link_ref_rows_are_replaced() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-wiki-ref-replace");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-wiki-ref-replace");
     harness.write_note("source.md", "[[old]]\n");
 
     harness.run_workspace_index();
@@ -229,7 +229,7 @@ fn given_source_links_changed_when_reindexing_then_wiki_link_ref_rows_are_replac
 
 #[test]
 fn given_source_doc_deleted_then_wiki_link_ref_rows_are_cascaded() {
-    let harness = IndexingHarness::new("mdit-indexing-sync-wiki-ref-cascade");
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-wiki-ref-cascade");
     harness.write_note("source.md", "[[note]]\n");
     harness.write_note("note.md", "# Note\n");
 

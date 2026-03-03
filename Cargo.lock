@@ -2499,22 +2499,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexing"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "app-storage",
- "blake3",
- "note",
- "ollama-client",
- "pulldown-cmark",
- "rusqlite",
- "serde",
- "tiktoken-rs",
- "walkdir",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2905,9 +2889,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-storage",
- "indexing",
  "serde",
  "thiserror 2.0.17",
+ "vault-indexing",
 ]
 
 [[package]]
@@ -3001,7 +2985,6 @@ dependencies = [
  "app-storage",
  "axum",
  "image-processing",
- "indexing",
  "local-api",
  "note",
  "objc2-app-kit",
@@ -3030,6 +3013,7 @@ dependencies = [
  "trash",
  "urlencoding",
  "vault-indexer",
+ "vault-indexing",
  "vault-watch",
 ]
 
@@ -6716,13 +6700,29 @@ name = "vault-indexer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "indexing",
  "pathdiff",
  "pulldown-cmark",
  "regex",
  "serde",
  "thiserror 2.0.17",
+ "vault-indexing",
  "vault-watch",
+]
+
+[[package]]
+name = "vault-indexing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-storage",
+ "blake3",
+ "note",
+ "ollama-client",
+ "pulldown-cmark",
+ "rusqlite",
+ "serde",
+ "tiktoken-rs",
+ "walkdir",
 ]
 
 [[package]]

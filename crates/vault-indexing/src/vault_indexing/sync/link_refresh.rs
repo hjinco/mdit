@@ -193,7 +193,7 @@ mod tests {
         bind_unresolved_links_for_inserted_docs, collect_query_keys_for_paths,
         load_forced_link_refresh_doc_ids, rel_path_query_keys, replace_links_for_doc,
     };
-    use crate::indexing::{
+    use crate::vault_indexing::{
         links::{LinkResolution, ResolvedLink},
         IndexSummary,
     };

@@ -368,7 +368,7 @@ mod tests {
     use rusqlite::{params, Connection};
 
     use super::{update_full_metadata, DocRecord};
-    use crate::indexing::files::MarkdownFile;
+    use crate::vault_indexing::files::MarkdownFile;
 
     fn make_doc(model: Option<&str>, dim: Option<i32>) -> DocRecord {
         DocRecord {

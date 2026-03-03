@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use indexing::{
+use vault_indexing::{
     delete_indexed_note, delete_indexed_notes_by_prefix, get_backlinks, index_note,
     index_workspace, rename_indexed_note, resolve_wiki_link, BacklinkEntry, ResolveWikiLinkRequest,
 };

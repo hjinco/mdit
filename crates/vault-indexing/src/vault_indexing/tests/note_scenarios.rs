@@ -9,7 +9,7 @@ use super::test_support::IndexingHarness;
 
 #[test]
 fn given_deleted_note_when_indexing_single_note_then_other_docs_are_not_pruned() {
-    let harness = IndexingHarness::new("mdit-indexing-note-no-prune");
+    let harness = IndexingHarness::new("mdit-vault-indexing-note-no-prune");
     harness.write_note("a.md", "[[b]]\n");
     harness.write_note("b.md", "# B\n");
 
@@ -29,7 +29,7 @@ fn given_deleted_note_when_indexing_single_note_then_other_docs_are_not_pruned()
 
 #[test]
 fn given_note_path_outside_workspace_when_indexing_single_note_then_it_is_rejected() {
-    let harness = IndexingHarness::new("mdit-indexing-note-outside");
+    let harness = IndexingHarness::new("mdit-vault-indexing-note-outside");
     harness.write_note("a.md", "# A\n");
 
     let outside_path = outside_markdown_path();
@@ -46,7 +46,7 @@ fn given_note_path_outside_workspace_when_indexing_single_note_then_it_is_reject
 
 #[test]
 fn given_non_markdown_note_path_when_indexing_single_note_then_it_is_rejected() {
-    let harness = IndexingHarness::new("mdit-indexing-note-extension");
+    let harness = IndexingHarness::new("mdit-vault-indexing-note-extension");
     harness.write_note("note.txt", "plain text");
 
     let error = harness
@@ -58,7 +58,7 @@ fn given_non_markdown_note_path_when_indexing_single_note_then_it_is_rejected() 
 
 #[test]
 fn given_multiple_links_from_same_source_when_loading_backlinks_then_each_source_appears_once() {
-    let harness = IndexingHarness::new("mdit-indexing-backlinks-dedupe");
+    let harness = IndexingHarness::new("mdit-vault-indexing-backlinks-dedupe");
     harness.write_note("target.md", "# Target\n");
     harness.write_note(
         "source-a.md",
@@ -79,7 +79,7 @@ fn given_multiple_links_from_same_source_when_loading_backlinks_then_each_source
 
 #[test]
 fn given_note_with_frontmatter_when_indexing_then_doc_content_uses_values_not_keys() {
-    let harness = IndexingHarness::new("mdit-indexing-frontmatter-values");
+    let harness = IndexingHarness::new("mdit-vault-indexing-frontmatter-values");
     let note_contents = [
         "---",
         "title: Search Title",
@@ -114,7 +114,7 @@ fn given_note_with_frontmatter_when_indexing_then_doc_content_uses_values_not_ke
 #[test]
 fn given_indexed_vectors_when_loading_related_notes_then_it_returns_ranked_matches_excluding_self()
 {
-    let harness = IndexingHarness::new("mdit-indexing-related-ranked");
+    let harness = IndexingHarness::new("mdit-vault-indexing-related-ranked");
     harness.write_note("source.md", &("source ".repeat(64)));
     harness.write_note("near.md", &("near ".repeat(64)));
     harness.write_note("far.md", &("far ".repeat(64)));
@@ -144,7 +144,7 @@ fn given_indexed_vectors_when_loading_related_notes_then_it_returns_ranked_match
 
 #[test]
 fn given_limit_when_loading_related_notes_then_it_caps_results() {
-    let harness = IndexingHarness::new("mdit-indexing-related-limit");
+    let harness = IndexingHarness::new("mdit-vault-indexing-related-limit");
     harness.write_note("source.md", &("source ".repeat(64)));
     harness.write_note("near-1.md", &("near-1 ".repeat(64)));
     harness.write_note("near-2.md", &("near-2 ".repeat(64)));
@@ -168,7 +168,7 @@ fn given_limit_when_loading_related_notes_then_it_caps_results() {
 
 #[test]
 fn given_source_without_embedding_metadata_when_loading_related_notes_then_it_returns_empty() {
-    let harness = IndexingHarness::new("mdit-indexing-related-empty");
+    let harness = IndexingHarness::new("mdit-vault-indexing-related-empty");
     harness.write_note("source.md", &("source ".repeat(64)));
     harness.write_note("other.md", &("other ".repeat(64)));
     harness.run_workspace_index();
@@ -186,7 +186,7 @@ fn given_source_without_embedding_metadata_when_loading_related_notes_then_it_re
 
 #[test]
 fn given_indexed_note_when_renaming_single_indexed_note_then_doc_id_is_preserved() {
-    let harness = IndexingHarness::new("mdit-indexing-rename-indexed-note");
+    let harness = IndexingHarness::new("mdit-vault-indexing-rename-indexed-note");
     harness.write_note("old.md", "# old");
     harness.write_note("source.md", "[[old]]");
     harness.run_workspace_index();
@@ -218,7 +218,7 @@ fn given_indexed_note_when_renaming_single_indexed_note_then_doc_id_is_preserved
 
 #[test]
 fn given_indexed_note_when_deleting_single_indexed_note_then_doc_row_is_removed() {
-    let harness = IndexingHarness::new("mdit-indexing-delete-indexed-note");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-indexed-note");
     harness.write_note("target.md", "# target");
     harness.write_note("source.md", "[[target]]");
     harness.run_workspace_index();
@@ -239,7 +239,7 @@ fn given_indexed_note_when_deleting_single_indexed_note_then_doc_row_is_removed(
 #[test]
 fn given_source_link_to_deleted_target_when_deleting_indexed_note_then_target_doc_binding_is_cleared(
 ) {
-    let harness = IndexingHarness::new("mdit-indexing-delete-link-target-clear");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-link-target-clear");
     harness.write_note("target.md", "# target");
     harness.write_note("source.md", "[[target]]");
     harness.run_workspace_index();
@@ -260,7 +260,7 @@ fn given_source_link_to_deleted_target_when_deleting_indexed_note_then_target_do
 
 #[test]
 fn given_missing_indexed_note_when_deleting_then_it_returns_false() {
-    let harness = IndexingHarness::new("mdit-indexing-delete-indexed-note-missing");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-indexed-note-missing");
     harness.write_note("source.md", "# source");
     harness.run_workspace_index();
 
@@ -276,7 +276,7 @@ fn given_missing_indexed_note_when_deleting_then_it_returns_false() {
 
 #[test]
 fn given_indexed_notes_under_directory_when_deleting_by_prefix_then_only_descendants_are_removed() {
-    let harness = IndexingHarness::new("mdit-indexing-delete-prefix");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-prefix");
     harness.write_note("folder/target.md", "# target");
     harness.write_note("folder/nested/deep.md", "# deep");
     harness.write_note("source.md", "[[folder/target]]");
@@ -303,7 +303,7 @@ fn given_indexed_notes_under_directory_when_deleting_by_prefix_then_only_descend
 
 #[test]
 fn given_missing_prefix_when_deleting_by_prefix_then_it_returns_zero() {
-    let harness = IndexingHarness::new("mdit-indexing-delete-prefix-missing");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-prefix-missing");
     harness.write_note("source.md", "# source");
     harness.run_workspace_index();
 
@@ -319,7 +319,7 @@ fn given_missing_prefix_when_deleting_by_prefix_then_it_returns_zero() {
 
 #[test]
 fn given_prefix_with_like_wildcards_when_deleting_by_prefix_then_it_uses_literal_match() {
-    let harness = IndexingHarness::new("mdit-indexing-delete-prefix-like-escape");
+    let harness = IndexingHarness::new("mdit-vault-indexing-delete-prefix-like-escape");
     harness.write_note("dir%_x/inside.md", "# inside");
     harness.write_note("dirZZx/inside.md", "# sibling");
     harness.run_workspace_index();
@@ -406,7 +406,7 @@ fn embedding_bytes(vector: &[f32]) -> Vec<u8> {
 
 fn outside_markdown_path() -> PathBuf {
     let mut path = std::env::temp_dir();
-    path.push(format!("mdit-indexing-outside-{}.md", unique_id()));
+    path.push(format!("mdit-vault-indexing-outside-{}.md", unique_id()));
     path
 }
 

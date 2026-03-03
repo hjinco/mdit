@@ -51,7 +51,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{decide_file_sync_action, embedding_target_changed, FileSyncAction};
-    use crate::indexing::{files::MarkdownFile, TARGET_CHUNKING_VERSION};
+    use crate::vault_indexing::{files::MarkdownFile, TARGET_CHUNKING_VERSION};
 
     use super::super::doc_repo::DocRecord;
 
