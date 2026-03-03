@@ -445,6 +445,20 @@ fn rewrite_backlink_document(
     new_wiki_target: &str,
     workspace_path_string: &str,
 ) -> Result<bool> {
+    let metadata = std::fs::symlink_metadata(source_path).with_context(|| {
+        format!(
+            "failed to read backlink source metadata {}",
+            source_path.display()
+        )
+    })?;
+    if metadata.file_type().is_symlink() {
+        eprintln!(
+            "vault-indexer: skipping symlink backlink source {}",
+            source_path.display()
+        );
+        return Ok(false);
+    }
+
     let original_content = std::fs::read_to_string(source_path)
         .with_context(|| format!("failed to read backlink source {}", source_path.display()))?;
 
@@ -588,6 +602,8 @@ fn should_ignore_rel_path(path: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    use std::os::unix::fs as unix_fs;
     use std::{
         collections::{HashMap, HashSet},
         sync::Mutex,
@@ -887,6 +903,40 @@ mod tests {
                 RuntimeCall::DeleteIndexedNotesByPrefix(normalize_path(&workspace.join("folder"))),
                 RuntimeCall::RunWorkspaceIndex,
             ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rewrite_backlink_document_skips_symlink_sources() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let old_note_path = workspace.join("old.md");
+        let new_note_path = workspace.join("new.md");
+        let source_path = workspace.join("backlink.md");
+        let sensitive_path = workspace.with_extension("sensitive.md");
+
+        std::fs::write(&sensitive_path, "[old](old.md)\n")
+            .expect("failed to write sensitive target");
+        unix_fs::symlink(&sensitive_path, &source_path).expect("failed to create symlink source");
+
+        let workspace_path_string = normalize_slashes(&workspace.to_string_lossy());
+        let rewritten = rewrite_backlink_document(
+            &runtime,
+            &workspace,
+            &source_path,
+            &old_note_path,
+            &new_note_path,
+            "old.md",
+            "new",
+            &workspace_path_string,
+        )
+        .expect("rewrite should succeed");
+
+        assert!(!rewritten, "symlink sources should be skipped");
+        assert_eq!(
+            std::fs::read_to_string(&sensitive_path).expect("failed to read sensitive target"),
+            "[old](old.md)\n"
         );
     }
 }
