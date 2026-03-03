@@ -1,4 +1,6 @@
 use std::{
+    collections::BTreeSet,
+    path::Path,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,7 +13,8 @@ use std::{
 
 use crate::{
     normalize::PendingBatch,
-    types::{EventBatch, WatchConfig},
+    path::to_vault_rel_path,
+    types::{VaultChangeBatch, WatchConfig},
 };
 
 const IDLE_POLL_INTERVAL_MS: u64 = 200;
@@ -26,20 +29,40 @@ pub(crate) fn spawn_worker(
     config: WatchConfig,
     rx: Receiver<WorkerMessage>,
     rescan_flag: Arc<AtomicBool>,
-    mut on_batch: Box<dyn FnMut(EventBatch) + Send + 'static>,
+    mut on_batch: Box<dyn FnMut(VaultChangeBatch) + Send + 'static>,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         let debounce = Duration::from_millis(config.debounce_ms);
         let rename_window = Duration::from_millis(config.rename_pair_window_ms);
         let idle_poll = Duration::from_millis(IDLE_POLL_INTERVAL_MS);
 
-        let mut pending = PendingBatch::default();
+        let (initial_dir_index, bootstrap_failed) = if config.bootstrap_dir_index {
+            match collect_directory_index(&vault_root) {
+                Ok(index) => (index, false),
+                Err(error) => {
+                    eprintln!(
+                        "vault-watch: failed to bootstrap directory index for {}: {error}",
+                        vault_root.display()
+                    );
+                    (BTreeSet::new(), true)
+                }
+            }
+        } else {
+            (BTreeSet::new(), false)
+        };
+
+        let mut pending = PendingBatch::new(initial_dir_index);
         let mut seq: u64 = 0;
-        let mut last_input_at: Option<Instant> = None;
+        let mut last_input_at: Option<Instant> = if bootstrap_failed {
+            pending.mark_rescan(true);
+            Some(Instant::now())
+        } else {
+            None
+        };
 
         loop {
             let now = Instant::now();
-            pending.expire_stale_rename_from(now, rename_window);
+            pending.expire_stale_rename_from(&vault_root, now, rename_window);
 
             if rescan_flag.swap(false, Ordering::SeqCst) {
                 pending.mark_rescan(true);
@@ -75,7 +98,7 @@ pub(crate) fn spawn_worker(
                     if rescan_flag.swap(false, Ordering::SeqCst) {
                         pending.mark_rescan(true);
                     }
-                    pending.flush_unmatched_rename_from_as_removed();
+                    pending.flush_unmatched_rename_from_as_removed(&vault_root);
 
                     if pending.has_pending_activity() {
                         seq += 1;
@@ -90,6 +113,29 @@ pub(crate) fn spawn_worker(
             }
         }
     })
+}
+
+fn collect_directory_index(vault_root: &Path) -> std::io::Result<BTreeSet<String>> {
+    let mut pending_dirs = vec![vault_root.to_path_buf()];
+    let mut directory_index = BTreeSet::new();
+
+    while let Some(dir_path) = pending_dirs.pop() {
+        for entry in std::fs::read_dir(&dir_path)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            if !file_type.is_dir() {
+                continue;
+            }
+
+            let path = entry.path();
+            if let Some(rel_path) = to_vault_rel_path(vault_root, &path) {
+                directory_index.insert(rel_path);
+            }
+            pending_dirs.push(path);
+        }
+    }
+
+    Ok(directory_index)
 }
 
 fn should_flush(

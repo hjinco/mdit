@@ -11,7 +11,7 @@ use std::{
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::{
-    types::{EventBatch, VaultWatchError, WatchConfig},
+    types::{VaultChangeBatch, VaultWatchError, WatchConfig},
     worker::{spawn_worker, WorkerMessage},
 };
 
@@ -56,7 +56,7 @@ impl Drop for VaultWatcherHandle {
 pub fn start_vault_watch(
     vault_root: impl AsRef<Path>,
     config: WatchConfig,
-    on_batch: impl FnMut(EventBatch) + Send + 'static,
+    on_batch: impl FnMut(VaultChangeBatch) + Send + 'static,
 ) -> Result<VaultWatcherHandle, VaultWatchError> {
     let config = config.normalized();
     let vault_root = canonicalize_vault_root(vault_root.as_ref())?;
@@ -115,6 +115,18 @@ pub fn start_vault_watch(
     })
 }
 
+pub fn start_vault_watch_channel(
+    vault_root: impl AsRef<Path>,
+    config: WatchConfig,
+) -> Result<(VaultWatcherHandle, mpsc::Receiver<VaultChangeBatch>), VaultWatchError> {
+    let (tx, rx) = mpsc::channel::<VaultChangeBatch>();
+    let handle = start_vault_watch(vault_root, config, move |batch| {
+        let _ = tx.send(batch);
+    })?;
+
+    Ok((handle, rx))
+}
+
 fn canonicalize_vault_root(vault_root: &Path) -> Result<PathBuf, VaultWatchError> {
     if !vault_root.exists() {
         return Err(VaultWatchError::VaultRootNotFound(
@@ -143,7 +155,7 @@ mod tests {
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
-    use crate::{start_vault_watch, EventBatch, WatchConfig};
+    use crate::{start_vault_watch, VaultChange, VaultChangeBatch, WatchConfig};
 
     fn create_temp_vault_dir() -> PathBuf {
         let mut dir = std::env::temp_dir();
@@ -162,7 +174,7 @@ mod tests {
         let nested_dir = vault_dir.join("docs");
         fs::create_dir_all(&nested_dir).expect("nested dir should be created");
 
-        let (tx, rx) = mpsc::channel::<EventBatch>();
+        let (tx, rx) = mpsc::channel::<VaultChangeBatch>();
         let watcher = start_vault_watch(
             &vault_dir,
             WatchConfig {
@@ -182,12 +194,19 @@ mod tests {
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
         while std::time::Instant::now() < deadline {
             if let Ok(batch) = rx.recv_timeout(Duration::from_millis(300)) {
-                let mut all_paths = batch.vault_rel_created;
-                all_paths.extend(batch.vault_rel_modified);
-                all_paths.extend(batch.vault_rel_removed);
-                for rename in batch.vault_rel_renamed {
-                    all_paths.push(rename.from_rel);
-                    all_paths.push(rename.to_rel);
+                let mut all_paths = Vec::new();
+                for change in batch.changes {
+                    match change {
+                        VaultChange::Created { rel_path, .. }
+                        | VaultChange::Modified { rel_path, .. }
+                        | VaultChange::Deleted { rel_path, .. } => all_paths.push(rel_path),
+                        VaultChange::Moved {
+                            from_rel, to_rel, ..
+                        } => {
+                            all_paths.push(from_rel);
+                            all_paths.push(to_rel);
+                        }
+                    }
                 }
 
                 if all_paths.iter().any(|path| path == "docs/note.md") {
@@ -209,7 +228,7 @@ mod tests {
     #[test]
     fn stop_prevents_later_event_delivery() {
         let vault_dir = create_temp_vault_dir();
-        let (tx, rx) = mpsc::channel::<EventBatch>();
+        let (tx, rx) = mpsc::channel::<VaultChangeBatch>();
         let watcher = start_vault_watch(
             &vault_dir,
             WatchConfig {

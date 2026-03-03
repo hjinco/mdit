@@ -4,8 +4,8 @@ mod path;
 mod types;
 mod worker;
 
-pub use engine::{start_vault_watch, VaultWatcherHandle};
+pub use engine::{start_vault_watch, start_vault_watch_channel, VaultWatcherHandle};
 pub use types::{
-    EventBatch, EventBatchPayload, RenamePair, VaultWatchError, WatchConfig,
-    VAULT_WATCH_BATCH_EVENT,
+    VaultChange, VaultChangeBatch, VaultChangeBatchPayload, VaultEntryKind, VaultWatchError,
+    WatchConfig, VAULT_WATCH_BATCH_EVENT,
 };

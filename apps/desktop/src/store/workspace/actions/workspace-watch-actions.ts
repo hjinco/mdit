@@ -19,13 +19,23 @@ import type { WorkspaceEntry } from "../workspace-state"
 
 type VaultWatchBatch = {
 	seq: number
-	vaultRelCreated: string[]
-	vaultRelModified: string[]
-	vaultRelRemoved: string[]
-	vaultRelRenamed: { fromRel: string; toRel: string }[]
+	changes: VaultWatchChange[]
 	rescan: boolean
 	emittedAtUnixMs: number
 }
+
+type VaultWatchChange =
+	| {
+			type: "created" | "modified" | "deleted"
+			relPath: string
+			entryKind: "file" | "directory"
+	  }
+	| {
+			type: "moved"
+			fromRel: string
+			toRel: string
+			entryKind: "file" | "directory"
+	  }
 
 type VaultWatchBatchPayload = {
 	workspacePath: string
@@ -47,17 +57,12 @@ type CleanupWatchSessionOptions = {
 const VAULT_WATCH_BATCH_EVENT = "vault-watch-batch"
 
 const collectChangedPaths = (payload: VaultWatchBatchPayload): string[] => {
-	const renamedPaths = payload.batch.vaultRelRenamed.flatMap((entry) => [
-		entry.fromRel,
-		entry.toRel,
-	])
-
-	return [
-		...payload.batch.vaultRelCreated,
-		...payload.batch.vaultRelModified,
-		...payload.batch.vaultRelRemoved,
-		...renamedPaths,
-	]
+	return payload.batch.changes.flatMap((change) => {
+		if (change.type === "moved") {
+			return [change.fromRel, change.toRel]
+		}
+		return [change.relPath]
+	})
 }
 
 const isVisiblePath = (path: string): boolean => !hasHiddenEntryInPaths([path])

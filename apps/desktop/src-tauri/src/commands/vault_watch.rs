@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use mdit_vault_indexer::{start_vault_indexer, VaultIndexerConfig, VaultIndexerHandle};
 use mdit_vault_indexing::VaultIndexingRuntimeAdapter;
-use mdit_vault_watch::{EventBatchPayload, VAULT_WATCH_BATCH_EVENT};
+use mdit_vault_watch::{VaultChangeBatchPayload, VAULT_WATCH_BATCH_EVENT};
 use tauri::{AppHandle, Emitter, Runtime, State};
 
 #[derive(Default)]
@@ -60,7 +60,7 @@ pub fn start_vault_watch_command<R: Runtime>(
         Arc::new(VaultIndexingRuntimeAdapter),
         VaultIndexerConfig::default(),
         move |batch| {
-            let payload = EventBatchPayload {
+            let payload = VaultChangeBatchPayload {
                 workspace_path: emit_workspace_path.clone(),
                 batch,
             };

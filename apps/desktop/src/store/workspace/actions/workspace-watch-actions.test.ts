@@ -208,10 +208,13 @@ describe("workspace-watch-actions", () => {
 				workspacePath: "/ws",
 				batch: {
 					seq: 1,
-					vaultRelCreated: ["docs/local.md"],
-					vaultRelModified: [],
-					vaultRelRemoved: [],
-					vaultRelRenamed: [],
+					changes: [
+						{
+							type: "created",
+							relPath: "docs/local.md",
+							entryKind: "file",
+						},
+					],
 					rescan: false,
 					emittedAtUnixMs: 1000,
 				},
@@ -256,10 +259,18 @@ describe("workspace-watch-actions", () => {
 				workspacePath: "/ws",
 				batch: {
 					seq: 2,
-					vaultRelCreated: ["docs/local.md", "docs/external.md"],
-					vaultRelModified: [],
-					vaultRelRemoved: [],
-					vaultRelRenamed: [],
+					changes: [
+						{
+							type: "created",
+							relPath: "docs/local.md",
+							entryKind: "file",
+						},
+						{
+							type: "created",
+							relPath: "docs/external.md",
+							entryKind: "file",
+						},
+					],
 					rescan: false,
 					emittedAtUnixMs: 1001,
 				},
@@ -285,10 +296,7 @@ describe("workspace-watch-actions", () => {
 				workspacePath: "/ws",
 				batch: {
 					seq: 3,
-					vaultRelCreated: [],
-					vaultRelModified: [],
-					vaultRelRemoved: [],
-					vaultRelRenamed: [],
+					changes: [],
 					rescan: true,
 					emittedAtUnixMs: 1002,
 				},
@@ -319,10 +327,18 @@ describe("workspace-watch-actions", () => {
 				workspacePath: "/ws",
 				batch: {
 					seq: 4,
-					vaultRelCreated: ["visible.md", ".hidden/secret.md"],
-					vaultRelModified: [],
-					vaultRelRemoved: [],
-					vaultRelRenamed: [],
+					changes: [
+						{
+							type: "created",
+							relPath: "visible.md",
+							entryKind: "file",
+						},
+						{
+							type: "created",
+							relPath: ".hidden/secret.md",
+							entryKind: "file",
+						},
+					],
 					rescan: false,
 					emittedAtUnixMs: 1003,
 				},
