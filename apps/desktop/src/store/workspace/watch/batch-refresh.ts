@@ -1,9 +1,7 @@
 import { hasHiddenEntryInPaths } from "@/utils/path-utils"
+import { reconcileWorkspaceTreeFromFallback } from "../actions/workspace-tree-reconcile"
 import type { WorkspaceActionContext } from "../workspace-action-context"
-import {
-	collectRefreshDirectoryPaths,
-	refreshChangedDirectories,
-} from "./tree-patch"
+import { applyWatchBatchChanges } from "./batch-apply"
 import type { EnqueueBatchRefresh, VaultWatchBatchPayload } from "./types"
 
 const collectChangedPaths = (payload: VaultWatchBatchPayload): string[] => {
@@ -78,24 +76,23 @@ export const enqueueBatchPayloadRefresh = (
 		return
 	}
 
-	const directoryPaths = collectRefreshDirectoryPaths(
-		workspacePath,
-		externalRelPaths,
-	)
-
-	if (directoryPaths.length === 0) {
-		enqueueBatchRefresh(payload.batch, () =>
-			ctx.get().refreshWorkspaceEntries(),
-		)
-		return
-	}
-
 	enqueueBatchRefresh(payload.batch, async () => {
 		try {
-			await refreshChangedDirectories(ctx, workspacePath, directoryPaths)
+			const { fallbackDirectoryPaths, requiresFullRefresh } =
+				await applyWatchBatchChanges(ctx, {
+					workspacePath,
+					changes: payload.batch.changes,
+					externalRelPaths,
+				})
+
+			await reconcileWorkspaceTreeFromFallback(ctx, {
+				workspacePath,
+				fallbackDirectoryPaths,
+				requiresFullRefresh,
+			})
 		} catch (error) {
 			console.warn(
-				"Failed to apply partial workspace refresh from watch batch:",
+				"Failed to apply workspace watch batch incrementally:",
 				error,
 			)
 			await ctx.get().refreshWorkspaceEntries()

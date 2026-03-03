@@ -389,6 +389,25 @@ describe("moveEntryInState", () => {
 		expect(moved?.isDirectory).toBe(false)
 	})
 
+	it("uses explicit newPath for move+rename", () => {
+		const entries: WorkspaceEntry[] = [
+			makeDir("/docs", "docs", [makeFile("/docs/old.md", "old.md")]),
+			makeDir("/archive", "archive", []),
+		]
+
+		const result = moveEntryInState(
+			entries,
+			"/docs/old.md",
+			"/archive",
+			"/",
+			"/archive/new.md",
+		)
+
+		expect(findEntryByPath(result, "/docs/old.md")).toBeNull()
+		const moved = findEntryByPath(result, "/archive/new.md")
+		expect(moved?.name).toBe("new.md")
+	})
+
 	it("moves directories to workspace root and rewrites child paths", () => {
 		const entries: WorkspaceEntry[] = [
 			makeDir("/subdir", "subdir", [
@@ -410,6 +429,16 @@ describe("moveEntryInState", () => {
 		expect(moved?.isDirectory).toBe(true)
 		expect(moved?.children?.[0].path).toBe("/source/note.md")
 		expect(moved?.children?.[1].path).toBe("/source/other.md")
+	})
+
+	it("returns original entries when destination directory is missing", () => {
+		const entries: WorkspaceEntry[] = [
+			makeDir("/docs", "docs", [makeFile("/docs/a.md", "a.md")]),
+		]
+
+		const result = moveEntryInState(entries, "/docs/a.md", "/missing")
+
+		expect(result).toEqual(entries)
 	})
 })
 

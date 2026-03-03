@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+	collapseDirectoryPaths,
 	collectRefreshDirectoryPaths,
 	replaceDirectoryChildren,
 } from "./tree-patch"
@@ -23,6 +24,16 @@ describe("watch/tree-patch", () => {
 		])
 
 		expect(paths).toEqual(["/ws/a", "/ws/a-archive"])
+	})
+
+	it("collapseDirectoryPaths keeps top-most directories only", () => {
+		const paths = collapseDirectoryPaths("/ws", [
+			"/ws/docs",
+			"/ws/docs/sub",
+			"/ws/archive",
+		])
+
+		expect(paths).toEqual(["/ws/docs", "/ws/archive"])
 	})
 
 	it("replaceDirectoryChildren updates only target directory subtree", () => {

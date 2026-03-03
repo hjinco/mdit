@@ -67,6 +67,7 @@ export type WorkspaceSlice = WorkspaceState & {
 	entryMoved: (input: {
 		sourcePath: string
 		destinationDirPath: string
+		// `newPath` may include rename semantics when move+rename happen together.
 		newPath: string
 		isDirectory: boolean
 		refreshContent?: boolean

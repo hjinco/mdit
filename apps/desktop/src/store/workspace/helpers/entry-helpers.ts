@@ -342,6 +342,7 @@ export function moveEntryInState(
 	sourcePath: string,
 	destinationPath: string,
 	workspacePath?: string,
+	newPath?: string,
 ): WorkspaceEntry[] {
 	// Find the entry to move
 	const entryToMove = findEntryByPath(entries, sourcePath)
@@ -353,23 +354,24 @@ export function moveEntryInState(
 	const filteredEntries = removeEntryFromState(entries, sourcePath)
 
 	// Update paths if it's a directory
-	const fileName = getFileNameFromPath(sourcePath)
 	const normalizedDestinationPath = normalizePathSeparators(destinationPath)
 	// Handle root path construction: avoid double slashes
-	const newPath =
+	const computedNewPath =
 		normalizedDestinationPath === "/" || normalizedDestinationPath === ""
-			? `/${fileName}`
-			: `${normalizedDestinationPath}/${fileName}`
+			? `/${getFileNameFromPath(sourcePath)}`
+			: `${normalizedDestinationPath}/${getFileNameFromPath(sourcePath)}`
+	const targetPath = normalizePathSeparators(newPath ?? computedNewPath)
+	const targetName = getFileNameFromPath(targetPath)
 
 	let updatedEntryToMove: WorkspaceEntry
 	if (entryToMove.isDirectory) {
 		updatedEntryToMove = {
-			path: newPath,
-			name: entryToMove.name,
+			path: targetPath,
+			name: targetName,
 			isDirectory: true,
 			children: entryToMove.children
 				? entryToMove.children.map((child: WorkspaceEntry) =>
-						updateChildPathsForMove(child, sourcePath, newPath),
+						updateChildPathsForMove(child, sourcePath, targetPath),
 					)
 				: EMPTY_CHILDREN,
 			createdAt: entryToMove.createdAt,
@@ -377,8 +379,8 @@ export function moveEntryInState(
 		}
 	} else {
 		updatedEntryToMove = {
-			path: newPath,
-			name: entryToMove.name,
+			path: targetPath,
+			name: targetName,
 			isDirectory: false,
 			children: undefined,
 			createdAt: entryToMove.createdAt,
@@ -399,12 +401,14 @@ export function moveEntryInState(
 	}
 
 	// Add entry to destination subdirectory
+	let inserted = false
 	const addToDestination = (
 		entryList: WorkspaceEntry[],
 		targetPath: string,
 	): WorkspaceEntry[] => {
 		return entryList.map((entry) => {
 			if (entry.path === targetPath && entry.isDirectory) {
+				inserted = true
 				const updatedChildren = entry.children
 					? [...entry.children, updatedEntryToMove]
 					: [updatedEntryToMove]
@@ -423,7 +427,8 @@ export function moveEntryInState(
 		})
 	}
 
-	return addToDestination(filteredEntries, destinationPath)
+	const movedEntries = addToDestination(filteredEntries, destinationPath)
+	return inserted ? movedEntries : entries
 }
 
 export function updateEntryMetadata(
