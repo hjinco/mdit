@@ -28,16 +28,34 @@ pub(crate) struct PendingBatch {
     moved_dirs: BTreeSet<(String, String)>,
     rename_from: VecDeque<RenameFromCandidate>,
     known_dirs: BTreeSet<String>,
+    hidden_boundary_prefixes: Vec<String>,
     rescan: bool,
     clear_details: bool,
 }
 
 impl PendingBatch {
-    pub(crate) fn new(known_dirs: BTreeSet<String>) -> Self {
+    pub(crate) fn new(known_dirs: BTreeSet<String>, hidden_boundary_prefixes: Vec<String>) -> Self {
         Self {
             known_dirs,
+            hidden_boundary_prefixes,
             ..Self::default()
         }
+    }
+
+    pub(super) fn is_hidden_rel_path(&self, rel_path: &str) -> bool {
+        if rel_path
+            .split('/')
+            .any(|component| component.starts_with('.') && component.len() > 1)
+        {
+            return true;
+        }
+
+        self.hidden_boundary_prefixes.iter().any(|prefix| {
+            rel_path == prefix
+                || rel_path
+                    .strip_prefix(prefix)
+                    .is_some_and(|suffix| suffix.starts_with('/'))
+        })
     }
 
     pub(crate) fn mark_rescan(&mut self, clear_details: bool) {

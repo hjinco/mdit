@@ -51,7 +51,8 @@ pub(crate) fn spawn_worker(
             (BTreeSet::new(), false)
         };
 
-        let mut pending = PendingBatch::new(initial_dir_index);
+        let mut pending =
+            PendingBatch::new(initial_dir_index, config.hidden_boundary_prefixes.clone());
         let mut seq: u64 = 0;
         let mut last_input_at: Option<Instant> = if bootstrap_failed {
             pending.mark_rescan(true);

@@ -41,6 +41,23 @@ impl PendingBatch {
         entry_kind: VaultEntryKind,
         vault_root: &Path,
     ) {
+        let from_hidden = self.is_hidden_rel_path(&from_rel);
+        let to_hidden = self.is_hidden_rel_path(&to_rel);
+
+        if from_hidden && to_hidden {
+            return;
+        }
+
+        if from_hidden {
+            self.record_created(to_rel, entry_kind, vault_root);
+            return;
+        }
+
+        if to_hidden {
+            self.record_deleted(from_rel, entry_kind);
+            return;
+        }
+
         match entry_kind {
             VaultEntryKind::File => {
                 self.moved_files.insert((from_rel, to_rel));

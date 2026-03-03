@@ -75,6 +75,7 @@ pub struct WatchConfig {
     pub max_batch_paths: usize,
     pub recursive: bool,
     pub bootstrap_dir_index: bool,
+    pub hidden_boundary_prefixes: Vec<String>,
 }
 
 impl Default for WatchConfig {
@@ -86,12 +87,21 @@ impl Default for WatchConfig {
             max_batch_paths: 10_000,
             recursive: true,
             bootstrap_dir_index: true,
+            hidden_boundary_prefixes: Vec::new(),
         }
     }
 }
 
 impl WatchConfig {
     pub(crate) fn normalized(&self) -> Self {
+        let mut hidden_boundary_prefixes = self
+            .hidden_boundary_prefixes
+            .iter()
+            .filter_map(|prefix| normalize_hidden_boundary_prefix(prefix))
+            .collect::<Vec<_>>();
+        hidden_boundary_prefixes.sort();
+        hidden_boundary_prefixes.dedup();
+
         Self {
             debounce_ms: self.debounce_ms.max(1),
             channel_capacity: self.channel_capacity.max(1),
@@ -99,8 +109,31 @@ impl WatchConfig {
             max_batch_paths: self.max_batch_paths.max(1),
             recursive: self.recursive,
             bootstrap_dir_index: self.bootstrap_dir_index,
+            hidden_boundary_prefixes,
         }
     }
+}
+
+fn normalize_hidden_boundary_prefix(prefix: &str) -> Option<String> {
+    let mut normalized = prefix.replace('\\', "/");
+
+    while let Some(stripped) = normalized.strip_prefix("./") {
+        normalized = stripped.to_string();
+    }
+
+    while let Some(stripped) = normalized.strip_prefix('/') {
+        normalized = stripped.to_string();
+    }
+
+    while normalized.ends_with('/') {
+        normalized.pop();
+    }
+
+    if normalized.is_empty() || normalized == "." {
+        return None;
+    }
+
+    Some(normalized)
 }
 
 #[derive(Debug, Error)]
@@ -127,4 +160,31 @@ pub(crate) fn now_unix_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis() as u64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WatchConfig;
+
+    #[test]
+    fn normalized_hidden_boundary_prefixes_are_cleaned_and_deduplicated() {
+        let config = WatchConfig {
+            hidden_boundary_prefixes: vec![
+                String::new(),
+                ".".to_string(),
+                "./.mdit/".to_string(),
+                "/.mdit".to_string(),
+                "\\.mdit\\".to_string(),
+                ".cache".to_string(),
+                "./.cache".to_string(),
+            ],
+            ..WatchConfig::default()
+        };
+
+        let normalized = config.normalized();
+        assert_eq!(
+            normalized.hidden_boundary_prefixes,
+            vec![".cache".to_string(), ".mdit".to_string()]
+        );
+    }
 }

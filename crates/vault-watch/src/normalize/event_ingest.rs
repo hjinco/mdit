@@ -51,9 +51,17 @@ impl PendingBatch {
         }
     }
 
+    fn visible_rel_path(&self, vault_root: &Path, path: &Path) -> Option<String> {
+        let rel_path = to_vault_rel_path(vault_root, path)?;
+        if self.is_hidden_rel_path(&rel_path) {
+            return None;
+        }
+        Some(rel_path)
+    }
+
     fn handle_create_event(&mut self, vault_root: &Path, event: &notify::Event, kind: CreateKind) {
         for path in &event.paths {
-            let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
+            let Some(rel_path) = self.visible_rel_path(vault_root, path) else {
                 continue;
             };
 
@@ -78,7 +86,7 @@ impl PendingBatch {
 
     fn handle_modified_event(&mut self, vault_root: &Path, event: &notify::Event) {
         for path in &event.paths {
-            let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
+            let Some(rel_path) = self.visible_rel_path(vault_root, path) else {
                 continue;
             };
 
@@ -99,7 +107,7 @@ impl PendingBatch {
 
     fn handle_remove_event(&mut self, vault_root: &Path, event: &notify::Event, kind: RemoveKind) {
         for path in &event.paths {
-            let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
+            let Some(rel_path) = self.visible_rel_path(vault_root, path) else {
                 continue;
             };
 
@@ -135,7 +143,7 @@ impl PendingBatch {
         }
 
         for path in &event.paths {
-            let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
+            let Some(rel_path) = self.visible_rel_path(vault_root, path) else {
                 continue;
             };
 
@@ -165,7 +173,9 @@ impl PendingBatch {
                     .or_else(|| self.infer_entry_kind(vault_root, &to, Some(to_path)));
 
                 if from == to {
-                    if !matches!(inferred_kind, Some(VaultEntryKind::Directory)) {
+                    if self.is_hidden_rel_path(&from) {
+                        // Hidden-boundary paths are intentionally ignored.
+                    } else if !matches!(inferred_kind, Some(VaultEntryKind::Directory)) {
                         self.modified_files.insert(from);
                     }
                 } else if let Some(entry_kind) = inferred_kind {
@@ -175,19 +185,23 @@ impl PendingBatch {
                 }
             }
             (Some(from), None) => {
-                let inferred_kind = self.infer_entry_kind(vault_root, &from, Some(from_path));
-                if let Some(entry_kind) = inferred_kind {
-                    self.record_deleted(from, entry_kind);
-                } else {
-                    self.mark_rescan(true);
+                if !self.is_hidden_rel_path(&from) {
+                    let inferred_kind = self.infer_entry_kind(vault_root, &from, Some(from_path));
+                    if let Some(entry_kind) = inferred_kind {
+                        self.record_deleted(from, entry_kind);
+                    } else {
+                        self.mark_rescan(true);
+                    }
                 }
             }
             (None, Some(to)) => {
-                let inferred_kind = self.infer_entry_kind(vault_root, &to, Some(to_path));
-                if let Some(entry_kind) = inferred_kind {
-                    self.record_created(to, entry_kind, vault_root);
-                } else {
-                    self.mark_rescan(true);
+                if !self.is_hidden_rel_path(&to) {
+                    let inferred_kind = self.infer_entry_kind(vault_root, &to, Some(to_path));
+                    if let Some(entry_kind) = inferred_kind {
+                        self.record_created(to, entry_kind, vault_root);
+                    } else {
+                        self.mark_rescan(true);
+                    }
                 }
             }
             (None, None) => {
@@ -197,6 +211,9 @@ impl PendingBatch {
 
         for path in event.paths.iter().skip(2) {
             if let Some(rel_path) = to_vault_rel_path(vault_root, path) {
+                if self.is_hidden_rel_path(&rel_path) {
+                    continue;
+                }
                 if self.is_directory(rel_path.as_str()) {
                     continue;
                 }
@@ -215,6 +232,10 @@ impl PendingBatch {
             let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
                 continue;
             };
+
+            if self.is_hidden_rel_path(&rel_path) {
+                continue;
+            }
 
             let entry_kind = self.infer_entry_kind(vault_root, &rel_path, Some(path));
             self.rename_from.push_back(RenameFromCandidate {
@@ -255,6 +276,10 @@ impl PendingBatch {
                     .or_else(|| self.infer_entry_kind(vault_root, &to_rel, Some(to_path)));
 
                 if from_candidate.rel_path == to_rel {
+                    if self.is_hidden_rel_path(&to_rel) {
+                        continue;
+                    }
+
                     if !matches!(inferred_kind, Some(VaultEntryKind::Directory)) {
                         self.modified_files.insert(to_rel);
                     }
@@ -267,6 +292,10 @@ impl PendingBatch {
                     self.mark_rescan(true);
                 }
             } else {
+                if self.is_hidden_rel_path(&to_rel) {
+                    continue;
+                }
+
                 let inferred_kind = self.infer_entry_kind(vault_root, &to_rel, Some(to_path));
                 if let Some(entry_kind) = inferred_kind {
                     self.record_created(to_rel, entry_kind, vault_root);
@@ -282,6 +311,10 @@ impl PendingBatch {
         vault_root: &Path,
         from_candidate: RenameFromCandidate,
     ) {
+        if self.is_hidden_rel_path(&from_candidate.rel_path) {
+            return;
+        }
+
         let entry_kind = from_candidate
             .entry_kind
             .or_else(|| self.infer_entry_kind(vault_root, &from_candidate.rel_path, None));
