@@ -2506,12 +2506,11 @@ dependencies = [
  "app-storage",
  "blake3",
  "note",
- "ollama-rs",
+ "ollama-client",
  "pulldown-cmark",
  "rusqlite",
  "serde",
  "tiktoken-rs",
- "tokio",
  "walkdir",
 ]
 
@@ -3006,6 +3005,7 @@ dependencies = [
  "local-api",
  "note",
  "objc2-app-kit",
+ "ollama-client",
  "rmcp",
  "serde",
  "serde_json",
@@ -3585,6 +3585,16 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "objc2-javascript-core",
  "objc2-security",
+]
+
+[[package]]
+name = "ollama-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "ollama-rs",
+ "tokio",
 ]
 
 [[package]]

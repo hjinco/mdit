@@ -17,7 +17,10 @@ import {
 	startCodexBrowserOAuth,
 } from "@mdit/credentials"
 import type { StateCreator } from "zustand"
-import { fetchOllamaModels as fetchOllamaModelsFromApi } from "@/lib/ollama"
+import {
+	fetchOllamaModels as fetchOllamaModelsFromApi,
+	type OllamaModels,
+} from "@/lib/ollama"
 
 export type ChatConfig = {
 	provider: ChatProviderId
@@ -38,7 +41,8 @@ export type AISettingsSlice = {
 	connectedProviders: ProviderId[]
 	chatConfig: ChatConfig | null
 	apiModels: ApiModels
-	ollamaModels: string[]
+	ollamaCompletionModels: string[]
+	ollamaEmbeddingModels: string[]
 	enabledChatModels: EnabledChatModels
 	initializeAISettings: () => Promise<void>
 	connectProvider: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
@@ -55,7 +59,7 @@ export type AISettingsSlice = {
 }
 
 type AISettingsSliceDependencies = {
-	fetchOllamaModels: typeof fetchOllamaModelsFromApi
+	fetchOllamaModelCatalog: typeof fetchOllamaModelsFromApi
 	listCredentialProviders: () => Promise<ProviderId[]>
 	getCredential: (providerId: ProviderId) => Promise<ProviderCredential | null>
 	setApiKeyCredential: (
@@ -181,9 +185,15 @@ function writePersistedModelConfig(
 	)
 }
 
-function isKnownModel(provider: ChatProviderId, model: string): boolean {
+function isKnownModel(
+	provider: ChatProviderId,
+	model: string,
+	ollamaCompletionModels: string[] = [],
+): boolean {
 	if (provider === "ollama") {
-		return true
+		return ollamaCompletionModels.length === 0
+			? true
+			: ollamaCompletionModels.includes(model)
 	}
 	return API_MODELS_MAP[provider]?.includes(model) ?? false
 }
@@ -223,9 +233,42 @@ function readPersistedEnabledChatModels(): EnabledChatModels {
 	}
 }
 
+function buildOllamaModelsStateUpdate(
+	prev: AISettingsSlice,
+	modelCatalog: OllamaModels,
+): Partial<AISettingsSlice> {
+	const { completionModels, embeddingModels } = modelCatalog
+	const nextEnabled = prev.enabledChatModels.filter((item) => {
+		if (item.provider !== "ollama") {
+			return true
+		}
+		return completionModels.includes(item.model)
+	})
+
+	const nextState: Partial<AISettingsSlice> = {
+		ollamaCompletionModels: completionModels,
+		ollamaEmbeddingModels: embeddingModels,
+	}
+
+	if (nextEnabled.length !== prev.enabledChatModels.length) {
+		localStorage.setItem(ENABLED_CHAT_MODELS_KEY, JSON.stringify(nextEnabled))
+		nextState.enabledChatModels = nextEnabled
+	}
+
+	if (
+		prev.chatConfig?.provider === "ollama" &&
+		!completionModels.includes(prev.chatConfig.model)
+	) {
+		localStorage.removeItem(CHAT_CONFIG_KEY)
+		nextState.chatConfig = null
+	}
+
+	return nextState
+}
+
 export const prepareAISettingsSlice =
 	({
-		fetchOllamaModels,
+		fetchOllamaModelCatalog,
 		listCredentialProviders,
 		getCredential,
 		setApiKeyCredential,
@@ -306,13 +349,13 @@ export const prepareAISettingsSlice =
 			provider: ChatProviderId,
 			model: string,
 		): Promise<void> => {
-			if (!isKnownModel(provider, model)) {
+			if (!isKnownModel(provider, model, get().ollamaCompletionModels)) {
 				return
 			}
 
 			if (provider === "ollama") {
 				set((prev) => {
-					if (!prev.ollamaModels.includes(model)) {
+					if (!prev.ollamaCompletionModels.includes(model)) {
 						return {}
 					}
 					const config: ChatConfig = {
@@ -339,7 +382,8 @@ export const prepareAISettingsSlice =
 			connectedProviders: [],
 			chatConfig: null,
 			apiModels: API_MODELS_MAP,
-			ollamaModels: [],
+			ollamaCompletionModels: [],
+			ollamaEmbeddingModels: [],
 			enabledChatModels: readPersistedEnabledChatModels(),
 
 			initializeAISettings: async () => {
@@ -507,8 +551,12 @@ export const prepareAISettingsSlice =
 			},
 
 			fetchOllamaModels: async () => {
-				const modelNames = await fetchOllamaModels()
-				set({ ollamaModels: modelNames })
+				try {
+					const modelCatalog = await fetchOllamaModelCatalog()
+					set((prev) => buildOllamaModelsStateUpdate(prev, modelCatalog))
+				} catch (error) {
+					console.error("Failed to fetch Ollama models:", error)
+				}
 			},
 
 			selectModel: async (provider: ChatProviderId, model: string) => {
@@ -558,7 +606,7 @@ export const prepareAISettingsSlice =
 	}
 
 export const createAISettingsSlice = prepareAISettingsSlice({
-	fetchOllamaModels: fetchOllamaModelsFromApi,
+	fetchOllamaModelCatalog: fetchOllamaModelsFromApi,
 	listCredentialProviders,
 	getCredential: getCredentialFromStore,
 	setApiKeyCredential,

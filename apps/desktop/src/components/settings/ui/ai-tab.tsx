@@ -24,10 +24,11 @@ import {
 } from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
-import { ExternalLink } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { ExternalLink, Loader2Icon, RefreshCcwIcon } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import {
 	buildChatModelSelectOptions,
 	handleChatModelSelectChange,
@@ -38,7 +39,7 @@ export function AITab() {
 	const {
 		connectedProviders,
 		apiModels,
-		ollamaModels,
+		ollamaCompletionModels,
 		enabledChatModels,
 		chatConfig,
 		connectProvider,
@@ -51,7 +52,7 @@ export function AITab() {
 		useShallow((state) => ({
 			connectedProviders: state.connectedProviders,
 			apiModels: state.apiModels,
-			ollamaModels: state.ollamaModels,
+			ollamaCompletionModels: state.ollamaCompletionModels,
 			enabledChatModels: state.enabledChatModels,
 			chatConfig: state.chatConfig,
 			connectProvider: state.connectProvider,
@@ -65,10 +66,8 @@ export function AITab() {
 	const [providerBusy, setProviderBusy] = useState<
 		Partial<Record<ProviderId, boolean>>
 	>({})
-
-	useEffect(() => {
-		fetchOllamaModels()
-	}, [fetchOllamaModels])
+	const { isRefreshingModels, refreshOllamaModels } =
+		useOllamaModelRefresh(fetchOllamaModels)
 
 	const runWithBusy = async (
 		provider: ProviderId,
@@ -97,13 +96,13 @@ export function AITab() {
 
 		return [
 			...credentialProviderModels,
-			{ provider: "ollama", models: ollamaModels },
+			{ provider: "ollama", models: ollamaCompletionModels },
 		]
-	}, [apiModels, ollamaModels])
+	}, [apiModels, ollamaCompletionModels])
 
 	const hasConnectedProviders = useMemo(() => {
-		return connectedProviders.length > 0 || ollamaModels.length > 0
-	}, [connectedProviders, ollamaModels])
+		return connectedProviders.length > 0 || ollamaCompletionModels.length > 0
+	}, [connectedProviders, ollamaCompletionModels])
 
 	const selectedChatModelValue = useMemo(() => {
 		return resolveSelectedChatModelSelectValue(enabledChatModels, chatConfig)
@@ -296,29 +295,26 @@ export function AITab() {
 						)
 					})}
 
-					<Field orientation="vertical" className="mt-8">
+					<Field orientation="horizontal" className="mt-8">
 						<FieldContent>
 							<FieldLabel>Ollama</FieldLabel>
 							<FieldDescription>
-								Models are automatically fetched from your local Ollama instance
+								Fetch models from your local Ollama instance when needed
 							</FieldDescription>
 						</FieldContent>
-						<FieldGroup className="gap-0 mt-2">
-							{ollamaModels.length === 0 ? (
-								<div className="py-2 text-sm text-muted-foreground">
-									No Ollama models available. Make sure Ollama is installed and
-									running.
-								</div>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={isRefreshingModels}
+							onClick={() => void refreshOllamaModels()}
+						>
+							{isRefreshingModels ? (
+								<Loader2Icon className="size-4 animate-spin" />
 							) : (
-								ollamaModels.map((model) => (
-									<Field key={model} orientation="horizontal" className="py-2">
-										<FieldContent>
-											<FieldLabel className="text-xs">{model}</FieldLabel>
-										</FieldContent>
-									</Field>
-								))
+								<RefreshCcwIcon className="size-4" />
 							)}
-						</FieldGroup>
+							Refresh
+						</Button>
 					</Field>
 				</FieldGroup>
 			</FieldSet>

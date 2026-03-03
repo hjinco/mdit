@@ -21,13 +21,14 @@ import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-utils"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 
 export function IndexingTab() {
 	const {
 		workspacePath,
 		entries,
-		ollamaModels,
+		ollamaEmbeddingModels,
 		fetchOllamaModels,
 		indexWorkspace,
 		indexingState,
@@ -46,7 +47,7 @@ export function IndexingTab() {
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
 			entries: state.entries,
-			ollamaModels: state.ollamaModels,
+			ollamaEmbeddingModels: state.ollamaEmbeddingModels,
 			fetchOllamaModels: state.fetchOllamaModels,
 			indexWorkspace: state.indexWorkspace,
 			indexingState: state.indexingState,
@@ -67,6 +68,8 @@ export function IndexingTab() {
 	const isIndexing = workspacePath
 		? (indexingState[workspacePath] ?? false)
 		: false
+	const { isRefreshingModels, refreshOllamaModels } =
+		useOllamaModelRefresh(fetchOllamaModels)
 
 	// Get current config from store
 	const currentConfig = useMemo(() => {
@@ -85,11 +88,6 @@ export function IndexingTab() {
 		() => calculateIndexingProgress(indexedDocCount, totalFiles),
 		[indexedDocCount, totalFiles],
 	)
-
-	// Fetch models on mount
-	useEffect(() => {
-		fetchOllamaModels()
-	}, [fetchOllamaModels])
 
 	// Load config when workspace changes
 	useEffect(() => {
@@ -163,7 +161,7 @@ export function IndexingTab() {
 	const isEmbeddingModelAvailable =
 		isEmbeddingModelConfigured &&
 		embeddingProvider !== "" &&
-		ollamaModels.includes(embeddingModel)
+		ollamaEmbeddingModels.includes(embeddingModel)
 	const selectedEmbeddingModel =
 		isEmbeddingModelAvailable && embeddingProvider
 			? `${embeddingProvider}|${embeddingModel}`
@@ -222,34 +220,49 @@ export function IndexingTab() {
 										: "Register a license key to use embedding features"}
 								</FieldDescription>
 							</FieldContent>
-							<Select
-								value={selectedEmbeddingModel ?? undefined}
-								onValueChange={handleEmbeddingModelChange}
-								disabled={!isLicenseValid}
-							>
-								<SelectTrigger size="sm">
-									<SelectValue
-										placeholder={
-											isLicenseValid ? "Select a model" : "License required"
-										}
-									/>
-								</SelectTrigger>
-								<SelectContent align="end">
-									{ollamaModels.length > 0 ? (
-										ollamaModels.map((model) => {
-											return (
-												<SelectItem key={model} value={`ollama|${model}`}>
-													{model}
-												</SelectItem>
-											)
-										})
+							<div className="flex items-center gap-2">
+								<Select
+									value={selectedEmbeddingModel ?? undefined}
+									onValueChange={handleEmbeddingModelChange}
+									disabled={!isLicenseValid}
+								>
+									<SelectTrigger size="sm">
+										<SelectValue
+											placeholder={
+												isLicenseValid ? "Select a model" : "License required"
+											}
+										/>
+									</SelectTrigger>
+									<SelectContent align="end">
+										{ollamaEmbeddingModels.length > 0 ? (
+											ollamaEmbeddingModels.map((model) => {
+												return (
+													<SelectItem key={model} value={`ollama|${model}`}>
+														{model}
+													</SelectItem>
+												)
+											})
+										) : (
+											<div className="px-3 py-2 text-xs text-muted-foreground">
+												No models available
+											</div>
+										)}
+									</SelectContent>
+								</Select>
+								<Button
+									variant="outline"
+									size="sm"
+									disabled={isRefreshingModels}
+									onClick={() => void refreshOllamaModels()}
+								>
+									{isRefreshingModels ? (
+										<Loader2Icon className="size-4 animate-spin" />
 									) : (
-										<div className="px-3 py-2 text-xs text-muted-foreground">
-											No models available
-										</div>
+										<RefreshCcwIcon className="size-4" />
 									)}
-								</SelectContent>
-							</Select>
+									Refresh
+								</Button>
+							</div>
 						</Field>
 
 						<Field>

@@ -20,7 +20,7 @@ type PendingModelChange = {
 }
 
 type EmbeddingModelsState = {
-	ollamaModels: string[]
+	ollamaEmbeddingModels: string[]
 }
 
 export type IndexingSlice = {

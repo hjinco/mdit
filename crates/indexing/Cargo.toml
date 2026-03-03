@@ -8,10 +8,9 @@ anyhow = '1'
 app-storage = { path = '../app-storage' }
 blake3 = '1'
 note = { path = '../note' }
-ollama-rs = '0.3.2'
+ollama-client = { path = '../ollama-client' }
 pulldown-cmark = { version = '0.13.0', default-features = false, features = ['simd'] }
 rusqlite = { version = '0.31', features = ['bundled'] }
 serde = { version = '1', features = ['derive'] }
 tiktoken-rs = '0.5'
-tokio = { version = '1', features = ['net', 'rt', 'time'] }
 walkdir = '2'

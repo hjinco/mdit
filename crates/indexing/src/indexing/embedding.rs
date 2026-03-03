@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use anyhow::{anyhow, Context, Result};
-use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
+use ollama_client::BlockingOllamaEmbeddingClient;
 
 #[derive(Debug)]
 pub(crate) struct EmbeddingVector {
@@ -29,13 +29,12 @@ impl EmbeddingProvider {
 }
 
 enum EmbeddingBackend {
-    Ollama(Ollama),
+    Ollama(BlockingOllamaEmbeddingClient),
 }
 
 pub(crate) struct EmbeddingClient {
     model: String,
     backend: EmbeddingBackend,
-    runtime: tokio::runtime::Runtime,
 }
 
 impl EmbeddingClient {
@@ -47,17 +46,16 @@ impl EmbeddingClient {
 
         let provider = EmbeddingProvider::from_str(provider)?;
         let backend = match provider {
-            EmbeddingProvider::Ollama => EmbeddingBackend::Ollama(Ollama::default()),
+            EmbeddingProvider::Ollama => {
+                let client = BlockingOllamaEmbeddingClient::new()
+                    .context("Failed to initialize Ollama embedding client")?;
+                EmbeddingBackend::Ollama(client)
+            }
         };
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .context("Failed to create async runtime for embedding requests")?;
 
         Ok(Self {
             model: model.to_string(),
             backend,
-            runtime,
         })
     }
 
@@ -68,33 +66,18 @@ impl EmbeddingClient {
     /// Generate an embedding vector for the supplied chunk using the selected backend.
     pub(crate) fn generate(&self, text: &str) -> Result<EmbeddingVector> {
         match &self.backend {
-            EmbeddingBackend::Ollama(ollama) => self.generate_with_ollama(ollama, text),
+            EmbeddingBackend::Ollama(client) => self.generate_with_ollama(client, text),
         }
     }
 
-    fn generate_with_ollama(&self, ollama: &Ollama, text: &str) -> Result<EmbeddingVector> {
-        let model = self.model.clone();
-        let prompt = text.to_string();
-
-        let response = self.runtime.block_on(async {
-            let request = GenerateEmbeddingsRequest::new(model, prompt.into());
-            ollama
-                .generate_embeddings(request)
-                .await
-                .context("Failed to generate embeddings with Ollama")
-        })?;
-
-        let mut embeddings = response.embeddings.into_iter();
-        let mut vector = embeddings
-            .next()
-            .ok_or_else(|| anyhow!("Ollama returned an empty embeddings list"))?;
-
-        if vector.is_empty() {
-            return Err(anyhow!(
-                "Ollama returned an embedding with zero dimensions for model '{}'",
-                self.model
-            ));
-        }
+    fn generate_with_ollama(
+        &self,
+        client: &BlockingOllamaEmbeddingClient,
+        text: &str,
+    ) -> Result<EmbeddingVector> {
+        let mut vector = client
+            .generate_embedding(&self.model, text)
+            .context("Failed to generate embeddings with Ollama")?;
 
         l2_normalize(&mut vector).with_context(|| {
             format!(

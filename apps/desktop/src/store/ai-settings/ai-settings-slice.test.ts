@@ -66,7 +66,10 @@ function createAISettingsTestStore({
 	const credentials: CredentialsMap = { ...initialCredentials }
 
 	const deps = {
-		fetchOllamaModels: vi.fn().mockResolvedValue(["llama3.2"]),
+		fetchOllamaModelCatalog: vi.fn().mockResolvedValue({
+			completionModels: ["llama3.2"],
+			embeddingModels: ["mxbai-embed-large"],
+		}),
 		listCredentialProviders: vi.fn(
 			async () => Object.keys(credentials) as ProviderId[],
 		),
@@ -199,6 +202,113 @@ describe("ai-settings-slice persistence", () => {
 			{ provider: "openai", model: "gpt-5.2" },
 			{ provider: "ollama", model: "llama3.2" },
 		])
+	})
+
+	it("hydrates ollama completion and embedding models from fetch", async () => {
+		const { store } = createAISettingsTestStore()
+
+		await store.getState().fetchOllamaModels()
+
+		expect(store.getState().ollamaCompletionModels).toEqual(["llama3.2"])
+		expect(store.getState().ollamaEmbeddingModels).toEqual([
+			"mxbai-embed-large",
+		])
+	})
+
+	it("removes invalid persisted ollama models after fetch", async () => {
+		localStorage.setItem(
+			"chat-config",
+			JSON.stringify({ provider: "ollama", model: "old-model" }),
+		)
+		localStorage.setItem(
+			"chat-enabled-models",
+			JSON.stringify([
+				{ provider: "ollama", model: "old-model" },
+				{ provider: "ollama", model: "llama3.2" },
+			]),
+		)
+
+		const { store } = createAISettingsTestStore()
+		await store.getState().initializeAISettings()
+		await store.getState().fetchOllamaModels()
+
+		expect(store.getState().chatConfig).toBeNull()
+		expect(store.getState().enabledChatModels).toEqual([
+			{ provider: "ollama", model: "llama3.2" },
+		])
+		expect(localStorage.getItem("chat-config")).toBeNull()
+		expect(
+			JSON.parse(localStorage.getItem("chat-enabled-models") || "[]"),
+		).toEqual([{ provider: "ollama", model: "llama3.2" }])
+	})
+
+	it("keeps persisted ollama selections when model fetch fails", async () => {
+		localStorage.setItem(
+			"chat-config",
+			JSON.stringify({ provider: "ollama", model: "old-model" }),
+		)
+		localStorage.setItem(
+			"chat-enabled-models",
+			JSON.stringify([
+				{ provider: "ollama", model: "old-model" },
+				{ provider: "ollama", model: "llama3.2" },
+			]),
+		)
+
+		const { store, deps } = createAISettingsTestStore()
+		await store.getState().initializeAISettings()
+		deps.fetchOllamaModelCatalog.mockRejectedValueOnce(
+			new Error("ollama unavailable"),
+		)
+
+		await store.getState().fetchOllamaModels()
+
+		expect(store.getState().chatConfig).toEqual({
+			provider: "ollama",
+			model: "old-model",
+			apiKey: "",
+		})
+		expect(store.getState().enabledChatModels).toEqual([
+			{ provider: "ollama", model: "old-model" },
+			{ provider: "ollama", model: "llama3.2" },
+		])
+		expect(JSON.parse(localStorage.getItem("chat-config") || "{}")).toEqual({
+			provider: "ollama",
+			model: "old-model",
+		})
+		expect(
+			JSON.parse(localStorage.getItem("chat-enabled-models") || "[]"),
+		).toEqual([
+			{ provider: "ollama", model: "old-model" },
+			{ provider: "ollama", model: "llama3.2" },
+		])
+	})
+
+	it("clears persisted ollama selections when fetch succeeds with no models", async () => {
+		localStorage.setItem(
+			"chat-config",
+			JSON.stringify({ provider: "ollama", model: "old-model" }),
+		)
+		localStorage.setItem(
+			"chat-enabled-models",
+			JSON.stringify([{ provider: "ollama", model: "old-model" }]),
+		)
+
+		const { store, deps } = createAISettingsTestStore()
+		await store.getState().initializeAISettings()
+		deps.fetchOllamaModelCatalog.mockResolvedValueOnce({
+			completionModels: [],
+			embeddingModels: [],
+		})
+
+		await store.getState().fetchOllamaModels()
+
+		expect(store.getState().chatConfig).toBeNull()
+		expect(store.getState().enabledChatModels).toEqual([])
+		expect(localStorage.getItem("chat-config")).toBeNull()
+		expect(
+			JSON.parse(localStorage.getItem("chat-enabled-models") || "[]"),
+		).toEqual([])
 	})
 })
 
