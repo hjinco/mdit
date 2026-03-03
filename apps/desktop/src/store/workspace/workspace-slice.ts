@@ -27,7 +27,7 @@ import { createWorkspaceLifecycleActions } from "./actions/workspace-lifecycle-a
 import { createWorkspaceLocalMutationActions } from "./actions/workspace-local-mutation-actions"
 import { createWorkspaceSelectionActions } from "./actions/workspace-selection-actions"
 import { createWorkspaceTreeActions } from "./actions/workspace-tree-actions"
-import { createWorkspaceWatchActions } from "./actions/workspace-watch-actions"
+import { createWorkspaceWatchActions } from "./watch"
 import type { WorkspaceActionContext } from "./workspace-action-context"
 import type {
 	BacklinkEntry,
