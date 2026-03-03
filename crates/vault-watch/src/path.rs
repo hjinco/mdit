@@ -1,4 +1,4 @@
-use std::path::{Component, Path};
+use std::{fs, path::{Component, Path}};
 
 pub(crate) fn to_vault_rel_path(vault_root: &Path, event_path: &Path) -> Option<String> {
     let candidate = if event_path.is_absolute() {
@@ -7,8 +7,38 @@ pub(crate) fn to_vault_rel_path(vault_root: &Path, event_path: &Path) -> Option<
         vault_root.join(event_path)
     };
 
+    if has_symlink_ancestor(vault_root, &candidate) {
+        return None;
+    }
+
     let rel = candidate.strip_prefix(vault_root).ok()?;
     normalize_rel_path(rel)
+}
+
+fn has_symlink_ancestor(vault_root: &Path, candidate: &Path) -> bool {
+    let Ok(relative_path) = candidate.strip_prefix(vault_root) else {
+        return false;
+    };
+
+    let mut cursor = vault_root.to_path_buf();
+    for component in relative_path.components() {
+        match component {
+            Component::CurDir | Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                continue
+            }
+            Component::Normal(part) => {
+                cursor.push(part);
+            }
+        }
+
+        if fs::symlink_metadata(&cursor)
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn normalize_rel_path(path: &Path) -> Option<String> {

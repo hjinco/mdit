@@ -74,7 +74,10 @@ impl PendingBatch {
         self.known_dirs.insert(rel_path.to_string());
 
         let root_path = vault_root.join(rel_path);
-        let Ok(metadata) = std::fs::metadata(&root_path) else {
+        let Ok(metadata) = std::fs::symlink_metadata(&root_path) else {
+            return;
+        };
+        if metadata.file_type().is_symlink() {
             return;
         };
         if !metadata.is_dir() {
@@ -91,6 +94,10 @@ impl PendingBatch {
                 let Ok(file_type) = entry.file_type() else {
                     continue;
                 };
+                if file_type.is_symlink() {
+                    continue;
+                }
+
                 if !file_type.is_dir() {
                     continue;
                 }
@@ -153,7 +160,10 @@ impl PendingBatch {
             None => vault_root.join(rel_path),
         };
 
-        let metadata = std::fs::metadata(candidate_path).ok()?;
+        let metadata = std::fs::symlink_metadata(candidate_path).ok()?;
+        if metadata.file_type().is_symlink() {
+            return None;
+        }
         if metadata.is_dir() {
             return Some(VaultEntryKind::Directory);
         }
