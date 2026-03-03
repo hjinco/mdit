@@ -210,6 +210,7 @@ export const createWorkspaceEntryActions = (
 					sourcePath,
 					destinationDirPath,
 					workspacePath,
+					newPath,
 				),
 			)
 

@@ -29,6 +29,7 @@ describe("watch/actions", () => {
 	const flushQueue = async () => {
 		await Promise.resolve()
 		await Promise.resolve()
+		await new Promise((resolve) => setTimeout(resolve, 0))
 	}
 
 	it("unwatchWorkspace runs unwatch function and clears state", () => {
@@ -140,7 +141,464 @@ describe("watch/actions", () => {
 		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
 	})
 
-	it("applies only external paths for mixed non-rescan batches", async () => {
+	it("applies file create as entryCreated for external watch changes", async () => {
+		const { context, setState, originJournal, deps, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/created.md"],
+			localRelPaths: [],
+		})
+		deps.fileSystemRepository.stat.mockResolvedValueOnce({
+			isDirectory: false,
+			birthtime: 1000,
+			mtime: 2000,
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 2,
+					changes: [
+						{
+							type: "created",
+							relPath: "docs/created.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1001,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryCreated).toHaveBeenCalledWith({
+			parentPath: "/ws/docs",
+			entry: expect.objectContaining({
+				path: "/ws/docs/created.md",
+				name: "created.md",
+				isDirectory: false,
+			}),
+		})
+		expect(deps.fileSystemRepository.readDir).not.toHaveBeenCalled()
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
+	})
+
+	it("applies directory create as entryCreated with snapshot children", async () => {
+		const { context, setState, originJournal, deps, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/new-dir"],
+			localRelPaths: [],
+		})
+		deps.fileSystemRepository.readDir.mockImplementation(
+			async (path: string) => {
+				if (path === "/ws/docs/new-dir") {
+					return [{ name: "note.md", isDirectory: false }]
+				}
+				return []
+			},
+		)
+		deps.fileSystemRepository.stat.mockImplementation(async (path: string) => {
+			if (path === "/ws/docs/new-dir") {
+				return { isDirectory: true, birthtime: 1100, mtime: 2100 }
+			}
+			if (path === "/ws/docs/new-dir/note.md") {
+				return { isDirectory: false, birthtime: 1200, mtime: 2200 }
+			}
+			return { isDirectory: false, birthtime: undefined, mtime: undefined }
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 3,
+					changes: [
+						{
+							type: "created",
+							relPath: "docs/new-dir",
+							entryKind: "directory",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1002,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryCreated).toHaveBeenCalledWith({
+			parentPath: "/ws/docs",
+			entry: expect.objectContaining({
+				path: "/ws/docs/new-dir",
+				name: "new-dir",
+				isDirectory: true,
+				children: [
+					expect.objectContaining({
+						path: "/ws/docs/new-dir/note.md",
+						name: "note.md",
+						isDirectory: false,
+					}),
+				],
+			}),
+		})
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
+	})
+
+	it("applies deleted entries via entriesDeleted", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({ workspacePath: "/ws" })
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/deleted.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 4,
+					changes: [
+						{
+							type: "deleted",
+							relPath: "docs/deleted.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1003,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entriesDeleted).toHaveBeenCalledWith({
+			paths: ["/ws/docs/deleted.md"],
+		})
+	})
+
+	it("applies deleted directories via entriesDeleted", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({ workspacePath: "/ws" })
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 5,
+					changes: [
+						{
+							type: "deleted",
+							relPath: "docs",
+							entryKind: "directory",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1004,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entriesDeleted).toHaveBeenCalledWith({
+			paths: ["/ws/docs"],
+		})
+	})
+
+	it("maps same-parent move to entryRenamed", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/old.md",
+							name: "old.md",
+							isDirectory: false,
+						},
+					],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/old.md", "docs/new.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 6,
+					changes: [
+						{
+							type: "moved",
+							fromRel: "docs/old.md",
+							toRel: "docs/new.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1005,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryRenamed).toHaveBeenCalledWith({
+			oldPath: "/ws/docs/old.md",
+			newPath: "/ws/docs/new.md",
+			newName: "new.md",
+			isDirectory: false,
+		})
+		expect(getState().entryMoved).not.toHaveBeenCalled()
+	})
+
+	it("maps cross-parent move to entryMoved and preserves newPath", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/old.md",
+							name: "old.md",
+							isDirectory: false,
+						},
+					],
+				},
+				{
+					path: "/ws/archive",
+					name: "archive",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/old.md", "archive/renamed.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 7,
+					changes: [
+						{
+							type: "moved",
+							fromRel: "docs/old.md",
+							toRel: "archive/renamed.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1006,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryMoved).toHaveBeenCalledWith({
+			sourcePath: "/ws/docs/old.md",
+			destinationDirPath: "/ws/archive",
+			newPath: "/ws/archive/renamed.md",
+			isDirectory: false,
+		})
+		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
+	it("maps cross-parent directory move+rename to entryMoved", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/folder",
+							name: "folder",
+							isDirectory: true,
+							children: [],
+						},
+					],
+				},
+				{
+					path: "/ws/archive",
+					name: "archive",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/folder", "archive/folder-renamed"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 8,
+					changes: [
+						{
+							type: "moved",
+							fromRel: "docs/folder",
+							toRel: "archive/folder-renamed",
+							entryKind: "directory",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1007,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryMoved).toHaveBeenCalledWith({
+			sourcePath: "/ws/docs/folder",
+			destinationDirPath: "/ws/archive",
+			newPath: "/ws/archive/folder-renamed",
+			isDirectory: true,
+		})
+	})
+
+	it("updates modified file metadata incrementally", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/a.md",
+							name: "a.md",
+							isDirectory: false,
+						},
+					],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/a.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 9,
+					changes: [
+						{
+							type: "modified",
+							relPath: "docs/a.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1008,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(getState().updateEntryModifiedDate).toHaveBeenCalledWith(
+			"/ws/docs/a.md",
+		)
+	})
+
+	it("falls back to partial directory refresh for modified directories", async () => {
 		const { context, setState, originJournal, deps } =
 			createWorkspaceActionTestContext()
 		const actions = createWorkspaceWatchActions(context)
@@ -158,8 +616,8 @@ describe("watch/actions", () => {
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
 		originJournal.resolve.mockReturnValue({
-			externalRelPaths: ["docs/external.md"],
-			localRelPaths: ["docs/local.md"],
+			externalRelPaths: ["docs"],
+			localRelPaths: [],
 		})
 
 		await actions.watchWorkspace()
@@ -168,27 +626,78 @@ describe("watch/actions", () => {
 			payload: {
 				workspacePath: "/ws",
 				batch: {
-					seq: 2,
+					seq: 10,
 					changes: [
 						{
-							type: "created",
-							relPath: "docs/local.md",
-							entryKind: "file",
-						},
-						{
-							type: "created",
-							relPath: "docs/external.md",
-							entryKind: "file",
+							type: "modified",
+							relPath: "docs",
+							entryKind: "directory",
 						},
 					],
 					rescan: false,
-					emittedAtUnixMs: 1001,
+					emittedAtUnixMs: 1009,
 				},
 			},
 		})
 		await flushQueue()
 
 		expect(deps.fileSystemRepository.readDir).toHaveBeenCalledWith("/ws/docs")
+	})
+
+	it("falls back to parent directory refresh when move source is missing", async () => {
+		const { context, setState, originJournal, deps } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+				{
+					path: "/ws/archive",
+					name: "archive",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/missing.md", "archive/missing.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 11,
+					changes: [
+						{
+							type: "moved",
+							fromRel: "docs/missing.md",
+							toRel: "archive/missing.md",
+							entryKind: "file",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1010,
+				},
+			},
+		})
+		await flushQueue()
+
+		expect(deps.fileSystemRepository.readDir).toHaveBeenCalledWith("/ws/docs")
+		expect(deps.fileSystemRepository.readDir).toHaveBeenCalledWith(
+			"/ws/archive",
+		)
 	})
 
 	it("always refreshes on rescan batches without origin filtering", async () => {
@@ -215,6 +724,55 @@ describe("watch/actions", () => {
 		await flushQueue()
 
 		expect(originJournal.resolve).not.toHaveBeenCalled()
+		expect(getState().refreshWorkspaceEntries).toHaveBeenCalledTimes(1)
+	})
+
+	it("falls back to full refresh when partial fallback refresh fails", async () => {
+		const { context, setState, originJournal, getState } =
+			createWorkspaceActionTestContext()
+		const actions = createWorkspaceWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+			updateEntries: vi.fn(() => {
+				throw new Error("update failed")
+			}),
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: {
+					seq: 12,
+					changes: [
+						{
+							type: "modified",
+							relPath: "docs",
+							entryKind: "directory",
+						},
+					],
+					rescan: false,
+					emittedAtUnixMs: 1011,
+				},
+			},
+		})
+		await flushQueue()
+
 		expect(getState().refreshWorkspaceEntries).toHaveBeenCalledTimes(1)
 	})
 
