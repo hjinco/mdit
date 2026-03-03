@@ -6741,6 +6741,7 @@ dependencies = [
  "notify",
  "serde",
  "thiserror 2.0.17",
+ "walkdir",
 ]
 
 [[package]]

@@ -116,26 +116,66 @@ pub(crate) fn spawn_worker(
 }
 
 fn collect_directory_index(vault_root: &Path) -> std::io::Result<BTreeSet<String>> {
-    let mut pending_dirs = vec![vault_root.to_path_buf()];
     let mut directory_index = BTreeSet::new();
 
-    while let Some(dir_path) = pending_dirs.pop() {
-        for entry in std::fs::read_dir(&dir_path)? {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-            if !file_type.is_dir() {
-                continue;
-            }
+    for entry in walkdir::WalkDir::new(vault_root)
+        .min_depth(1)
+        .follow_links(false)
+    {
+        let entry = entry.map_err(std::io::Error::other)?;
+        if !entry.file_type().is_dir() {
+            continue;
+        }
 
-            let path = entry.path();
-            if let Some(rel_path) = to_vault_rel_path(vault_root, &path) {
-                directory_index.insert(rel_path);
-            }
-            pending_dirs.push(path);
+        if let Some(rel_path) = to_vault_rel_path(vault_root, entry.path()) {
+            directory_index.insert(rel_path);
         }
     }
 
     Ok(directory_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_directory_index;
+    use std::{
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn temp_vault_dir() -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("vault-watch-worker-test-{nanos}"));
+        std::fs::create_dir_all(&path).expect("temp vault should be created");
+        path
+    }
+
+    #[cfg(unix)]
+    fn symlink_dir(link_target: &Path, link_path: &Path) {
+        std::os::unix::fs::symlink(link_target, link_path)
+            .expect("directory symlink should be created");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collect_directory_index_handles_symlink_cycle() {
+        let root = temp_vault_dir();
+        let nested = root.join("a/b");
+        std::fs::create_dir_all(&nested).expect("nested directory should be created");
+
+        let back_to_root = nested.join("back_to_root");
+        symlink_dir(&root, &back_to_root);
+
+        let index = collect_directory_index(&root).expect("index should be collected");
+
+        assert!(index.contains("a"));
+        assert!(index.contains("a/b"));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
 
 fn should_flush(

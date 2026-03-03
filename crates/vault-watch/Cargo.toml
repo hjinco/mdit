@@ -7,4 +7,4 @@ edition.workspace = true
 notify = "8"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
-
+walkdir = "2"

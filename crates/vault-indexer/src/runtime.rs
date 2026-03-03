@@ -980,10 +980,10 @@ mod tests {
 
     #[test]
     fn moved_directory_triggers_workspace_rescan() {
-        let runtime = FakeVaultIndexingRuntime::default();
         let workspace = test_workspace_path();
         let db_path = workspace.join("index.db");
 
+        let runtime = FakeVaultIndexingRuntime::default();
         let mut batch = empty_batch();
         batch.changes = vec![VaultChange::Moved {
             from_rel: "docs".to_string(),
@@ -995,6 +995,19 @@ mod tests {
             .expect("batch processing should succeed");
 
         assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+
+        let ignored_runtime = FakeVaultIndexingRuntime::default();
+        let mut ignored_batch = empty_batch();
+        ignored_batch.changes = vec![VaultChange::Moved {
+            from_rel: ".mdit/cache/docs".to_string(),
+            to_rel: ".mdit/cache/archive".to_string(),
+            entry_kind: VaultEntryKind::Directory,
+        }];
+
+        process_batch(&ignored_runtime, &workspace, &db_path, ignored_batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(ignored_runtime.calls(), Vec::<RuntimeCall>::new());
     }
 
     #[cfg(unix)]
