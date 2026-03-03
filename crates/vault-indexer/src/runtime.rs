@@ -829,6 +829,12 @@ mod tests {
     }
 
     #[test]
+    fn default_config_has_no_explicit_hidden_boundary_prefixes() {
+        let config = VaultIndexerConfig::default();
+        assert!(config.watch_config.hidden_boundary_prefixes.is_empty());
+    }
+
+    #[test]
     fn rescan_batch_runs_workspace_index_only() {
         let runtime = FakeVaultIndexingRuntime::default();
         let workspace = test_workspace_path();

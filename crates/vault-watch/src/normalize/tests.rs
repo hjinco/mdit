@@ -56,7 +56,14 @@ fn collect_known_dirs(root: &Path) -> BTreeSet<String> {
 }
 
 fn pending_for_root(root: &Path) -> PendingBatch {
-    PendingBatch::new(collect_known_dirs(root))
+    PendingBatch::new(collect_known_dirs(root), Vec::new())
+}
+
+fn pending_for_root_with_hidden_prefixes(
+    root: &Path,
+    hidden_boundary_prefixes: Vec<String>,
+) -> PendingBatch {
+    PendingBatch::new(collect_known_dirs(root), hidden_boundary_prefixes)
 }
 
 fn ensure_parent(path: &Path) {
@@ -67,6 +74,16 @@ fn ensure_parent(path: &Path) {
 fn write_file(path: &Path) {
     ensure_parent(path);
     std::fs::write(path, "content").expect("file should be written");
+}
+
+const HIDDEN_PREFIX: &str = ".mdit";
+
+fn hidden_prefixes() -> Vec<String> {
+    vec![HIDDEN_PREFIX.to_string()]
+}
+
+fn hidden_path(root: &Path, rel_path: &str) -> PathBuf {
+    root.join(format!("{HIDDEN_PREFIX}/{rel_path}"))
 }
 
 #[test]
@@ -166,7 +183,7 @@ fn create_and_delete_same_file_becomes_modified() {
         rename_window,
     );
 
-    let batch = pending.take_batch(2, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Modified {
@@ -174,6 +191,125 @@ fn create_and_delete_same_file_becomes_modified() {
             entry_kind: VaultEntryKind::File
         }]
     );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn hidden_create_modify_remove_events_are_ignored() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let hidden = hidden_path(&root, "ignored.md");
+    write_file(&hidden);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Create(CreateKind::File),
+            std::slice::from_ref(&hidden),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Data(DataChange::Content)),
+            std::slice::from_ref(&hidden),
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+    std::fs::remove_file(&hidden).expect("hidden file should be removed");
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Remove(RemoveKind::File),
+            std::slice::from_ref(&hidden),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    assert!(pending.take_batch(1, 100).is_none());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn hidden_generic_modify_events_are_ignored() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let hidden = hidden_path(&root, "any.md");
+    write_file(&hidden);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Any),
+            std::slice::from_ref(&hidden),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(EventKind::Any, std::slice::from_ref(&hidden)),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+
+    assert!(pending.take_batch(1, 100).is_none());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dot_prefixed_directory_events_are_ignored_without_explicit_prefixes() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let hidden = root.join(".obsidian/cache.md");
+    write_file(&hidden);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Create(CreateKind::File),
+            std::slice::from_ref(&hidden),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Data(DataChange::Content)),
+            std::slice::from_ref(&hidden),
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+    std::fs::remove_file(&hidden).expect("hidden file should be removed");
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Remove(RemoveKind::File),
+            std::slice::from_ref(&hidden),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    assert!(pending.take_batch(1, 100).is_none());
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -199,7 +335,7 @@ fn rename_file_inside_vault_emits_moved_file() {
         rename_window,
     );
 
-    let batch = pending.take_batch(3, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Moved {
@@ -208,6 +344,336 @@ fn rename_file_inside_vault_emits_moved_file() {
             entry_kind: VaultEntryKind::File
         }]
     );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_file_from_visible_to_hidden_emits_deleted_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = root.join("visible.md");
+    let to = hidden_path(&root, "visible.md");
+    write_file(&to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Deleted {
+            rel_path: "visible.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_file_from_hidden_to_visible_emits_created_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = hidden_path(&root, "hidden.md");
+    let to = root.join("visible.md");
+    write_file(&to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Created {
+            rel_path: "visible.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_file_inside_hidden_is_ignored() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = hidden_path(&root, "a.md");
+    let to = hidden_path(&root, "b.md");
+    write_file(&to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to],
+        ),
+        now,
+        rename_window,
+    );
+
+    assert!(pending.take_batch(1, 100).is_none());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_both_extra_hidden_paths_are_ignored() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = root.join("old.md");
+    let to = root.join("new.md");
+    let hidden_extra = hidden_path(&root, "ignored.md");
+    write_file(&to);
+    write_file(&hidden_extra);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to, hidden_extra],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Moved {
+            from_rel: "old.md".to_string(),
+            to_rel: "new.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn split_rename_from_visible_to_hidden_emits_deleted_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = root.join("visible.md");
+    let to = hidden_path(&root, "visible.md");
+    write_file(&from);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&from),
+        ),
+        now,
+        rename_window,
+    );
+
+    std::fs::remove_file(&from).expect("original file should be removed");
+    write_file(&to);
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&to),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Deleted {
+            rel_path: "visible.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn split_rename_from_hidden_to_visible_emits_created_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = hidden_path(&root, "hidden.md");
+    let to = root.join("visible.md");
+    write_file(&from);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&from),
+        ),
+        now,
+        rename_window,
+    );
+
+    std::fs::remove_file(&from).expect("original hidden file should be removed");
+    write_file(&to);
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&to),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Created {
+            rel_path: "visible.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn hidden_rename_from_does_not_consume_visible_rename_match() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let hidden_from = hidden_path(&root, "hidden-old.md");
+    let visible_from = root.join("visible-old.md");
+    let visible_to = root.join("visible-new.md");
+    write_file(&hidden_from);
+    write_file(&visible_from);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&hidden_from),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&visible_from),
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+
+    std::fs::remove_file(&visible_from).expect("original visible file should be removed");
+    write_file(&visible_to);
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&visible_to),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Moved {
+            from_rel: "visible-old.md".to_string(),
+            to_rel: "visible-new.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn hidden_rename_from_without_match_is_ignored_after_expiry() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = hidden_path(&root, "ghost.md");
+    write_file(&from);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&from),
+        ),
+        now,
+        rename_window,
+    );
+
+    pending.expire_stale_rename_from(
+        &root,
+        now + rename_window + Duration::from_millis(1),
+        rename_window,
+    );
+    assert!(pending.take_batch(1, 100).is_none());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn hidden_rename_to_without_match_is_ignored() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let to = hidden_path(&root, "new.md");
+    write_file(&to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&to),
+        ),
+        now,
+        rename_window,
+    );
+
+    assert!(pending.take_batch(1, 100).is_none());
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -245,7 +711,7 @@ fn rename_file_to_outside_vault_emits_deleted_file() {
         rename_window,
     );
 
-    let batch = pending.take_batch(4, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Deleted {
@@ -281,7 +747,7 @@ fn rename_file_from_outside_vault_emits_created_file() {
         rename_window,
     );
 
-    let batch = pending.take_batch(5, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Created {
@@ -336,7 +802,7 @@ fn directory_create_delete_and_move_are_typed_as_directory() {
         rename_window,
     );
 
-    let batch = pending.take_batch(6, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![
@@ -383,7 +849,7 @@ fn directory_move_outside_vault_emits_deleted_directory() {
         rename_window,
     );
 
-    let batch = pending.take_batch(7, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Deleted {
@@ -419,7 +885,73 @@ fn directory_move_into_vault_emits_created_directory() {
         rename_window,
     );
 
-    let batch = pending.take_batch(8, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Created {
+            rel_path: "incoming".to_string(),
+            entry_kind: VaultEntryKind::Directory
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn directory_move_from_visible_to_hidden_emits_deleted_directory() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = root.join("docs");
+    let to = hidden_path(&root, "docs");
+    std::fs::create_dir_all(&to).expect("hidden target directory should exist");
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Deleted {
+            rel_path: "docs".to_string(),
+            entry_kind: VaultEntryKind::Directory
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn directory_move_from_hidden_to_visible_emits_created_directory() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = hidden_path(&root, "incoming");
+    let to = root.join("incoming");
+    std::fs::create_dir_all(&to).expect("visible target directory should exist");
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+            &[from, to],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Created {
@@ -463,7 +995,7 @@ fn unknown_boundary_move_kind_triggers_rescan_with_empty_details() {
         rename_window,
     );
 
-    let batch = pending.take_batch(9, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert!(batch.rescan);
     assert!(batch.changes.is_empty());
 
@@ -493,7 +1025,7 @@ fn unknown_boundary_move_into_vault_triggers_rescan_with_empty_details() {
         rename_window,
     );
 
-    let batch = pending.take_batch(10, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert!(batch.rescan);
     assert!(batch.changes.is_empty());
 
@@ -531,7 +1063,7 @@ fn overflow_rescan_clears_detailed_changes() {
         rename_window,
     );
 
-    let batch = pending.take_batch(11, 1).expect("batch should exist");
+    let batch = pending.take_batch(1, 1).expect("batch should exist");
     assert!(batch.rescan);
     assert!(batch.changes.is_empty());
 
@@ -571,7 +1103,7 @@ fn directory_deleted_drops_descendant_file_changes() {
         rename_window,
     );
 
-    let batch = pending.take_batch(12, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Deleted {
@@ -614,7 +1146,7 @@ fn directory_move_drops_descendant_file_moves() {
         rename_window,
     );
 
-    let batch = pending.take_batch(13, 100).expect("batch should exist");
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
     assert_eq!(
         batch.changes,
         vec![VaultChange::Moved {
