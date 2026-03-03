@@ -5,55 +5,65 @@ use thiserror::Error;
 
 pub const VAULT_WATCH_BATCH_EVENT: &str = "vault-watch-batch";
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "camelCase")]
-pub struct RenamePair {
-    pub from_rel: String,
-    pub to_rel: String,
+pub enum VaultEntryKind {
+    File,
+    Directory,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct EventBatch {
+#[serde(tag = "type")]
+pub enum VaultChange {
+    Created {
+        rel_path: String,
+        entry_kind: VaultEntryKind,
+    },
+    Modified {
+        rel_path: String,
+        entry_kind: VaultEntryKind,
+    },
+    Deleted {
+        rel_path: String,
+        entry_kind: VaultEntryKind,
+    },
+    Moved {
+        from_rel: String,
+        to_rel: String,
+        entry_kind: VaultEntryKind,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultChangeBatch {
     pub seq: u64,
-    pub vault_rel_created: Vec<String>,
-    pub vault_rel_modified: Vec<String>,
-    pub vault_rel_removed: Vec<String>,
     #[serde(default)]
-    pub vault_rel_removed_dirs: Vec<String>,
-    pub vault_rel_renamed: Vec<RenamePair>,
+    pub changes: Vec<VaultChange>,
     pub rescan: bool,
     pub emitted_at_unix_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct EventBatchPayload {
+pub struct VaultChangeBatchPayload {
     pub workspace_path: String,
-    pub batch: EventBatch,
+    pub batch: VaultChangeBatch,
 }
 
-impl EventBatch {
+impl VaultChangeBatch {
     pub(crate) fn empty_with_seq(seq: u64) -> Self {
         Self {
             seq,
-            vault_rel_created: Vec::new(),
-            vault_rel_modified: Vec::new(),
-            vault_rel_removed: Vec::new(),
-            vault_rel_removed_dirs: Vec::new(),
-            vault_rel_renamed: Vec::new(),
+            changes: Vec::new(),
             rescan: false,
             emitted_at_unix_ms: now_unix_ms(),
         }
     }
 
     pub(crate) fn has_payload(&self) -> bool {
-        self.rescan
-            || !self.vault_rel_created.is_empty()
-            || !self.vault_rel_modified.is_empty()
-            || !self.vault_rel_removed.is_empty()
-            || !self.vault_rel_removed_dirs.is_empty()
-            || !self.vault_rel_renamed.is_empty()
+        self.rescan || !self.changes.is_empty()
     }
 }
 
@@ -64,6 +74,7 @@ pub struct WatchConfig {
     pub rename_pair_window_ms: u64,
     pub max_batch_paths: usize,
     pub recursive: bool,
+    pub bootstrap_dir_index: bool,
 }
 
 impl Default for WatchConfig {
@@ -74,6 +85,7 @@ impl Default for WatchConfig {
             rename_pair_window_ms: 1000,
             max_batch_paths: 10_000,
             recursive: true,
+            bootstrap_dir_index: true,
         }
     }
 }
@@ -86,6 +98,7 @@ impl WatchConfig {
             rename_pair_window_ms: self.rename_pair_window_ms.max(1),
             max_batch_paths: self.max_batch_paths.max(1),
             recursive: self.recursive,
+            bootstrap_dir_index: self.bootstrap_dir_index,
         }
     }
 }

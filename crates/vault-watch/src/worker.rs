@@ -1,4 +1,6 @@
 use std::{
+    collections::BTreeSet,
+    path::Path,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,7 +13,8 @@ use std::{
 
 use crate::{
     normalize::PendingBatch,
-    types::{EventBatch, WatchConfig},
+    path::to_vault_rel_path,
+    types::{VaultChangeBatch, WatchConfig},
 };
 
 const IDLE_POLL_INTERVAL_MS: u64 = 200;
@@ -26,20 +29,40 @@ pub(crate) fn spawn_worker(
     config: WatchConfig,
     rx: Receiver<WorkerMessage>,
     rescan_flag: Arc<AtomicBool>,
-    mut on_batch: Box<dyn FnMut(EventBatch) + Send + 'static>,
+    mut on_batch: Box<dyn FnMut(VaultChangeBatch) + Send + 'static>,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         let debounce = Duration::from_millis(config.debounce_ms);
         let rename_window = Duration::from_millis(config.rename_pair_window_ms);
         let idle_poll = Duration::from_millis(IDLE_POLL_INTERVAL_MS);
 
-        let mut pending = PendingBatch::default();
+        let (initial_dir_index, bootstrap_failed) = if config.bootstrap_dir_index {
+            match collect_directory_index(&vault_root) {
+                Ok(index) => (index, false),
+                Err(error) => {
+                    eprintln!(
+                        "vault-watch: failed to bootstrap directory index for {}: {error}",
+                        vault_root.display()
+                    );
+                    (BTreeSet::new(), true)
+                }
+            }
+        } else {
+            (BTreeSet::new(), false)
+        };
+
+        let mut pending = PendingBatch::new(initial_dir_index);
         let mut seq: u64 = 0;
-        let mut last_input_at: Option<Instant> = None;
+        let mut last_input_at: Option<Instant> = if bootstrap_failed {
+            pending.mark_rescan(true);
+            Some(Instant::now())
+        } else {
+            None
+        };
 
         loop {
             let now = Instant::now();
-            pending.expire_stale_rename_from(now, rename_window);
+            pending.expire_stale_rename_from(&vault_root, now, rename_window);
 
             if rescan_flag.swap(false, Ordering::SeqCst) {
                 pending.mark_rescan(true);
@@ -75,7 +98,7 @@ pub(crate) fn spawn_worker(
                     if rescan_flag.swap(false, Ordering::SeqCst) {
                         pending.mark_rescan(true);
                     }
-                    pending.flush_unmatched_rename_from_as_removed();
+                    pending.flush_unmatched_rename_from_as_removed(&vault_root);
 
                     if pending.has_pending_activity() {
                         seq += 1;
@@ -90,6 +113,69 @@ pub(crate) fn spawn_worker(
             }
         }
     })
+}
+
+fn collect_directory_index(vault_root: &Path) -> std::io::Result<BTreeSet<String>> {
+    let mut directory_index = BTreeSet::new();
+
+    for entry in walkdir::WalkDir::new(vault_root)
+        .min_depth(1)
+        .follow_links(false)
+    {
+        let entry = entry.map_err(std::io::Error::other)?;
+        if !entry.file_type().is_dir() {
+            continue;
+        }
+
+        if let Some(rel_path) = to_vault_rel_path(vault_root, entry.path()) {
+            directory_index.insert(rel_path);
+        }
+    }
+
+    Ok(directory_index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::collect_directory_index;
+    use std::{
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn temp_vault_dir() -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("vault-watch-worker-test-{nanos}"));
+        std::fs::create_dir_all(&path).expect("temp vault should be created");
+        path
+    }
+
+    #[cfg(unix)]
+    fn symlink_dir(link_target: &Path, link_path: &Path) {
+        std::os::unix::fs::symlink(link_target, link_path)
+            .expect("directory symlink should be created");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collect_directory_index_handles_symlink_cycle() {
+        let root = temp_vault_dir();
+        let nested = root.join("a/b");
+        std::fs::create_dir_all(&nested).expect("nested directory should be created");
+
+        let back_to_root = nested.join("back_to_root");
+        symlink_dir(&root, &back_to_root);
+
+        let index = collect_directory_index(&root).expect("index should be collected");
+
+        assert!(index.contains("a"));
+        assert!(index.contains("a/b"));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
 
 fn should_flush(

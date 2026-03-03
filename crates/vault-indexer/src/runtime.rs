@@ -12,7 +12,8 @@ use anyhow::{Context, Result};
 use thiserror::Error;
 use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, VaultIndexingRuntime};
 use vault_watch::{
-    start_vault_watch, EventBatch, RenamePair, VaultWatchError, VaultWatcherHandle, WatchConfig,
+    start_vault_watch, VaultChange, VaultChangeBatch, VaultEntryKind, VaultWatchError,
+    VaultWatcherHandle, WatchConfig,
 };
 
 use crate::rewrite::{
@@ -55,7 +56,7 @@ pub enum VaultIndexerError {
 
 enum WorkerMessage {
     StartupCatchup,
-    Batch(EventBatch),
+    Batch(VaultChangeBatch),
     Stop,
 }
 
@@ -106,7 +107,7 @@ pub fn start_vault_indexer(
     db_path: impl AsRef<Path>,
     indexing_runtime: Arc<dyn VaultIndexingRuntime>,
     config: VaultIndexerConfig,
-    mut on_batch: impl FnMut(EventBatch) + Send + 'static,
+    mut on_batch: impl FnMut(VaultChangeBatch) + Send + 'static,
 ) -> Result<VaultIndexerHandle, VaultIndexerError> {
     let workspace_path = workspace_path.as_ref();
     let canonical_workspace = std::fs::canonicalize(workspace_path).map_err(|source| {
@@ -184,7 +185,7 @@ fn process_batch(
     indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
-    batch: EventBatch,
+    batch: VaultChangeBatch,
 ) -> Result<()> {
     if batch.rescan {
         run_workspace_index(indexing_runtime, workspace_path, db_path)?;
@@ -196,59 +197,98 @@ fn process_batch(
     let mut delete_targets: BTreeSet<PathBuf> = BTreeSet::new();
     let mut delete_prefix_targets: BTreeSet<PathBuf> = BTreeSet::new();
 
-    for rel_path in batch.vault_rel_removed {
-        if should_ignore_rel_path(&rel_path) {
-            continue;
-        }
-
-        if is_markdown_note_path(&rel_path) {
-            delete_targets.insert(workspace_path.join(rel_path));
-        }
-    }
-
-    for rel_path in batch.vault_rel_removed_dirs {
-        if should_ignore_rel_path(&rel_path) {
-            continue;
-        }
-
-        delete_prefix_targets.insert(workspace_path.join(rel_path));
-    }
-
-    for rel_path in batch
-        .vault_rel_created
-        .into_iter()
-        .chain(batch.vault_rel_modified.into_iter())
-    {
-        if should_ignore_rel_path(&rel_path) {
-            continue;
-        }
-
-        if is_markdown_note_path(&rel_path) {
-            index_targets.insert(workspace_path.join(rel_path));
-        }
-    }
-
-    for rename in batch.vault_rel_renamed {
-        let from_ignored = should_ignore_rel_path(&rename.from_rel);
-        let to_ignored = should_ignore_rel_path(&rename.to_rel);
-
-        match (
-            is_markdown_note_path(&rename.from_rel),
-            is_markdown_note_path(&rename.to_rel),
-            from_ignored,
-            to_ignored,
-        ) {
-            (true, true, false, false) => {
-                process_markdown_rename(indexing_runtime, workspace_path, db_path, &rename)?;
+    for change in batch.changes {
+        match change {
+            VaultChange::Created {
+                rel_path,
+                entry_kind: VaultEntryKind::File,
             }
-            (true, false, false, true) => {
-                delete_targets.insert(workspace_path.join(rename.from_rel));
+            | VaultChange::Modified {
+                rel_path,
+                entry_kind: VaultEntryKind::File,
+            } => {
+                if should_ignore_rel_path(&rel_path) {
+                    continue;
+                }
+
+                if is_markdown_note_path(&rel_path) {
+                    index_targets.insert(workspace_path.join(rel_path));
+                }
             }
-            (false, true, true, false) => {
-                index_targets.insert(workspace_path.join(rename.to_rel));
+            VaultChange::Created {
+                entry_kind: VaultEntryKind::Directory,
+                ..
             }
-            (_, _, true, true) => {}
-            _ => {
+            | VaultChange::Modified {
+                entry_kind: VaultEntryKind::Directory,
+                ..
+            } => {}
+            VaultChange::Deleted {
+                rel_path,
+                entry_kind: VaultEntryKind::File,
+            } => {
+                if should_ignore_rel_path(&rel_path) {
+                    continue;
+                }
+
+                if is_markdown_note_path(&rel_path) {
+                    delete_targets.insert(workspace_path.join(rel_path));
+                }
+            }
+            VaultChange::Deleted {
+                rel_path,
+                entry_kind: VaultEntryKind::Directory,
+            } => {
+                if should_ignore_rel_path(&rel_path) {
+                    continue;
+                }
+                delete_prefix_targets.insert(workspace_path.join(rel_path));
+            }
+            VaultChange::Moved {
+                from_rel,
+                to_rel,
+                entry_kind: VaultEntryKind::File,
+            } => {
+                let from_ignored = should_ignore_rel_path(&from_rel);
+                let to_ignored = should_ignore_rel_path(&to_rel);
+
+                match (
+                    is_markdown_note_path(&from_rel),
+                    is_markdown_note_path(&to_rel),
+                    from_ignored,
+                    to_ignored,
+                ) {
+                    (true, true, false, false) => {
+                        process_markdown_move(
+                            indexing_runtime,
+                            workspace_path,
+                            db_path,
+                            &from_rel,
+                            &to_rel,
+                        )?;
+                    }
+                    (true, false, false, true) => {
+                        delete_targets.insert(workspace_path.join(from_rel));
+                    }
+                    (false, true, true, false) => {
+                        index_targets.insert(workspace_path.join(to_rel));
+                    }
+                    (_, _, true, true) => {}
+                    _ => {
+                        requires_rescan = true;
+                    }
+                }
+            }
+            VaultChange::Moved {
+                from_rel,
+                to_rel,
+                entry_kind: VaultEntryKind::Directory,
+            } => {
+                let from_ignored = should_ignore_rel_path(&from_rel);
+                let to_ignored = should_ignore_rel_path(&to_rel);
+                if from_ignored && to_ignored {
+                    continue;
+                }
                 requires_rescan = true;
             }
         }
@@ -300,14 +340,15 @@ fn process_batch(
     Ok(())
 }
 
-fn process_markdown_rename(
+fn process_markdown_move(
     indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
-    rename: &RenamePair,
+    from_rel: &str,
+    to_rel: &str,
 ) -> Result<()> {
-    let old_note_path = workspace_path.join(&rename.from_rel);
-    let new_note_path = workspace_path.join(&rename.to_rel);
+    let old_note_path = workspace_path.join(from_rel);
+    let new_note_path = workspace_path.join(to_rel);
 
     sync_backlinks_and_link_index(
         indexing_runtime,
@@ -778,14 +819,10 @@ mod tests {
             .as_nanos()
     }
 
-    fn empty_batch() -> EventBatch {
-        EventBatch {
+    fn empty_batch() -> VaultChangeBatch {
+        VaultChangeBatch {
             seq: 1,
-            vault_rel_created: Vec::new(),
-            vault_rel_modified: Vec::new(),
-            vault_rel_removed: Vec::new(),
-            vault_rel_removed_dirs: Vec::new(),
-            vault_rel_renamed: Vec::new(),
+            changes: Vec::new(),
             rescan: false,
             emitted_at_unix_ms: 0,
         }
@@ -813,14 +850,44 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.vault_rel_created = vec![
-            "new.md".to_string(),
-            "image.png".to_string(),
-            ".mdit/hidden.md".to_string(),
+        batch.changes = vec![
+            VaultChange::Created {
+                rel_path: "new.md".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Created {
+                rel_path: "image.png".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Created {
+                rel_path: ".mdit/hidden.md".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Modified {
+                rel_path: "edit.md".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Modified {
+                rel_path: "note.txt".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Deleted {
+                rel_path: "gone.md".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Deleted {
+                rel_path: "diagram.svg".to_string(),
+                entry_kind: VaultEntryKind::File,
+            },
+            VaultChange::Deleted {
+                rel_path: "folder".to_string(),
+                entry_kind: VaultEntryKind::Directory,
+            },
+            VaultChange::Deleted {
+                rel_path: ".mdit/cache".to_string(),
+                entry_kind: VaultEntryKind::Directory,
+            },
         ];
-        batch.vault_rel_modified = vec!["edit.md".to_string(), "note.txt".to_string()];
-        batch.vault_rel_removed = vec!["gone.md".to_string(), "diagram.svg".to_string()];
-        batch.vault_rel_removed_dirs = vec!["folder".to_string(), ".mdit/cache".to_string()];
 
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
@@ -837,15 +904,16 @@ mod tests {
     }
 
     #[test]
-    fn markdown_rename_runs_rename_and_reindex_for_new_note() {
+    fn markdown_move_runs_rename_and_reindex_for_new_note() {
         let runtime = FakeVaultIndexingRuntime::default();
         let workspace = test_workspace_path();
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.vault_rel_renamed = vec![RenamePair {
+        batch.changes = vec![VaultChange::Moved {
             from_rel: "old.md".to_string(),
             to_rel: "new.md".to_string(),
+            entry_kind: VaultEntryKind::File,
         }];
 
         process_batch(&runtime, &workspace, &db_path, batch)
@@ -872,9 +940,10 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.vault_rel_renamed = vec![RenamePair {
+        batch.changes = vec![VaultChange::Moved {
             from_rel: "old.md".to_string(),
             to_rel: "old.txt".to_string(),
+            entry_kind: VaultEntryKind::File,
         }];
 
         process_batch(&runtime, &workspace, &db_path, batch)
@@ -892,7 +961,10 @@ mod tests {
         runtime.fail_prefix_delete_for(&failing_prefix);
 
         let mut batch = empty_batch();
-        batch.vault_rel_removed_dirs = vec!["folder".to_string()];
+        batch.changes = vec![VaultChange::Deleted {
+            rel_path: "folder".to_string(),
+            entry_kind: VaultEntryKind::Directory,
+        }];
 
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
@@ -904,6 +976,38 @@ mod tests {
                 RuntimeCall::RunWorkspaceIndex,
             ]
         );
+    }
+
+    #[test]
+    fn moved_directory_triggers_workspace_rescan() {
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+
+        let runtime = FakeVaultIndexingRuntime::default();
+        let mut batch = empty_batch();
+        batch.changes = vec![VaultChange::Moved {
+            from_rel: "docs".to_string(),
+            to_rel: "archive".to_string(),
+            entry_kind: VaultEntryKind::Directory,
+        }];
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+
+        let ignored_runtime = FakeVaultIndexingRuntime::default();
+        let mut ignored_batch = empty_batch();
+        ignored_batch.changes = vec![VaultChange::Moved {
+            from_rel: ".mdit/cache/docs".to_string(),
+            to_rel: ".mdit/cache/archive".to_string(),
+            entry_kind: VaultEntryKind::Directory,
+        }];
+
+        process_batch(&ignored_runtime, &workspace, &db_path, ignored_batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(ignored_runtime.calls(), Vec::<RuntimeCall>::new());
     }
 
     #[cfg(unix)]
