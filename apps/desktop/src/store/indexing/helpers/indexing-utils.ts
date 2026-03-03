@@ -76,10 +76,10 @@ export function shouldShowModelChangeWarning(
 export function buildSelectedEmbeddingModel(
 	embeddingProvider: string,
 	embeddingModel: string,
-	ollamaModels: string[],
+	embeddingModels: string[],
 ): string | null {
 	const isConfigured = embeddingModel !== "" && embeddingProvider !== ""
-	const isAvailable = isConfigured && ollamaModels.includes(embeddingModel)
+	const isAvailable = isConfigured && embeddingModels.includes(embeddingModel)
 
 	if (!isAvailable) {
 		return null

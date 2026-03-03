@@ -26,6 +26,7 @@ export function App() {
 		isLoading,
 		initializeWorkspace,
 		initializeAISettings,
+		fetchOllamaModels,
 		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
@@ -40,6 +41,7 @@ export function App() {
 			isLoading: s.isLoading,
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
+			fetchOllamaModels: s.fetchOllamaModels,
 			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
@@ -91,7 +93,8 @@ export function App() {
 	useEffect(() => {
 		void initializeWorkspace()
 		void initializeAISettings()
-	}, [initializeAISettings, initializeWorkspace])
+		void fetchOllamaModels()
+	}, [fetchOllamaModels, initializeAISettings, initializeWorkspace])
 
 	useEffect(() => {
 		const checkAndValidateLicense = async () => {

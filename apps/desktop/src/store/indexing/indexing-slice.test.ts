@@ -3,14 +3,14 @@ import { createStore } from "zustand/vanilla"
 import { createTauriIndexingPort, type InvokeFunction } from "./indexing-ports"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
-type TestStoreState = IndexingSlice & { ollamaModels: string[] }
+type TestStoreState = IndexingSlice & { ollamaEmbeddingModels: string[] }
 
 function createIndexingStore({
 	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
-	ollamaModels = [],
+	ollamaEmbeddingModels = [],
 }: {
 	invoke?: InvokeFunction
-	ollamaModels?: string[]
+	ollamaEmbeddingModels?: string[]
 } = {}) {
 	const createSlice = prepareIndexingSlice({
 		createIndexingPort: (workspacePath) =>
@@ -23,7 +23,7 @@ function createIndexingStore({
 	})
 
 	const store = createStore<TestStoreState>()((set, get, api) => ({
-		ollamaModels,
+		ollamaEmbeddingModels,
 		...createSlice(set, get, api),
 	}))
 

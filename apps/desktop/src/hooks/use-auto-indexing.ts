@@ -5,17 +5,11 @@ import { useStore } from "@/store"
 const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
-	const {
-		getIndexingConfig,
-		indexWorkspace,
-		isMigrationsComplete,
-		fetchOllamaModels,
-	} = useStore(
+	const { getIndexingConfig, indexWorkspace, isMigrationsComplete } = useStore(
 		useShallow((state) => ({
 			getIndexingConfig: state.getIndexingConfig,
 			indexWorkspace: state.indexWorkspace,
 			isMigrationsComplete: state.isMigrationsComplete,
-			fetchOllamaModels: state.fetchOllamaModels,
 		})),
 	)
 	const intervalRef = useRef<number | null>(null)
@@ -27,10 +21,6 @@ export function useAutoIndexing(workspacePath: string | null) {
 			})
 		}
 	}, [workspacePath, getIndexingConfig])
-
-	useEffect(() => {
-		fetchOllamaModels()
-	}, [fetchOllamaModels])
 
 	useEffect(() => {
 		// Clear any existing interval

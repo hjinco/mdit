@@ -71,6 +71,7 @@ pub fn run() {
             commands::local_api::start_local_api_server_command,
             commands::local_api::set_local_api_auth_token_command,
             commands::local_api::stop_local_api_server_command,
+            commands::ollama::list_ollama_models_command,
             commands::image::get_image_properties,
             commands::image::edit_image,
             commands::window::set_macos_traffic_lights_hidden,
