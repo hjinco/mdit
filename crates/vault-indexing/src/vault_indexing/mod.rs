@@ -17,7 +17,8 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use vault_indexing_api::VaultIndexingRuntime;
 use walkdir::WalkDir;
 
 mod chunking;
@@ -32,6 +33,7 @@ use files::collect_markdown_files;
 use links::resolve_wiki_link_target;
 pub use search::{search_notes_for_query, SemanticNoteEntry};
 use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
+pub use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult};
 
 const TARGET_CHUNKING_VERSION: i64 = 1;
 const SEGMENT_VEC_TABLE: &str = "segment_vec";
@@ -68,25 +70,6 @@ pub struct IndexSummary {
 #[serde(rename_all = "camelCase")]
 pub struct IndexingMeta {
     pub indexed_doc_count: usize,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveWikiLinkRequest {
-    pub workspace_path: String,
-    pub current_note_path: Option<String>,
-    pub raw_target: String,
-    pub workspace_rel_paths: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveWikiLinkResult {
-    pub canonical_target: String,
-    pub resolved_rel_path: Option<String>,
-    pub match_count: usize,
-    pub disambiguated: bool,
-    pub unresolved: bool,
 }
 
 pub(crate) struct EmbeddingContext {
@@ -219,6 +202,67 @@ fn sanitize_workspace_rel_paths(paths: Vec<String>) -> Vec<String> {
 
 pub(super) fn find_vault_id(conn: &Connection, workspace_root: &Path) -> Result<Option<i64>> {
     app_storage::vault::find_workspace_id(conn, workspace_root)
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct VaultIndexingRuntimeAdapter;
+
+impl VaultIndexingRuntime for VaultIndexingRuntimeAdapter {
+    fn run_workspace_index(&self, workspace_root: &Path, db_path: &Path) -> Result<()> {
+        crate::vault_indexing::index_workspace(workspace_root, db_path, "", "", false).map(|_| ())
+    }
+
+    fn index_note(&self, workspace_root: &Path, db_path: &Path, note_path: &Path) -> Result<()> {
+        crate::vault_indexing::index_note(workspace_root, db_path, note_path, "", "").map(|_| ())
+    }
+
+    fn delete_indexed_note(
+        &self,
+        workspace_root: &Path,
+        db_path: &Path,
+        note_path: &Path,
+    ) -> Result<()> {
+        crate::vault_indexing::delete_indexed_note(workspace_root, db_path, note_path).map(|_| ())
+    }
+
+    fn delete_indexed_notes_by_prefix(
+        &self,
+        workspace_root: &Path,
+        db_path: &Path,
+        path_prefix: &Path,
+    ) -> Result<()> {
+        crate::vault_indexing::delete_indexed_notes_by_prefix(workspace_root, db_path, path_prefix)
+            .map(|_| ())
+    }
+
+    fn rename_indexed_note(
+        &self,
+        workspace_root: &Path,
+        db_path: &Path,
+        old_note_path: &Path,
+        new_note_path: &Path,
+    ) -> Result<()> {
+        crate::vault_indexing::rename_indexed_note(
+            workspace_root,
+            db_path,
+            old_note_path,
+            new_note_path,
+        )
+        .map(|_| ())
+    }
+
+    fn get_backlinks(
+        &self,
+        workspace_root: &Path,
+        db_path: &Path,
+        file_path: &Path,
+    ) -> Result<Vec<BacklinkEntry>> {
+        crate::vault_indexing::get_backlinks(workspace_root, db_path, file_path)
+    }
+
+    fn resolve_wiki_link(&self, request: ResolveWikiLinkRequest) -> Result<ResolveWikiLinkResult> {
+        crate::vault_indexing::resolve_wiki_link(request)
+    }
 }
 
 pub fn index_workspace(
@@ -618,16 +662,6 @@ pub fn resolve_wiki_link(request: ResolveWikiLinkRequest) -> Result<ResolveWikiL
         disambiguated: resolved.disambiguated,
         unresolved: resolved.unresolved,
     })
-}
-
-/// Represents a single backlink (a document that links to the target document).
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BacklinkEntry {
-    /// Relative path from workspace root to the source document.
-    pub rel_path: String,
-    /// Filename without extension for display purposes.
-    pub file_name: String,
 }
 
 /// Represents a single related note entry ranked by vector similarity.
