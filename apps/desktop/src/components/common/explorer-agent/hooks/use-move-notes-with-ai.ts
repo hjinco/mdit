@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import {
 	AIBatchResultsToast,
 	type AIBatchResultToastItem,
-} from "@/components/shared/explorer-agent/ai-batch-results-toast"
+} from "@/components/common/explorer-agent/ai-batch-results-toast"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { normalizePathSeparators } from "@/utils/path-utils"

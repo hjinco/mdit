@@ -9,6 +9,7 @@ import { type MouseEvent, useCallback } from "react"
 import { toast } from "sonner"
 import clipboard from "tauri-plugin-clipboard-api"
 import { useShallow } from "zustand/shallow"
+import { collectAIRenameTargets } from "@/components/common/explorer-agent/ai-rename-targets"
 import {
 	getRevealInFileManagerLabel,
 	revealInFileManager,
@@ -17,7 +18,6 @@ import {
 	getTemplateFiles,
 	saveNoteAsTemplate,
 } from "@/components/file-explorer/utils/template-utils"
-import { collectAIRenameTargets } from "@/components/shared/explorer-agent/ai-rename-targets"
 import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"

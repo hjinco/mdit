@@ -1,8 +1,8 @@
 import { useEffect } from "react"
 import { useFontScale } from "@/hooks/use-font-scale"
 import { useStore } from "@/store"
+import { LicenseKeyButton } from "../common/license/license-key-button"
 import { Editor } from "../editor/editor"
-import { LicenseKeyButton } from "../license/license-key-button"
 import { SettingsDialog } from "../settings/settings"
 
 export function EditNote({ filePath }: { filePath: string }) {

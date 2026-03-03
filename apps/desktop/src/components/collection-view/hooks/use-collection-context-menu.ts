@@ -1,6 +1,6 @@
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { useCallback } from "react"
-import { collectAIRenameTargets } from "@/components/shared/explorer-agent/ai-rename-targets"
+import { collectAIRenameTargets } from "@/components/common/explorer-agent/ai-rename-targets"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type UseCollectionContextMenuProps = {
