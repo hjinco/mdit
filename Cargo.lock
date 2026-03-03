@@ -6705,7 +6705,7 @@ dependencies = [
  "regex",
  "serde",
  "thiserror 2.0.17",
- "vault-indexing",
+ "vault-indexing-api",
  "vault-watch",
 ]
 
@@ -6722,7 +6722,16 @@ dependencies = [
  "rusqlite",
  "serde",
  "tiktoken-rs",
+ "vault-indexing-api",
  "walkdir",
+]
+
+[[package]]
+name = "vault-indexing-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
 ]
 
 [[package]]

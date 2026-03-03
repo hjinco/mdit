@@ -1,16 +1,16 @@
 use std::{
     collections::{BTreeSet, HashMap},
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver, Sender},
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc,
+    },
     thread::{self, JoinHandle},
 };
 
 use anyhow::{Context, Result};
-use vault_indexing::{
-    delete_indexed_note, delete_indexed_notes_by_prefix, get_backlinks, index_note,
-    index_workspace, rename_indexed_note, resolve_wiki_link, BacklinkEntry, ResolveWikiLinkRequest,
-};
 use thiserror::Error;
+use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, VaultIndexingRuntime};
 use vault_watch::{
     start_vault_watch, EventBatch, RenamePair, VaultWatchError, VaultWatcherHandle, WatchConfig,
 };
@@ -104,6 +104,7 @@ impl Drop for VaultIndexerHandle {
 pub fn start_vault_indexer(
     workspace_path: impl AsRef<Path>,
     db_path: impl AsRef<Path>,
+    indexing_runtime: Arc<dyn VaultIndexingRuntime>,
     config: VaultIndexerConfig,
     mut on_batch: impl FnMut(EventBatch) + Send + 'static,
 ) -> Result<VaultIndexerHandle, VaultIndexerError> {
@@ -117,7 +118,12 @@ pub fn start_vault_indexer(
 
     let db_path = db_path.as_ref().to_path_buf();
     let (worker_tx, worker_rx) = mpsc::channel::<WorkerMessage>();
-    let worker_thread = spawn_worker(canonical_workspace.clone(), db_path, worker_rx);
+    let worker_thread = spawn_worker(
+        canonical_workspace.clone(),
+        db_path,
+        indexing_runtime,
+        worker_rx,
+    );
 
     if config.startup_catchup {
         worker_tx
@@ -148,18 +154,23 @@ pub fn start_vault_indexer(
 fn spawn_worker(
     workspace_path: PathBuf,
     db_path: PathBuf,
+    indexing_runtime: Arc<dyn VaultIndexingRuntime>,
     rx: Receiver<WorkerMessage>,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         while let Ok(message) = rx.recv() {
             match message {
                 WorkerMessage::StartupCatchup => {
-                    if let Err(error) = run_workspace_index(&workspace_path, &db_path) {
+                    if let Err(error) =
+                        run_workspace_index(indexing_runtime.as_ref(), &workspace_path, &db_path)
+                    {
                         eprintln!("vault-indexer: startup catch-up failed: {error:#}");
                     }
                 }
                 WorkerMessage::Batch(batch) => {
-                    if let Err(error) = process_batch(&workspace_path, &db_path, batch) {
+                    if let Err(error) =
+                        process_batch(indexing_runtime.as_ref(), &workspace_path, &db_path, batch)
+                    {
                         eprintln!("vault-indexer: failed to process batch: {error:#}");
                     }
                 }
@@ -169,9 +180,14 @@ fn spawn_worker(
     })
 }
 
-fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Result<()> {
+fn process_batch(
+    indexing_runtime: &dyn VaultIndexingRuntime,
+    workspace_path: &Path,
+    db_path: &Path,
+    batch: EventBatch,
+) -> Result<()> {
     if batch.rescan {
-        run_workspace_index(workspace_path, db_path)?;
+        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
@@ -223,7 +239,7 @@ fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Re
             to_ignored,
         ) {
             (true, true, false, false) => {
-                process_markdown_rename(workspace_path, db_path, &rename)?;
+                process_markdown_rename(indexing_runtime, workspace_path, db_path, &rename)?;
             }
             (true, false, false, true) => {
                 delete_targets.insert(workspace_path.join(rename.from_rel));
@@ -239,12 +255,14 @@ fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Re
     }
 
     if requires_rescan {
-        run_workspace_index(workspace_path, db_path)?;
+        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
     for note_path in delete_targets {
-        if let Err(error) = delete_indexed_note(workspace_path, db_path, &note_path) {
+        if let Err(error) =
+            indexing_runtime.delete_indexed_note(workspace_path, db_path, &note_path)
+        {
             eprintln!(
                 "vault-indexer: failed to delete indexed note {}: {error:#}",
                 note_path.display()
@@ -254,7 +272,9 @@ fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Re
 
     let mut prefix_delete_failed = false;
     for path_prefix in delete_prefix_targets {
-        if let Err(error) = delete_indexed_notes_by_prefix(workspace_path, db_path, &path_prefix) {
+        if let Err(error) =
+            indexing_runtime.delete_indexed_notes_by_prefix(workspace_path, db_path, &path_prefix)
+        {
             prefix_delete_failed = true;
             eprintln!(
                 "vault-indexer: failed to delete indexed notes by prefix {}: {error:#}",
@@ -264,12 +284,12 @@ fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Re
     }
 
     if prefix_delete_failed {
-        run_workspace_index(workspace_path, db_path)?;
+        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
     for note_path in index_targets {
-        if let Err(error) = index_note(workspace_path, db_path, &note_path, "", "") {
+        if let Err(error) = indexing_runtime.index_note(workspace_path, db_path, &note_path) {
             eprintln!(
                 "vault-indexer: failed to index note {}: {error:#}",
                 note_path.display()
@@ -281,6 +301,7 @@ fn process_batch(workspace_path: &Path, db_path: &Path, batch: EventBatch) -> Re
 }
 
 fn process_markdown_rename(
+    indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
     rename: &RenamePair,
@@ -288,10 +309,17 @@ fn process_markdown_rename(
     let old_note_path = workspace_path.join(&rename.from_rel);
     let new_note_path = workspace_path.join(&rename.to_rel);
 
-    sync_backlinks_and_link_index(workspace_path, db_path, &old_note_path, &new_note_path)
+    sync_backlinks_and_link_index(
+        indexing_runtime,
+        workspace_path,
+        db_path,
+        &old_note_path,
+        &new_note_path,
+    )
 }
 
 fn sync_backlinks_and_link_index(
+    indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
     old_note_path: &Path,
@@ -303,7 +331,7 @@ fn sync_backlinks_and_link_index(
     let new_wiki_target = to_wiki_target_from_abs_path(workspace_path, new_note_path);
     let workspace_path_string = normalize_slashes(&workspace_path.to_string_lossy());
 
-    let backlinks = match get_backlinks(workspace_path, db_path, old_note_path) {
+    let backlinks = match indexing_runtime.get_backlinks(workspace_path, db_path, old_note_path) {
         Ok(entries) => entries,
         Err(error) => {
             warnings.push("load-backlinks".to_string());
@@ -316,17 +344,18 @@ fn sync_backlinks_and_link_index(
         }
     };
 
-    let backlinks_to_new_target = match get_backlinks(workspace_path, db_path, new_note_path) {
-        Ok(entries) => entries,
-        Err(error) => {
-            warnings.push("load-new-backlinks".to_string());
-            eprintln!(
-                "vault-indexer: failed to load unresolved backlinks for {}: {error:#}",
-                new_note_path.display()
-            );
-            Vec::new()
-        }
-    };
+    let backlinks_to_new_target =
+        match indexing_runtime.get_backlinks(workspace_path, db_path, new_note_path) {
+            Ok(entries) => entries,
+            Err(error) => {
+                warnings.push("load-new-backlinks".to_string());
+                eprintln!(
+                    "vault-indexer: failed to load unresolved backlinks for {}: {error:#}",
+                    new_note_path.display()
+                );
+                Vec::new()
+            }
+        };
 
     let mut index_targets: BTreeSet<PathBuf> = BTreeSet::new();
     index_targets.insert(new_note_path.to_path_buf());
@@ -341,6 +370,7 @@ fn sync_backlinks_and_link_index(
         index_targets.insert(source_path.clone());
 
         if let Err(error) = rewrite_backlink_document(
+            indexing_runtime,
             workspace_path,
             source_path.as_path(),
             old_note_path,
@@ -369,7 +399,9 @@ fn sync_backlinks_and_link_index(
         index_targets.insert(source_path);
     }
 
-    if let Err(error) = rename_indexed_note(workspace_path, db_path, old_note_path, new_note_path) {
+    if let Err(error) =
+        indexing_runtime.rename_indexed_note(workspace_path, db_path, old_note_path, new_note_path)
+    {
         warnings.push("rename-indexed-note".to_string());
         eprintln!(
             "vault-indexer: failed to rename indexed note {} -> {}: {error:#}",
@@ -379,7 +411,7 @@ fn sync_backlinks_and_link_index(
     }
 
     for note_path in index_targets {
-        if let Err(error) = index_note(workspace_path, db_path, &note_path, "", "") {
+        if let Err(error) = indexing_runtime.index_note(workspace_path, db_path, &note_path) {
             warnings.push(format!(
                 "index:{}",
                 normalize_slashes(&note_path.to_string_lossy())
@@ -404,6 +436,7 @@ fn sync_backlinks_and_link_index(
 }
 
 fn rewrite_backlink_document(
+    indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     source_path: &Path,
     old_note_path: &Path,
@@ -412,6 +445,20 @@ fn rewrite_backlink_document(
     new_wiki_target: &str,
     workspace_path_string: &str,
 ) -> Result<bool> {
+    let metadata = std::fs::symlink_metadata(source_path).with_context(|| {
+        format!(
+            "failed to read backlink source metadata {}",
+            source_path.display()
+        )
+    })?;
+    if metadata.file_type().is_symlink() {
+        eprintln!(
+            "vault-indexer: skipping symlink backlink source {}",
+            source_path.display()
+        );
+        return Ok(false);
+    }
+
     let original_content = std::fs::read_to_string(source_path)
         .with_context(|| format!("failed to read backlink source {}", source_path.display()))?;
 
@@ -433,7 +480,7 @@ fn rewrite_backlink_document(
                 continue;
             }
 
-            let resolved = resolve_wiki_link(ResolveWikiLinkRequest {
+            let resolved = indexing_runtime.resolve_wiki_link(ResolveWikiLinkRequest {
                 workspace_path: workspace_path_string.to_string(),
                 current_note_path: Some(normalize_slashes(&source_path.to_string_lossy())),
                 raw_target: trimmed_target.to_string(),
@@ -512,9 +559,13 @@ fn normalized_abs_eq(left: &Path, right: &Path) -> bool {
     normalize_slashes(&left.to_string_lossy()) == normalize_slashes(&right.to_string_lossy())
 }
 
-fn run_workspace_index(workspace_path: &Path, db_path: &Path) -> Result<()> {
-    index_workspace(workspace_path, db_path, "", "", false)
-        .map(|_| ())
+fn run_workspace_index(
+    indexing_runtime: &dyn VaultIndexingRuntime,
+    workspace_path: &Path,
+    db_path: &Path,
+) -> Result<()> {
+    indexing_runtime
+        .run_workspace_index(workspace_path, db_path)
         .with_context(|| {
             format!(
                 "failed to run workspace indexing for {}",
@@ -547,4 +598,345 @@ fn is_markdown_note_path(path: &str) -> bool {
 fn should_ignore_rel_path(path: &str) -> bool {
     let normalized = normalize_slashes(path);
     normalized == ".mdit" || normalized.starts_with(".mdit/")
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(unix)]
+    use std::os::unix::fs as unix_fs;
+    use std::{
+        collections::{HashMap, HashSet},
+        sync::Mutex,
+    };
+
+    use anyhow::{anyhow, Result};
+    use vault_indexing_api::ResolveWikiLinkResult;
+
+    use super::*;
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    enum RuntimeCall {
+        RunWorkspaceIndex,
+        IndexNote(String),
+        DeleteIndexedNote(String),
+        DeleteIndexedNotesByPrefix(String),
+        RenameIndexedNote { old_path: String, new_path: String },
+        GetBacklinks(String),
+        ResolveWikiLink(String),
+    }
+
+    #[derive(Default)]
+    struct FakeVaultIndexingRuntime {
+        calls: Mutex<Vec<RuntimeCall>>,
+        failing_prefix_deletes: Mutex<HashSet<String>>,
+        backlinks_by_path: Mutex<HashMap<String, Vec<BacklinkEntry>>>,
+    }
+
+    impl FakeVaultIndexingRuntime {
+        fn calls(&self) -> Vec<RuntimeCall> {
+            self.calls.lock().expect("calls lock poisoned").clone()
+        }
+
+        fn fail_prefix_delete_for(&self, path_prefix: &Path) {
+            self.failing_prefix_deletes
+                .lock()
+                .expect("failing_prefix_deletes lock poisoned")
+                .insert(normalize_path(path_prefix));
+        }
+    }
+
+    impl VaultIndexingRuntime for FakeVaultIndexingRuntime {
+        fn run_workspace_index(&self, _workspace_root: &Path, _db_path: &Path) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::RunWorkspaceIndex);
+            Ok(())
+        }
+
+        fn index_note(
+            &self,
+            _workspace_root: &Path,
+            _db_path: &Path,
+            note_path: &Path,
+        ) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::IndexNote(normalize_path(note_path)));
+            Ok(())
+        }
+
+        fn delete_indexed_note(
+            &self,
+            _workspace_root: &Path,
+            _db_path: &Path,
+            note_path: &Path,
+        ) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::DeleteIndexedNote(normalize_path(note_path)));
+            Ok(())
+        }
+
+        fn delete_indexed_notes_by_prefix(
+            &self,
+            _workspace_root: &Path,
+            _db_path: &Path,
+            path_prefix: &Path,
+        ) -> Result<()> {
+            let normalized = normalize_path(path_prefix);
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::DeleteIndexedNotesByPrefix(normalized.clone()));
+
+            if self
+                .failing_prefix_deletes
+                .lock()
+                .expect("failing_prefix_deletes lock poisoned")
+                .contains(&normalized)
+            {
+                return Err(anyhow!("simulated prefix delete failure"));
+            }
+
+            Ok(())
+        }
+
+        fn rename_indexed_note(
+            &self,
+            _workspace_root: &Path,
+            _db_path: &Path,
+            old_note_path: &Path,
+            new_note_path: &Path,
+        ) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::RenameIndexedNote {
+                    old_path: normalize_path(old_note_path),
+                    new_path: normalize_path(new_note_path),
+                });
+            Ok(())
+        }
+
+        fn get_backlinks(
+            &self,
+            _workspace_root: &Path,
+            _db_path: &Path,
+            file_path: &Path,
+        ) -> Result<Vec<BacklinkEntry>> {
+            let key = normalize_path(file_path);
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::GetBacklinks(key.clone()));
+
+            Ok(self
+                .backlinks_by_path
+                .lock()
+                .expect("backlinks_by_path lock poisoned")
+                .get(&key)
+                .cloned()
+                .unwrap_or_default())
+        }
+
+        fn resolve_wiki_link(
+            &self,
+            request: ResolveWikiLinkRequest,
+        ) -> Result<ResolveWikiLinkResult> {
+            self.calls
+                .lock()
+                .expect("calls lock poisoned")
+                .push(RuntimeCall::ResolveWikiLink(request.raw_target.clone()));
+            Ok(ResolveWikiLinkResult {
+                canonical_target: request.raw_target,
+                resolved_rel_path: None,
+                match_count: 0,
+                disambiguated: false,
+                unresolved: true,
+            })
+        }
+    }
+
+    fn normalize_path(path: &Path) -> String {
+        normalize_slashes(&path.to_string_lossy())
+    }
+
+    fn test_workspace_path() -> PathBuf {
+        let root = std::env::temp_dir().join(format!("mdit-vault-indexer-{}", unique_id()));
+        std::fs::create_dir_all(&root).expect("failed to create test workspace");
+        root
+    }
+
+    fn unique_id() -> u128 {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos()
+    }
+
+    fn empty_batch() -> EventBatch {
+        EventBatch {
+            seq: 1,
+            vault_rel_created: Vec::new(),
+            vault_rel_modified: Vec::new(),
+            vault_rel_removed: Vec::new(),
+            vault_rel_removed_dirs: Vec::new(),
+            vault_rel_renamed: Vec::new(),
+            rescan: false,
+            emitted_at_unix_ms: 0,
+        }
+    }
+
+    #[test]
+    fn rescan_batch_runs_workspace_index_only() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+
+        let mut batch = empty_batch();
+        batch.rescan = true;
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+    }
+
+    #[test]
+    fn create_modify_remove_batches_operate_on_markdown_paths_only() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+
+        let mut batch = empty_batch();
+        batch.vault_rel_created = vec![
+            "new.md".to_string(),
+            "image.png".to_string(),
+            ".mdit/hidden.md".to_string(),
+        ];
+        batch.vault_rel_modified = vec!["edit.md".to_string(), "note.txt".to_string()];
+        batch.vault_rel_removed = vec!["gone.md".to_string(), "diagram.svg".to_string()];
+        batch.vault_rel_removed_dirs = vec!["folder".to_string(), ".mdit/cache".to_string()];
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(
+            runtime.calls(),
+            vec![
+                RuntimeCall::DeleteIndexedNote(normalize_path(&workspace.join("gone.md"))),
+                RuntimeCall::DeleteIndexedNotesByPrefix(normalize_path(&workspace.join("folder"))),
+                RuntimeCall::IndexNote(normalize_path(&workspace.join("edit.md"))),
+                RuntimeCall::IndexNote(normalize_path(&workspace.join("new.md"))),
+            ]
+        );
+    }
+
+    #[test]
+    fn markdown_rename_runs_rename_and_reindex_for_new_note() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+
+        let mut batch = empty_batch();
+        batch.vault_rel_renamed = vec![RenamePair {
+            from_rel: "old.md".to_string(),
+            to_rel: "new.md".to_string(),
+        }];
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(
+            runtime.calls(),
+            vec![
+                RuntimeCall::GetBacklinks(normalize_path(&workspace.join("old.md"))),
+                RuntimeCall::GetBacklinks(normalize_path(&workspace.join("new.md"))),
+                RuntimeCall::RenameIndexedNote {
+                    old_path: normalize_path(&workspace.join("old.md")),
+                    new_path: normalize_path(&workspace.join("new.md")),
+                },
+                RuntimeCall::IndexNote(normalize_path(&workspace.join("new.md"))),
+            ]
+        );
+    }
+
+    #[test]
+    fn rename_with_mixed_file_types_triggers_workspace_rescan() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+
+        let mut batch = empty_batch();
+        batch.vault_rel_renamed = vec![RenamePair {
+            from_rel: "old.md".to_string(),
+            to_rel: "old.txt".to_string(),
+        }];
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+    }
+
+    #[test]
+    fn prefix_delete_failure_falls_back_to_workspace_rescan() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let db_path = workspace.join("index.db");
+        let failing_prefix = workspace.join("folder");
+        runtime.fail_prefix_delete_for(&failing_prefix);
+
+        let mut batch = empty_batch();
+        batch.vault_rel_removed_dirs = vec!["folder".to_string()];
+
+        process_batch(&runtime, &workspace, &db_path, batch)
+            .expect("batch processing should succeed");
+
+        assert_eq!(
+            runtime.calls(),
+            vec![
+                RuntimeCall::DeleteIndexedNotesByPrefix(normalize_path(&workspace.join("folder"))),
+                RuntimeCall::RunWorkspaceIndex,
+            ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rewrite_backlink_document_skips_symlink_sources() {
+        let runtime = FakeVaultIndexingRuntime::default();
+        let workspace = test_workspace_path();
+        let old_note_path = workspace.join("old.md");
+        let new_note_path = workspace.join("new.md");
+        let source_path = workspace.join("backlink.md");
+        let sensitive_path = workspace.with_extension("sensitive.md");
+
+        std::fs::write(&sensitive_path, "[old](old.md)\n")
+            .expect("failed to write sensitive target");
+        unix_fs::symlink(&sensitive_path, &source_path).expect("failed to create symlink source");
+
+        let workspace_path_string = normalize_slashes(&workspace.to_string_lossy());
+        let rewritten = rewrite_backlink_document(
+            &runtime,
+            &workspace,
+            &source_path,
+            &old_note_path,
+            &new_note_path,
+            "old.md",
+            "new",
+            &workspace_path_string,
+        )
+        .expect("rewrite should succeed");
+
+        assert!(!rewritten, "symlink sources should be skipped");
+        assert_eq!(
+            std::fs::read_to_string(&sensitive_path).expect("failed to read sensitive target"),
+            "[old](old.md)\n"
+        );
+    }
 }

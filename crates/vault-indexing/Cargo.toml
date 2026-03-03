@@ -14,3 +14,4 @@ rusqlite = { version = '0.31', features = ['bundled'] }
 serde = { version = '1', features = ['derive'] }
 tiktoken-rs = '0.5'
 walkdir = '2'
+vault-indexing-api = { path = '../vault-indexing-api' }
