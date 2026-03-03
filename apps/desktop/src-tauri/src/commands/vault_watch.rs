@@ -65,7 +65,7 @@ pub fn start_vault_watch_command<R: Runtime>(
             let _ = emit_handle.emit_to("main", VAULT_WATCH_BATCH_EVENT, payload);
         },
     )
-    .map_err(|error| format!("Failed to start vault watcher: {}", error))?;
+    .map_err(|error| format!("Failed to start vault indexer: {}", error))?;
 
     let (replaced_session, redundant_session) = {
         let mut watcher = state.lock_watcher()?;
