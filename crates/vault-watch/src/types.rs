@@ -19,6 +19,8 @@ pub struct EventBatch {
     pub vault_rel_created: Vec<String>,
     pub vault_rel_modified: Vec<String>,
     pub vault_rel_removed: Vec<String>,
+    #[serde(default)]
+    pub vault_rel_removed_dirs: Vec<String>,
     pub vault_rel_renamed: Vec<RenamePair>,
     pub rescan: bool,
     pub emitted_at_unix_ms: u64,
@@ -38,6 +40,7 @@ impl EventBatch {
             vault_rel_created: Vec::new(),
             vault_rel_modified: Vec::new(),
             vault_rel_removed: Vec::new(),
+            vault_rel_removed_dirs: Vec::new(),
             vault_rel_renamed: Vec::new(),
             rescan: false,
             emitted_at_unix_ms: now_unix_ms(),
@@ -49,6 +52,7 @@ impl EventBatch {
             || !self.vault_rel_created.is_empty()
             || !self.vault_rel_modified.is_empty()
             || !self.vault_rel_removed.is_empty()
+            || !self.vault_rel_removed_dirs.is_empty()
             || !self.vault_rel_renamed.is_empty()
     }
 }

@@ -4,7 +4,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use notify::event::{ModifyKind, RenameMode};
+use notify::event::{ModifyKind, RemoveKind, RenameMode};
 use notify::EventKind;
 
 use crate::{
@@ -23,6 +23,7 @@ pub(crate) struct PendingBatch {
     created: BTreeSet<String>,
     modified: BTreeSet<String>,
     removed: BTreeSet<String>,
+    removed_dirs: BTreeSet<String>,
     renamed: BTreeSet<(String, String)>,
     rename_from: VecDeque<RenameFromCandidate>,
     rescan: bool,
@@ -40,6 +41,7 @@ impl PendingBatch {
             || !self.created.is_empty()
             || !self.modified.is_empty()
             || !self.removed.is_empty()
+            || !self.removed_dirs.is_empty()
             || !self.renamed.is_empty()
     }
 
@@ -117,7 +119,10 @@ impl PendingBatch {
             | EventKind::Modify(ModifyKind::Other) => {
                 self.mark_modified_or_rescan(rel_paths);
             }
-            EventKind::Remove(_) => {
+            EventKind::Remove(remove_kind) => {
+                if matches!(remove_kind, RemoveKind::Folder) {
+                    self.removed_dirs.extend(rel_paths.clone());
+                }
                 self.removed.extend(rel_paths);
             }
             EventKind::Any | EventKind::Other => {
@@ -220,6 +225,7 @@ impl PendingBatch {
         for rel_path in created_and_removed {
             self.created.remove(&rel_path);
             self.removed.remove(&rel_path);
+            self.removed_dirs.remove(&rel_path);
             self.modified.insert(rel_path);
         }
     }
@@ -229,14 +235,20 @@ impl PendingBatch {
             self.created.remove(from_rel);
             self.modified.remove(from_rel);
             self.removed.remove(from_rel);
+            self.removed_dirs.remove(from_rel);
             self.created.remove(to_rel);
             self.modified.remove(to_rel);
             self.removed.remove(to_rel);
+            self.removed_dirs.remove(to_rel);
         }
     }
 
     fn event_path_count(&self) -> usize {
-        self.created.len() + self.modified.len() + self.removed.len() + (self.renamed.len() * 2)
+        self.created.len()
+            + self.modified.len()
+            + self.removed.len()
+            + self.removed_dirs.len()
+            + (self.renamed.len() * 2)
     }
 
     fn apply_overflow_policy(&mut self, max_batch_paths: usize) {
@@ -256,6 +268,7 @@ impl PendingBatch {
             self.created.clear();
             self.modified.clear();
             self.removed.clear();
+            self.removed_dirs.clear();
             self.renamed.clear();
         }
     }
@@ -266,6 +279,7 @@ impl PendingBatch {
         batch.vault_rel_created = std::mem::take(&mut self.created).into_iter().collect();
         batch.vault_rel_modified = std::mem::take(&mut self.modified).into_iter().collect();
         batch.vault_rel_removed = std::mem::take(&mut self.removed).into_iter().collect();
+        batch.vault_rel_removed_dirs = std::mem::take(&mut self.removed_dirs).into_iter().collect();
         batch.vault_rel_renamed = std::mem::take(&mut self.renamed)
             .into_iter()
             .map(|(from_rel, to_rel)| RenamePair { from_rel, to_rel })

@@ -306,6 +306,52 @@ fn to_workspace_rel_markdown_path(workspace_root: &Path, note_path: &Path) -> Re
     ))
 }
 
+fn to_workspace_rel_path_prefix(workspace_root: &Path, path_prefix: &Path) -> Result<String> {
+    let candidate_abs = if path_prefix.is_absolute() {
+        path_prefix.to_path_buf()
+    } else {
+        workspace_root.join(path_prefix)
+    };
+
+    let normalized = if let Ok(rel_path) = candidate_abs.strip_prefix(workspace_root) {
+        files::normalize_rel_path(rel_path)
+    } else {
+        let workspace_canonical = canonicalize_workspace_root(workspace_root)?;
+        if let Ok(rel_path) = candidate_abs.strip_prefix(&workspace_canonical) {
+            files::normalize_rel_path(rel_path)
+        } else {
+            return Err(anyhow!(
+                "Path prefix is outside workspace: {}",
+                path_prefix.display()
+            ));
+        }
+    };
+
+    let normalized = normalized.trim_end_matches('/').to_string();
+    if normalized.is_empty() || normalized == "." {
+        return Err(anyhow!(
+            "Path prefix must not resolve to workspace root: {}",
+            path_prefix.display()
+        ));
+    }
+
+    Ok(normalized)
+}
+
+fn escape_sql_like_pattern(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '%' | '_' | '\\' => {
+                escaped.push('\\');
+                escaped.push(ch);
+            }
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
+}
+
 fn run_indexing_for_files(
     workspace_root: &Path,
     db_path: &Path,
@@ -395,6 +441,31 @@ pub fn delete_indexed_note(
         .context("Failed to delete indexed note document row")?;
 
     Ok(deleted > 0)
+}
+
+pub fn delete_indexed_notes_by_prefix(
+    workspace_root: &Path,
+    db_path: &Path,
+    path_prefix: &Path,
+) -> Result<usize> {
+    let _ = canonicalize_workspace_root(workspace_root)?;
+    let rel_prefix = to_workspace_rel_path_prefix(workspace_root, path_prefix)?;
+    let escaped_prefix = escape_sql_like_pattern(&rel_prefix);
+    let like_pattern = format!("{escaped_prefix}/%");
+
+    let conn = open_indexing_connection(db_path)?;
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(0);
+    };
+
+    let deleted = conn
+        .execute(
+            "DELETE FROM doc WHERE vault_id = ?1 AND rel_path LIKE ?2 ESCAPE '\\'",
+            params![vault_id, like_pattern],
+        )
+        .context("Failed to delete indexed notes by path prefix")?;
+
+    Ok(deleted)
 }
 
 pub fn rename_indexed_note(

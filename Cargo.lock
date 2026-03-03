@@ -3029,6 +3029,7 @@ dependencies = [
  "tower",
  "trash",
  "urlencoding",
+ "vault-indexer",
  "vault-watch",
 ]
 
@@ -6708,6 +6709,20 @@ dependencies = [
  "aligned-vec",
  "num-traits",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "vault-indexer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "indexing",
+ "pathdiff",
+ "pulldown-cmark",
+ "regex",
+ "serde",
+ "thiserror 2.0.17",
+ "vault-watch",
 ]
 
 [[package]]

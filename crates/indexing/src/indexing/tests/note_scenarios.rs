@@ -2,7 +2,9 @@ use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
 
-use super::super::{delete_indexed_note, get_related_notes, rename_indexed_note};
+use super::super::{
+    delete_indexed_note, delete_indexed_notes_by_prefix, get_related_notes, rename_indexed_note,
+};
 use super::test_support::IndexingHarness;
 
 #[test]
@@ -270,6 +272,68 @@ fn given_missing_indexed_note_when_deleting_then_it_returns_false() {
     .expect("delete indexed note should succeed");
 
     assert!(!deleted);
+}
+
+#[test]
+fn given_indexed_notes_under_directory_when_deleting_by_prefix_then_only_descendants_are_removed() {
+    let harness = IndexingHarness::new("mdit-indexing-delete-prefix");
+    harness.write_note("folder/target.md", "# target");
+    harness.write_note("folder/nested/deep.md", "# deep");
+    harness.write_note("source.md", "[[folder/target]]");
+    harness.write_note("other.md", "# other");
+    harness.run_workspace_index();
+
+    let deleted = delete_indexed_notes_by_prefix(
+        harness.root(),
+        harness.db_path(),
+        &harness.root().join("folder"),
+    )
+    .expect("delete indexed notes by prefix should succeed");
+
+    assert_eq!(deleted, 2);
+    assert!(harness.doc_id("folder/target.md").is_none());
+    assert!(harness.doc_id("folder/nested/deep.md").is_none());
+    assert!(harness.doc_id("source.md").is_some());
+    assert!(harness.doc_id("other.md").is_some());
+    assert_eq!(
+        harness.link_rows_for("source.md"),
+        vec![("folder/target.md".to_string(), None)]
+    );
+}
+
+#[test]
+fn given_missing_prefix_when_deleting_by_prefix_then_it_returns_zero() {
+    let harness = IndexingHarness::new("mdit-indexing-delete-prefix-missing");
+    harness.write_note("source.md", "# source");
+    harness.run_workspace_index();
+
+    let deleted = delete_indexed_notes_by_prefix(
+        harness.root(),
+        harness.db_path(),
+        PathBuf::from("missing").as_path(),
+    )
+    .expect("delete indexed notes by prefix should succeed");
+
+    assert_eq!(deleted, 0);
+}
+
+#[test]
+fn given_prefix_with_like_wildcards_when_deleting_by_prefix_then_it_uses_literal_match() {
+    let harness = IndexingHarness::new("mdit-indexing-delete-prefix-like-escape");
+    harness.write_note("dir%_x/inside.md", "# inside");
+    harness.write_note("dirZZx/inside.md", "# sibling");
+    harness.run_workspace_index();
+
+    let deleted = delete_indexed_notes_by_prefix(
+        harness.root(),
+        harness.db_path(),
+        PathBuf::from("dir%_x").as_path(),
+    )
+    .expect("delete indexed notes by prefix should succeed");
+
+    assert_eq!(deleted, 1);
+    assert!(harness.doc_id("dir%_x/inside.md").is_none());
+    assert!(harness.doc_id("dirZZx/inside.md").is_some());
 }
 
 fn set_doc_embedding(
