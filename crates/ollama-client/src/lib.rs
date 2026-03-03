@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use anyhow::{anyhow, Context, Result};
+use futures::future::join_all;
 use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,32 +21,31 @@ enum ModelCapabilities {
     Unavailable,
 }
 
-pub fn list_model_catalog() -> Result<OllamaModelCatalog> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .context("Failed to create async runtime for Ollama model catalog")?;
+pub async fn list_model_catalog() -> Result<OllamaModelCatalog> {
     let ollama = Ollama::default();
 
-    let local_models = runtime
-        .block_on(async { ollama.list_local_models().await })
+    let local_models = ollama
+        .list_local_models()
+        .await
         .context("Failed to list local models from Ollama")?;
 
-    let mut inspections = Vec::with_capacity(local_models.len());
-    for model in local_models {
+    let inspections = join_all(local_models.into_iter().filter_map(|model| {
         let model_name = model.name.trim().to_string();
         if model_name.is_empty() {
-            continue;
+            return None;
         }
 
-        let show_result =
-            runtime.block_on(async { ollama.show_model_info(model_name.clone()).await });
-        let capabilities = match show_result {
-            Ok(info) => ModelCapabilities::Known(info.capabilities),
-            Err(_) => ModelCapabilities::Unavailable,
-        };
-        inspections.push((model_name, capabilities));
-    }
+        let ollama = &ollama;
+        Some(async move {
+            let show_result = ollama.show_model_info(model_name.clone()).await;
+            let capabilities = match show_result {
+                Ok(info) => ModelCapabilities::Known(info.capabilities),
+                Err(_) => ModelCapabilities::Unavailable,
+            };
+            (model_name, capabilities)
+        })
+    }))
+    .await;
 
     Ok(build_catalog_from_inspections(inspections))
 }

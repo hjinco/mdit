@@ -9,8 +9,10 @@ pub struct OllamaModelsResponse {
 }
 
 #[tauri::command]
-pub fn list_ollama_models_command() -> Result<OllamaModelsResponse, String> {
-    let catalog = list_model_catalog().map_err(|error| error.to_string())?;
+pub async fn list_ollama_models_command() -> Result<OllamaModelsResponse, String> {
+    let catalog = list_model_catalog()
+        .await
+        .map_err(|error| error.to_string())?;
     Ok(OllamaModelsResponse {
         completion_models: catalog.completion_models,
         embedding_models: catalog.embedding_models,
