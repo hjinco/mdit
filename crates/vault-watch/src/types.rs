@@ -115,25 +115,21 @@ impl WatchConfig {
 }
 
 fn normalize_hidden_boundary_prefix(prefix: &str) -> Option<String> {
-    let mut normalized = prefix.replace('\\', "/");
+    let normalized = prefix.replace('\\', "/");
+    let mut normalized = normalized.as_str();
 
     while let Some(stripped) = normalized.strip_prefix("./") {
-        normalized = stripped.to_string();
+        normalized = stripped;
     }
 
-    while let Some(stripped) = normalized.strip_prefix('/') {
-        normalized = stripped.to_string();
-    }
-
-    while normalized.ends_with('/') {
-        normalized.pop();
-    }
+    normalized = normalized.trim_start_matches('/');
+    normalized = normalized.trim_end_matches('/');
 
     if normalized.is_empty() || normalized == "." {
         return None;
     }
 
-    Some(normalized)
+    Some(normalized.to_string())
 }
 
 #[derive(Debug, Error)]
