@@ -11,7 +11,11 @@ import { DateKit } from "@mdit/editor/date"
 import { EmojiKit } from "@mdit/editor/emoji"
 import { createFrontmatterKit } from "@mdit/editor/frontmatter"
 import { createLinkKit } from "@mdit/editor/link"
-import { AutoformatKit, MarkdownKit } from "@mdit/editor/markdown"
+import {
+	AutoformatKit,
+	MarkdownKit,
+	MarkdownKitNoMdx,
+} from "@mdit/editor/markdown"
 import { MathKit } from "@mdit/editor/math"
 import { createFilePasteKit, createMediaKit } from "@mdit/editor/media"
 import {
@@ -55,7 +59,11 @@ const desktopFrontmatterHost = createDesktopFrontmatterHost({
 })
 const desktopBlockSelectionHost = createDesktopBlockSelectionHost()
 
-export const EditorKit = [
+type CreateEditorKitOptions = {
+	mdx?: boolean
+}
+
+const createEditorKit = ({ mdx = true }: CreateEditorKitOptions = {}) => [
 	...createAIKit({ host: desktopAIMenuHost }),
 	...createFilePasteKit({ host: desktopFilePasteHost }),
 	...TabMetadataKit,
@@ -74,7 +82,7 @@ export const EditorKit = [
 	...FloatingToolbarKit,
 	...createLinkKit({ host: desktopLinkHost }),
 	...ListKit,
-	...MarkdownKit,
+	...(mdx ? MarkdownKit : MarkdownKitNoMdx),
 	...MathKit,
 	...createMediaKit({ host: desktopMediaHost }),
 	...ShortcutsKit,
@@ -84,3 +92,6 @@ export const EditorKit = [
 	...TocKit,
 	...UtilsKit,
 ]
+
+export const EditorKit = createEditorKit({ mdx: true })
+export const EditorKitNoMdx = createEditorKit({ mdx: false })

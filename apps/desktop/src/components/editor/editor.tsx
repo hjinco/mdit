@@ -1,6 +1,7 @@
+import { createMarkdownDeserializerWithFallback } from "@mdit/editor/markdown"
 import { EditorSurface } from "@mdit/editor/shared"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { createSlateEditor, type Value } from "platejs"
+import type { Value } from "platejs"
 import { usePlateEditor } from "platejs/react"
 import {
 	type KeyboardEvent,
@@ -17,7 +18,7 @@ import { Header } from "./header/header"
 import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useLinkedTabName } from "./hooks/use-linked-tab-name"
-import { EditorKit } from "./plugins/editor-kit"
+import { EditorKit, EditorKitNoMdx } from "./plugins/editor-kit"
 import {
 	focusEditorAtDefaultSelection,
 	restoreHistorySelection,
@@ -28,16 +29,22 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 	const tab = useStore((s) => s.tab)
 	const handleTypingProgress = useStore((s) => s.handleTypingProgress)
 
-	const editor = useMemo(() => {
-		return createSlateEditor({
-			plugins: EditorKit,
-		})
-	}, [])
+	const deserializeWithFallback = useMemo(
+		() =>
+			createMarkdownDeserializerWithFallback({
+				mdxPlugins: EditorKit,
+				noMdxPlugins: EditorKitNoMdx,
+			}),
+		[],
+	)
 
 	const value = useMemo(() => {
 		if (!tab) return
-		return editor.api.markdown.deserialize(tab.content)
-	}, [tab, editor])
+		return deserializeWithFallback({
+			content: tab.content,
+			path: tab.path,
+		})
+	}, [tab, deserializeWithFallback])
 
 	if (!tab || !value)
 		return (
