@@ -254,26 +254,21 @@ impl PendingBatch {
     }
 
     fn path_state(path: &Path) -> PathState {
-        let metadata = match std::fs::symlink_metadata(path) {
-            Ok(metadata) => metadata,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return PathState::Missing;
+        match std::fs::symlink_metadata(path) {
+            Ok(metadata) => {
+                if metadata.file_type().is_symlink() {
+                    PathState::Unknown
+                } else if metadata.is_dir() {
+                    PathState::Present(VaultEntryKind::Directory)
+                } else if metadata.is_file() {
+                    PathState::Present(VaultEntryKind::File)
+                } else {
+                    PathState::Unknown
+                }
             }
-            Err(_) => {
-                return PathState::Unknown;
-            }
-        };
-
-        if metadata.file_type().is_symlink() {
-            return PathState::Unknown;
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => PathState::Missing,
+            Err(_) => PathState::Unknown,
         }
-        if metadata.is_dir() {
-            return PathState::Present(VaultEntryKind::Directory);
-        }
-        if metadata.is_file() {
-            return PathState::Present(VaultEntryKind::File);
-        }
-        PathState::Unknown
     }
 
     fn handle_rename_both_event(&mut self, vault_root: &Path, event: &notify::Event) {
