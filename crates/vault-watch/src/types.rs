@@ -17,20 +17,29 @@ pub enum VaultEntryKind {
 #[serde(tag = "type")]
 pub enum VaultChange {
     Created {
+        #[serde(rename = "relPath")]
         rel_path: String,
+        #[serde(rename = "entryKind")]
         entry_kind: VaultEntryKind,
     },
     Modified {
+        #[serde(rename = "relPath")]
         rel_path: String,
+        #[serde(rename = "entryKind")]
         entry_kind: VaultEntryKind,
     },
     Deleted {
+        #[serde(rename = "relPath")]
         rel_path: String,
+        #[serde(rename = "entryKind")]
         entry_kind: VaultEntryKind,
     },
     Moved {
+        #[serde(rename = "fromRel")]
         from_rel: String,
+        #[serde(rename = "toRel")]
         to_rel: String,
+        #[serde(rename = "entryKind")]
         entry_kind: VaultEntryKind,
     },
 }
@@ -160,7 +169,9 @@ pub(crate) fn now_unix_ms() -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::WatchConfig;
+    use serde_json::json;
+
+    use super::{VaultChange, VaultEntryKind, WatchConfig};
 
     #[test]
     fn normalized_hidden_boundary_prefixes_are_cleaned_and_deduplicated() {
@@ -181,6 +192,37 @@ mod tests {
         assert_eq!(
             normalized.hidden_boundary_prefixes,
             vec![".cache".to_string(), ".mdit".to_string()]
+        );
+    }
+
+    #[test]
+    fn serializes_vault_change_fields_as_camel_case() {
+        let created = VaultChange::Created {
+            rel_path: "docs/a.md".to_string(),
+            entry_kind: VaultEntryKind::File,
+        };
+        assert_eq!(
+            serde_json::to_value(created).expect("created change should serialize"),
+            json!({
+                "type": "created",
+                "relPath": "docs/a.md",
+                "entryKind": "file"
+            })
+        );
+
+        let moved = VaultChange::Moved {
+            from_rel: "docs/a.md".to_string(),
+            to_rel: "docs/b.md".to_string(),
+            entry_kind: VaultEntryKind::Directory,
+        };
+        assert_eq!(
+            serde_json::to_value(moved).expect("moved change should serialize"),
+            json!({
+                "type": "moved",
+                "fromRel": "docs/a.md",
+                "toRel": "docs/b.md",
+                "entryKind": "directory"
+            })
         );
     }
 }
