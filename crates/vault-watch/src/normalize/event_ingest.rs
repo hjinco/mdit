@@ -10,6 +10,12 @@ use crate::{path::to_vault_rel_path, types::VaultEntryKind};
 
 use super::{PendingBatch, RenameFromCandidate};
 
+enum PathState {
+    Present(VaultEntryKind),
+    Missing,
+    Unknown,
+}
+
 impl PendingBatch {
     pub(crate) fn apply_notify_event(
         &mut self,
@@ -37,9 +43,11 @@ impl PendingBatch {
             EventKind::Modify(ModifyKind::Name(RenameMode::To)) => {
                 self.handle_rename_to_event(vault_root, event, now, rename_window);
             }
-            EventKind::Modify(ModifyKind::Name(_))
-            | EventKind::Modify(ModifyKind::Any)
-            | EventKind::Modify(ModifyKind::Other) => {
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any))
+            | EventKind::Modify(ModifyKind::Name(RenameMode::Other)) => {
+                self.handle_rename_unknown_event(vault_root, event);
+            }
+            EventKind::Modify(ModifyKind::Any) | EventKind::Modify(ModifyKind::Other) => {
                 self.mark_modified_or_rescan(vault_root, event);
             }
             EventKind::Remove(remove_kind) => {
@@ -153,6 +161,119 @@ impl PendingBatch {
 
             self.modified_files.insert(rel_path);
         }
+    }
+
+    fn handle_rename_unknown_event(&mut self, vault_root: &Path, event: &notify::Event) {
+        match event.paths.as_slice() {
+            [] => {
+                self.mark_rescan(false);
+            }
+            [path] => {
+                self.handle_unknown_rename_single_path(vault_root, path);
+            }
+            [first_path, second_path] => {
+                self.handle_unknown_rename_pair(vault_root, first_path, second_path);
+            }
+            _ => {
+                self.mark_rescan(true);
+            }
+        }
+    }
+
+    fn handle_unknown_rename_single_path(&mut self, vault_root: &Path, path: &Path) {
+        let Some(rel_path) = self.visible_rel_path(vault_root, path) else {
+            return;
+        };
+        self.record_unknown_rename_boundary_change(vault_root, rel_path, path);
+    }
+
+    fn handle_unknown_rename_pair(
+        &mut self,
+        vault_root: &Path,
+        first_path: &Path,
+        second_path: &Path,
+    ) {
+        let first_rel = self.visible_rel_path(vault_root, first_path);
+        let second_rel = self.visible_rel_path(vault_root, second_path);
+
+        match (first_rel, second_rel) {
+            (Some(first_rel), Some(second_rel)) if first_rel != second_rel => {
+                let first_kind = self.infer_entry_kind(vault_root, &first_rel, Some(first_path));
+                let second_kind = self.infer_entry_kind(vault_root, &second_rel, Some(second_path));
+
+                match (first_kind, second_kind) {
+                    (None, Some(entry_kind)) => {
+                        self.record_moved(first_rel, second_rel, entry_kind, vault_root);
+                    }
+                    (Some(entry_kind), None) => {
+                        self.record_moved(second_rel, first_rel, entry_kind, vault_root);
+                    }
+                    _ => {
+                        self.mark_rescan(true);
+                    }
+                }
+            }
+            (Some(only_rel), None) => {
+                self.record_unknown_rename_boundary_change(vault_root, only_rel, first_path);
+            }
+            (None, Some(only_rel)) => {
+                self.record_unknown_rename_boundary_change(vault_root, only_rel, second_path);
+            }
+            (Some(_), Some(_)) => {
+                self.mark_rescan(true);
+            }
+            (None, None) => {
+                self.mark_rescan(false);
+            }
+        }
+    }
+
+    fn record_unknown_rename_boundary_change(
+        &mut self,
+        vault_root: &Path,
+        rel_path: String,
+        path: &Path,
+    ) {
+        match Self::path_state(path) {
+            PathState::Present(entry_kind) => {
+                self.record_created(rel_path, entry_kind, vault_root);
+            }
+            PathState::Missing => {
+                let entry_kind =
+                    if self.is_directory(&rel_path) || self.has_directory_descendant(&rel_path) {
+                        VaultEntryKind::Directory
+                    } else {
+                        VaultEntryKind::File
+                    };
+                self.record_deleted(rel_path, entry_kind);
+            }
+            PathState::Unknown => {
+                self.mark_rescan(true);
+            }
+        }
+    }
+
+    fn path_state(path: &Path) -> PathState {
+        let metadata = match std::fs::symlink_metadata(path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return PathState::Missing;
+            }
+            Err(_) => {
+                return PathState::Unknown;
+            }
+        };
+
+        if metadata.file_type().is_symlink() {
+            return PathState::Unknown;
+        }
+        if metadata.is_dir() {
+            return PathState::Present(VaultEntryKind::Directory);
+        }
+        if metadata.is_file() {
+            return PathState::Present(VaultEntryKind::File);
+        }
+        PathState::Unknown
     }
 
     fn handle_rename_both_event(&mut self, vault_root: &Path, event: &notify::Event) {
