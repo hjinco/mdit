@@ -724,6 +724,151 @@ fn rename_file_to_outside_vault_emits_deleted_file() {
 }
 
 #[test]
+fn rename_mode_any_into_vault_emits_created_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let to = root.join("from-outside.md");
+    write_file(&to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            std::slice::from_ref(&to),
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Created {
+            rel_path: "from-outside.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_mode_any_to_outside_vault_emits_deleted_file() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let from = root.join("to-outside.md");
+    write_file(&from);
+    std::fs::remove_file(&from).expect("source file should be removed");
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            std::slice::from_ref(&from),
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![VaultChange::Deleted {
+            rel_path: "to-outside.md".to_string(),
+            entry_kind: VaultEntryKind::File
+        }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_mode_any_directory_rename_emits_deleted_old_and_created_new() {
+    let root = temp_vault_dir();
+    let old_dir = root.join("docs");
+    let new_dir = root.join("archive");
+    std::fs::create_dir_all(&old_dir).expect("old directory should be created");
+
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    std::fs::rename(&old_dir, &new_dir).expect("directory should be renamed");
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            std::slice::from_ref(&old_dir),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            std::slice::from_ref(&new_dir),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![
+            VaultChange::Created {
+                rel_path: "archive".to_string(),
+                entry_kind: VaultEntryKind::Directory
+            },
+            VaultChange::Deleted {
+                rel_path: "docs".to_string(),
+                entry_kind: VaultEntryKind::Directory
+            }
+        ]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn rename_mode_any_with_three_paths_triggers_rescan_with_empty_details() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let old_path = root.join("old.md");
+    let new_path = root.join("new.md");
+    let extra_path = root.join("extra.md");
+    write_file(&new_path);
+    write_file(&extra_path);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            &[old_path, new_path, extra_path],
+        ),
+        now,
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert!(batch.rescan);
+    assert!(batch.changes.is_empty());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn rename_file_from_outside_vault_emits_created_file() {
     let root = temp_vault_dir();
     let mut pending = pending_for_root(&root);
