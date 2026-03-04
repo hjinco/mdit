@@ -1,7 +1,6 @@
 import {
 	createLocalMutationJournal,
 	DEFAULT_LOCAL_MUTATION_TTL_MS,
-	type LocalMutationTarget,
 } from "@mdit/local-fs-origin"
 import { invoke } from "@tauri-apps/api/core"
 import { open } from "@tauri-apps/plugin-dialog"
@@ -15,19 +14,24 @@ import {
 	renameFileFrontmatterProperty,
 	updateFileFrontmatter,
 } from "@/utils/frontmatter-utils"
-import type { AISettingsSlice } from "../ai-settings/ai-settings-slice"
 import type { CollectionSlice } from "../collection/collection-slice"
 import type { GitSyncSlice } from "../git-sync/git-sync-slice"
 import type { TabSlice } from "../tab/tab-slice"
-import { createWorkspaceEntryActions } from "./actions/workspace-entry-actions"
-import { createWorkspaceFsNoteActions } from "./actions/workspace-fs-note-actions"
-import { createWorkspaceFsStructureActions } from "./actions/workspace-fs-structure-actions"
-import { createWorkspaceFsTransferActions } from "./actions/workspace-fs-transfer-actions"
-import { createWorkspaceLifecycleActions } from "./actions/workspace-lifecycle-actions"
-import { createWorkspaceLocalMutationActions } from "./actions/workspace-local-mutation-actions"
-import { createWorkspaceSelectionActions } from "./actions/workspace-selection-actions"
-import { createWorkspaceTreeActions } from "./actions/workspace-tree-actions"
-import { createWorkspaceWatchActions } from "./watch"
+import {
+	createDirectoryUiActions,
+	type WorkspaceDirectoryUiActions,
+} from "./directory-ui"
+import {
+	createEntrySessionActions,
+	type WorkspaceEntrySessionActions,
+} from "./entry-session"
+import { createFsActions, type WorkspaceFsActions } from "./fs"
+import {
+	createLifecycleActions,
+	type WorkspaceLifecycleActions,
+} from "./lifecycle"
+import { createTreeActions, type WorkspaceTreeActions } from "./tree"
+import { createWatchActions, type WorkspaceWatchActions } from "./watch"
 import type { WorkspaceActionContext } from "./workspace-action-context"
 import type {
 	BacklinkEntry,
@@ -36,153 +40,51 @@ import type {
 	WorkspaceDependencies,
 } from "./workspace-dependencies"
 import { createWorkspacePorts } from "./workspace-ports"
-import type { WorkspaceEntry, WorkspaceState } from "./workspace-state"
+import type { WorkspaceState } from "./workspace-state"
 import { buildWorkspaceState } from "./workspace-state"
 
 export type { WorkspaceEntry } from "./workspace-state"
 
-export type WorkspaceSlice = WorkspaceState & {
-	setIsEditMode: (isEditMode: boolean) => void
-	setExpandedDirectories: (
-		action: (expandedDirectories: string[]) => string[],
-	) => Promise<void>
-	updateEntries: (
-		entriesOrAction:
-			| WorkspaceEntry[]
-			| ((entries: WorkspaceEntry[]) => WorkspaceEntry[]),
-	) => void
-	entryCreated: (input: {
-		parentPath: string
-		entry: WorkspaceEntry
-		expandParent?: boolean
-		expandNewDirectory?: boolean
-	}) => Promise<void>
-	entriesDeleted: (input: { paths: string[] }) => Promise<void>
-	entryRenamed: (input: {
-		oldPath: string
-		newPath: string
-		isDirectory: boolean
-		newName: string
-	}) => Promise<void>
-	entryMoved: (input: {
-		sourcePath: string
-		destinationDirPath: string
-		// `newPath` may include rename semantics when move+rename happen together.
-		newPath: string
-		isDirectory: boolean
-		refreshContent?: boolean
-	}) => Promise<void>
-	entryImported: (input: {
-		destinationDirPath: string
-		entry: WorkspaceEntry
-		expandIfDirectory?: boolean
-	}) => Promise<void>
-	initializeWorkspace: () => Promise<void>
-	setWorkspace: (path: string) => Promise<void>
-	removeWorkspaceFromHistory: (path: string) => Promise<void>
-	openFolderPicker: () => Promise<void>
-	refreshWorkspaceEntries: () => Promise<void>
-	pinDirectory: (path: string) => Promise<void>
-	unpinDirectory: (path: string) => Promise<void>
-	toggleDirectory: (path: string) => Promise<void>
-	clearWorkspace: () => Promise<void>
-	registerLocalMutation: (
-		targets: LocalMutationTarget[],
-		options?: { ttlMs?: number },
-	) => void
-	saveNoteContent: (path: string, contents: string) => Promise<void>
-	updateFrontmatter: (
-		path: string,
-		updates: Record<string, unknown>,
-	) => Promise<void>
-	renameFrontmatterProperty: (
-		path: string,
-		oldKey: string,
-		newKey: string,
-	) => Promise<void>
-	removeFrontmatterProperty: (path: string, key: string) => Promise<void>
-	createFolder: (
-		directoryPath: string,
-		folderName: string,
-	) => Promise<string | null>
-	createNote: (
-		directoryPath: string,
-		options?: {
-			initialName?: string
-			initialContent?: string
-			openTab?: boolean
-		},
-	) => Promise<string>
-	createAndOpenNote: () => Promise<void>
-	deleteEntries: (paths: string[]) => Promise<void>
-	deleteEntry: (path: string) => Promise<void>
-	renameEntry: (
-		entry: WorkspaceEntry,
-		newName: string,
-		options?: {
-			allowLockedSourcePath?: boolean
-		},
-	) => Promise<string>
-	moveEntry: (
-		sourcePath: string,
-		destinationPath: string,
-		options?: {
-			onConflict?: "fail" | "auto-rename"
-			allowLockedSourcePath?: boolean
-			onMoved?: (newPath: string) => void
-		},
-	) => Promise<boolean>
-	copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
-	moveExternalEntry: (
-		sourcePath: string,
-		destinationPath: string,
-	) => Promise<boolean>
-	updateEntryModifiedDate: (path: string) => Promise<void>
-	lockAiEntries: (paths: string[]) => void
-	unlockAiEntries: (paths: string[]) => void
-	setSelectedEntryPaths: (paths: Set<string>) => void
-	setSelectionAnchorPath: (path: string | null) => void
-	resetSelection: () => void
-	watchWorkspace: () => Promise<void>
-	unwatchWorkspace: () => void
-}
+export type WorkspaceActions = WorkspaceTreeActions &
+	WorkspaceDirectoryUiActions &
+	WorkspaceLifecycleActions &
+	WorkspaceFsActions &
+	WorkspaceEntrySessionActions &
+	WorkspaceWatchActions
+
+export type WorkspaceSlice = WorkspaceState & WorkspaceActions
+
+type WorkspaceSliceStoreState = WorkspaceSlice &
+	TabSlice &
+	CollectionSlice &
+	GitSyncSlice
 
 export const prepareWorkspaceSlice =
 	(
 		dependencies: WorkspaceDependencies,
-	): StateCreator<
-		WorkspaceSlice &
-			TabSlice &
-			CollectionSlice &
-			GitSyncSlice &
-			AISettingsSlice,
-		[],
-		[],
-		WorkspaceSlice
-	> =>
+	): StateCreator<WorkspaceSliceStoreState, [], [], WorkspaceSlice> =>
 	(set, get) => {
 		const originJournal = createLocalMutationJournal({
 			defaultTtlMs: DEFAULT_LOCAL_MUTATION_TTL_MS,
 		})
-		const actionContext: WorkspaceActionContext = {
-			set: set as any,
-			get: get as any,
+		const actionContext: WorkspaceActionContext<WorkspaceSliceStoreState> = {
+			set,
+			get,
 			deps: dependencies,
-			ports: createWorkspacePorts(get as any),
-			originJournal,
+			ports: createWorkspacePorts(get),
+			runtime: {
+				originJournal,
+			},
 		}
 
 		return {
 			...buildWorkspaceState({ isLoading: true }),
-			...createWorkspaceTreeActions(actionContext),
-			...createWorkspaceEntryActions(actionContext),
-			...createWorkspaceLifecycleActions(actionContext),
-			...createWorkspaceLocalMutationActions(actionContext),
-			...createWorkspaceFsNoteActions(actionContext),
-			...createWorkspaceFsStructureActions(actionContext),
-			...createWorkspaceFsTransferActions(actionContext),
-			...createWorkspaceSelectionActions(actionContext),
-			...createWorkspaceWatchActions(actionContext),
+			...createTreeActions(actionContext),
+			...createDirectoryUiActions(actionContext),
+			...createLifecycleActions(actionContext),
+			...createFsActions(actionContext),
+			...createEntrySessionActions(actionContext),
+			...createWatchActions(actionContext),
 		}
 	}
 

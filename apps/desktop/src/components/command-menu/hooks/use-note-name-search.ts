@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import { stripMarkdownExtension } from "@/utils/path-utils"
 
 export type NoteResult = {
 	path: string
@@ -15,9 +16,6 @@ const MARKDOWN_EXTENSION_REGEX = /\.md$/i
 const RECENT_NOTES_LIMIT = 5
 const isMarkdownFile = (entry: WorkspaceEntry) =>
 	!entry.isDirectory && MARKDOWN_EXTENSION_REGEX.test(entry.name)
-
-export const stripMarkdownExtension = (name: string) =>
-	name.replace(MARKDOWN_EXTENSION_REGEX, "")
 
 export const toRelativePath = (
 	fullPath: string,

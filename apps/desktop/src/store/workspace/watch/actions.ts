@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import type { WorkspaceActionContext } from "../workspace-action-context"
-import type { WorkspaceSlice } from "../workspace-slice"
 import {
 	createBatchRefreshEnqueuer,
 	enqueueBatchPayloadRefresh,
@@ -13,9 +12,14 @@ import {
 import type { VaultWatchBatchPayload } from "./types"
 import { VAULT_WATCH_BATCH_EVENT } from "./types"
 
-export const createWorkspaceWatchActions = (
+export type WorkspaceWatchActions = {
+	watchWorkspace: () => Promise<void>
+	unwatchWorkspace: () => void
+}
+
+export const createWatchActions = (
 	ctx: WorkspaceActionContext,
-): Pick<WorkspaceSlice, "watchWorkspace" | "unwatchWorkspace"> => ({
+): WorkspaceWatchActions => ({
 	watchWorkspace: async () => {
 		const workspacePath = ctx.get().workspacePath
 		if (!workspacePath) {
@@ -23,7 +27,7 @@ export const createWorkspaceWatchActions = (
 		}
 
 		await deactivateCurrentWatchSession(ctx)
-		ctx.originJournal.clearWorkspace(workspacePath)
+		ctx.runtime.originJournal.clearWorkspace(workspacePath)
 
 		const appWindow = getCurrentWindow()
 		const activeRef = { current: true }
@@ -93,7 +97,7 @@ export const createWorkspaceWatchActions = (
 	unwatchWorkspace: () => {
 		const workspacePath = ctx.get().workspacePath
 		if (workspacePath) {
-			ctx.originJournal.clearWorkspace(workspacePath)
+			ctx.runtime.originJournal.clearWorkspace(workspacePath)
 		}
 		void deactivateCurrentWatchSession(ctx)
 	},

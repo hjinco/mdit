@@ -1,30 +1,29 @@
 import type { LocalMutationJournal } from "@mdit/local-fs-origin"
-import type { AISettingsSlice } from "../ai-settings/ai-settings-slice"
-import type { CollectionSlice } from "../collection/collection-slice"
-import type { GitSyncSlice } from "../git-sync/git-sync-slice"
-import type { TabSlice } from "../tab/tab-slice"
+import type { StoreApi } from "zustand"
 import type { WorkspaceDependencies } from "./workspace-dependencies"
 import type { WorkspacePorts } from "./workspace-ports"
 import type { WorkspaceSlice } from "./workspace-slice"
 
-export type WorkspaceStoreState = WorkspaceSlice &
-	TabSlice &
-	CollectionSlice &
-	GitSyncSlice &
-	AISettingsSlice
+export type WorkspaceStoreState = WorkspaceSlice
 
-export type WorkspaceSetState = (
-	partial:
-		| Partial<WorkspaceStoreState>
-		| ((state: WorkspaceStoreState) => Partial<WorkspaceStoreState>),
-) => void
+export type WorkspaceSetState<
+	TStoreState extends WorkspaceStoreState = WorkspaceStoreState,
+> = StoreApi<TStoreState>["setState"]
 
-export type WorkspaceGetState = () => WorkspaceStoreState
+export type WorkspaceGetState<
+	TStoreState extends WorkspaceStoreState = WorkspaceStoreState,
+> = StoreApi<TStoreState>["getState"]
 
-export type WorkspaceActionContext = {
-	set: WorkspaceSetState
-	get: WorkspaceGetState
+export type WorkspaceRuntime = {
+	originJournal: LocalMutationJournal
+}
+
+export type WorkspaceActionContext<
+	TStoreState extends WorkspaceStoreState = WorkspaceStoreState,
+> = {
+	set: WorkspaceSetState<TStoreState>
+	get: WorkspaceGetState<TStoreState>
 	deps: WorkspaceDependencies
 	ports: WorkspacePorts
-	originJournal: LocalMutationJournal
+	runtime: WorkspaceRuntime
 }

@@ -11,6 +11,8 @@ export type WorkspacePorts = {
 		| "updateHistoryPath"
 		| "removePathsFromHistory"
 		| "clearHistory"
+		| "getActiveTabPath"
+		| "getIsSaved"
 	>
 	collection: Pick<
 		CollectionSlice,
@@ -20,6 +22,7 @@ export type WorkspacePorts = {
 		| "onEntryRenamed"
 		| "onEntryMoved"
 		| "resetCollectionPath"
+		| "getCurrentCollectionPath"
 	>
 	gitSync: Pick<GitSyncSlice, "initGitSync">
 }
@@ -36,6 +39,8 @@ export const createWorkspacePorts = (
 		updateHistoryPath: (...args) => get().updateHistoryPath(...args),
 		removePathsFromHistory: (...args) => get().removePathsFromHistory(...args),
 		clearHistory: (...args) => get().clearHistory(...args),
+		getActiveTabPath: () => get().getActiveTabPath(),
+		getIsSaved: () => get().getIsSaved(),
 	},
 	collection: {
 		refreshCollectionEntries: (...args) =>
@@ -45,6 +50,7 @@ export const createWorkspacePorts = (
 		onEntryRenamed: (...args) => get().onEntryRenamed(...args),
 		onEntryMoved: (...args) => get().onEntryMoved(...args),
 		resetCollectionPath: (...args) => get().resetCollectionPath(...args),
+		getCurrentCollectionPath: () => get().getCurrentCollectionPath(),
 	},
 	gitSync: {
 		initGitSync: (...args) => get().initGitSync(...args),

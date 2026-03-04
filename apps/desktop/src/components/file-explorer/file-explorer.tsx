@@ -7,7 +7,6 @@ import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/us
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
-import { addExpandedDirectory } from "@/store/workspace/helpers/expanded-directories-helpers"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import { FeedbackButton } from "./feedback"
@@ -46,7 +45,7 @@ export function FileExplorer() {
 		workspacePath,
 		entries,
 		expandedDirectories,
-		setExpandedDirectories,
+		expandDirectory,
 		recentWorkspacePaths,
 		toggleDirectory,
 		setWorkspace,
@@ -76,7 +75,7 @@ export function FileExplorer() {
 			workspacePath: state.workspacePath,
 			entries: state.entries,
 			expandedDirectories: state.expandedDirectories,
-			setExpandedDirectories: state.setExpandedDirectories,
+			expandDirectory: state.expandDirectory,
 			recentWorkspacePaths: state.recentWorkspacePaths,
 			toggleDirectory: state.toggleDirectory,
 			setWorkspace: state.setWorkspace,
@@ -188,12 +187,11 @@ export function FileExplorer() {
 	const beginNewFolder = useCallback(
 		(directoryPath: string) => {
 			setPendingNewFolderPath(directoryPath)
-			// Expand the parent directory to show the pending new folder input
-			setExpandedDirectories((prev) =>
-				addExpandedDirectory(prev, directoryPath),
-			)
+			expandDirectory(directoryPath).catch((error) => {
+				console.error("Failed to expand directory:", error)
+			})
 		},
-		[setExpandedDirectories],
+		[expandDirectory],
 	)
 
 	const cancelNewFolder = useCallback(() => {
@@ -255,11 +253,11 @@ export function FileExplorer() {
 				return
 			}
 
-			setExpandedDirectories((prev) =>
-				addExpandedDirectory(prev, directoryPath),
-			)
+			expandDirectory(directoryPath).catch((error) => {
+				console.error("Failed to expand directory:", error)
+			})
 		},
-		[expandedDirectories, setExpandedDirectories],
+		[expandedDirectories, expandDirectory],
 	)
 
 	const createNoteAndScroll = useCallback(

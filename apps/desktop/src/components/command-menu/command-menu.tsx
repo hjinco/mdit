@@ -13,13 +13,9 @@ import useMeasure from "react-use-measure"
 import { useShallow } from "zustand/shallow"
 import { useSemanticNoteSearch } from "@/hooks/use-semantic-note-search"
 import { useStore } from "@/store"
-import { getFileNameFromPath } from "@/utils/path-utils"
+import { getFileNameFromPath, stripMarkdownExtension } from "@/utils/path-utils"
 import { useNoteContentSearch } from "./hooks/use-note-content-search"
-import {
-	stripMarkdownExtension,
-	toRelativePath,
-	useNoteNameSearch,
-} from "./hooks/use-note-name-search"
+import { toRelativePath, useNoteNameSearch } from "./hooks/use-note-name-search"
 import { highlightQuery } from "./utils/highlight-query"
 
 export function CommandMenu() {

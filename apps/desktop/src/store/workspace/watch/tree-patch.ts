@@ -4,7 +4,7 @@ import {
 	normalizePathSeparators,
 } from "@/utils/path-utils"
 
-export { replaceDirectoryChildren } from "../actions/workspace-tree-reconcile"
+export { replaceDirectoryChildren } from "../tree/reconcile"
 
 const hasCollapsedAncestorPath = (
 	path: string,

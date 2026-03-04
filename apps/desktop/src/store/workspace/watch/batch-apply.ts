@@ -4,11 +4,7 @@ import {
 	isPathEqualOrDescendant,
 	normalizePathSeparators,
 } from "@/utils/path-utils"
-import {
-	buildWorkspaceEntries,
-	findEntryByPath,
-	findParentDirectory,
-} from "../helpers/entry-helpers"
+import { findEntryByPath, findParentDirectory } from "../tree/domain/entry-tree"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { collapseDirectoryPaths } from "./tree-patch"
@@ -93,10 +89,7 @@ const buildCreatedEntrySnapshot = async (
 			path,
 			name: getFileNameFromPath(path),
 			isDirectory: true,
-			children: await buildWorkspaceEntries(
-				path,
-				ctx.deps.fileSystemRepository,
-			),
+			children: await ctx.get().readWorkspaceEntriesFromPath(path),
 			createdAt,
 			modifiedAt,
 		}

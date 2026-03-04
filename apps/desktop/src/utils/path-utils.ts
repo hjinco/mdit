@@ -1,6 +1,24 @@
 const PATH_SEGMENT_REGEX = /[/\\]/
 const BACKSLASH_REGEX = /\\/g
 const MULTIPLE_SLASHES_REGEX = /\/{2,}/g
+const MARKDOWN_NOTE_EXTENSION_REGEX = /\.md$/i
+
+export const normalizeSlashes = (value: string): string =>
+	value.replace(BACKSLASH_REGEX, "/")
+
+export const isMarkdownNotePath = (value: string): boolean =>
+	MARKDOWN_NOTE_EXTENSION_REGEX.test(value)
+
+export const stripMarkdownExtension = (value: string): string => {
+	const lowercased = value.toLowerCase()
+	if (lowercased.endsWith(".mdx")) {
+		return value.slice(0, -4)
+	}
+	if (lowercased.endsWith(".md")) {
+		return value.slice(0, -3)
+	}
+	return value
+}
 
 /**
  * Normalizes path separators by converting backslashes to forward slashes,

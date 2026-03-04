@@ -4,10 +4,8 @@ import type {
 } from "@mdit/editor/selection"
 import { basename, dirname } from "pathe"
 import { useStore } from "@/store"
-import {
-	stripMarkdownExtension,
-	toWikiTargetFromAbsolutePath,
-} from "@/store/workspace/helpers/fs-structure-helpers"
+import { stripMarkdownExtension } from "@/utils/path-utils"
+import { toWikiTargetFromAbsolutePath } from "@/utils/wiki-link-utils"
 
 type CreateNoteFn = (
 	directoryPath: string,

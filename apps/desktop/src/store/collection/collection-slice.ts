@@ -37,6 +37,7 @@ export type CollectionSlice = {
 	clearLastCollectionPath: () => void
 	resetCollectionPath: () => void
 	toggleCollectionView: () => void
+	getCurrentCollectionPath: () => string | null
 	refreshCollectionEntries: () => void
 	onEntryCreated: (input: EntryCreatedInput) => void
 	onEntriesDeleted: (input: EntriesDeletedInput) => void
@@ -94,6 +95,8 @@ export const prepareCollectionSlice =
 				})
 			}
 		},
+
+		getCurrentCollectionPath: () => get().currentCollectionPath,
 
 		refreshCollectionEntries: () => {
 			set((state) => ({

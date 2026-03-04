@@ -111,6 +111,8 @@ export type TabSlice = {
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
 	canGoForward: () => boolean
+	getActiveTabPath: () => string | null
+	getIsSaved: () => boolean
 	updateHistoryPath: (oldPath: string, newPath: string) => void
 	removePathsFromHistory: (paths: string[]) => void
 	clearHistory: () => void
@@ -483,6 +485,8 @@ export const prepareTabSlice =
 				const state = get()
 				return state.historyIndex < state.history.length - 1
 			},
+			getActiveTabPath: () => get().tab?.path ?? null,
+			getIsSaved: () => get().isSaved,
 			updateHistoryPath: (oldPath: string, newPath: string) => {
 				const state = get()
 				set({

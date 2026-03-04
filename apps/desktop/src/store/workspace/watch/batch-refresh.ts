@@ -1,5 +1,5 @@
 import { hasHiddenEntryInPaths } from "@/utils/path-utils"
-import { reconcileWorkspaceTreeFromFallback } from "../actions/workspace-tree-reconcile"
+import { reconcileWorkspaceTreeFromFallback } from "../tree/reconcile"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { applyWatchBatchChanges } from "./batch-apply"
 import type { EnqueueBatchRefresh, VaultWatchBatchPayload } from "./types"
@@ -68,7 +68,7 @@ export const enqueueBatchPayloadRefresh = (
 		return
 	}
 
-	const { externalRelPaths } = ctx.originJournal.resolve({
+	const { externalRelPaths } = ctx.runtime.originJournal.resolve({
 		workspacePath,
 		relPaths: visibleChangedPaths,
 	})

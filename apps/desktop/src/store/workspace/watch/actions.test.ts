@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { createWorkspaceActionTestContext } from "../actions/workspace-action-test-helpers"
-import { createWorkspaceWatchActions } from "./index"
+import { createActionTestContext } from "../shared/action-test-helpers"
+import { createWatchActions } from "./index"
 
 const { invokeMock, getCurrentWindowMock, listenMock } = vi.hoisted(() => ({
 	invokeMock: vi.fn(),
@@ -34,8 +34,8 @@ describe("watch/actions", () => {
 
 	it("unwatchWorkspace runs unwatch function and clears state", () => {
 		const { context, setState, getState, originJournal } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		const unwatch = vi.fn()
 		setState({ unwatchFn: unwatch, workspacePath: "/ws" })
 
@@ -47,8 +47,8 @@ describe("watch/actions", () => {
 	})
 
 	it("watchWorkspace clears stale unwatchFn when watch start fails", async () => {
-		const { context, setState, getState } = createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+		const { context, setState, getState } = createActionTestContext()
+		const actions = createWatchActions(context)
 		const previousUnwatch = vi.fn()
 		const unlisten = vi.fn()
 
@@ -70,8 +70,8 @@ describe("watch/actions", () => {
 	})
 
 	it("watchWorkspace waits for previous async unwatch cleanup before start", async () => {
-		const { context, setState } = createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+		const { context, setState } = createActionTestContext()
+		const actions = createWatchActions(context)
 		let resolveCleanup!: () => void
 		const previousUnwatch = vi.fn(
 			() =>
@@ -102,8 +102,8 @@ describe("watch/actions", () => {
 
 	it("ignores non-rescan local-only batches", async () => {
 		const { context, setState, getState, originJournal, deps } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
@@ -143,8 +143,8 @@ describe("watch/actions", () => {
 
 	it("applies file create as entryCreated for external watch changes", async () => {
 		const { context, setState, originJournal, deps, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -203,8 +203,8 @@ describe("watch/actions", () => {
 
 	it("applies directory create as entryCreated with snapshot children", async () => {
 		const { context, setState, originJournal, deps, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -281,8 +281,8 @@ describe("watch/actions", () => {
 
 	it("applies deleted entries via entriesDeleted", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
@@ -319,8 +319,8 @@ describe("watch/actions", () => {
 
 	it("applies deleted directories via entriesDeleted", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
@@ -357,8 +357,8 @@ describe("watch/actions", () => {
 
 	it("maps same-parent move to entryRenamed", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -416,8 +416,8 @@ describe("watch/actions", () => {
 
 	it("maps cross-parent move to entryMoved and preserves newPath", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -481,8 +481,8 @@ describe("watch/actions", () => {
 
 	it("maps cross-parent directory move+rename to entryMoved", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -546,8 +546,8 @@ describe("watch/actions", () => {
 
 	it("updates modified file metadata incrementally", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -599,9 +599,8 @@ describe("watch/actions", () => {
 	})
 
 	it("falls back to partial directory refresh for modified directories", async () => {
-		const { context, setState, originJournal, deps } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+		const { context, setState, originJournal, deps } = createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -645,9 +644,8 @@ describe("watch/actions", () => {
 	})
 
 	it("falls back to parent directory refresh when move source is missing", async () => {
-		const { context, setState, originJournal, deps } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+		const { context, setState, originJournal, deps } = createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -702,8 +700,8 @@ describe("watch/actions", () => {
 
 	it("always refreshes on rescan batches without origin filtering", async () => {
 		const { context, setState, getState, originJournal } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
@@ -729,8 +727,8 @@ describe("watch/actions", () => {
 
 	it("falls back to full refresh when partial fallback refresh fails", async () => {
 		const { context, setState, originJournal, getState } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+			createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -777,9 +775,8 @@ describe("watch/actions", () => {
 	})
 
 	it("filters hidden paths before origin resolution", async () => {
-		const { context, setState, originJournal } =
-			createWorkspaceActionTestContext()
-		const actions = createWorkspaceWatchActions(context)
+		const { context, setState, originJournal } = createActionTestContext()
+		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
 
 		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
