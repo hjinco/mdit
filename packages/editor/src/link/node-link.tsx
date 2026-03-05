@@ -1,7 +1,8 @@
 import { getLinkAttributes } from "@platejs/link"
+import { LinkPlugin } from "@platejs/link/react"
 import type { TLinkElement } from "platejs"
 import type { PlateElementProps } from "platejs/react"
-import { PlateElement } from "platejs/react"
+import { PlateElement, usePluginOption } from "platejs/react"
 import type { AnchorHTMLAttributes, MouseEventHandler } from "react"
 
 type TLinkElementWithWiki = TLinkElement & {
@@ -17,24 +18,36 @@ export function LinkElement(
 		>
 	},
 ) {
+	const isLinkPopoverOpen = usePluginOption(
+		LinkPlugin,
+		"isOpen",
+		props.editor.id,
+	)
 	const linkAttributes = getLinkAttributes(props.editor, props.element)
 	const sanitizedHref = sanitizeLinkHref(props.element.url)
-	const onClick =
+	const defaultOnClick =
 		(props.defaultLinkAttributes
 			?.onClick as MouseEventHandler<HTMLAnchorElement>) ??
 		(linkAttributes.onClick as MouseEventHandler<HTMLAnchorElement> | undefined)
-	const onMouseDown =
+	const defaultOnMouseDown =
 		(props.defaultLinkAttributes
 			?.onMouseDown as MouseEventHandler<HTMLAnchorElement>) ??
 		(linkAttributes.onMouseDown as
 			| MouseEventHandler<HTMLAnchorElement>
 			| undefined)
+	const onClick: MouseEventHandler<HTMLAnchorElement> | undefined =
+		isLinkPopoverOpen
+			? (event) => {
+					event.preventDefault()
+				}
+			: defaultOnClick
+	const onMouseDown = isLinkPopoverOpen ? undefined : defaultOnMouseDown
 
 	return (
 		<PlateElement
 			{...props}
 			as="a"
-			className="cursor-pointer font-medium text-primary underline decoration-primary underline-offset-4 break-all"
+			className={`${isLinkPopoverOpen ? "cursor-text" : "cursor-pointer"} font-medium text-primary underline decoration-primary underline-offset-4 break-all`}
 			attributes={{
 				...props.attributes,
 				...linkAttributes,
