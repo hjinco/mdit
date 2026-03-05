@@ -45,6 +45,8 @@ const restoreLastOpenedFileHistoryFromSettings = async (
 	}
 
 	try {
+		const restorablePaths: string[] = []
+
 		for (const relativePath of lastOpenedFilePaths) {
 			if (ctx.get().workspacePath !== workspacePath) {
 				return
@@ -58,11 +60,20 @@ const restoreLastOpenedFileHistoryFromSettings = async (
 				continue
 			}
 
-			try {
-				await ctx.ports.tab.openTab(absolutePath)
-			} catch (error) {
-				console.debug("Failed to open file from history:", error)
-			}
+			restorablePaths.push(absolutePath)
+		}
+
+		if (restorablePaths.length === 0) {
+			return
+		}
+
+		if (ctx.get().workspacePath !== workspacePath) {
+			return
+		}
+
+		const hydrated = await ctx.ports.tab.hydrateFromOpenedFiles(restorablePaths)
+		if (!hydrated) {
+			console.debug("Failed to hydrate opened file history")
 		}
 	} catch (error) {
 		console.debug("Failed to restore opened file history:", error)

@@ -79,6 +79,7 @@ export function createActionTestContext() {
 
 	const ports = {
 		tab: {
+			hydrateFromOpenedFiles: vi.fn().mockResolvedValue(true),
 			openTab: vi.fn().mockResolvedValue(undefined),
 			closeTab: vi.fn(),
 			renameTab: vi.fn().mockResolvedValue(undefined),

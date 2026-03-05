@@ -190,4 +190,21 @@ describe("tab-slice history selection", () => {
 
 		expect(saveSettings).not.toHaveBeenCalled()
 	})
+
+	it("hydrates history and sets the most recent file as active", async () => {
+		const { store } = createTabStore()
+
+		const hydrated = await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
+
+		expect(hydrated).toBe(true)
+		expect(store.getState().history).toEqual([
+			{ path: "/notes/a.md", selection: null },
+			{ path: "/notes/b.md", selection: null },
+			{ path: "/notes/c.md", selection: null },
+		])
+		expect(store.getState().historyIndex).toBe(2)
+		expect(store.getState().tab?.path).toBe("/notes/c.md")
+	})
 })

@@ -283,32 +283,33 @@ export const prepareTabSlice =
 					return false
 				}
 
-				const initialPath = validPaths[0]
-				const name = getFileNameWithoutExtension(initialPath)
+				const limitedHistory = validPaths
+					.slice(0, MAX_HISTORY_LENGTH)
+					.map<TabHistoryEntry>((path) => ({
+						path,
+						selection: null,
+					}))
+				const activePath = limitedHistory[limitedHistory.length - 1]?.path
+				if (!activePath) {
+					return false
+				}
+
+				const name = getFileNameWithoutExtension(activePath)
 
 				if (!name) {
 					return false
 				}
 
 				try {
-					const content = await readTextFile(initialPath)
-					const limitedHistory = validPaths
-						.slice(0, MAX_HISTORY_LENGTH)
-						.map<TabHistoryEntry>((path) => ({
-							path,
-							selection: null,
-						}))
-					const initialIndex = Math.max(
-						0,
-						limitedHistory.findIndex((entry) => entry.path === initialPath),
-					)
+					const content = await readTextFile(activePath)
+					const activeIndex = limitedHistory.length - 1
 
 					set({
-						tab: { id: ++tabIdCounter, path: initialPath, name, content },
+						tab: { id: ++tabIdCounter, path: activePath, name, content },
 						linkedTab: null,
 						isSaved: true,
 						history: limitedHistory,
-						historyIndex: initialIndex,
+						historyIndex: activeIndex,
 					})
 
 					return true

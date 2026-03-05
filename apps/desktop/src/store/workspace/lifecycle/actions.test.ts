@@ -238,10 +238,13 @@ describe("lifecycle-actions", () => {
 
 		await actions.initializeWorkspace()
 
-		expect(ports.tab.openTab).toHaveBeenCalledTimes(3)
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(1, "/ws/a.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(2, "/ws/b.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(3, "/ws/c.md")
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/a.md",
+			"/ws/b.md",
+			"/ws/c.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 
 	it("initializeWorkspace restores only valid opened file paths", async () => {
@@ -264,9 +267,12 @@ describe("lifecycle-actions", () => {
 
 		await actions.initializeWorkspace()
 
-		expect(ports.tab.openTab).toHaveBeenCalledTimes(2)
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(1, "/ws/valid-a.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(2, "/ws/valid-b.md")
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/valid-a.md",
+			"/ws/valid-b.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 
 	it("initializeWorkspace restores at most five opened file paths", async () => {
@@ -282,11 +288,32 @@ describe("lifecycle-actions", () => {
 
 		await actions.initializeWorkspace()
 
-		expect(ports.tab.openTab).toHaveBeenCalledTimes(5)
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(1, "/ws/2.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(2, "/ws/3.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(3, "/ws/4.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(4, "/ws/5.md")
-		expect(ports.tab.openTab).toHaveBeenNthCalledWith(5, "/ws/6.md")
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/2.md",
+			"/ws/3.md",
+			"/ws/4.md",
+			"/ws/5.md",
+			"/ws/6.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+	})
+
+	it("initializeWorkspace skips tab restore when hydration fails", async () => {
+		const { context, deps, ports } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: ["a.md"],
+		})
+		deps.fileSystemRepository.exists.mockResolvedValue(true)
+		ports.tab.hydrateFromOpenedFiles.mockResolvedValue(false)
+
+		await actions.initializeWorkspace()
+
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 })
