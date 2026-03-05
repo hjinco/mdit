@@ -22,6 +22,7 @@ import { removePathsFromHistory as removePathsFromHistoryEntries } from "./utils
 let tabIdCounter = 0
 
 const MAX_HISTORY_LENGTH = 50
+const MAX_PERSISTED_LAST_OPENED_FILE_PATHS = 5
 
 export type TabSliceDependencies = {
 	readTextFile: (path: string) => Promise<string>
@@ -205,15 +206,18 @@ export const prepareTabSlice =
 			})
 		}
 
-		const persistLastOpenedNotePath = async (path: string) => {
+		const persistLastOpenedFileHistory = async () => {
 			const workspacePath = get().workspacePath
 			if (!workspacePath) {
 				return
 			}
 
-			const relativePath = relative(workspacePath, path)
+			const relativePaths = get()
+				.history.slice(-MAX_PERSISTED_LAST_OPENED_FILE_PATHS)
+				.map((entry) => relative(workspacePath, entry.path))
+
 			await saveSettings(workspacePath, {
-				lastOpenedNotePath: relativePath,
+				lastOpenedFilePaths: relativePaths,
 			})
 		}
 
@@ -349,7 +353,7 @@ export const prepareTabSlice =
 
 					if (!skipHistory) {
 						updateHistoryForOpenedTab(path)
-						await persistLastOpenedNotePath(path)
+						await persistLastOpenedFileHistory()
 					}
 				}
 			},
