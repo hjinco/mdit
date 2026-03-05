@@ -24,17 +24,16 @@ export function LinkElement(
 		props.editor.id,
 	)
 	const linkAttributes = getLinkAttributes(props.editor, props.element)
+	const linkAttributeHandlers = linkAttributes as Pick<
+		AnchorHTMLAttributes<HTMLAnchorElement>,
+		"onClick" | "onMouseDown"
+	>
 	const sanitizedHref = sanitizeLinkHref(props.element.url)
 	const defaultOnClick =
-		(props.defaultLinkAttributes
-			?.onClick as MouseEventHandler<HTMLAnchorElement>) ??
-		(linkAttributes.onClick as MouseEventHandler<HTMLAnchorElement> | undefined)
+		props.defaultLinkAttributes?.onClick ?? linkAttributeHandlers.onClick
 	const defaultOnMouseDown =
-		(props.defaultLinkAttributes
-			?.onMouseDown as MouseEventHandler<HTMLAnchorElement>) ??
-		(linkAttributes.onMouseDown as
-			| MouseEventHandler<HTMLAnchorElement>
-			| undefined)
+		props.defaultLinkAttributes?.onMouseDown ??
+		linkAttributeHandlers.onMouseDown
 	const onClick: MouseEventHandler<HTMLAnchorElement> | undefined =
 		isLinkPopoverOpen
 			? (event) => {
