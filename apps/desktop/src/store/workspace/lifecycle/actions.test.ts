@@ -222,4 +222,98 @@ describe("lifecycle-actions", () => {
 			deps.settingsRepository.persistExpandedDirectories,
 		).toHaveBeenCalledWith("/ws", ["/ws/docs"])
 	})
+
+	it("initializeWorkspace restores opened file history in order", async () => {
+		const { context, deps, ports } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: ["a.md", "b.md", "c.md"],
+		})
+		deps.fileSystemRepository.exists.mockImplementation(async (path: string) =>
+			["/ws/a.md", "/ws/b.md", "/ws/c.md"].includes(path),
+		)
+
+		await actions.initializeWorkspace()
+
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/a.md",
+			"/ws/b.md",
+			"/ws/c.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+	})
+
+	it("initializeWorkspace restores only valid opened file paths", async () => {
+		const { context, deps, ports } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: [
+				"valid-a.md",
+				"../outside.md",
+				"missing.md",
+				"valid-b.md",
+			],
+		})
+		deps.fileSystemRepository.exists.mockImplementation(async (path: string) =>
+			["/ws/valid-a.md", "/ws/valid-b.md", "/outside.md"].includes(path),
+		)
+
+		await actions.initializeWorkspace()
+
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/valid-a.md",
+			"/ws/valid-b.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+	})
+
+	it("initializeWorkspace restores at most five opened file paths", async () => {
+		const { context, deps, ports } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: ["1.md", "2.md", "3.md", "4.md", "5.md", "6.md"],
+		})
+		deps.fileSystemRepository.exists.mockResolvedValue(true)
+
+		await actions.initializeWorkspace()
+
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
+			"/ws/2.md",
+			"/ws/3.md",
+			"/ws/4.md",
+			"/ws/5.md",
+			"/ws/6.md",
+		])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+	})
+
+	it("initializeWorkspace skips tab restore when hydration fails", async () => {
+		const { context, deps, ports } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: ["a.md"],
+		})
+		deps.fileSystemRepository.exists.mockResolvedValue(true)
+		ports.tab.hydrateFromOpenedFiles.mockResolvedValue(false)
+
+		await actions.initializeWorkspace()
+
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+	})
 })

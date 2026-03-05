@@ -5,6 +5,7 @@ import type { TabSlice } from "../tab/tab-slice"
 export type WorkspacePorts = {
 	tab: Pick<
 		TabSlice,
+		| "hydrateFromOpenedFiles"
 		| "openTab"
 		| "closeTab"
 		| "renameTab"
@@ -33,6 +34,7 @@ export const createWorkspacePorts = (
 	get: () => WorkspacePortSource,
 ): WorkspacePorts => ({
 	tab: {
+		hydrateFromOpenedFiles: (...args) => get().hydrateFromOpenedFiles(...args),
 		openTab: (...args) => get().openTab(...args),
 		closeTab: (...args) => get().closeTab(...args),
 		renameTab: (...args) => get().renameTab(...args),

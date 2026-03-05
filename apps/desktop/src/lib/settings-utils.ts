@@ -16,7 +16,7 @@ export type WorkspaceSettings = {
 		autoSync: boolean
 	}
 	pinnedDirectories?: string[]
-	lastOpenedNotePath?: string
+	lastOpenedFilePaths?: string[]
 	expandedDirectories?: string[]
 }
 

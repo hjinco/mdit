@@ -45,6 +45,7 @@ function createTabStore() {
 	return {
 		store,
 		readTextFile,
+		saveSettings,
 	}
 }
 
@@ -163,5 +164,47 @@ describe("tab-slice history selection", () => {
 		expect(
 			store.getState().consumePendingHistorySelectionRestore("/notes/a.md"),
 		).toEqual({ found: true, selection: selectionInA })
+	})
+
+	it("persists up to five recently opened file paths as relative paths", async () => {
+		const { store, saveSettings } = createTabStore()
+		store.setState({ workspacePath: "/workspace" })
+
+		await store.getState().openTab("/workspace/1.md")
+		await store.getState().openTab("/workspace/2.md")
+		await store.getState().openTab("/workspace/3.md")
+		await store.getState().openTab("/workspace/4.md")
+		await store.getState().openTab("/workspace/5.md")
+		await store.getState().openTab("/workspace/6.md")
+
+		expect(saveSettings).toHaveBeenLastCalledWith("/workspace", {
+			lastOpenedFilePaths: ["2.md", "3.md", "4.md", "5.md", "6.md"],
+		})
+	})
+
+	it("does not persist opened file history without a workspace", async () => {
+		const { store, saveSettings } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		await store.getState().openTab("/notes/b.md")
+
+		expect(saveSettings).not.toHaveBeenCalled()
+	})
+
+	it("hydrates history and sets the most recent file as active", async () => {
+		const { store } = createTabStore()
+
+		const hydrated = await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
+
+		expect(hydrated).toBe(true)
+		expect(store.getState().history).toEqual([
+			{ path: "/notes/a.md", selection: null },
+			{ path: "/notes/b.md", selection: null },
+			{ path: "/notes/c.md", selection: null },
+		])
+		expect(store.getState().historyIndex).toBe(2)
+		expect(store.getState().tab?.path).toBe("/notes/c.md")
 	})
 })

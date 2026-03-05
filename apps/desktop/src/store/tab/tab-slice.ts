@@ -22,6 +22,7 @@ import { removePathsFromHistory as removePathsFromHistoryEntries } from "./utils
 let tabIdCounter = 0
 
 const MAX_HISTORY_LENGTH = 50
+const MAX_PERSISTED_LAST_OPENED_FILE_PATHS = 5
 
 export type TabSliceDependencies = {
 	readTextFile: (path: string) => Promise<string>
@@ -205,15 +206,18 @@ export const prepareTabSlice =
 			})
 		}
 
-		const persistLastOpenedNotePath = async (path: string) => {
+		const persistLastOpenedFileHistory = async () => {
 			const workspacePath = get().workspacePath
 			if (!workspacePath) {
 				return
 			}
 
-			const relativePath = relative(workspacePath, path)
+			const relativePaths = get()
+				.history.slice(-MAX_PERSISTED_LAST_OPENED_FILE_PATHS)
+				.map((entry) => relative(workspacePath, entry.path))
+
 			await saveSettings(workspacePath, {
-				lastOpenedNotePath: relativePath,
+				lastOpenedFilePaths: relativePaths,
 			})
 		}
 
@@ -279,32 +283,33 @@ export const prepareTabSlice =
 					return false
 				}
 
-				const initialPath = validPaths[0]
-				const name = getFileNameWithoutExtension(initialPath)
+				const limitedHistory = validPaths
+					.slice(0, MAX_HISTORY_LENGTH)
+					.map<TabHistoryEntry>((path) => ({
+						path,
+						selection: null,
+					}))
+				const activePath = limitedHistory[limitedHistory.length - 1]?.path
+				if (!activePath) {
+					return false
+				}
+
+				const name = getFileNameWithoutExtension(activePath)
 
 				if (!name) {
 					return false
 				}
 
 				try {
-					const content = await readTextFile(initialPath)
-					const limitedHistory = validPaths
-						.slice(0, MAX_HISTORY_LENGTH)
-						.map<TabHistoryEntry>((path) => ({
-							path,
-							selection: null,
-						}))
-					const initialIndex = Math.max(
-						0,
-						limitedHistory.findIndex((entry) => entry.path === initialPath),
-					)
+					const content = await readTextFile(activePath)
+					const activeIndex = limitedHistory.length - 1
 
 					set({
-						tab: { id: ++tabIdCounter, path: initialPath, name, content },
+						tab: { id: ++tabIdCounter, path: activePath, name, content },
 						linkedTab: null,
 						isSaved: true,
 						history: limitedHistory,
-						historyIndex: initialIndex,
+						historyIndex: activeIndex,
 					})
 
 					return true
@@ -349,7 +354,7 @@ export const prepareTabSlice =
 
 					if (!skipHistory) {
 						updateHistoryForOpenedTab(path)
-						await persistLastOpenedNotePath(path)
+						await persistLastOpenedFileHistory()
 					}
 				}
 			},

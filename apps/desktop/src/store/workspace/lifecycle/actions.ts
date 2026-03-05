@@ -11,6 +11,8 @@ export type WorkspaceLifecycleActions = {
 	clearWorkspace: () => Promise<void>
 }
 
+const MAX_RESTORED_LAST_OPENED_FILE_PATHS = 5
+
 const resolveUnwatchFnForWorkspaceTransition = (
 	ctx: WorkspaceActionContext,
 	nextWorkspacePath: string | null,
@@ -28,37 +30,60 @@ const resolveUnwatchFnForWorkspaceTransition = (
 	return null
 }
 
-const restoreLastOpenedNoteFromSettings = async (
+const restoreLastOpenedFileHistoryFromSettings = async (
 	ctx: WorkspaceActionContext,
 	workspacePath: string,
-	settings: { lastOpenedNotePath?: string },
+	settings: { lastOpenedFilePaths?: string[] },
 ) => {
-	const relativePath = settings.lastOpenedNotePath
-	if (!relativePath) {
+	const lastOpenedFilePaths = Array.isArray(settings.lastOpenedFilePaths)
+		? settings.lastOpenedFilePaths
+				.filter((path): path is string => typeof path === "string")
+				.slice(-MAX_RESTORED_LAST_OPENED_FILE_PATHS)
+		: []
+	if (lastOpenedFilePaths.length === 0) {
 		return
 	}
 
-	const absolutePath = resolve(workspacePath, relativePath)
-
 	try {
-		if (
-			isPathEqualOrDescendant(absolutePath, workspacePath) &&
-			(await ctx.deps.fileSystemRepository.exists(absolutePath)) &&
-			ctx.get().workspacePath === workspacePath
-		) {
-			ctx.ports.tab.openTab(absolutePath).catch((error) => {
-				console.debug("Failed to open last opened note:", error)
-			})
+		const restorablePaths: string[] = []
+
+		for (const relativePath of lastOpenedFilePaths) {
+			if (ctx.get().workspacePath !== workspacePath) {
+				return
+			}
+
+			const absolutePath = resolve(workspacePath, relativePath)
+			if (
+				!isPathEqualOrDescendant(absolutePath, workspacePath) ||
+				!(await ctx.deps.fileSystemRepository.exists(absolutePath))
+			) {
+				continue
+			}
+
+			restorablePaths.push(absolutePath)
+		}
+
+		if (restorablePaths.length === 0) {
+			return
+		}
+
+		if (ctx.get().workspacePath !== workspacePath) {
+			return
+		}
+
+		const hydrated = await ctx.ports.tab.hydrateFromOpenedFiles(restorablePaths)
+		if (!hydrated) {
+			console.debug("Failed to hydrate opened file history")
 		}
 	} catch (error) {
-		console.debug("Failed to restore last opened note:", error)
+		console.debug("Failed to restore opened file history:", error)
 	}
 }
 
 const bootstrapWorkspace = async (
 	ctx: WorkspaceActionContext,
 	workspacePath: string,
-	options?: { restoreLastOpenedNote?: boolean },
+	options?: { restoreLastOpenedFiles?: boolean },
 ) => {
 	let migrationsComplete = false
 
@@ -106,8 +131,12 @@ const bootstrapWorkspace = async (
 		})
 		ctx.set({ isTreeLoading: false })
 
-		if (options?.restoreLastOpenedNote) {
-			await restoreLastOpenedNoteFromSettings(ctx, workspacePath, settings)
+		if (options?.restoreLastOpenedFiles) {
+			await restoreLastOpenedFileHistoryFromSettings(
+				ctx,
+				workspacePath,
+				settings,
+			)
 		}
 	} catch (error) {
 		if (ctx.get().workspacePath === workspacePath) {
@@ -163,7 +192,7 @@ export const createLifecycleActions = (
 			if (workspacePath) {
 				await ctx.ports.gitSync.initGitSync(workspacePath)
 				await bootstrapWorkspace(ctx, workspacePath, {
-					restoreLastOpenedNote: true,
+					restoreLastOpenedFiles: true,
 				})
 			} else {
 				ctx.set({ isMigrationsComplete: true })
