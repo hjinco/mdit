@@ -5,7 +5,6 @@ import {
 	CREDENTIAL_PROVIDER_IDS,
 	type ProviderId,
 } from "@mdit/ai"
-import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -15,13 +14,6 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
-import { Input } from "@mdit/ui/components/input"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-} from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink, Loader2Icon, RefreshCcwIcon } from "lucide-react"
@@ -34,6 +26,14 @@ import {
 	handleChatModelSelectChange,
 	resolveSelectedChatModelSelectValue,
 } from "./ai-tab-chat-model"
+import { SettingsButton } from "./settings-button"
+import { SettingsInput } from "./settings-input"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SettingsSelectTrigger,
+} from "./settings-select"
 
 export function AITab() {
 	const {
@@ -144,7 +144,7 @@ export function AITab() {
 								}}
 								disabled={enabledChatModels.length === 0}
 							>
-								<SelectTrigger size="sm">
+								<SettingsSelectTrigger className="w-[240px]">
 									{selectedChatModelLabel ?? (
 										<span className="text-muted-foreground">
 											{enabledChatModels.length === 0
@@ -152,7 +152,7 @@ export function AITab() {
 												: "Select model"}
 										</span>
 									)}
-								</SelectTrigger>
+								</SettingsSelectTrigger>
 								<SelectContent align="end">
 									{chatModelSelectOptions.map(({ model, value }) => (
 										<SelectItem key={value} value={value}>
@@ -252,7 +252,7 @@ export function AITab() {
 
 								{definition.authKind === "oauth" ? (
 									<div className="flex items-center gap-2">
-										<Button
+										<SettingsButton
 											variant="outline"
 											disabled={isBusy}
 											onClick={() => {
@@ -272,7 +272,7 @@ export function AITab() {
 												: isConnected
 													? "Disconnect"
 													: "Connect"}
-										</Button>
+										</SettingsButton>
 									</div>
 								) : (
 									<ConnectProvider
@@ -302,9 +302,8 @@ export function AITab() {
 								Fetch models from your local Ollama instance when needed
 							</FieldDescription>
 						</FieldContent>
-						<Button
+						<SettingsButton
 							variant="outline"
-							size="sm"
 							disabled={isRefreshingModels}
 							onClick={() => void refreshOllamaModels()}
 						>
@@ -314,7 +313,7 @@ export function AITab() {
 								<RefreshCcwIcon className="size-4" />
 							)}
 							Refresh
-						</Button>
+						</SettingsButton>
 					</Field>
 				</FieldGroup>
 			</FieldSet>
@@ -358,7 +357,7 @@ function ConnectProvider({
 
 	return (
 		<div className="flex items-center gap-2">
-			<Input
+			<SettingsInput
 				ref={inputRef}
 				defaultValue={isConnected ? "****************" : undefined}
 				type="password"
@@ -367,13 +366,13 @@ function ConnectProvider({
 				spellCheck="false"
 				disabled={isBusy}
 			/>
-			<Button
+			<SettingsButton
 				variant="outline"
 				onClick={() => void handleConnect()}
 				disabled={isBusy}
 			>
 				{isBusy ? "Processing..." : isConnected ? "Disconnect" : "Connect"}
-			</Button>
+			</SettingsButton>
 		</div>
 	)
 }

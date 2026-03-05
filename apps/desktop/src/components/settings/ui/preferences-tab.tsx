@@ -7,15 +7,15 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
+import { Monitor, Moon, Sun } from "lucide-react"
+import { useTheme } from "@/contexts/theme-context"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
-	SelectTrigger,
 	SelectValue,
-} from "@mdit/ui/components/select"
-import { Monitor, Moon, Sun } from "lucide-react"
-import { useTheme } from "@/contexts/theme-context"
+	SettingsSelectTrigger,
+} from "./settings-select"
 
 export function PreferencesTab() {
 	const { theme, setTheme } = useTheme()
@@ -49,9 +49,9 @@ export function PreferencesTab() {
 								setTheme(value as "light" | "dark" | "system")
 							}
 						>
-							<SelectTrigger size="sm">
+							<SettingsSelectTrigger className="w-32">
 								<SelectValue />
-							</SelectTrigger>
+							</SettingsSelectTrigger>
 							<SelectContent align="end">
 								{themeOptions.map((option) => (
 									<SelectItem key={option.value} value={option.value}>

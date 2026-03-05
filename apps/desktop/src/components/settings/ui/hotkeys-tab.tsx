@@ -1,4 +1,3 @@
-import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -24,6 +23,7 @@ import {
 	type AppHotkeyCategory,
 } from "@/lib/hotkeys"
 import { useStore } from "@/store"
+import { SettingsButton } from "./settings-button"
 
 const HOTKEY_LABEL_BY_ID: Record<AppHotkeyActionId, string> =
 	APP_HOTKEY_DEFINITIONS.reduce(
@@ -132,29 +132,28 @@ export function HotkeysTab() {
 
 	return (
 		<div className="flex-1 overflow-y-auto p-12">
-			<FieldSet>
-				<div className="flex items-start justify-between gap-3">
+			<FieldSet className="gap-4">
+				<div className="flex items-start justify-between gap-3 px-2">
 					<div>
-						<FieldLegend>Hotkeys</FieldLegend>
-						<FieldDescription>
+						<FieldLegend className="mb-1 text-sm">Hotkeys</FieldLegend>
+						<FieldDescription className="text-xs">
 							Customize keyboard shortcuts used throughout the app
 						</FieldDescription>
 					</div>
-					<Button
+					<SettingsButton
 						variant="ghost"
-						size="sm"
 						onClick={() => void resetAllBindings()}
 					>
 						Reset to defaults
-					</Button>
+					</SettingsButton>
 				</div>
 
 				{groupedDefinitions.map((group) => (
-					<div key={group.category} className="mt-8 first:mt-0">
-						<h3 className="text-sm font-medium text-muted-foreground">
+					<div key={group.category} className="mt-4 first:mt-0">
+						<h3 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
 							{APP_HOTKEY_CATEGORY_LABELS[group.category]}
 						</h3>
-						<FieldGroup className="mt-3">
+						<FieldGroup className="mt-1 flex flex-col gap-0.5">
 							{group.definitions.map((definition) => {
 								const isRecording =
 									recorder.isRecording && recordingActionId === definition.id
@@ -166,21 +165,23 @@ export function HotkeysTab() {
 									<Field
 										key={definition.id}
 										orientation="horizontal"
-										className="items-start"
+										className="items-center rounded px-2 py-1 transition-colors hover:bg-muted/50"
 									>
 										<FieldContent>
-											<FieldLabel>{definition.label}</FieldLabel>
+											<FieldLabel className="text-sm font-medium text-foreground/80">
+												{definition.label}
+											</FieldLabel>
 											{errors[definition.id] && (
-												<FieldDescription className="text-destructive">
+												<FieldDescription className="text-destructive text-xs">
 													{errors[definition.id]}
 												</FieldDescription>
 											)}
 										</FieldContent>
-										<div className="flex flex-wrap items-center justify-end gap-2">
+										<div className="flex flex-wrap items-center justify-end gap-1.5">
 											{!isDefaultBinding && (
-												<Button
+												<SettingsButton
 													variant="ghost"
-													size="icon"
+													mode="icon"
 													onClick={() =>
 														void restoreDefaultBinding(
 															definition.id,
@@ -189,8 +190,8 @@ export function HotkeysTab() {
 													}
 													title="Restore default shortcut"
 												>
-													<IconRefresh className="size-4" />
-												</Button>
+													<IconRefresh className="size-3.5" />
+												</SettingsButton>
 											)}
 											{hasBinding ? (
 												<HotkeyKbd binding={binding} />
@@ -199,9 +200,9 @@ export function HotkeysTab() {
 													Unassigned
 												</span>
 											)}
-											<Button
+											<SettingsButton
 												variant="secondary"
-												size="icon"
+												mode="icon"
 												onClick={() => {
 													if (isRecording) {
 														cancelRecording()
@@ -218,7 +219,7 @@ export function HotkeysTab() {
 												) : (
 													<IconCircleFilled className="size-3 text-red-500/90" />
 												)}
-											</Button>
+											</SettingsButton>
 										</div>
 									</Field>
 								)

@@ -1,4 +1,3 @@
-import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -8,7 +7,6 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
-import { Input } from "@mdit/ui/components/input"
 import { Switch } from "@mdit/ui/components/switch"
 import { Check, Copy } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -20,6 +18,8 @@ import {
 	rotateLocalApiAuthToken,
 } from "@/lib/local-api-auth"
 import { useStore } from "@/store"
+import { SettingsButton } from "./settings-button"
+import { SettingsInput } from "./settings-input"
 
 const REST_APIS = [
 	{
@@ -219,18 +219,18 @@ export function ApiMcpTab() {
 						</FieldContent>
 						<div className="flex items-center gap-2 mt-2">
 							<div className="relative flex-1">
-								<Input
+								<SettingsInput
 									readOnly
 									type="text"
 									value={token}
 									placeholder="Loading token..."
-									className="font-mono text-xs pr-10"
+									className="font-mono pr-10"
 								/>
 								<div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-									<Button
+									<SettingsButton
 										variant="ghost"
-										size="icon"
-										className="h-7 w-7 text-muted-foreground hover:text-foreground"
+										mode="icon"
+										className="text-muted-foreground hover:text-foreground"
 										onClick={handleCopyToken}
 										disabled={!token}
 										title="Copy Token"
@@ -240,16 +240,16 @@ export function ApiMcpTab() {
 										) : (
 											<Copy className="size-4" />
 										)}
-									</Button>
+									</SettingsButton>
 								</div>
 							</div>
-							<Button
+							<SettingsButton
 								variant="secondary"
 								className="shrink-0"
 								onClick={handleRotateToken}
 							>
 								Regenerate
-							</Button>
+							</SettingsButton>
 						</div>
 					</Field>
 				</FieldGroup>
@@ -313,10 +313,10 @@ export function ApiMcpTab() {
 										? client.snippet.replace(/<TOKEN>/g, token)
 										: client.snippet}
 								</pre>
-								<Button
+								<SettingsButton
 									variant="ghost"
-									size="icon"
-									className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-foreground opacity-0 group-hover\/snippet:opacity-100 transition-opacity"
+									mode="icon"
+									className="absolute right-2 top-2 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/snippet:opacity-100"
 									onClick={() =>
 										copyToClipboard(
 											token
@@ -329,7 +329,7 @@ export function ApiMcpTab() {
 									title="Copy Snippet"
 								>
 									<Copy className="size-3" />
-								</Button>
+								</SettingsButton>
 							</div>
 						</Field>
 					))}

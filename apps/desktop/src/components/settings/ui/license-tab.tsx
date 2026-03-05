@@ -1,4 +1,3 @@
-import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -8,12 +7,13 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
-import { Input } from "@mdit/ui/components/input"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { CheckCircle2, Loader2, XCircle } from "lucide-react"
 import { type ChangeEvent, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { SettingsButton } from "./settings-button"
+import { SettingsInput } from "./settings-input"
 
 export function LicenseTab() {
 	const {
@@ -110,7 +110,7 @@ export function LicenseTab() {
 								</FieldDescription>
 							</FieldContent>
 							<div className="flex items-start gap-2 mt-2">
-								<Button
+								<SettingsButton
 									variant="outline"
 									onClick={handleDeactivate}
 									disabled={isLoading}
@@ -123,7 +123,7 @@ export function LicenseTab() {
 									) : (
 										"Deactivate License"
 									)}
-								</Button>
+								</SettingsButton>
 							</div>
 							{error && (
 								<p className="text-sm text-destructive mt-2">{error}</p>
@@ -141,7 +141,7 @@ export function LicenseTab() {
 							</FieldContent>
 							<div className="flex items-start gap-2 mt-2">
 								<div className="flex-1">
-									<Input
+									<SettingsInput
 										id="license-key"
 										type="text"
 										placeholder="XXXX-XXXX-XXXX-XXXX"
@@ -159,7 +159,7 @@ export function LicenseTab() {
 										<p className="text-sm text-destructive mt-2">{error}</p>
 									)}
 								</div>
-								<Button
+								<SettingsButton
 									variant="outline"
 									onClick={handleActivate}
 									disabled={isLoading || !licenseKey}
@@ -172,7 +172,7 @@ export function LicenseTab() {
 									) : (
 										"Activate"
 									)}
-								</Button>
+								</SettingsButton>
 							</div>
 						</Field>
 					)}
