@@ -1,16 +1,23 @@
+import {
+	GraphCanvas,
+	type GraphNode,
+	type GraphViewData,
+} from "@mdit/graph-view"
 import { Button } from "@mdit/ui/components/button"
 import { Dialog, DialogContent, DialogTitle } from "@mdit/ui/components/dialog"
 import { invoke } from "@tauri-apps/api/core"
-import { resolve } from "pathe"
+import { relative, resolve } from "pathe"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
-import { GraphCanvas } from "./graph-canvas"
-import type { GraphNodeOpenAction, GraphViewData } from "./types"
 
 const EMPTY_GRAPH_DATA: GraphViewData = {
 	nodes: [],
 	edges: [],
+}
+
+function normalizeGraphPath(value: string) {
+	return value.replace(/\\/g, "/")
 }
 
 export function GraphViewDialog() {
@@ -19,12 +26,14 @@ export function GraphViewDialog() {
 		setGraphViewDialogOpen,
 		workspacePath,
 		openTab,
+		tabPath,
 	} = useStore(
 		useShallow((state) => ({
 			isGraphViewDialogOpen: state.isGraphViewDialogOpen,
 			setGraphViewDialogOpen: state.setGraphViewDialogOpen,
 			workspacePath: state.workspacePath,
 			openTab: state.openTab,
+			tabPath: state.tab?.path ?? null,
 		})),
 	)
 
@@ -82,9 +91,17 @@ export function GraphViewDialog() {
 		fetchGraphData()
 	}, [fetchGraphData, isGraphViewDialogOpen])
 
+	const activeRelPath = (() => {
+		if (!workspacePath || !tabPath) {
+			return null
+		}
+
+		return normalizeGraphPath(relative(workspacePath, tabPath))
+	})()
+
 	const handleNodeAction = useCallback(
-		(action: GraphNodeOpenAction) => {
-			if (action.type === "unresolved") {
+		(node: GraphNode) => {
+			if (node.unresolved) {
 				return
 			}
 
@@ -92,7 +109,7 @@ export function GraphViewDialog() {
 				return
 			}
 
-			openTab(resolve(workspacePath, action.relPath))
+			openTab(resolve(workspacePath, node.relPath))
 			setGraphViewDialogOpen(false)
 		},
 		[openTab, setGraphViewDialogOpen, workspacePath],
@@ -136,7 +153,11 @@ export function GraphViewDialog() {
 							</div>
 						</div>
 					) : hasNodes ? (
-						<GraphCanvas data={data} onNodeAction={handleNodeAction} />
+						<GraphCanvas
+							data={data}
+							activeRelPath={activeRelPath}
+							onNodeSelect={handleNodeAction}
+						/>
 					) : isLoading ? null : (
 						<div className="h-full flex items-center justify-center text-sm text-muted-foreground">
 							Empty

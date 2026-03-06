@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import {
 	buildNodeDegreeMap,
 	getGraphDegradeProfile,
-	getNodeOpenAction,
 	getNodeVisualState,
 	sampleEdgesForRender,
 	toRenderNodes,
@@ -67,22 +66,6 @@ describe("getNodeVisualState", () => {
 	it("returns unresolved style for ghost nodes", () => {
 		expect(getNodeVisualState(fixture.nodes[2])).toBe("unresolved")
 		expect(getNodeVisualState(fixture.nodes[0])).toBe("resolved")
-	})
-})
-
-describe("getNodeOpenAction", () => {
-	it("returns open action for resolved nodes", () => {
-		expect(getNodeOpenAction(fixture.nodes[0])).toEqual({
-			type: "open",
-			relPath: "a.md",
-		})
-	})
-
-	it("returns unresolved action for ghost nodes", () => {
-		expect(getNodeOpenAction(fixture.nodes[2])).toEqual({
-			type: "unresolved",
-			relPath: "missing.md",
-		})
 	})
 })
 

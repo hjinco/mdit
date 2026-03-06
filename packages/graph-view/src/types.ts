@@ -16,16 +16,6 @@ export type GraphViewData = {
 	edges: GraphEdge[]
 }
 
-export type GraphNodeOpenAction =
-	| {
-			type: "open"
-			relPath: string
-	  }
-	| {
-			type: "unresolved"
-			relPath: string
-	  }
-
 export type GraphRenderNode = GraphNode & {
 	degree: number
 }

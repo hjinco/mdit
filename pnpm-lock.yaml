@@ -62,6 +62,9 @@ importers:
       '@mdit/git-sync':
         specifier: workspace:*
         version: link:../../packages/git-sync
+      '@mdit/graph-view':
+        specifier: workspace:*
+        version: link:../../packages/graph-view
       '@mdit/license':
         specifier: workspace:*
         version: link:../../packages/license
@@ -695,6 +698,31 @@ importers:
 
   packages/git-sync:
     devDependencies:
+      vitest:
+        specifier: ^4.0.9
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2)
+
+  packages/graph-view:
+    dependencies:
+      '@mdit/ui':
+        specifier: workspace:*
+        version: link:../ui
+      d3-force:
+        specifier: ^3.0.0
+        version: 3.0.0
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
+    devDependencies:
+      '@mdit/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/d3-force':
+        specifier: ^3.0.10
+        version: 3.0.10
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
       vitest:
         specifier: ^4.0.9
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(yaml@2.8.2)
