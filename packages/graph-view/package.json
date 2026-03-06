@@ -1,0 +1,23 @@
+{
+	"name": "@mdit/graph-view",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"test": "vitest run"
+	},
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"dependencies": {
+		"@mdit/ui": "workspace:*",
+		"d3-force": "^3.0.0",
+		"react": "^19.2.4"
+	},
+	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
+		"@types/d3-force": "^3.0.10",
+		"@types/react": "^19.2.14",
+		"vitest": "^4.0.9"
+	}
+}

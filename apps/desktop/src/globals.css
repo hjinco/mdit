@@ -4,6 +4,7 @@
 
 @source "../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../packages/editor/src/**/*.{ts,tsx}";
+@source "../../../packages/graph-view/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 

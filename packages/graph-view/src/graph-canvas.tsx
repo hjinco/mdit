@@ -8,7 +8,6 @@ import {
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force"
-import { relative } from "pathe"
 import {
 	type PointerEvent,
 	useCallback,
@@ -18,17 +17,14 @@ import {
 	useState,
 	type WheelEvent,
 } from "react"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
 import {
 	getGraphDegradeProfile,
-	getNodeOpenAction,
 	sampleEdgesForRender,
 	toRenderNodes,
 } from "./graph-utils"
 import type {
 	GraphEdge,
-	GraphNodeOpenAction,
+	GraphNode,
 	GraphRenderNode,
 	GraphViewData,
 } from "./types"
@@ -51,6 +47,13 @@ type ViewState = {
 	scale: number
 }
 
+type GraphCanvasProps = {
+	data: GraphViewData
+	activeRelPath?: string | null
+	onNodeSelect?: (node: GraphNode) => void
+	className?: string
+}
+
 const DEFAULT_WIDTH = 960
 const DEFAULT_HEIGHT = 640
 const MIN_SCALE = 0.2
@@ -61,10 +64,6 @@ const VIEW_INTERPOLATION = 0.24
 
 function clamp(value: number, min: number, max: number) {
 	return Math.min(max, Math.max(min, value))
-}
-
-function normalizeGraphPath(value: string) {
-	return value.replace(/\\/g, "/")
 }
 
 function getNodeRadius(node: Pick<GraphRenderNode, "unresolved" | "degree">) {
@@ -79,11 +78,7 @@ function getFittedView(
 	nodes: PositionedNode[],
 	width: number,
 	height: number,
-): {
-	x: number
-	y: number
-	scale: number
-} {
+): ViewState {
 	if (!nodes.length) {
 		return { x: 0, y: 0, scale: 1 }
 	}
@@ -122,17 +117,10 @@ function getFittedView(
 
 export function GraphCanvas({
 	data,
-	onNodeAction,
-}: {
-	data: GraphViewData
-	onNodeAction: (action: GraphNodeOpenAction) => void
-}) {
-	const { tabPath, workspacePath } = useStore(
-		useShallow((state) => ({
-			tabPath: state.tab?.path ?? null,
-			workspacePath: state.workspacePath,
-		})),
-	)
+	activeRelPath = null,
+	onNodeSelect,
+	className,
+}: GraphCanvasProps) {
 	const containerRef = useRef<HTMLDivElement | null>(null)
 	const svgRef = useRef<SVGSVGElement | null>(null)
 
@@ -252,12 +240,6 @@ export function GraphCanvas({
 		() => getGraphDegradeProfile(data.nodes.length, data.edges.length),
 		[data.edges.length, data.nodes.length],
 	)
-	const currentTabRelPath = useMemo(() => {
-		if (!workspacePath || !tabPath) {
-			return null
-		}
-		return normalizeGraphPath(relative(workspacePath, tabPath))
-	}, [tabPath, workspacePath])
 
 	useEffect(() => {
 		const target = containerRef.current
@@ -549,7 +531,7 @@ export function GraphCanvas({
 		event.currentTarget.releasePointerCapture(event.pointerId)
 
 		if (movedDistance < 4) {
-			onNodeAction(getNodeOpenAction(node))
+			onNodeSelect?.(node)
 		}
 	}
 
@@ -598,7 +580,10 @@ export function GraphCanvas({
 		.filter(Boolean)
 
 	return (
-		<div ref={containerRef} className="h-full w-full bg-muted/15">
+		<div
+			ref={containerRef}
+			className={cn("h-full w-full bg-muted/15", className)}
+		>
 			{size ? (
 				<svg
 					ref={svgRef}
@@ -620,12 +605,12 @@ export function GraphCanvas({
 					<g transform={`translate(${view.x},${view.y}) scale(${view.scale})`}>
 						{renderLines}
 						{nodes.map((node) => {
-							const isCurrentTabNode =
-								currentTabRelPath !== null && node.relPath === currentTabRelPath
+							const isCurrentNode =
+								activeRelPath !== null && node.relPath === activeRelPath
 							const isFocused =
 								hoveredNodeId === node.id || selectedNodeId === node.id
 							const showLabel =
-								isCurrentTabNode ||
+								isCurrentNode ||
 								isFocused ||
 								view.scale >= degradeProfile.labelVisibleScale
 							const radius = getNodeRadius(node)
@@ -648,7 +633,7 @@ export function GraphCanvas({
 										setHoveredNodeId((prev) => (prev === node.id ? null : prev))
 									}
 								>
-									{isCurrentTabNode && (
+									{isCurrentNode && (
 										<circle
 											r={radius + 5.6}
 											className="fill-primary/20 stroke-primary/60 stroke-[1.6]"
@@ -656,13 +641,11 @@ export function GraphCanvas({
 									)}
 									<circle
 										r={
-											radius +
-											(isFocused ? 2.1 : 0) +
-											(isCurrentTabNode ? 2.4 : 0)
+											radius + (isFocused ? 2.1 : 0) + (isCurrentNode ? 2.4 : 0)
 										}
 										className={cn(
 											"transition-colors",
-											isCurrentTabNode
+											isCurrentNode
 												? node.unresolved
 													? "fill-transparent stroke-primary stroke-[2.2]"
 													: "fill-primary/90 stroke-primary stroke-[2.2]"

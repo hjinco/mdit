@@ -1,7 +1,6 @@
 import type {
 	GraphEdge,
 	GraphNode,
-	GraphNodeOpenAction,
 	GraphRenderNode,
 	GraphViewData,
 } from "./types"
@@ -115,18 +114,4 @@ export function sampleEdgesForRender(
 
 export function getNodeVisualState(node: GraphNode): "resolved" | "unresolved" {
 	return node.unresolved ? "unresolved" : "resolved"
-}
-
-export function getNodeOpenAction(node: GraphNode): GraphNodeOpenAction {
-	if (node.unresolved) {
-		return {
-			type: "unresolved",
-			relPath: node.relPath,
-		}
-	}
-
-	return {
-		type: "open",
-		relPath: node.relPath,
-	}
 }
