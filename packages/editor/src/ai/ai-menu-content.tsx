@@ -196,6 +196,18 @@ export function AIMenuContent({
 		}
 	}, [input, isLoading, adjustTextareaHeight])
 
+	useEffect(() => {
+		if (isLoading) return
+
+		const frame = requestAnimationFrame(() => {
+			textareaRef.current?.focus({ preventScroll: true })
+		})
+
+		return () => {
+			cancelAnimationFrame(frame)
+		}
+	}, [isLoading])
+
 	const canSubmit = Boolean(
 		chatConfig && !isLoading && !value && isLicenseValid,
 	)
@@ -222,7 +234,6 @@ export function AIMenuContent({
 				>
 					<CommandPrimitive.Input
 						asChild
-						autoFocus
 						data-plate-focus
 						onClick={onInputClick}
 						onKeyDown={(event) => {
