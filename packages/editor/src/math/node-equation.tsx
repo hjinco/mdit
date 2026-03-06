@@ -299,12 +299,25 @@ const EquationPopoverContent = ({
 	const editor = useEditorRef()
 	const readOnly = useReadOnly()
 	const element = useElement<TEquationElement>()
+	const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
 	useEffect(() => {
 		if (isInline && open) {
 			setOpen(true)
 		}
 	}, [isInline, open, setOpen])
+
+	useEffect(() => {
+		if (!open) return
+
+		const frame = requestAnimationFrame(() => {
+			inputRef.current?.focus({ preventScroll: true })
+		})
+
+		return () => {
+			cancelAnimationFrame(frame)
+		}
+	}, [open])
 
 	if (readOnly) return null
 
@@ -352,12 +365,12 @@ const EquationPopoverContent = ({
 			align="start"
 		>
 			<EquationInput
+				ref={inputRef}
 				className={cn(
 					"max-h-[50vh] grow resize-none p-2 text-sm outline-none",
 					className,
 				)}
 				state={{ isInline, open, onClose }}
-				autoFocus
 				spellCheck={false}
 				autoCapitalize="off"
 				onKeyDown={(e) => {
