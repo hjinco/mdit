@@ -3,7 +3,6 @@ import type { ReactNode } from "react"
 const escapeRegExp = (value: string) =>
 	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
-// Highlight occurrences of the query using <mark> nodes while preserving the original text structure.
 export const highlightQuery = (text: string, query: string): ReactNode => {
 	if (!query) {
 		return text
@@ -44,7 +43,6 @@ export const highlightQuery = (text: string, query: string): ReactNode => {
 
 		return fragments.length > 0 ? fragments : text
 	} catch {
-		// Fall back gracefully when the query cannot be turned into a RegExp (e.g. unmatched brackets).
 		return text
 	}
 }

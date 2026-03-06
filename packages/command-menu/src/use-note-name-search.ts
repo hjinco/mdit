@@ -1,7 +1,6 @@
 import { useMemo } from "react"
-
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { stripMarkdownExtension } from "@/utils/path-utils"
+import { stripMarkdownExtension } from "./path-utils"
+import type { CommandMenuEntry } from "./types"
 
 export type NoteResult = {
 	path: string
@@ -14,7 +13,8 @@ export type NoteResult = {
 
 const MARKDOWN_EXTENSION_REGEX = /\.md$/i
 const RECENT_NOTES_LIMIT = 5
-const isMarkdownFile = (entry: WorkspaceEntry) =>
+
+const isMarkdownFile = (entry: CommandMenuEntry) =>
 	!entry.isDirectory && MARKDOWN_EXTENSION_REGEX.test(entry.name)
 
 export const toRelativePath = (
@@ -34,15 +34,15 @@ export const toRelativePath = (
 		if (separator === "/" || separator === "\\") {
 			return fullPath.slice(workspacePath.length + 1)
 		}
+
 		return fullPath.slice(workspacePath.length)
 	}
 
 	return fullPath
 }
 
-// Shape a workspace entry into the structure the command palette expects.
 const createNoteResult = (
-	entry: WorkspaceEntry,
+	entry: CommandMenuEntry,
 	workspacePath: string | null,
 ): NoteResult => {
 	const label = stripMarkdownExtension(entry.name).trim() || entry.name
@@ -58,15 +58,18 @@ const createNoteResult = (
 	}
 }
 
-const collectNotes = (
-	entries: WorkspaceEntry[],
+export const collectMarkdownNotes = (
+	entries: CommandMenuEntry[],
 	workspacePath: string | null,
 ) => {
 	const results: NoteResult[] = []
-	const stack: WorkspaceEntry[] = [...entries]
+	const stack = [...entries]
 
 	while (stack.length > 0) {
-		const node = stack.pop()!
+		const node = stack.pop()
+		if (!node) {
+			continue
+		}
 
 		if (isMarkdownFile(node)) {
 			results.push(createNoteResult(node, workspacePath))
@@ -80,14 +83,52 @@ const collectNotes = (
 	return results
 }
 
+const takeRecentNotes = (noteResults: NoteResult[]) => {
+	const recentNotes: NoteResult[] = []
+
+	for (const note of noteResults) {
+		const noteTime = note.modifiedAt?.getTime() ?? 0
+		if (
+			recentNotes.length === RECENT_NOTES_LIMIT &&
+			noteTime <=
+				(recentNotes[RECENT_NOTES_LIMIT - 1]?.modifiedAt?.getTime() ?? 0)
+		) {
+			continue
+		}
+
+		const insertAt = recentNotes.findIndex(
+			(recentNote) => noteTime > (recentNote.modifiedAt?.getTime() ?? 0),
+		)
+
+		recentNotes.splice(insertAt === -1 ? recentNotes.length : insertAt, 0, note)
+
+		if (recentNotes.length > RECENT_NOTES_LIMIT) {
+			recentNotes.pop()
+		}
+	}
+
+	return recentNotes
+}
+
+export const filterNoteResults = (noteResults: NoteResult[], query: string) => {
+	const normalizedQuery = query.trim().toLowerCase()
+
+	if (!normalizedQuery) {
+		return takeRecentNotes(noteResults)
+	}
+
+	return noteResults.filter((note) =>
+		note.normalizedLabel.includes(normalizedQuery),
+	)
+}
+
 export const useNoteNameSearch = (
-	entries: WorkspaceEntry[],
+	entries: CommandMenuEntry[],
 	workspacePath: string | null,
 	query: string,
 ) => {
-	// Build a stable, sorted note index any time the workspace tree changes.
 	const noteResults = useMemo(
-		() => collectNotes(entries, workspacePath),
+		() => collectMarkdownNotes(entries, workspacePath),
 		[entries, workspacePath],
 	)
 
@@ -99,50 +140,14 @@ export const useNoteNameSearch = (
 		return map
 	}, [noteResults])
 
-	// Trim/normalize the incoming search so substring comparisons are simple.
-	const normalizedQuery = useMemo(() => query.trim().toLowerCase(), [query])
-
-	const filteredNoteResults = useMemo(() => {
-		if (!normalizedQuery) {
-			// When query is empty, keep only the top N most recently modified notes.
-			const recentNotes: NoteResult[] = []
-			for (const note of noteResults) {
-				const noteTime = note.modifiedAt?.getTime() ?? 0
-				if (
-					recentNotes.length === RECENT_NOTES_LIMIT &&
-					noteTime <=
-						(recentNotes[RECENT_NOTES_LIMIT - 1].modifiedAt?.getTime() ?? 0)
-				) {
-					continue
-				}
-
-				const insertAt = recentNotes.findIndex(
-					(recentNote) => noteTime > (recentNote.modifiedAt?.getTime() ?? 0),
-				)
-
-				recentNotes.splice(
-					insertAt === -1 ? recentNotes.length : insertAt,
-					0,
-					note,
-				)
-
-				if (recentNotes.length > RECENT_NOTES_LIMIT) {
-					recentNotes.pop()
-				}
-			}
-
-			return recentNotes
-		}
-
-		return noteResults.filter((note) => {
-			return note.normalizedLabel.includes(normalizedQuery)
-		})
-	}, [noteResults, normalizedQuery])
+	const filteredNoteResults = useMemo(
+		() => filterNoteResults(noteResults, query),
+		[noteResults, query],
+	)
 
 	return {
 		noteResults,
 		filteredNoteResults,
 		noteResultsByPath,
-		normalizedQuery,
 	}
 }
