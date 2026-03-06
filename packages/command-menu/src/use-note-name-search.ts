@@ -84,30 +84,11 @@ export const collectMarkdownNotes = (
 }
 
 const takeRecentNotes = (noteResults: NoteResult[]) => {
-	const recentNotes: NoteResult[] = []
-
-	for (const note of noteResults) {
-		const noteTime = note.modifiedAt?.getTime() ?? 0
-		if (
-			recentNotes.length === RECENT_NOTES_LIMIT &&
-			noteTime <=
-				(recentNotes[RECENT_NOTES_LIMIT - 1]?.modifiedAt?.getTime() ?? 0)
-		) {
-			continue
-		}
-
-		const insertAt = recentNotes.findIndex(
-			(recentNote) => noteTime > (recentNote.modifiedAt?.getTime() ?? 0),
+	return [...noteResults]
+		.sort(
+			(a, b) => (b.modifiedAt?.getTime() ?? 0) - (a.modifiedAt?.getTime() ?? 0),
 		)
-
-		recentNotes.splice(insertAt === -1 ? recentNotes.length : insertAt, 0, note)
-
-		if (recentNotes.length > RECENT_NOTES_LIMIT) {
-			recentNotes.pop()
-		}
-	}
-
-	return recentNotes
+		.slice(0, RECENT_NOTES_LIMIT)
 }
 
 export const filterNoteResults = (noteResults: NoteResult[], query: string) => {
