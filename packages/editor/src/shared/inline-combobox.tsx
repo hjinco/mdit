@@ -219,7 +219,7 @@ const InlineComboboxInput = ({
 
 	const store = useComboboxContext()!
 	const value = store.useState("value")
-	const sizingText = value || placeholder || "\u200B"
+	const sizingText = value || placeholder || ""
 
 	const ref = useComposedRef(propRef, contextRef)
 	const handleKeyDown = useCallback(
