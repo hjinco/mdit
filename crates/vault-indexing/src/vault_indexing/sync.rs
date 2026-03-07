@@ -129,6 +129,7 @@ fn process_file(
 
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);
+    let note_tags = super::tags::extract_note_tags(&contents);
     if force_link_refresh_for_doc || hash_changed {
         let resolution = link_resolver.resolve_links_with_dependencies(file, &contents);
         replace_links_for_doc(conn, doc_id, &resolution, summary)?;
@@ -136,7 +137,6 @@ fn process_file(
 
     let Some(embedding) = embedding else {
         if hash_changed {
-            let note_tags = super::tags::extract_note_tags(&contents);
             replace_tags_for_doc(conn, doc_id, &note_tags)?;
             update_hash_and_content(conn, doc_record, &doc_hash, &indexed_content, file)?;
         } else if source_stat_changed {
@@ -156,7 +156,6 @@ fn process_file(
         // Chunking algorithm changed, rebuild every segment and embedding.
         rebuild_doc_chunks(conn, doc_id, &chunks, &embedding.embedder, summary)?;
         if hash_changed {
-            let note_tags = super::tags::extract_note_tags(&contents);
             replace_tags_for_doc(conn, doc_id, &note_tags)?;
         }
         update_full_metadata(
@@ -194,7 +193,6 @@ fn process_file(
         summary,
     )?;
     if hash_changed {
-        let note_tags = super::tags::extract_note_tags(&contents);
         replace_tags_for_doc(conn, doc_id, &note_tags)?;
     }
     update_full_metadata(

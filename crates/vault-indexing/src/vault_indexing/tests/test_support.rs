@@ -176,7 +176,6 @@ impl IndexingHarness {
         rows.map(|row| row.expect("failed to decode doc_tag audit row"))
             .collect()
     }
-
     pub(super) fn link_targets_for(&self, source_rel_path: &str) -> Vec<String> {
         let Some((conn, vault_id)) = self.open_vault_connection() else {
             return Vec::new();
@@ -310,7 +309,6 @@ impl IndexingHarness {
         self.doc_mutations()
             .set_embedding_metadata(rel_path, model, dim);
     }
-
     fn doc_queries(&self) -> DocQueries<'_> {
         DocQueries { harness: self }
     }
