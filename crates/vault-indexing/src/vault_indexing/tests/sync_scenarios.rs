@@ -124,6 +124,36 @@ fn given_stale_source_stat_when_content_unchanged_then_reindex_updates_source_st
 }
 
 #[test]
+fn given_embedding_model_drift_when_reindexing_with_embeddings_then_doc_rows_and_links_are_preserved(
+) {
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-embedding-model-drift");
+    harness.write_note("source.md", "[[target]]\n");
+    harness.write_note("target.md", "# Target\n");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    let source_doc_id = harness
+        .doc_id("source.md")
+        .expect("source doc id should exist");
+    let target_doc_id = harness
+        .doc_id("target.md")
+        .expect("target doc id should exist");
+
+    let summary = harness.run_workspace_index_with_embeddings("test", "model-b");
+
+    assert_eq!(summary.docs_deleted, 0);
+    assert_eq!(summary.docs_inserted, 0);
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(harness.doc_id("source.md"), Some(source_doc_id));
+    assert_eq!(harness.doc_id("target.md"), Some(target_doc_id));
+    assert_eq!(
+        harness.doc_embedding_metadata("source.md"),
+        Some((Some("model-b".to_string()), Some(3)))
+    );
+    assert_eq!(harness.link_targets_for("source.md"), vec!["target.md"]);
+}
+
+#[test]
 fn given_unrelated_doc_insert_when_reindexing_then_unrelated_wiki_sources_are_not_refreshed() {
     let harness = IndexingHarness::new("mdit-vault-indexing-sync-unrelated-insert");
     harness.write_note("source.md", "[[target]]\n");

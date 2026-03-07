@@ -168,4 +168,37 @@ describe("indexing-slice indexWorkspace", () => {
 		})
 		expect(store.getState().indexingState["/ws"]).toBe(false)
 	})
+
+	it("reindexes after model confirmation without forcing a full reset", async () => {
+		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({ invoke })
+
+		store.setState({
+			pendingModelChange: {
+				provider: "ollama",
+				model: "mxbai-embed-large",
+			},
+		})
+
+		await store.getState().confirmModelChange("/ws", true)
+
+		expect(invoke).toHaveBeenNthCalledWith(
+			1,
+			"set_vault_embedding_config_command",
+			{
+				workspacePath: "/ws",
+				embeddingProvider: "ollama",
+				embeddingModel: "mxbai-embed-large",
+			},
+		)
+		expect(invoke).toHaveBeenNthCalledWith(2, "index_workspace_command", {
+			workspacePath: "/ws",
+			forceReindex: false,
+		})
+		expect(invoke).toHaveBeenNthCalledWith(3, "get_indexing_meta_command", {
+			workspacePath: "/ws",
+		})
+		expect(store.getState().showModelChangeDialog).toBe(false)
+		expect(store.getState().pendingModelChange).toBeNull()
+	})
 })

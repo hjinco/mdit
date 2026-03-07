@@ -410,12 +410,6 @@ fn run_indexing_for_files(
     let mut conn = open_indexing_connection(db_path)?;
     let vault_id = app_storage::vault::ensure_workspace_exists(&conn, workspace_root)?;
 
-    if !force_reindex {
-        if let Some(embedding) = embedding_context.as_ref() {
-            ensure_embedding_dimension_compatible(&conn, vault_id, embedding.target_dim)?;
-        }
-    }
-
     // Force reindex wipes doc/segment tables so they can be recreated cleanly.
     let reset_deleted = if force_reindex {
         if embedding_context.is_some() {
@@ -577,33 +571,6 @@ pub fn rename_indexed_note(
         .context("Failed to commit indexed note rename transaction")?;
 
     Ok(updated > 0)
-}
-
-fn ensure_embedding_dimension_compatible(
-    conn: &Connection,
-    vault_id: i64,
-    target_dim: i32,
-) -> Result<()> {
-    let mismatch_count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) \
-             FROM doc \
-             WHERE vault_id = ?1 \
-               AND last_hash IS NOT NULL \
-               AND last_embedding_dim IS NOT NULL \
-               AND last_embedding_dim != ?2",
-            params![vault_id, target_dim],
-            |row| row.get(0),
-        )
-        .context("Failed to check embedding dimension compatibility")?;
-
-    if mismatch_count > 0 {
-        return Err(anyhow!(
-            "Existing index uses a different embedding dimension. Re-run indexing with force_reindex=true."
-        ));
-    }
-
-    Ok(())
 }
 
 pub fn get_indexing_meta(workspace_root: &Path, db_path: &Path) -> Result<IndexingMeta> {

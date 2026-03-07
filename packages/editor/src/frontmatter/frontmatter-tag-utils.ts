@@ -49,6 +49,37 @@ export function normalizeFrontmatterTagItems(value: unknown): string[] {
 		.filter((item): item is string => Boolean(item))
 }
 
+const getFrontmatterTagDedupKey = (value: string): string | null => {
+	const normalized = normalizeFrontmatterTagValue(value)
+	return normalized ? normalized.toLowerCase() : null
+}
+
+export function mergeFrontmatterTagItems(
+	currentItems: string[],
+	nextItems: string[],
+): string[] {
+	const merged = [...currentItems]
+	const seen = new Set(
+		currentItems
+			.map((item) => getFrontmatterTagDedupKey(item))
+			.filter((item): item is string => Boolean(item)),
+	)
+
+	for (const item of nextItems) {
+		const dedupKey = getFrontmatterTagDedupKey(item)
+		if (dedupKey && seen.has(dedupKey)) {
+			continue
+		}
+
+		merged.push(item)
+		if (dedupKey) {
+			seen.add(dedupKey)
+		}
+	}
+
+	return merged
+}
+
 export function formatFrontmatterTagLabel(value: string): string {
 	const normalized = normalizeFrontmatterTagValue(value)
 	if (!normalized) {

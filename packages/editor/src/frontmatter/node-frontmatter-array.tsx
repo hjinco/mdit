@@ -19,6 +19,7 @@ import {
 import {
 	formatFrontmatterTagLabel,
 	getFrontmatterTagQuery,
+	mergeFrontmatterTagItems,
 	normalizeFrontmatterTagItems,
 } from "./frontmatter-tag-utils"
 import { FrontmatterWikiInlinePreview } from "./frontmatter-wiki-inline-preview"
@@ -141,10 +142,14 @@ export function FrontmatterArray({
 			const nextResolvedItems = isTagMode
 				? normalizeFrontmatterTagItems(resolvedItems)
 				: resolvedItems
-			const merged = [...items]
-			for (const item of nextResolvedItems) {
-				if (!merged.includes(item)) {
-					merged.push(item)
+			const merged = isTagMode
+				? mergeFrontmatterTagItems(items, nextResolvedItems)
+				: [...items]
+			if (!isTagMode) {
+				for (const item of nextResolvedItems) {
+					if (!merged.includes(item)) {
+						merged.push(item)
+					}
 				}
 			}
 			onChange(merged)

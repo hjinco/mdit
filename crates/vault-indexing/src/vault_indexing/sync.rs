@@ -11,6 +11,7 @@ use super::{
     chunking::{chunk_document, hash_content},
     files::MarkdownFile,
     links::LinkResolver,
+    tags::NoteTag,
     EmbeddingContext, IndexSummary, TARGET_CHUNKING_VERSION,
 };
 
@@ -101,6 +102,20 @@ pub(crate) fn sync_documents_with_prune(
     Ok(())
 }
 
+fn finalize_hash_changed_sync(
+    conn: &mut Connection,
+    doc_id: i64,
+    note_tags: &[NoteTag],
+    hash_changed: bool,
+    apply_doc_update: impl FnOnce(&mut Connection) -> Result<()>,
+) -> Result<()> {
+    if hash_changed {
+        replace_tags_for_doc(conn, doc_id, note_tags)?;
+    }
+
+    apply_doc_update(conn)
+}
+
 fn process_file(
     conn: &mut Connection,
     file: &MarkdownFile,
@@ -130,20 +145,22 @@ fn process_file(
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);
     let note_tags = super::tags::extract_note_tags(&contents);
-
     if force_link_refresh_for_doc || hash_changed {
         let resolution = link_resolver.resolve_links_with_dependencies(file, &contents);
         replace_links_for_doc(conn, doc_id, &resolution, summary)?;
     }
 
     let Some(embedding) = embedding else {
-        if hash_changed {
-            replace_tags_for_doc(conn, doc_id, &note_tags)?;
-            update_hash_and_content(conn, doc_record, &doc_hash, &indexed_content, file)?;
-        } else if source_stat_changed {
-            update_source_stat(conn, doc_record, file)?;
+        if !hash_changed {
+            if source_stat_changed {
+                update_source_stat(conn, doc_record, file)?;
+            }
+            return Ok(());
         }
-        return Ok(());
+
+        return finalize_hash_changed_sync(conn, doc_id, &note_tags, hash_changed, |conn| {
+            update_hash_and_content(conn, doc_record, &doc_hash, &indexed_content, file)
+        });
     };
 
     let embedding_target_changed = embedding_target_changed(
@@ -156,18 +173,18 @@ fn process_file(
         let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
         // Chunking algorithm changed, rebuild every segment and embedding.
         rebuild_doc_chunks(conn, doc_id, &chunks, &embedding.embedder, summary)?;
-        replace_tags_for_doc(conn, doc_id, &note_tags)?;
-        update_full_metadata(
-            conn,
-            doc_record,
-            &doc_hash,
-            &indexed_content,
-            file,
-            embedding.embedder.model_name(),
-            embedding.target_dim,
-            hash_changed,
-        )?;
-        return Ok(());
+        return finalize_hash_changed_sync(conn, doc_id, &note_tags, hash_changed, |conn| {
+            update_full_metadata(
+                conn,
+                doc_record,
+                &doc_hash,
+                &indexed_content,
+                file,
+                embedding.embedder.model_name(),
+                embedding.target_dim,
+                hash_changed,
+            )
+        });
     }
 
     if doc_record.is_up_to_date(
@@ -191,15 +208,16 @@ fn process_file(
         embedding_target_changed,
         summary,
     )?;
-    replace_tags_for_doc(conn, doc_id, &note_tags)?;
-    update_full_metadata(
-        conn,
-        doc_record,
-        &doc_hash,
-        &indexed_content,
-        file,
-        embedding.embedder.model_name(),
-        embedding.target_dim,
-        hash_changed,
-    )
+    finalize_hash_changed_sync(conn, doc_id, &note_tags, hash_changed, |conn| {
+        update_full_metadata(
+            conn,
+            doc_record,
+            &doc_hash,
+            &indexed_content,
+            file,
+            embedding.embedder.model_name(),
+            embedding.target_dim,
+            hash_changed,
+        )
+    })
 }
