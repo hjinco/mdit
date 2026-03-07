@@ -18,6 +18,7 @@ import {
 	rotateLocalApiAuthToken,
 } from "@/lib/local-api-auth"
 import { useStore } from "@/store"
+import { getLocalApiToggleState } from "./api-mcp-state"
 import { SettingsButton } from "./settings-button"
 import { SettingsInput } from "./settings-input"
 
@@ -91,14 +92,12 @@ url = "http://127.0.0.1:39123/mcp?token=<TOKEN>"`,
 
 export function ApiMcpTab() {
 	const {
-		licenseStatus,
 		localApiEnabled,
 		setLocalApiEnabled,
 		localApiError,
 		setLocalApiError,
 	} = useStore(
 		useShallow((state) => ({
-			licenseStatus: state.status,
 			localApiEnabled: state.localApiEnabled,
 			setLocalApiEnabled: state.setLocalApiEnabled,
 			localApiError: state.localApiError,
@@ -172,6 +171,8 @@ export function ApiMcpTab() {
 		}
 	}
 
+	const toggleState = getLocalApiToggleState(localApiEnabled)
+
 	return (
 		<div className="flex-1 overflow-y-auto px-12 pt-12 pb-24 select-text **:select-text [&_button]:select-none **:[[role=switch]]:select-none">
 			<FieldSet className="border-b pb-8">
@@ -184,23 +185,15 @@ export function ApiMcpTab() {
 					<Field orientation="horizontal">
 						<FieldContent>
 							<FieldLabel>Server Toggle</FieldLabel>
-							<FieldDescription>
-								{licenseStatus === "valid" ? (
-									<>
-										Base URL: <code>http://127.0.0.1:39123</code>
-									</>
-								) : (
-									"License activation required"
-								)}
-							</FieldDescription>
+							<FieldDescription>{toggleState.description}</FieldDescription>
 							{localApiError && (
 								<p className="mt-2 text-sm text-destructive">{localApiError}</p>
 							)}
 						</FieldContent>
 						<Switch
-							checked={localApiEnabled}
+							checked={toggleState.checked}
 							onCheckedChange={setLocalApiEnabled}
-							disabled={licenseStatus !== "valid"}
+							disabled={toggleState.disabled}
 						/>
 					</Field>
 				</FieldGroup>

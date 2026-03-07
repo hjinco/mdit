@@ -3,7 +3,6 @@ import { useEffect } from "react"
 import { useShallow } from "zustand/shallow"
 import { CollectionView } from "./components/collection-view/collection-view"
 import { CommandMenu } from "./components/command-menu/command-menu"
-import { LicenseKeyButton } from "./components/common/license/license-key-button"
 import { Editor } from "./components/editor/editor"
 import { FileExplorer } from "./components/file-explorer/file-explorer"
 import { GraphViewDialog } from "./components/graph-view/graph-view-dialog"
@@ -16,8 +15,8 @@ import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
 import { useGitSync } from "./hooks/use-git-sync"
 import { startLocalApiServer, stopLocalApiServer } from "./lib/local-api"
+import { shouldRunLocalApiServer } from "./lib/local-api-runtime"
 import { useStore } from "./store"
-import { checkInternetConnectivity } from "./utils/network-utils"
 import { isLinux, isWindows10 } from "./utils/platform"
 
 export function App() {
@@ -27,13 +26,9 @@ export function App() {
 		initializeWorkspace,
 		initializeAISettings,
 		fetchOllamaModels,
-		checkLicense,
 		watchWorkspace,
 		unwatchWorkspace,
-		licenseStatus,
-		hasVerifiedLicense,
 		localApiEnabled,
-		setLocalApiEnabled,
 		setLocalApiError,
 	} = useStore(
 		useShallow((s) => ({
@@ -42,13 +37,9 @@ export function App() {
 			initializeWorkspace: s.initializeWorkspace,
 			initializeAISettings: s.initializeAISettings,
 			fetchOllamaModels: s.fetchOllamaModels,
-			checkLicense: s.checkLicense,
 			watchWorkspace: s.watchWorkspace,
 			unwatchWorkspace: s.unwatchWorkspace,
-			licenseStatus: s.status,
-			hasVerifiedLicense: s.hasVerifiedLicense,
 			localApiEnabled: s.localApiEnabled,
-			setLocalApiEnabled: s.setLocalApiEnabled,
 			setLocalApiError: s.setLocalApiError,
 		})),
 	)
@@ -97,40 +88,8 @@ export function App() {
 	}, [fetchOllamaModels, initializeAISettings, initializeWorkspace])
 
 	useEffect(() => {
-		const checkAndValidateLicense = async () => {
-			const polarApiBaseUrl = import.meta.env.VITE_POLAR_API_BASE_URL
-			const organizationId = import.meta.env.VITE_POLAR_ORGANIZATION_ID
-			if (!polarApiBaseUrl || !organizationId) {
-				await checkLicense()
-				return
-			}
-
-			const isOnline = await checkInternetConnectivity()
-			if (!isOnline) {
-				return
-			}
-
-			await checkLicense()
-		}
-
-		void checkAndValidateLicense()
-		window.addEventListener("online", checkAndValidateLicense)
-
-		return () => {
-			window.removeEventListener("online", checkAndValidateLicense)
-		}
-	}, [checkLicense])
-
-	useEffect(() => {
-		if (licenseStatus === "invalid" && localApiEnabled) {
-			setLocalApiEnabled(false)
-		}
-	}, [licenseStatus, localApiEnabled, setLocalApiEnabled])
-
-	useEffect(() => {
 		let isActive = true
-		const shouldRunLocalApi =
-			localApiEnabled && licenseStatus === "valid" && hasVerifiedLicense
+		const shouldRunLocalApi = shouldRunLocalApiServer(localApiEnabled)
 		const setLocalApiErrorIfActive = (errorMessage: string | null) => {
 			if (!isActive) {
 				return
@@ -161,7 +120,7 @@ export function App() {
 		return () => {
 			isActive = false
 		}
-	}, [localApiEnabled, licenseStatus, hasVerifiedLicense, setLocalApiError])
+	}, [localApiEnabled, setLocalApiError])
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />
@@ -184,9 +143,6 @@ export function App() {
 						<CollectionView />
 					</div>
 					<Editor />
-					<div className="fixed bottom-1 right-1">
-						<LicenseKeyButton />
-					</div>
 				</div>
 			</div>
 			<SettingsDialog />

@@ -4,7 +4,6 @@ import { cn } from "@mdit/ui/lib/utils"
 import {
 	IconAdjustmentsHorizontal,
 	IconBrain,
-	IconCertificate,
 	IconKeyboard,
 	IconPlugConnected,
 	IconRefresh,
@@ -19,7 +18,6 @@ export type SettingsTab =
 	| "sync"
 	| "indexing"
 	| "hotkeys"
-	| "license"
 
 interface SettingsNavigationProps {
 	activeTab: SettingsTab
@@ -46,14 +44,11 @@ const tabMeta: Record<SettingsTab, { label: string; icon: TabIcon }> = {
 	sync: { label: "Sync", icon: IconRefresh },
 	indexing: { label: "Indexing", icon: IconSearch },
 	hotkeys: { label: "Hotkeys", icon: IconKeyboard },
-	license: { label: "License", icon: IconCertificate },
 }
 
-export function SettingsNavigation({
-	activeTab,
-	onTabChange,
-	hasWorkspace,
-}: SettingsNavigationProps) {
+export const getSettingsSections = (
+	hasWorkspace: boolean,
+): SettingsSection[] => {
 	const accountSection: SettingsSection = {
 		id: "account",
 		label: "Account",
@@ -67,12 +62,20 @@ export function SettingsNavigation({
 	const featuresSection: SettingsSection = {
 		id: "features",
 		label: "Features",
-		tabs: ["ai", "api-mcp", "hotkeys", "license"],
+		tabs: ["ai", "api-mcp", "hotkeys"],
 	}
 
-	const sections: SettingsSection[] = hasWorkspace
+	return hasWorkspace
 		? [accountSection, vaultSection, featuresSection]
 		: [accountSection, featuresSection]
+}
+
+export function SettingsNavigation({
+	activeTab,
+	onTabChange,
+	hasWorkspace,
+}: SettingsNavigationProps) {
+	const sections = getSettingsSections(hasWorkspace)
 
 	return (
 		<nav className="flex w-56 flex-col gap-4 bg-muted/50 px-2 py-3">

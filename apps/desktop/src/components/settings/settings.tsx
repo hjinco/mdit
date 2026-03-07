@@ -6,7 +6,6 @@ import { AITab } from "./ui/ai-tab"
 import { ApiMcpTab } from "./ui/api-mcp-tab"
 import { HotkeysTab } from "./ui/hotkeys-tab"
 import { IndexingTab } from "./ui/indexing-tab"
-import { LicenseTab } from "./ui/license-tab"
 import { SettingsNavigation, type SettingsTab } from "./ui/navigation"
 import { PreferencesTab } from "./ui/preferences-tab"
 import { SyncTab } from "./ui/sync-tab"
@@ -65,7 +64,6 @@ export function SettingsDialog() {
 					{activeTab === "api-mcp" && <ApiMcpTab />}
 					{activeTab === "sync" && <SyncTab />}
 					{activeTab === "indexing" && <IndexingTab />}
-					{activeTab === "license" && <LicenseTab />}
 				</div>
 			</DialogContent>
 		</Dialog>

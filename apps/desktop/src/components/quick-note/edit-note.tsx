@@ -1,7 +1,6 @@
 import { useEffect } from "react"
 import { useFontScale } from "@/hooks/use-font-scale"
 import { useStore } from "@/store"
-import { LicenseKeyButton } from "../common/license/license-key-button"
 import { Editor } from "../editor/editor"
 import { SettingsDialog } from "../settings/settings"
 
@@ -20,9 +19,6 @@ export function EditNote({ filePath }: { filePath: string }) {
 			<div className="h-screen flex flex-col bg-muted">
 				<div className="flex-1 flex overflow-hidden">
 					<Editor destroyOnClose />
-				</div>
-				<div className="fixed bottom-1 right-1">
-					<LicenseKeyButton />
 				</div>
 			</div>
 			<SettingsDialog />
