@@ -15,7 +15,7 @@ import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-uti
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
-import { getIndexingModelControlState } from "./indexing-ui-state"
+import { INDEXING_MODEL_CONTROL_STATE } from "./indexing-ui-state"
 import { SettingsButton } from "./settings-button"
 import {
 	Select,
@@ -169,7 +169,7 @@ export function IndexingTab() {
 		isIndexing ||
 		isMetaLoading ||
 		(isEmbeddingModelConfigured && !isEmbeddingModelAvailable)
-	const modelControlState = getIndexingModelControlState()
+	const modelControlState = INDEXING_MODEL_CONTROL_STATE
 
 	const runIndex = async (forceReindex: boolean) => {
 		if (!workspacePath) {
