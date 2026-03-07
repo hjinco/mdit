@@ -4,15 +4,19 @@ import {
 	normalizeWikiTargetForDisplay,
 	openEditorLink,
 } from "@mdit/editor/link"
+import type { TagHostDeps } from "@mdit/editor/tag"
 import { createDesktopLinkHost } from "./link-host"
+import { createDesktopTagHost } from "./tag-host"
 
 type DesktopFrontmatterHostRuntimeDeps = {
 	linkHost: LinkHostDeps
+	tagHost: TagHostDeps
 	onResolveWikiLinkError?: (error: unknown) => void
 }
 
 const defaultRuntimeDeps: DesktopFrontmatterHostRuntimeDeps = {
 	linkHost: createDesktopLinkHost(),
+	tagHost: createDesktopTagHost(),
 	onResolveWikiLinkError: (error) => {
 		console.warn(
 			"Failed to resolve frontmatter wiki link via invoke; using fallback:",
@@ -22,43 +26,51 @@ const defaultRuntimeDeps: DesktopFrontmatterHostRuntimeDeps = {
 }
 
 export const createDesktopFrontmatterHost = (
-	runtimeDeps: DesktopFrontmatterHostRuntimeDeps = defaultRuntimeDeps,
-): FrontmatterHostDeps => ({
-	onOpenWikiLink: (target) =>
-		openEditorLink({
-			href: target,
-			wiki: true,
-			wikiTarget: target,
-			host: runtimeDeps.linkHost,
-			workspaceState: runtimeDeps.linkHost.getWorkspaceState(),
-		}),
-	getLinkWorkspaceState: runtimeDeps.linkHost.getWorkspaceState,
-	resolveWikiLinkTarget: async (rawTarget, fallbackTarget) => {
-		const workspaceState = runtimeDeps.linkHost.getWorkspaceState()
-		const workspacePath = workspaceState.workspacePath
-		const currentTabPath = workspaceState.tab?.path ?? null
-		if (!workspacePath) {
-			return fallbackTarget
-		}
+	runtimeDeps: Partial<DesktopFrontmatterHostRuntimeDeps> = defaultRuntimeDeps,
+): FrontmatterHostDeps => {
+	const deps = {
+		...defaultRuntimeDeps,
+		...runtimeDeps,
+	}
 
-		try {
-			const resolved = await runtimeDeps.linkHost.resolveWikiLink({
-				workspacePath,
-				currentNotePath: currentTabPath,
-				rawTarget,
-			})
-			const canonicalTarget = normalizeWikiTargetForDisplay(
-				resolved.canonicalTarget,
-			)
-			if (resolved.unresolved) {
-				return fallbackTarget || canonicalTarget
+	return {
+		onOpenWikiLink: (target) =>
+			openEditorLink({
+				href: target,
+				wiki: true,
+				wikiTarget: target,
+				host: deps.linkHost,
+				workspaceState: deps.linkHost.getWorkspaceState(),
+			}),
+		getLinkWorkspaceState: deps.linkHost.getWorkspaceState,
+		resolveWikiLinkTarget: async (rawTarget, fallbackTarget) => {
+			const workspaceState = deps.linkHost.getWorkspaceState()
+			const workspacePath = workspaceState.workspacePath
+			const currentTabPath = workspaceState.tab?.path ?? null
+			if (!workspacePath) {
+				return fallbackTarget
 			}
-			return canonicalTarget || fallbackTarget
-		} catch (error) {
-			runtimeDeps.onResolveWikiLinkError?.(error)
-			return fallbackTarget
-		}
-	},
-})
+
+			try {
+				const resolved = await deps.linkHost.resolveWikiLink({
+					workspacePath,
+					currentNotePath: currentTabPath,
+					rawTarget,
+				})
+				const canonicalTarget = normalizeWikiTargetForDisplay(
+					resolved.canonicalTarget,
+				)
+				if (resolved.unresolved) {
+					return fallbackTarget || canonicalTarget
+				}
+				return canonicalTarget || fallbackTarget
+			} catch (error) {
+				deps.onResolveWikiLinkError?.(error)
+				return fallbackTarget
+			}
+		},
+		onOpenTagSearch: deps.tagHost.openTagSearch,
+	}
+}
 
 export const desktopFrontmatterHost = createDesktopFrontmatterHost()

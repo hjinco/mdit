@@ -12,6 +12,7 @@ ollama-client = { path = '../ollama-client' }
 pulldown-cmark = { version = '0.13.0', default-features = false, features = ['simd'] }
 rusqlite = { version = '0.31', features = ['bundled'] }
 serde = { version = '1', features = ['derive'] }
+serde_yaml = '0.9'
 tiktoken-rs = '0.5'
 walkdir = '2'
 vault-indexing-api = { path = '../vault-indexing-api' }

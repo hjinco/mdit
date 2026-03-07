@@ -19,6 +19,7 @@
 		"./shared": "./src/shared/index.ts",
 		"./slash": "./src/slash/index.ts",
 		"./suggestion": "./src/suggestion/index.ts",
+		"./tag": "./src/tag/index.ts",
 		"./table": "./src/table/index.ts",
 		"./toc": "./src/toc/index.ts"
 	},

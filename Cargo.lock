@@ -6721,6 +6721,7 @@ dependencies = [
  "pulldown-cmark",
  "rusqlite",
  "serde",
+ "serde_yaml",
  "tiktoken-rs",
  "vault-indexing-api",
  "walkdir",

@@ -13,11 +13,23 @@ export {
 	FrontmatterKit,
 	frontmatterPlugin,
 } from "./frontmatter-kit"
+export {
+	applyFrontmatterKeyChange,
+	applyFrontmatterTypeChange,
+	detectFrontmatterValueType,
+	formatFrontmatterTagLabel,
+	getFrontmatterPropertyTypeOptions,
+	getFrontmatterTagQuery,
+	isTagsFrontmatterKey,
+	normalizeFrontmatterTagItems,
+	normalizeFrontmatterTagValue,
+} from "./frontmatter-tag-utils"
 export { createDefaultFrontmatterRows, createRowId } from "./frontmatter-utils"
 export {
 	convertValueToType,
 	datePattern,
 	formatLocalDate,
+	normalizeTagsValue,
 	parseYMDToLocalDate,
 	type ValueType,
 } from "./frontmatter-value-utils"

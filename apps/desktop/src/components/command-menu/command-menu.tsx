@@ -1,6 +1,7 @@
 import {
 	type CommandMenuContentMatch,
 	type CommandMenuSemanticResult,
+	type CommandMenuTagResult,
 	CommandMenu as SharedCommandMenu,
 } from "@mdit/command-menu"
 import { invoke } from "@tauri-apps/api/core"
@@ -17,12 +18,19 @@ type QuerySearchEntry = {
 	similarity: number
 }
 
+type QueryTagEntry = {
+	path: string
+	name: string
+	modifiedAt?: number
+}
+
 export function CommandMenu() {
 	const {
 		entries,
 		workspacePath,
 		openTab,
 		isCommandMenuOpen,
+		commandMenuInitialQuery,
 		setCommandMenuOpen,
 		getIndexingConfig,
 	} = useStore(
@@ -31,6 +39,7 @@ export function CommandMenu() {
 			workspacePath: state.workspacePath,
 			openTab: state.openTab,
 			isCommandMenuOpen: state.isCommandMenuOpen,
+			commandMenuInitialQuery: state.commandMenuInitialQuery,
 			setCommandMenuOpen: state.setCommandMenuOpen,
 			getIndexingConfig: state.getIndexingConfig,
 		})),
@@ -92,6 +101,31 @@ export function CommandMenu() {
 		[],
 	)
 
+	const searchTags = useCallback(
+		async (
+			query: string,
+			currentWorkspacePath: string,
+		): Promise<CommandMenuTagResult[]> => {
+			const results = await invoke<QueryTagEntry[]>(
+				"search_tag_entries_command",
+				{
+					workspacePath: currentWorkspacePath,
+					tagQuery: query,
+				},
+			)
+
+			return results.map((entry) => ({
+				path: entry.path,
+				name: entry.name,
+				modifiedAt:
+					typeof entry.modifiedAt === "number"
+						? new Date(entry.modifiedAt)
+						: undefined,
+			}))
+		},
+		[],
+	)
+
 	return (
 		<SharedCommandMenu
 			open={isCommandMenuOpen}
@@ -99,8 +133,10 @@ export function CommandMenu() {
 			workspacePath={workspacePath}
 			entries={entries}
 			onSelectPath={handleSelectNote}
+			initialQuery={commandMenuInitialQuery}
 			searchContent={searchContent}
 			searchSemantic={searchSemantic}
+			searchTags={searchTags}
 		/>
 	)
 }

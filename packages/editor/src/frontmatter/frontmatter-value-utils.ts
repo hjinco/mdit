@@ -1,4 +1,10 @@
-export type ValueType = "string" | "number" | "boolean" | "date" | "array"
+export type ValueType =
+	| "string"
+	| "number"
+	| "boolean"
+	| "date"
+	| "array"
+	| "tags"
 
 export const datePattern = /^\d{4}-\d{2}-\d{2}/
 
@@ -17,6 +23,19 @@ export function parseYMDToLocalDate(ymd: string) {
 		.map((n) => Number(n))
 	if (!year || !month || !day) return
 	return new Date(year, month - 1, day)
+}
+
+export function normalizeTagsValue(value: unknown): string[] {
+	const rawItems = Array.isArray(value)
+		? value
+		: String(value ?? "")
+				.split(",")
+				.map((item) => item.trim())
+
+	return rawItems
+		.map((item) => String(item ?? "").trim())
+		.map((item) => (item.startsWith("#") ? item.slice(1).trim() : item))
+		.filter(Boolean)
 }
 
 export function convertValueToType(
@@ -65,6 +84,9 @@ export function convertValueToType(
 			} catch {
 				return []
 			}
+		}
+		case "tags": {
+			return normalizeTagsValue(value)
 		}
 		case "string": {
 			return strValue

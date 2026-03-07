@@ -20,6 +20,12 @@ export type CommandMenuSemanticResult = {
 	modifiedAt?: Date
 }
 
+export type CommandMenuTagResult = {
+	path: string
+	name: string
+	modifiedAt?: Date
+}
+
 export type CommandMenuContentSearch = (
 	query: string,
 	workspacePath: string,
@@ -29,3 +35,8 @@ export type CommandMenuSemanticSearch = (
 	query: string,
 	workspacePath: string,
 ) => Promise<CommandMenuSemanticResult[]>
+
+export type CommandMenuTagSearch = (
+	query: string,
+	workspacePath: string,
+) => Promise<CommandMenuTagResult[]>

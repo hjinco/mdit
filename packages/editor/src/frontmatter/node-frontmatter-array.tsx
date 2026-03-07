@@ -2,9 +2,25 @@ import { Command } from "@mdit/ui/components/command"
 import { Input } from "@mdit/ui/components/input"
 import { cn } from "@mdit/ui/lib/utils"
 import { XIcon } from "lucide-react"
-import { type KeyboardEvent, useMemo, useRef, useState } from "react"
+import {
+	type KeyboardEvent,
+	type MouseEvent,
+	useMemo,
+	useRef,
+	useState,
+} from "react"
 import type { LinkWorkspaceState } from "../link/link-kit-types"
 import { flattenWorkspaceFiles } from "../link/link-toolbar-utils"
+import {
+	handleTagClick,
+	handleTagMouseDown,
+	type TagHostDeps,
+} from "../tag/node-tag"
+import {
+	formatFrontmatterTagLabel,
+	getFrontmatterTagQuery,
+	normalizeFrontmatterTagItems,
+} from "./frontmatter-tag-utils"
 import { FrontmatterWikiInlinePreview } from "./frontmatter-wiki-inline-preview"
 import {
 	getActiveFrontmatterWikiQuery,
@@ -26,8 +42,10 @@ type FrontmatterArrayProps = {
 	value: unknown
 	onChange: (nextValue: string[]) => void
 	placeholder?: string
+	mode?: "array" | "tags"
 	focusRegistration?: FocusRegistration
 	onOpenWikiLink?: (target: string) => void | Promise<void>
+	onOpenTagSearch?: TagHostDeps["openTagSearch"]
 	getLinkWorkspaceState?: () => LinkWorkspaceState
 	resolveWikiLinkTarget?: ResolveFrontmatterWikiLinkTarget
 }
@@ -42,16 +60,19 @@ export function FrontmatterArray({
 	value,
 	onChange,
 	placeholder = "Type and press Enter",
+	mode = "array",
 	focusRegistration,
 	onOpenWikiLink,
+	onOpenTagSearch,
 	getLinkWorkspaceState,
 	resolveWikiLinkTarget,
 }: FrontmatterArrayProps) {
+	const isTagMode = mode === "tags"
 	const [draft, setDraft] = useState("")
 	const [cursorPosition, setCursorPosition] = useState(0)
 	const inputRef = useRef<HTMLInputElement | null>(null)
 	const wikiPopoverAnchorRef = useRef<HTMLDivElement | null>(null)
-	const linkWorkspaceState = getLinkWorkspaceState?.()
+	const linkWorkspaceState = isTagMode ? undefined : getLinkWorkspaceState?.()
 	const workspaceFiles = useMemo(
 		() =>
 			flattenWorkspaceFiles(
@@ -61,11 +82,15 @@ export function FrontmatterArray({
 		[linkWorkspaceState?.entries, linkWorkspaceState?.workspacePath],
 	)
 	const activeWikiQuery = useMemo(
-		() => getActiveFrontmatterWikiQuery(draft, cursorPosition),
-		[cursorPosition, draft],
+		() =>
+			isTagMode ? null : getActiveFrontmatterWikiQuery(draft, cursorPosition),
+		[cursorPosition, draft, isTagMode],
 	)
 
 	const items = useMemo(() => {
+		if (isTagMode) {
+			return normalizeFrontmatterTagItems(value)
+		}
 		if (Array.isArray(value)) {
 			return value.map((item) => String(item ?? "").trim()).filter(Boolean)
 		}
@@ -73,8 +98,11 @@ export function FrontmatterArray({
 			return parseItems(value)
 		}
 		return []
-	}, [value])
+	}, [isTagMode, value])
 	const excludedWikiTargetKeys = useMemo(() => {
+		if (isTagMode) {
+			return new Set<string>()
+		}
 		const targetKeys = new Set<string>()
 		for (const item of items) {
 			const key = getFrontmatterWikiSuggestionTargetKey(item)
@@ -83,9 +111,9 @@ export function FrontmatterArray({
 			}
 		}
 		return targetKeys
-	}, [items])
+	}, [isTagMode, items])
 	const wikiSuggestions = useMemo(() => {
-		if (!activeWikiQuery) return []
+		if (isTagMode || !activeWikiQuery) return []
 		return buildFrontmatterWikiSuggestions(
 			workspaceFiles,
 			activeWikiQuery.query,
@@ -93,16 +121,28 @@ export function FrontmatterArray({
 				excludeTargetKeys: excludedWikiTargetKeys,
 			},
 		)
-	}, [activeWikiQuery, excludedWikiTargetKeys, workspaceFiles])
+	}, [activeWikiQuery, excludedWikiTargetKeys, isTagMode, workspaceFiles])
 	const showWikiSuggestionPopover =
-		Boolean(activeWikiQuery) && wikiSuggestions.length > 0
+		!isTagMode && Boolean(activeWikiQuery) && wikiSuggestions.length > 0
+	const tagHost = useMemo<TagHostDeps | undefined>(
+		() =>
+			onOpenTagSearch
+				? {
+						openTagSearch: onOpenTagSearch,
+					}
+				: undefined,
+		[onOpenTagSearch],
+	)
 
 	const addItems = (raw: string) => {
 		const nextItems = parseItems(raw)
 		if (!nextItems.length) return
 		const applyItems = (resolvedItems: string[]) => {
+			const nextResolvedItems = isTagMode
+				? normalizeFrontmatterTagItems(resolvedItems)
+				: resolvedItems
 			const merged = [...items]
-			for (const item of resolvedItems) {
+			for (const item of nextResolvedItems) {
 				if (!merged.includes(item)) {
 					merged.push(item)
 				}
@@ -111,7 +151,7 @@ export function FrontmatterArray({
 			setDraft("")
 		}
 
-		if (!resolveWikiLinkTarget) {
+		if (isTagMode || !resolveWikiLinkTarget) {
 			applyItems(nextItems)
 			return
 		}
@@ -183,14 +223,48 @@ export function FrontmatterArray({
 				{items.map((item, index) => (
 					<span
 						key={`${item}-${index}`}
-						className="group inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-1 text-sm text-foreground cursor-default"
+						className={cn(
+							"group inline-flex items-center gap-1 rounded-sm px-2 py-1 text-sm",
+							isTagMode && getFrontmatterTagQuery(item)
+								? "bg-brand/10 text-brand"
+								: "bg-muted text-foreground",
+						)}
 					>
-						<span className="max-w-[12rem] truncate" title={item}>
-							<FrontmatterWikiInlinePreview
-								value={item}
-								onOpenWikiLink={onOpenWikiLink}
-							/>
-						</span>
+						{isTagMode ? (
+							<button
+								type="button"
+								className={cn(
+									"max-w-[12rem] truncate rounded-sm text-left",
+									getFrontmatterTagQuery(item)
+										? "cursor-pointer hover:bg-brand/18"
+										: "cursor-default",
+								)}
+								title={formatFrontmatterTagLabel(item)}
+								onMouseDown={(event: MouseEvent<HTMLButtonElement>) =>
+									handleTagMouseDown(
+										event,
+										tagHost,
+										getFrontmatterTagQuery(item) ?? undefined,
+									)
+								}
+								onClick={(event: MouseEvent<HTMLButtonElement>) =>
+									handleTagClick(
+										event,
+										tagHost,
+										getFrontmatterTagQuery(item) ?? undefined,
+									)
+								}
+							>
+								{formatFrontmatterTagLabel(item)}
+							</button>
+						) : (
+							<span className="max-w-[12rem] truncate" title={item}>
+								<FrontmatterWikiInlinePreview
+									value={item}
+									onOpenWikiLink={onOpenWikiLink}
+								/>
+							</span>
+						)}
 						<button
 							type="button"
 							className="rounded-sm py-0.5 text-muted-foreground transition-colors hover:text-destructive cursor-pointer"

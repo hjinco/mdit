@@ -20,6 +20,7 @@ export type TFrontmatterElement = {
 export function FrontmatterElement(
 	props: PlateElementProps<TFrontmatterElement> & {
 		onOpenWikiLink?: FrontmatterWikiLinkHandler
+		onOpenTagSearch?: (query: string) => void | Promise<void>
 		getLinkWorkspaceState?: () => LinkWorkspaceState
 		resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
 	},
@@ -60,6 +61,7 @@ export function FrontmatterElement(
 					data={element.data}
 					onChange={handleDataChange}
 					onOpenWikiLink={props.onOpenWikiLink}
+					onOpenTagSearch={props.onOpenTagSearch}
 					getLinkWorkspaceState={props.getLinkWorkspaceState}
 					resolveWikiLinkTarget={props.resolveWikiLinkTarget}
 				/>

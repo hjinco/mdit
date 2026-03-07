@@ -6,4 +6,6 @@ export type {
 	CommandMenuEntry,
 	CommandMenuSemanticResult,
 	CommandMenuSemanticSearch,
+	CommandMenuTagResult,
+	CommandMenuTagSearch,
 } from "./types"

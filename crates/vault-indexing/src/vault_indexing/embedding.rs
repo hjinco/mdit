@@ -13,6 +13,8 @@ pub(crate) struct EmbeddingVector {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EmbeddingProvider {
     Ollama,
+    #[cfg(test)]
+    Test,
 }
 
 impl EmbeddingProvider {
@@ -20,6 +22,8 @@ impl EmbeddingProvider {
     fn from_str(value: &str) -> Result<Self> {
         match value.trim().to_lowercase().as_str() {
             "ollama" => Ok(Self::Ollama),
+            #[cfg(test)]
+            "test" => Ok(Self::Test),
             provider => Err(anyhow!(
                 "Unsupported embedding provider '{}'. Only 'ollama' is currently supported.",
                 provider
@@ -30,6 +34,8 @@ impl EmbeddingProvider {
 
 enum EmbeddingBackend {
     Ollama(BlockingOllamaEmbeddingClient),
+    #[cfg(test)]
+    Test,
 }
 
 pub(crate) struct EmbeddingClient {
@@ -51,6 +57,8 @@ impl EmbeddingClient {
                     .context("Failed to initialize Ollama embedding client")?;
                 EmbeddingBackend::Ollama(client)
             }
+            #[cfg(test)]
+            EmbeddingProvider::Test => EmbeddingBackend::Test,
         };
 
         Ok(Self {
@@ -67,6 +75,8 @@ impl EmbeddingClient {
     pub(crate) fn generate(&self, text: &str) -> Result<EmbeddingVector> {
         match &self.backend {
             EmbeddingBackend::Ollama(client) => self.generate_with_ollama(client, text),
+            #[cfg(test)]
+            EmbeddingBackend::Test => self.generate_with_test(text),
         }
     }
 
@@ -78,6 +88,30 @@ impl EmbeddingClient {
         let mut vector = client
             .generate_embedding(&self.model, text)
             .context("Failed to generate embeddings with Ollama")?;
+
+        l2_normalize(&mut vector).with_context(|| {
+            format!(
+                "Embedding vector for model '{}' contained invalid values",
+                self.model
+            )
+        })?;
+
+        let dim = i32::try_from(vector.len())
+            .map_err(|_| anyhow!("Embedding dimension {} exceeds i32::MAX", vector.len()))?;
+
+        Ok(EmbeddingVector {
+            dim,
+            bytes: f32_slice_to_le_bytes(&vector),
+        })
+    }
+
+    #[cfg(test)]
+    fn generate_with_test(&self, text: &str) -> Result<EmbeddingVector> {
+        let mut vector = vec![
+            text.len().max(1) as f32,
+            text.bytes().map(f32::from).sum::<f32>().max(1.0),
+            1.0,
+        ];
 
         l2_normalize(&mut vector).with_context(|| {
             format!(

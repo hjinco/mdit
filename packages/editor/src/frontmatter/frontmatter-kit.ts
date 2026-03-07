@@ -9,6 +9,7 @@ export const FRONTMATTER_KEY = "frontmatter"
 
 export type FrontmatterHostDeps = {
 	onOpenWikiLink?: (target: string) => void | Promise<void>
+	onOpenTagSearch?: (query: string) => void | Promise<void>
 	getLinkWorkspaceState?: () => LinkWorkspaceState
 	resolveWikiLinkTarget?: (
 		rawTarget: string,
@@ -27,6 +28,7 @@ export function createFrontmatterPlugin({
 		createElement(FrontmatterElement, {
 			...props,
 			onOpenWikiLink: host?.onOpenWikiLink,
+			onOpenTagSearch: host?.onOpenTagSearch,
 			getLinkWorkspaceState: host?.getLinkWorkspaceState,
 			resolveWikiLinkTarget: host?.resolveWikiLinkTarget,
 		})

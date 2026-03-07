@@ -113,3 +113,34 @@ describe("ui-slice note info panel", () => {
 		expect(store.getState().isNoteInfoOpen).toBe(false)
 	})
 })
+
+describe("ui-slice command menu seed query", () => {
+	it("opens the command menu with a seeded query", () => {
+		const store = createUISliceStore()
+
+		store.getState().openCommandMenuWithQuery("#project/docs")
+
+		expect(store.getState().isCommandMenuOpen).toBe(true)
+		expect(store.getState().commandMenuInitialQuery).toBe("#project/docs")
+	})
+
+	it("clears the seeded query when the menu closes", () => {
+		const store = createUISliceStore()
+
+		store.getState().openCommandMenuWithQuery("#project")
+		store.getState().closeCommandMenu()
+
+		expect(store.getState().isCommandMenuOpen).toBe(false)
+		expect(store.getState().commandMenuInitialQuery).toBeNull()
+	})
+
+	it("opens the command menu without a seed for normal entry", () => {
+		const store = createUISliceStore()
+
+		store.getState().openCommandMenuWithQuery("#project")
+		store.getState().openCommandMenu()
+
+		expect(store.getState().isCommandMenuOpen).toBe(true)
+		expect(store.getState().commandMenuInitialQuery).toBeNull()
+	})
+})
