@@ -6,7 +6,11 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": ["**", "!**/worker-configuration.d.ts"]
+		"includes": [
+			"**",
+			"!**/worker-configuration.d.ts",
+			"!apps/www/src/routeTree.gen.ts"
+		]
 	},
 	"javascript": {
 		"formatter": {
@@ -66,22 +70,5 @@
 		"parser": {
 			"tailwindDirectives": true
 		}
-	},
-	"overrides": [
-		{
-			"includes": ["**/*.astro"],
-			"linter": {
-				"rules": {
-					"style": {
-						"useConst": "off",
-						"useImportType": "off"
-					},
-					"correctness": {
-						"noUnusedVariables": "off",
-						"noUnusedImports": "off"
-					}
-				}
-			}
-		}
-	]
+	}
 }

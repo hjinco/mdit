@@ -23,20 +23,18 @@ export function DownloadButton({
 	href = DEFAULT_DOWNLOAD_URL,
 }: DownloadButtonProps) {
 	const baseStyles =
-		"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer active:scale-[0.98]"
+		"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer active:scale-[0.98]"
 
 	const variants = {
 		default: "bg-[#1A1A1A] text-white hover:bg-black",
-		secondary:
-			"bg-white text-[#1A1A1A] border border-neutral-200 shadow-xs hover:bg-neutral-50",
-		outline:
-			"bg-transparent text-[#1A1A1A] border border-neutral-200 hover:bg-neutral-100",
+		secondary: "bg-white text-[#1A1A1A] shadow-xs hover:bg-neutral-50",
+		outline: "bg-transparent text-[#1A1A1A] hover:bg-neutral-100",
 	}
 
 	const sizes = {
 		default: "h-10 px-4 py-2 text-sm",
 		sm: "h-9 rounded-md px-3 text-sm",
-		lg: "h-12 rounded-xl px-8 text-base",
+		lg: "h-12 rounded-md px-8 text-base",
 	}
 
 	return (

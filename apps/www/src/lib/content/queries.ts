@@ -1,10 +1,10 @@
-import { getCollection } from "astro:content"
+import { allBlogPosts, allLegalPages } from "content-collections"
 import { DEFAULT_LOCALE, type Locale } from "../../i18n/locales"
 import {
 	type BlogPost,
-	type ChangelogEntry,
+	type LegalPage,
 	mapBlogEntry,
-	mapChangelogEntry,
+	mapLegalEntry,
 } from "./mappers"
 
 interface QueryOptions {
@@ -24,44 +24,30 @@ function resolveIncludeDraft(includeDraft?: boolean): boolean {
 	return import.meta.env.DEV
 }
 
-export async function getBlogPosts(
-	options: QueryOptions = {},
-): Promise<BlogPost[]> {
+export function getBlogPosts(options: QueryOptions = {}): BlogPost[] {
 	const locale = options.locale ?? DEFAULT_LOCALE
 	const includeDraft = resolveIncludeDraft(options.includeDraft)
-	const entries = await getCollection("blog")
 
-	return entries
-		.filter((entry) => entry.data.locale === locale)
-		.filter((entry) => includeDraft || !entry.data.draft)
+	return allBlogPosts
+		.filter((entry) => entry.locale === locale)
+		.filter((entry) => includeDraft || !entry.draft)
 		.map(mapBlogEntry)
 		.sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
 }
 
-export async function getBlogPostBySlug(
+export function getBlogPostBySlug(
 	options: GetBySlugOptions,
-): Promise<BlogPost | undefined> {
-	const posts = await getBlogPosts(options)
+): BlogPost | undefined {
+	const posts = getBlogPosts(options)
 	return posts.find((post) => post.slug === options.slug)
 }
 
-export async function getChangelogEntries(
-	options: QueryOptions = {},
-): Promise<ChangelogEntry[]> {
-	const locale = options.locale ?? DEFAULT_LOCALE
-	const includeDraft = resolveIncludeDraft(options.includeDraft)
-	const entries = await getCollection("changelog")
-
-	return entries
-		.filter((entry) => entry.data.locale === locale)
-		.filter((entry) => includeDraft || !entry.data.draft)
-		.map(mapChangelogEntry)
-		.sort((a, b) => b.date.getTime() - a.date.getTime())
-}
-
-export async function getChangelogBySlug(
-	options: GetBySlugOptions,
-): Promise<ChangelogEntry | undefined> {
-	const entries = await getChangelogEntries(options)
-	return entries.find((entry) => entry.slug === options.slug)
+export function getLegalPageBySlug(
+	slug: string,
+	locale: Locale = DEFAULT_LOCALE,
+): LegalPage | undefined {
+	return allLegalPages
+		.filter((entry) => entry.locale === locale)
+		.map(mapLegalEntry)
+		.find((page) => page.slug === slug)
 }

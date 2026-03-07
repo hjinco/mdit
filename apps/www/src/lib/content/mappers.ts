@@ -1,4 +1,31 @@
-import type { CollectionEntry } from "astro:content"
+import type { ContentHeading } from "./markdown"
+
+type Locale = "en"
+
+interface BlogPostCollectionEntry {
+	slug: string
+	title: string
+	description: string
+	publishedAt: Date | string
+	updatedAt?: Date | string
+	tags: string[]
+	draft: boolean
+	locale: Locale
+	content: string
+	html: string
+	headings: ContentHeading[]
+}
+
+interface LegalPageCollectionEntry {
+	slug: string
+	title: string
+	description: string
+	effectiveDate: string
+	locale: Locale
+	content: string
+	html: string
+	headings: ContentHeading[]
+}
 
 export interface BlogPost {
 	slug: string
@@ -7,54 +34,55 @@ export interface BlogPost {
 	publishedAt: Date
 	updatedAt?: Date
 	tags: string[]
-	locale: "en"
-	entry: CollectionEntry<"blog">
+	locale: Locale
+	content: string
+	html: string
+	headings: ContentHeading[]
 }
 
-export type ChangelogType = "feature" | "improvement" | "fix"
-
-export interface ChangelogEntry {
+export interface LegalPage {
 	slug: string
 	title: string
-	summary: string
-	date: Date
-	type: ChangelogType
-	version?: string
-	locale: "en"
-	entry: CollectionEntry<"changelog">
+	description: string
+	effectiveDate: string
+	locale: Locale
+	content: string
+	html: string
+	headings: ContentHeading[]
 }
 
-function normalizeSlug(value: string): string {
-	const parts = value.split("/")
-	const normalized = parts.at(-1)
+function toDate(value: Date | string): Date {
+	if (value instanceof Date) {
+		return value
+	}
 
-	return normalized ?? value
+	return new Date(value)
 }
 
-export function mapBlogEntry(entry: CollectionEntry<"blog">): BlogPost {
+export function mapBlogEntry(entry: BlogPostCollectionEntry): BlogPost {
 	return {
-		slug: normalizeSlug(entry.slug),
-		title: entry.data.title,
-		description: entry.data.description,
-		publishedAt: entry.data.publishedAt,
-		updatedAt: entry.data.updatedAt,
-		tags: entry.data.tags,
-		locale: entry.data.locale,
-		entry,
+		slug: entry.slug,
+		title: entry.title,
+		description: entry.description,
+		publishedAt: toDate(entry.publishedAt),
+		updatedAt: entry.updatedAt ? toDate(entry.updatedAt) : undefined,
+		tags: entry.tags,
+		locale: entry.locale,
+		content: entry.content,
+		html: entry.html,
+		headings: entry.headings,
 	}
 }
 
-export function mapChangelogEntry(
-	entry: CollectionEntry<"changelog">,
-): ChangelogEntry {
+export function mapLegalEntry(entry: LegalPageCollectionEntry): LegalPage {
 	return {
-		slug: normalizeSlug(entry.slug),
-		title: entry.data.title,
-		summary: entry.data.summary,
-		date: entry.data.date,
-		type: entry.data.type,
-		version: entry.data.version,
-		locale: entry.data.locale,
-		entry,
+		slug: entry.slug,
+		title: entry.title,
+		description: entry.description,
+		effectiveDate: entry.effectiveDate,
+		locale: entry.locale,
+		content: entry.content,
+		html: entry.html,
+		headings: entry.headings,
 	}
 }
