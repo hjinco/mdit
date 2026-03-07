@@ -348,7 +348,8 @@ export const prepareIndexingSlice = ({
 			// Then run indexing if needed
 			if (forceReindex) {
 				try {
-					await get().indexWorkspace(workspacePath, true)
+					// Model changes refresh embeddings without wiping docs, links, or tags.
+					await get().indexWorkspace(workspacePath, false)
 					await get().loadIndexingMeta(workspacePath)
 				} catch {
 					// Error handling is done by caller or can be improved

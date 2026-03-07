@@ -34,7 +34,8 @@ export function EmbeddingModelChangeDialog({
 				<DialogHeader>
 					<DialogTitle>Change Embedding Model</DialogTitle>
 					<DialogDescription>
-						Changing the embedding model will delete all existing indexing data.
+						Changing the embedding model will recalculate embeddings for all
+						notes.
 						<br />
 						Do you want to continue?
 					</DialogDescription>
@@ -43,9 +44,7 @@ export function EmbeddingModelChangeDialog({
 					<Button variant="outline" onClick={handleCancel}>
 						Cancel
 					</Button>
-					<Button variant="destructive" onClick={handleConfirm}>
-						Confirm
-					</Button>
+					<Button onClick={handleConfirm}>Confirm</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

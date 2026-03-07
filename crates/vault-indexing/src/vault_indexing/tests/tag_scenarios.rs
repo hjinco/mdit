@@ -119,6 +119,7 @@ fn given_chunking_version_drift_when_reindexing_with_embeddings_then_doc_tags_ar
     harness.write_note("note.md", "Body #project/alpha");
 
     harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.install_doc_tag_audit();
     harness.set_doc_chunking_version("note.md", 0);
 
     harness.run_workspace_index_with_embeddings("test", "model-a");
@@ -135,6 +136,7 @@ fn given_chunking_version_drift_when_reindexing_with_embeddings_then_doc_tags_ar
             .to_string_lossy()
             .into_owned()]
     );
+    assert!(harness.doc_tag_audit_events().is_empty());
 }
 
 #[test]
@@ -143,6 +145,7 @@ fn given_embedding_model_drift_when_reindexing_with_embeddings_then_doc_tags_are
     harness.write_note("note.md", "Body #project/alpha");
 
     harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.install_doc_tag_audit();
     harness.run_workspace_index_with_embeddings("test", "model-b");
 
     assert_eq!(
@@ -157,4 +160,30 @@ fn given_embedding_model_drift_when_reindexing_with_embeddings_then_doc_tags_are
             .to_string_lossy()
             .into_owned()]
     );
+    assert!(harness.doc_tag_audit_events().is_empty());
+}
+
+#[test]
+fn given_embedding_dimension_drift_when_reindexing_with_embeddings_then_doc_tags_are_preserved() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-tags-embedding-dim-drift");
+    harness.write_note("note.md", "Body #project/alpha");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.install_doc_tag_audit();
+    harness.set_doc_embedding_metadata("note.md", Some("model-a"), Some(2));
+
+    let summary = harness.run_workspace_index_with_embeddings("test", "model-a");
+
+    assert_eq!(summary.docs_deleted, 0);
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(
+        harness.doc_embedding_metadata("note.md"),
+        Some((Some("model-a".to_string()), Some(3)))
+    );
+    assert_eq!(
+        harness.doc_tags("note.md"),
+        vec![("project/alpha".to_string(), "project/alpha".to_string())]
+    );
+    assert!(harness.doc_tag_audit_events().is_empty());
 }

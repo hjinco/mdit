@@ -126,6 +126,57 @@ impl IndexingHarness {
             .collect()
     }
 
+    pub(super) fn install_doc_tag_audit(&self) {
+        let conn = self.open_connection();
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS doc_tag_audit (
+                 event TEXT NOT NULL,
+                 doc_id INTEGER NOT NULL,
+                 normalized_tag TEXT NOT NULL
+             );
+             CREATE TRIGGER IF NOT EXISTS doc_tag_audit_ai
+             AFTER INSERT ON doc_tag BEGIN
+                 INSERT INTO doc_tag_audit (event, doc_id, normalized_tag)
+                 VALUES ('insert', new.doc_id, new.normalized_tag);
+             END;
+             CREATE TRIGGER IF NOT EXISTS doc_tag_audit_ad
+             AFTER DELETE ON doc_tag BEGIN
+                 INSERT INTO doc_tag_audit (event, doc_id, normalized_tag)
+                 VALUES ('delete', old.doc_id, old.normalized_tag);
+             END;",
+        )
+        .expect("failed to install doc_tag audit triggers");
+    }
+
+    pub(super) fn doc_tag_audit_events(&self) -> Vec<(String, String, String)> {
+        let Some((conn, vault_id)) = self.open_vault_connection() else {
+            return Vec::new();
+        };
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT a.event, d.rel_path, a.normalized_tag
+                 FROM doc_tag_audit a
+                 JOIN doc d ON d.id = a.doc_id
+                 WHERE d.vault_id = ?1
+                 ORDER BY a.event, d.rel_path, a.normalized_tag",
+            )
+            .expect("failed to prepare doc_tag audit query");
+
+        let rows = stmt
+            .query_map(params![vault_id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .expect("failed to query doc_tag audit rows");
+
+        rows.map(|row| row.expect("failed to decode doc_tag audit row"))
+            .collect()
+    }
+
     pub(super) fn link_targets_for(&self, source_rel_path: &str) -> Vec<String> {
         let Some((conn, vault_id)) = self.open_vault_connection() else {
             return Vec::new();
@@ -228,6 +279,13 @@ impl IndexingHarness {
         self.doc_queries().source_stat(rel_path)
     }
 
+    pub(super) fn doc_embedding_metadata(
+        &self,
+        rel_path: &str,
+    ) -> Option<(Option<String>, Option<i32>)> {
+        self.doc_queries().embedding_metadata(rel_path)
+    }
+
     pub(super) fn set_doc_source_stat(
         &self,
         rel_path: &str,
@@ -241,6 +299,16 @@ impl IndexingHarness {
     pub(super) fn set_doc_chunking_version(&self, rel_path: &str, chunking_version: i64) {
         self.doc_mutations()
             .set_chunking_version(rel_path, chunking_version);
+    }
+
+    pub(super) fn set_doc_embedding_metadata(
+        &self,
+        rel_path: &str,
+        model: Option<&str>,
+        dim: Option<i32>,
+    ) {
+        self.doc_mutations()
+            .set_embedding_metadata(rel_path, model, dim);
     }
 
     fn doc_queries(&self) -> DocQueries<'_> {
@@ -306,6 +374,23 @@ impl DocQueries<'_> {
         .optional()
         .expect("failed to query doc source stat")
     }
+
+    fn embedding_metadata(&self, rel_path: &str) -> Option<(Option<String>, Option<i32>)> {
+        let (conn, vault_id) = self.harness.open_vault_connection()?;
+        conn.query_row(
+            "SELECT last_embedding_model, last_embedding_dim \
+             FROM doc WHERE vault_id = ?1 AND rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| {
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<i32>>(1)?,
+                ))
+            },
+        )
+        .optional()
+        .expect("failed to query doc embedding metadata")
+    }
 }
 
 impl DocMutations<'_> {
@@ -342,6 +427,19 @@ impl DocMutations<'_> {
             params![chunking_version, vault_id, rel_path],
         )
         .expect("failed to update doc chunking version");
+    }
+
+    fn set_embedding_metadata(&self, rel_path: &str, model: Option<&str>, dim: Option<i32>) {
+        let Some((conn, vault_id)) = self.harness.open_vault_connection() else {
+            return;
+        };
+        conn.execute(
+            "UPDATE doc \
+             SET last_embedding_model = ?1, last_embedding_dim = ?2 \
+             WHERE vault_id = ?3 AND rel_path = ?4",
+            params![model, dim, vault_id, rel_path],
+        )
+        .expect("failed to update doc embedding metadata");
     }
 }
 
