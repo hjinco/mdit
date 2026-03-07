@@ -34,12 +34,7 @@ const saveFontScale = (value: number): void => {
 const readLocalApiEnabled = (): boolean => {
 	if (typeof window === "undefined") return false
 
-	const storedValue = localStorage.getItem(LOCAL_API_ENABLED_STORAGE_KEY)
-	if (storedValue === null) {
-		return false
-	}
-
-	return storedValue === "true"
+	return localStorage.getItem(LOCAL_API_ENABLED_STORAGE_KEY) === "true"
 }
 
 const saveLocalApiEnabled = (enabled: boolean): void => {
