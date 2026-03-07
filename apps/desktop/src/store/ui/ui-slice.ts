@@ -21,8 +21,10 @@ export type UISlice = {
 	settingsInitialTab: SettingsTab | null
 	openSettingsWithTab: (tab: SettingsTab) => void
 	isCommandMenuOpen: boolean
+	commandMenuInitialQuery: string | null
 	setCommandMenuOpen: (isOpen: boolean) => void
 	openCommandMenu: () => void
+	openCommandMenuWithQuery: (query: string) => void
 	closeCommandMenu: () => void
 	toggleCommandMenu: () => void
 	isUpdateReady: boolean
@@ -100,11 +102,34 @@ export const prepareUISlice =
 				settingsInitialTab: tab,
 			}),
 		isCommandMenuOpen: false,
-		setCommandMenuOpen: (isOpen) => set({ isCommandMenuOpen: isOpen }),
-		openCommandMenu: () => set({ isCommandMenuOpen: true }),
-		closeCommandMenu: () => set({ isCommandMenuOpen: false }),
+		commandMenuInitialQuery: null,
+		setCommandMenuOpen: (isOpen) =>
+			set((state) => ({
+				isCommandMenuOpen: isOpen,
+				commandMenuInitialQuery: isOpen ? state.commandMenuInitialQuery : null,
+			})),
+		openCommandMenu: () =>
+			set({
+				isCommandMenuOpen: true,
+				commandMenuInitialQuery: null,
+			}),
+		openCommandMenuWithQuery: (query) =>
+			set({
+				isCommandMenuOpen: true,
+				commandMenuInitialQuery: query.trim() || null,
+			}),
+		closeCommandMenu: () =>
+			set({
+				isCommandMenuOpen: false,
+				commandMenuInitialQuery: null,
+			}),
 		toggleCommandMenu: () =>
-			set((state) => ({ isCommandMenuOpen: !state.isCommandMenuOpen })),
+			set((state) => ({
+				isCommandMenuOpen: !state.isCommandMenuOpen,
+				commandMenuInitialQuery: state.isCommandMenuOpen
+					? null
+					: state.commandMenuInitialQuery,
+			})),
 		isUpdateReady: false,
 		isUpdateDownloading: false,
 		setUpdateReady: (ready) => set({ isUpdateReady: ready }),

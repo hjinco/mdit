@@ -13,14 +13,17 @@ import useMeasure from "react-use-measure"
 import { highlightQuery } from "./highlight-query"
 import { resolveNotePresentation } from "./note-presentation"
 import { getFileNameFromPath, getParentPathLabel } from "./path-utils"
+import { getTagOnlySearchQuery } from "./tag-query"
 import type {
 	CommandMenuContentSearch,
 	CommandMenuEntry,
 	CommandMenuSemanticSearch,
+	CommandMenuTagSearch,
 } from "./types"
 import { useNoteContentSearch } from "./use-note-content-search"
 import { useNoteNameSearch } from "./use-note-name-search"
 import { useSemanticSearch } from "./use-semantic-search"
+import { useTagSearch } from "./use-tag-search"
 
 export type CommandMenuProps = {
 	open: boolean
@@ -28,8 +31,10 @@ export type CommandMenuProps = {
 	workspacePath: string | null
 	entries: CommandMenuEntry[]
 	onSelectPath: (path: string) => void
+	initialQuery?: string | null
 	searchContent?: CommandMenuContentSearch
 	searchSemantic?: CommandMenuSemanticSearch
+	searchTags?: CommandMenuTagSearch
 }
 
 export function CommandMenu({
@@ -38,33 +43,43 @@ export function CommandMenu({
 	workspacePath,
 	entries,
 	onSelectPath,
+	initialQuery,
 	searchContent,
 	searchSemantic,
+	searchTags,
 }: CommandMenuProps) {
-	const [query, setQuery] = useState("")
+	const [query, setQuery] = useState(initialQuery ?? "")
 	const [isInitialMeasureDebounced, setIsInitialMeasureDebounced] =
 		useState(false)
 	const deferredQuery = useDeferredValue(query)
 	const debouncedQuery = useDebounce(query, 250)
+	const activeTagQuery = getTagOnlySearchQuery(query)
+	const debouncedTagQuery = getTagOnlySearchQuery(debouncedQuery)
 	const { filteredNoteResults, noteResultsByPath } = useNoteNameSearch(
 		entries,
 		workspacePath,
-		deferredQuery,
+		activeTagQuery ? "" : deferredQuery,
 	)
 	const { trimmedSearchTerm, contentMatchesByNote } = useNoteContentSearch(
-		debouncedQuery,
+		activeTagQuery ? "" : debouncedQuery,
 		workspacePath,
 		searchContent,
 	)
 	const { results: semanticResults } = useSemanticSearch(
-		debouncedQuery,
+		activeTagQuery ? "" : debouncedQuery,
 		workspacePath,
 		searchSemantic,
+	)
+	const { results: tagResults } = useTagSearch(
+		debouncedTagQuery,
+		workspacePath,
+		searchTags,
 	)
 
 	const hasNoteMatches = filteredNoteResults.length > 0
 	const hasContentMatches = contentMatchesByNote.length > 0
 	const hasSemanticMatches = semanticResults.length > 0
+	const hasTagMatches = tagResults.length > 0
 
 	useEffect(() => {
 		if (!open) {
@@ -77,6 +92,17 @@ export function CommandMenu({
 			}
 		}
 	}, [open])
+
+	useEffect(() => {
+		if (!open) {
+			return
+		}
+
+		const nextQuery = initialQuery ?? ""
+		setQuery((currentQuery) =>
+			currentQuery === nextQuery ? currentQuery : nextQuery,
+		)
+	}, [initialQuery, open])
 
 	const handleSelectNote = useCallback(
 		(notePath: string) => {
@@ -121,7 +147,7 @@ export function CommandMenu({
 			<CommandInput
 				value={query}
 				onValueChange={setQuery}
-				placeholder="Search notes..."
+				placeholder="Search notes or tags..."
 				autoFocus
 			/>
 			<motion.div
@@ -132,7 +158,46 @@ export function CommandMenu({
 			>
 				<CommandList ref={listRef} className="max-h-88">
 					<CommandEmpty>No results found</CommandEmpty>
-					{hasNoteMatches && (
+					{activeTagQuery && hasTagMatches && (
+						<CommandGroup heading="Tag Matches">
+							{tagResults.map((result) => {
+								const note = noteResultsByPath.get(result.path)
+								const { label, relativePath, parentPathLabel } =
+									resolveNotePresentation({
+										note,
+										path: result.path,
+										workspacePath,
+										fallbackName: result.name,
+									})
+								const keywords = [
+									label,
+									relativePath,
+									activeTagQuery,
+									"tag",
+								].filter(Boolean) as string[]
+
+								return (
+									<CommandItem
+										key={`${result.path}:tag`}
+										value={`${result.path}:tag`}
+										keywords={keywords}
+										onSelect={() => handleSelectNote(result.path)}
+										className="data-[selected=true]:bg-accent-foreground/10"
+									>
+										<div className="flex max-w-full flex-col gap-0.5">
+											<div className="flex items-center gap-2 truncate text-sm">
+												<span className="truncate">{label}</span>
+											</div>
+											<span className="text-muted-foreground/80 truncate text-xs">
+												{parentPathLabel}
+											</span>
+										</div>
+									</CommandItem>
+								)
+							})}
+						</CommandGroup>
+					)}
+					{!activeTagQuery && hasNoteMatches && (
 						<CommandGroup
 							heading={deferredQuery.trim() ? "Notes" : "Recent Notes"}
 						>
@@ -154,7 +219,7 @@ export function CommandMenu({
 							))}
 						</CommandGroup>
 					)}
-					{hasSemanticMatches && (
+					{!activeTagQuery && hasSemanticMatches && (
 						<CommandGroup heading="Suggestions">
 							{semanticResults.slice(0, 5).map((result) => {
 								const note = noteResultsByPath.get(result.path)
@@ -190,7 +255,7 @@ export function CommandMenu({
 							})}
 						</CommandGroup>
 					)}
-					{hasContentMatches && (
+					{!activeTagQuery && hasContentMatches && (
 						<CommandGroup heading="Content Matches">
 							{contentMatchesByNote.map((group) => {
 								const note = noteResultsByPath.get(group.path)

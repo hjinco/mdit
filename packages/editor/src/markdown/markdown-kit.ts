@@ -18,9 +18,8 @@ import YAML from "yaml"
 import type { FrontmatterRow as KVRow } from "../frontmatter"
 import {
 	convertValueToType,
-	datePattern,
+	detectFrontmatterValueType,
 	FRONTMATTER_KEY,
-	type ValueType,
 } from "../frontmatter"
 import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../link/link-utils"
 
@@ -60,29 +59,19 @@ function rowsToRecord(
 	return {}
 }
 
-function detectValueType(value: unknown): ValueType {
-	if (typeof value === "boolean") return "boolean"
-	if (typeof value === "number") return "number"
-	if (Array.isArray(value)) return "array"
-	if (
-		value instanceof Date ||
-		(typeof value === "string" &&
-			!Number.isNaN(Date.parse(value)) &&
-			datePattern.test(value))
-	)
-		return "date"
-	return "string"
-}
-
 function toRowsFromRecord(value: unknown): KVRow[] {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return []
 
-	return Object.entries(value as Record<string, unknown>).map(([key, val]) => ({
-		id: createRowId(),
-		key,
-		value: val,
-		type: detectValueType(val),
-	}))
+	return Object.entries(value as Record<string, unknown>).map(([key, val]) => {
+		const type = detectFrontmatterValueType(key, val)
+
+		return {
+			id: createRowId(),
+			key,
+			value: type === "tags" ? convertValueToType(val, type) : val,
+			type,
+		}
+	})
 }
 
 function parseFrontmatterYaml(yamlSource: string): KVRow[] {

@@ -25,6 +25,7 @@ import {
 	IconHash,
 	IconLetterCase,
 	IconList,
+	IconTags,
 	IconToggleLeft,
 	IconTrash,
 } from "@tabler/icons-react"
@@ -56,6 +57,12 @@ import {
 	takePendingFrontmatterFocusTarget,
 } from "./frontmatter-focus"
 import { areFrontmatterRowsEqual } from "./frontmatter-row-equality"
+import {
+	applyFrontmatterKeyChange,
+	applyFrontmatterTypeChange,
+	getFrontmatterPropertyTypeOptions,
+	isTagsFrontmatterKey,
+} from "./frontmatter-tag-utils"
 import {
 	convertValueToType,
 	datePattern,
@@ -111,6 +118,7 @@ type FrontmatterTableProps = {
 	data: KVRow[]
 	onChange: (data: KVRow[]) => void
 	onOpenWikiLink?: FrontmatterWikiLinkHandler
+	onOpenTagSearch?: (query: string) => void | Promise<void>
 	getLinkWorkspaceState?: () => LinkWorkspaceState
 	resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
 }
@@ -124,26 +132,29 @@ const PROPERTY_ICONS: Record<
 	boolean: IconToggleLeft,
 	date: IconCalendar,
 	array: IconList,
+	tags: IconTags,
 }
 
 const PROPERTY_TYPE_OPTIONS: ReadonlyArray<{
 	value: ValueType
 	label: string
 }> = [
-	{ value: "string", label: "Text" },
-	{ value: "number", label: "Number" },
-	{ value: "boolean", label: "Boolean" },
-	{ value: "date", label: "Date" },
-	{ value: "array", label: "Array" },
+	...getFrontmatterPropertyTypeOptions("property"),
+	{ value: "tags", label: "Tags" },
 ]
 
 function TypeSelect({
 	value: currentType,
+	options,
 	onValueChange,
 	onRemove,
 	focusRegistration,
 }: {
 	value: ValueType
+	options: ReadonlyArray<{
+		value: ValueType
+		label: string
+	}>
 	onValueChange: (newType: ValueType) => void
 	onRemove: () => void
 	focusRegistration?: FocusRegistration
@@ -175,7 +186,7 @@ function TypeSelect({
 						<span>Property type</span>
 					</DropdownMenuSubTrigger>
 					<DropdownMenuSubContent>
-						{PROPERTY_TYPE_OPTIONS.map((option) => {
+						{options.map((option) => {
 							const OptionIcon = PROPERTY_ICONS[option.value]
 
 							return (
@@ -464,6 +475,7 @@ function ValueEditor({
 	onValueChange,
 	focusRegistration,
 	onOpenWikiLink,
+	onOpenTagSearch,
 	getLinkWorkspaceState,
 	resolveWikiLinkTarget,
 }: {
@@ -472,6 +484,7 @@ function ValueEditor({
 	onValueChange: (value: unknown) => void
 	focusRegistration?: FocusRegistration
 	onOpenWikiLink?: FrontmatterWikiLinkHandler
+	onOpenTagSearch?: (query: string) => void | Promise<void>
 	getLinkWorkspaceState?: () => LinkWorkspaceState
 	resolveWikiLinkTarget?: FrontmatterResolveWikiLinkTargetHandler
 }) {
@@ -550,6 +563,17 @@ function ValueEditor({
 					resolveWikiLinkTarget={resolveWikiLinkTarget}
 				/>
 			)
+		case "tags":
+			return (
+				<FrontmatterArray
+					value={value}
+					onChange={onValueChange}
+					mode="tags"
+					placeholder="Add a tag"
+					focusRegistration={focusRegistration}
+					onOpenTagSearch={onOpenTagSearch}
+				/>
+			)
 		case "number":
 			return (
 				<InlineEditableField
@@ -593,6 +617,7 @@ export function FrontmatterTable({
 	data,
 	onChange,
 	onOpenWikiLink,
+	onOpenTagSearch,
 	getLinkWorkspaceState,
 	resolveWikiLinkTarget,
 }: FrontmatterTableProps) {
@@ -679,13 +704,19 @@ export function FrontmatterTable({
 								item.id === row.original.id
 									? {
 											...item,
-											type: newType,
-											value: convertValueToType(item.value, newType),
+											...applyFrontmatterTypeChange(
+												row.original.key,
+												item.value,
+												newType,
+											),
 										}
 									: item,
 							),
 						)
 					}
+					const typeOptions = isTagsFrontmatterKey(row.original.key)
+						? getFrontmatterPropertyTypeOptions(row.original.key)
+						: PROPERTY_TYPE_OPTIONS
 
 					const removeRow = () => {
 						pendingDeleteFocusRef.current = {
@@ -699,6 +730,7 @@ export function FrontmatterTable({
 					return (
 						<TypeSelect
 							value={row.original.type}
+							options={typeOptions}
 							onValueChange={updateType}
 							onRemove={removeRow}
 							focusRegistration={createFocusRegistration(
@@ -715,7 +747,17 @@ export function FrontmatterTable({
 					const updateKey = (newKey: string) => {
 						updateTableData((items) =>
 							items.map((item) =>
-								item.id === row.original.id ? { ...item, key: newKey } : item,
+								item.id === row.original.id
+									? {
+											...item,
+											key: newKey,
+											...applyFrontmatterKeyChange(
+												newKey,
+												item.type,
+												item.value,
+											),
+										}
+									: item,
 							),
 						)
 					}
@@ -755,6 +797,7 @@ export function FrontmatterTable({
 							value={row.original.value}
 							onValueChange={updateValue}
 							onOpenWikiLink={onOpenWikiLink}
+							onOpenTagSearch={onOpenTagSearch}
 							getLinkWorkspaceState={getLinkWorkspaceState}
 							resolveWikiLinkTarget={resolveWikiLinkTarget}
 							focusRegistration={createFocusRegistration(
@@ -770,6 +813,7 @@ export function FrontmatterTable({
 			createFocusRegistration,
 			getDeleteFocusTargetRowId,
 			getLinkWorkspaceState,
+			onOpenTagSearch,
 			onOpenWikiLink,
 			resolveWikiLinkTarget,
 			updateTableData,

@@ -28,6 +28,7 @@ import {
 import { createSlashKit } from "@mdit/editor/slash"
 import { SuggestionKit } from "@mdit/editor/suggestion"
 import { TableKit } from "@mdit/editor/table"
+import { createTagKit } from "@mdit/editor/tag"
 import { TocKit } from "@mdit/editor/toc"
 import type { RenderNodeWrapper } from "platejs/react"
 import { useStore } from "@/store"
@@ -38,6 +39,7 @@ import { createDesktopFrontmatterHost } from "../hosts/frontmatter-host"
 import { createDesktopLinkHost } from "../hosts/link-host"
 import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
+import { createDesktopTagHost } from "../hosts/tag-host"
 import { TabMetadataKit } from "./tab-metadata-kit"
 
 const AppBlockDraggable: RenderNodeWrapper = (props) => {
@@ -54,8 +56,10 @@ const DndKit = [
 ]
 
 const desktopLinkHost = createDesktopLinkHost()
+const desktopTagHost = createDesktopTagHost()
 const desktopFrontmatterHost = createDesktopFrontmatterHost({
 	linkHost: desktopLinkHost,
+	tagHost: desktopTagHost,
 })
 const desktopBlockSelectionHost = createDesktopBlockSelectionHost()
 
@@ -88,6 +92,7 @@ const createEditorKit = ({ mdx = true }: CreateEditorKitOptions = {}) => [
 	...ShortcutsKit,
 	...createSlashKit({ host: desktopSlashHost }),
 	...SuggestionKit,
+	...createTagKit({ host: desktopTagHost }),
 	...TableKit,
 	...TocKit,
 	...UtilsKit,

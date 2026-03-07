@@ -6,8 +6,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use app_storage::migrations;
 
 use super::super::{
-    find_vault_id, get_backlinks, get_indexing_meta, index_note, index_workspace, BacklinkEntry,
-    IndexSummary, IndexingMeta,
+    find_vault_id, get_backlinks, get_indexing_meta, index_note, index_workspace,
+    search_notes_by_tag, BacklinkEntry, IndexSummary, IndexingMeta,
 };
 
 pub(super) struct IndexingHarness {
@@ -61,6 +61,21 @@ impl IndexingHarness {
             .expect("workspace indexing should succeed")
     }
 
+    pub(super) fn run_workspace_index_with_embeddings(
+        &self,
+        embedding_provider: &str,
+        embedding_model: &str,
+    ) -> IndexSummary {
+        index_workspace(
+            &self.root,
+            &self.db_path,
+            embedding_provider,
+            embedding_model,
+            false,
+        )
+        .expect("workspace indexing with embeddings should succeed")
+    }
+
     pub(super) fn run_note_index(&self, rel_path: &str) -> Result<IndexSummary> {
         self.run_note_index_for_path(&self.root.join(rel_path))
     }
@@ -76,6 +91,39 @@ impl IndexingHarness {
     pub(super) fn backlinks(&self, rel_path: &str) -> Vec<BacklinkEntry> {
         get_backlinks(&self.root, &self.db_path, &self.root.join(rel_path))
             .expect("failed to query backlinks")
+    }
+
+    pub(super) fn search_tags(&self, tag_query: &str) -> Vec<String> {
+        search_notes_by_tag(&self.root, &self.db_path, tag_query)
+            .expect("failed to search tags")
+            .into_iter()
+            .map(|entry| entry.path)
+            .collect()
+    }
+
+    pub(super) fn doc_tags(&self, rel_path: &str) -> Vec<(String, String)> {
+        let Some((conn, vault_id)) = self.open_vault_connection() else {
+            return Vec::new();
+        };
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT dt.tag, dt.normalized_tag \
+                 FROM doc_tag dt \
+                 JOIN doc d ON d.id = dt.doc_id \
+                 WHERE d.vault_id = ?1 AND d.rel_path = ?2 \
+                 ORDER BY dt.normalized_tag",
+            )
+            .expect("failed to prepare tag query");
+
+        let rows = stmt
+            .query_map(params![vault_id, rel_path], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .expect("failed to query tag rows");
+
+        rows.map(|row| row.expect("failed to decode tag row"))
+            .collect()
     }
 
     pub(super) fn link_targets_for(&self, source_rel_path: &str) -> Vec<String> {
@@ -190,6 +238,11 @@ impl IndexingHarness {
             .set_source_stat(rel_path, size, mtime_ns);
     }
 
+    pub(super) fn set_doc_chunking_version(&self, rel_path: &str, chunking_version: i64) {
+        self.doc_mutations()
+            .set_chunking_version(rel_path, chunking_version);
+    }
+
     fn doc_queries(&self) -> DocQueries<'_> {
         DocQueries { harness: self }
     }
@@ -278,6 +331,17 @@ impl DocMutations<'_> {
             params![size, mtime_ns, vault_id, rel_path],
         )
         .expect("failed to update doc source stat");
+    }
+
+    fn set_chunking_version(&self, rel_path: &str, chunking_version: i64) {
+        let Some((conn, vault_id)) = self.harness.open_vault_connection() else {
+            return;
+        };
+        conn.execute(
+            "UPDATE doc SET chunking_version = ?1 WHERE vault_id = ?2 AND rel_path = ?3",
+            params![chunking_version, vault_id, rel_path],
+        )
+        .expect("failed to update doc chunking version");
     }
 }
 

@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 use app_storage::vault::VaultEmbeddingConfig;
 use mdit_vault_indexing::{
     delete_indexed_note, get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes,
-    index_note, index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_for_query,
-    BacklinkEntry, GraphViewData, IndexSummary, IndexingMeta, RelatedNoteEntry,
-    ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
+    index_note, index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_by_tag,
+    search_notes_for_query, BacklinkEntry, GraphViewData, IndexSummary, IndexingMeta,
+    RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
+    TagNoteEntry,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -146,6 +147,18 @@ pub async fn search_query_entries_command(
         )
     })
     .await
+}
+
+#[tauri::command]
+pub async fn search_tag_entries_command(
+    app_handle: tauri::AppHandle,
+    workspace_path: String,
+    tag_query: String,
+) -> Result<Vec<TagNoteEntry>, String> {
+    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
+    let workspace_path = PathBuf::from(workspace_path);
+
+    run_blocking(move || search_notes_by_tag(&workspace_path, &db_path, &tag_query)).await
 }
 
 #[tauri::command]

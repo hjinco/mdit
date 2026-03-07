@@ -12,7 +12,7 @@ use anyhow::{anyhow, Context, Result};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 
-use super::embedding::EmbeddingClient;
+use super::{embedding::EmbeddingClient, tags::normalize_tag_query};
 
 const VECTOR_WEIGHT: f32 = 0.7;
 const BM25_WEIGHT: f32 = 0.3;
@@ -28,6 +28,15 @@ pub struct SemanticNoteEntry {
     pub created_at: Option<i64>,
     pub modified_at: Option<i64>,
     pub similarity: f32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TagNoteEntry {
+    pub path: String,
+    pub name: String,
+    pub created_at: Option<i64>,
+    pub modified_at: Option<i64>,
 }
 
 #[derive(Debug, Default)]
@@ -138,6 +147,31 @@ pub fn search_notes_for_query(
         .collect::<Vec<_>>();
     let ranked_candidates = rank_score_inputs(candidates);
     materialize_ranked_entries(workspace_root, ranked_candidates)
+}
+
+pub fn search_notes_by_tag(
+    workspace_root: &Path,
+    db_path: &Path,
+    tag_query: &str,
+) -> Result<Vec<TagNoteEntry>> {
+    if !workspace_root.exists() {
+        return Err(anyhow!(
+            "Workspace path does not exist: {}",
+            workspace_root.display()
+        ));
+    }
+
+    let Some(normalized_tag) = normalize_tag_query(tag_query) else {
+        return Ok(Vec::new());
+    };
+
+    let conn = open_search_connection(db_path)?;
+    let Some(vault_id) = super::find_vault_id(&conn, workspace_root)? else {
+        return Ok(Vec::new());
+    };
+
+    let rel_paths = load_tag_scores(&conn, vault_id, &normalized_tag)?;
+    materialize_tag_entries(workspace_root, rel_paths)
 }
 
 fn open_search_connection(db_path: &Path) -> Result<Connection> {
@@ -256,6 +290,37 @@ fn load_vector_scores(
     Ok(output)
 }
 
+fn load_tag_scores(conn: &Connection, vault_id: i64, normalized_tag: &str) -> Result<Vec<String>> {
+    let descendant_pattern = format!("{}/%", escape_like_pattern(normalized_tag));
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT d.rel_path \
+             FROM doc_tag dt \
+             JOIN doc d ON d.id = dt.doc_id \
+             WHERE d.vault_id = ?1 \
+               AND (dt.normalized_tag = ?2 OR dt.normalized_tag LIKE ?3 ESCAPE '\\')",
+        )
+        .context("Failed to prepare tag search query")?;
+
+    let rows = stmt
+        .query_map(
+            params![vault_id, normalized_tag, descendant_pattern],
+            |row| row.get::<_, String>(0),
+        )
+        .context("Failed to run tag search query")?;
+
+    let mut output = Vec::new();
+    for row in rows {
+        let rel_path = row?;
+        if is_markdown(&rel_path) {
+            output.push(rel_path);
+        }
+    }
+
+    Ok(output)
+}
+
 fn segment_vec_table_exists(conn: &Connection) -> Result<bool> {
     let exists: i64 = conn
         .query_row(
@@ -362,10 +427,33 @@ pub(super) fn materialize_ranked_entries(
     let mut entries = Vec::new();
     for candidate in ranked_candidates {
         let absolute_path = workspace_root.join(&candidate.rel_path);
-        if let Some(entry) = build_entry(absolute_path, candidate.similarity)? {
+        if let Some(entry) = build_semantic_entry(absolute_path, candidate.similarity)? {
             entries.push(entry);
         }
     }
+    Ok(entries)
+}
+
+pub(super) fn materialize_tag_entries(
+    workspace_root: &Path,
+    rel_paths: Vec<String>,
+) -> Result<Vec<TagNoteEntry>> {
+    let mut entries = Vec::new();
+    for rel_path in rel_paths {
+        let absolute_path = workspace_root.join(rel_path);
+        if let Some(entry) = build_tag_entry(absolute_path)? {
+            entries.push(entry);
+        }
+    }
+
+    entries.sort_by(|left, right| {
+        right
+            .modified_at
+            .cmp(&left.modified_at)
+            .then_with(|| right.created_at.cmp(&left.created_at))
+            .then_with(|| left.path.cmp(&right.path))
+    });
+
     Ok(entries)
 }
 
@@ -393,7 +481,42 @@ fn is_markdown(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn build_entry(path: PathBuf, similarity: f32) -> Result<Option<SemanticNoteEntry>> {
+fn build_semantic_entry(path: PathBuf, similarity: f32) -> Result<Option<SemanticNoteEntry>> {
+    let Some(entry) = build_fs_entry(path, Some(MIN_NOTE_BYTES))? else {
+        return Ok(None);
+    };
+
+    Ok(Some(SemanticNoteEntry {
+        path: entry.path,
+        name: entry.name,
+        created_at: entry.created_at,
+        modified_at: entry.modified_at,
+        similarity,
+    }))
+}
+
+fn build_tag_entry(path: PathBuf) -> Result<Option<TagNoteEntry>> {
+    let Some(entry) = build_fs_entry(path, None)? else {
+        return Ok(None);
+    };
+
+    Ok(Some(TagNoteEntry {
+        path: entry.path,
+        name: entry.name,
+        created_at: entry.created_at,
+        modified_at: entry.modified_at,
+    }))
+}
+
+#[derive(Debug)]
+struct FsNoteEntry {
+    path: String,
+    name: String,
+    created_at: Option<i64>,
+    modified_at: Option<i64>,
+}
+
+fn build_fs_entry(path: PathBuf, min_bytes: Option<u64>) -> Result<Option<FsNoteEntry>> {
     if !path.exists() {
         return Ok(None);
     }
@@ -403,7 +526,7 @@ fn build_entry(path: PathBuf, similarity: f32) -> Result<Option<SemanticNoteEntr
         Err(_) => return Ok(None),
     };
 
-    if metadata.len() < MIN_NOTE_BYTES {
+    if min_bytes.is_some_and(|min_bytes| metadata.len() < min_bytes) {
         return Ok(None);
     }
 
@@ -416,13 +539,26 @@ fn build_entry(path: PathBuf, similarity: f32) -> Result<Option<SemanticNoteEntr
         .map(|value| value.to_string())
         .unwrap_or_else(|| path.to_string_lossy().into_owned());
 
-    Ok(Some(SemanticNoteEntry {
+    Ok(Some(FsNoteEntry {
         path: path.to_string_lossy().into_owned(),
         name,
         created_at,
         modified_at,
-        similarity,
     }))
+}
+
+fn escape_like_pattern(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '\\' | '%' | '_' => {
+                output.push('\\');
+                output.push(ch);
+            }
+            _ => output.push(ch),
+        }
+    }
+    output
 }
 
 fn system_time_to_millis(time: SystemTime) -> Option<i64> {
@@ -435,7 +571,7 @@ fn system_time_to_millis(time: SystemTime) -> Option<i64> {
 mod tests {
     use rusqlite::{params, Connection};
 
-    use super::load_vector_scores;
+    use super::{escape_like_pattern, load_tag_scores, load_vector_scores};
 
     fn embedding_bytes(dim: usize) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(dim * 4);
@@ -458,6 +594,11 @@ mod tests {
                  rel_path TEXT NOT NULL, \
                  last_embedding_model TEXT, \
                  last_embedding_dim INTEGER \
+             ); \
+             CREATE TABLE doc_tag ( \
+                 doc_id INTEGER NOT NULL, \
+                 tag TEXT NOT NULL, \
+                 normalized_tag TEXT NOT NULL \
              ); \
              CREATE TABLE segment ( \
                  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, \
@@ -501,5 +642,40 @@ mod tests {
             .expect("vector score loading should not fail");
 
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn load_tag_scores_matches_exact_and_descendant_tags() {
+        let conn = open_connection();
+        conn.execute(
+            "INSERT INTO doc (id, vault_id, rel_path) VALUES (?1, ?2, ?3)",
+            params![1, 10, "alpha.md"],
+        )
+        .expect("failed to insert alpha doc");
+        conn.execute(
+            "INSERT INTO doc (id, vault_id, rel_path) VALUES (?1, ?2, ?3)",
+            params![2, 10, "beta.md"],
+        )
+        .expect("failed to insert beta doc");
+        conn.execute(
+            "INSERT INTO doc_tag (doc_id, tag, normalized_tag) VALUES (?1, ?2, ?3)",
+            params![1, "Project", "project"],
+        )
+        .expect("failed to insert exact tag");
+        conn.execute(
+            "INSERT INTO doc_tag (doc_id, tag, normalized_tag) VALUES (?1, ?2, ?3)",
+            params![2, "Project/Alpha", "project/alpha"],
+        )
+        .expect("failed to insert descendant tag");
+
+        let results =
+            load_tag_scores(&conn, 10, "project").expect("tag score loading should succeed");
+
+        assert_eq!(results, vec!["alpha.md".to_string(), "beta.md".to_string()]);
+    }
+
+    #[test]
+    fn escape_like_pattern_escapes_like_metacharacters() {
+        assert_eq!(escape_like_pattern("pro_ject%"), "pro\\_ject\\%");
     }
 }

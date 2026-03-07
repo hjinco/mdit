@@ -11,6 +11,8 @@ use rusqlite::Connection;
 
 use crate::sqlite_ext;
 
+// Keep SQL migrations embedded in the binary so desktop/test environments do not
+// depend on external migration files at runtime.
 static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
 const RELEASE_DB_FILE_NAME: &str = "appdata.db";

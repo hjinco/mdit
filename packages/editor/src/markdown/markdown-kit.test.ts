@@ -193,6 +193,30 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("E=mc^2")
 		expect(markdown).toContain("\\end{equation}")
 	})
+
+	it("serializes canonical tags rows as a yaml list", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: "frontmatter",
+				data: [
+					{
+						id: "tags",
+						key: "tags",
+						type: "tags",
+						value: ["#Project", "Docs/Guide"],
+					},
+				],
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("tags:")
+		expect(markdown).toContain("  - Project")
+		expect(markdown).toContain("  - Docs/Guide")
+		expect(markdown).not.toContain("#Project")
+	})
 })
 
 describe("markdown-kit deserialization", () => {
@@ -246,6 +270,26 @@ describe("markdown-kit deserialization", () => {
 					key: "title",
 					value: "Hello",
 					type: "string",
+				}),
+			]),
+		)
+	})
+
+	it("deserializes frontmatter tags into the canonical tags type", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(
+			editor,
+			"---\ntags:\n  - '#Project'\n  - Docs/Guide\n---\n\nBody",
+		)
+
+		const frontmatterNode = value[0] as any
+		expect(frontmatterNode?.type).toBe("frontmatter")
+		expect(frontmatterNode?.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					key: "tags",
+					value: ["Project", "Docs/Guide"],
+					type: "tags",
 				}),
 			]),
 		)

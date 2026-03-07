@@ -18,6 +18,7 @@ mod doc_repo;
 mod link_refresh;
 mod policy;
 mod segment_sync;
+mod tag_refresh;
 
 use doc_repo::{
     ensure_docs_for_files, load_docs, remove_deleted_docs, update_full_metadata,
@@ -29,6 +30,7 @@ use link_refresh::{
 };
 use policy::{decide_file_sync_action, embedding_target_changed, FileSyncAction};
 use segment_sync::{rebuild_doc_chunks, sync_segments_for_doc};
+use tag_refresh::replace_tags_for_doc;
 
 pub(super) fn clear_segment_vectors_for_vault(conn: &Connection, vault_id: i64) -> Result<()> {
     segment_sync::clear_segment_vectors_for_vault(conn, vault_id)
@@ -127,6 +129,7 @@ fn process_file(
 
     let doc_id = doc_record.id;
     let hash_changed = !doc_record.links_up_to_date(&doc_hash);
+    let note_tags = super::tags::extract_note_tags(&contents);
 
     if force_link_refresh_for_doc || hash_changed {
         let resolution = link_resolver.resolve_links_with_dependencies(file, &contents);
@@ -135,6 +138,7 @@ fn process_file(
 
     let Some(embedding) = embedding else {
         if hash_changed {
+            replace_tags_for_doc(conn, doc_id, &note_tags)?;
             update_hash_and_content(conn, doc_record, &doc_hash, &indexed_content, file)?;
         } else if source_stat_changed {
             update_source_stat(conn, doc_record, file)?;
@@ -152,6 +156,7 @@ fn process_file(
         let chunks = chunk_document(&contents, TARGET_CHUNKING_VERSION);
         // Chunking algorithm changed, rebuild every segment and embedding.
         rebuild_doc_chunks(conn, doc_id, &chunks, &embedding.embedder, summary)?;
+        replace_tags_for_doc(conn, doc_id, &note_tags)?;
         update_full_metadata(
             conn,
             doc_record,
@@ -186,6 +191,7 @@ fn process_file(
         embedding_target_changed,
         summary,
     )?;
+    replace_tags_for_doc(conn, doc_id, &note_tags)?;
     update_full_metadata(
         conn,
         doc_record,

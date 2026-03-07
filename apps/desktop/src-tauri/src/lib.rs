@@ -57,6 +57,7 @@ pub fn run() {
             commands::vault_indexing::delete_indexed_note_command,
             commands::vault_indexing::get_indexing_meta_command,
             commands::vault_indexing::search_query_entries_command,
+            commands::vault_indexing::search_tag_entries_command,
             commands::vault_indexing::resolve_wiki_link_command,
             commands::vault_indexing::get_backlinks_command,
             commands::vault_indexing::get_related_notes_command,

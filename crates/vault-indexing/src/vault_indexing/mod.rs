@@ -27,11 +27,12 @@ mod files;
 mod links;
 mod search;
 mod sync;
+mod tags;
 
 use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
 use links::resolve_wiki_link_target;
-pub use search::{search_notes_for_query, SemanticNoteEntry};
+pub use search::{search_notes_by_tag, search_notes_for_query, SemanticNoteEntry, TagNoteEntry};
 use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
 pub use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult};
 
