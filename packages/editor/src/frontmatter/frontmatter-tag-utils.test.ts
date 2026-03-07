@@ -6,6 +6,7 @@ import {
 	getFrontmatterPropertyTypeOptions,
 	getFrontmatterTagQuery,
 	isTagsFrontmatterKey,
+	mergeFrontmatterTagItems,
 } from "./frontmatter-tag-utils"
 
 describe("frontmatter-tag-utils", () => {
@@ -64,5 +65,20 @@ describe("frontmatter-tag-utils", () => {
 		expect(formatFrontmatterTagLabel("Project/Docs")).toBe("#Project/Docs")
 		expect(getFrontmatterTagQuery("#Project/Docs")).toBe("#project/docs")
 		expect(getFrontmatterTagQuery("bad tag")).toBeNull()
+	})
+
+	it("deduplicates tags case-insensitively while preserving the first casing", () => {
+		expect(
+			mergeFrontmatterTagItems(
+				["Project", "Area/Sub"],
+				["project", "#AREA/sub"],
+			),
+		).toEqual(["Project", "Area/Sub"])
+	})
+
+	it("adds distinct normalized tags once even when incoming casing differs", () => {
+		expect(
+			mergeFrontmatterTagItems(["Project"], ["Docs", "docs", "#DOCS"]),
+		).toEqual(["Project", "Docs"])
 	})
 })
