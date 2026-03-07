@@ -5,6 +5,9 @@ import {
 	forceLink,
 	forceManyBody,
 	forceSimulation,
+	forceX,
+	forceY,
+	type Simulation,
 	type SimulationLinkDatum,
 	type SimulationNodeDatum,
 } from "d3-force"
@@ -68,10 +71,10 @@ function clamp(value: number, min: number, max: number) {
 
 function getNodeRadius(node: Pick<GraphRenderNode, "unresolved" | "degree">) {
 	if (node.unresolved) {
-		return 5.5
+		return 1.8
 	}
 
-	return Math.min(14, 6 + Math.sqrt(Math.max(node.degree, 1)) * 1.8)
+	return Math.min(6, 2.2 + Math.sqrt(Math.max(node.degree, 1)) * 0.7)
 }
 
 function getFittedView(
@@ -101,7 +104,7 @@ function getFittedView(
 	const availableWidth = Math.max(1, width - FIT_PADDING * 2)
 	const availableHeight = Math.max(1, height - FIT_PADDING * 2)
 	const scale = clamp(
-		Math.min(availableWidth / graphWidth, availableHeight / graphHeight),
+		Math.min(availableWidth / graphWidth, availableHeight / graphHeight) * 0.85,
 		MIN_SCALE,
 		MAX_SCALE,
 	)
@@ -140,6 +143,7 @@ export function GraphCanvas({
 	const viewRef = useRef(view)
 	const viewTargetRef = useRef<ViewState | null>(null)
 	const viewAnimationFrameRef = useRef<number | null>(null)
+	const simulationRef = useRef<Simulation<PositionedNode, SimLink> | null>(null)
 
 	const setViewState = useCallback(
 		(updater: ViewState | ((previous: ViewState) => ViewState)) => {
@@ -235,6 +239,16 @@ export function GraphCanvas({
 		}
 		return map
 	}, [nodes])
+
+	const neighborsOfHovered = useMemo(() => {
+		if (!hoveredNodeId) return null
+		const neighbors = new Set<string>()
+		for (const edge of edges) {
+			if (edge.source === hoveredNodeId) neighbors.add(edge.target)
+			else if (edge.target === hoveredNodeId) neighbors.add(edge.source)
+		}
+		return neighbors
+	}, [edges, hoveredNodeId])
 
 	const degradeProfile = useMemo(
 		() => getGraphDegradeProfile(data.nodes.length, data.edges.length),
@@ -336,31 +350,46 @@ export function GraphCanvas({
 					.distance((link) => (link.unresolved ? 120 : 90))
 					.strength(0.28),
 			)
-			.force("charge", forceManyBody().strength(-185))
+			.force("charge", forceManyBody().strength(-120))
 			.force(
 				"collide",
-				forceCollide<PositionedNode>().radius((node) =>
-					node.unresolved ? 9 : 10 + Math.min(node.degree, 8) * 0.85,
-				),
+				forceCollide<PositionedNode>()
+					.radius((node) =>
+						node.unresolved ? 9 : 10 + Math.min(node.degree, 8) * 0.85,
+					)
+					.iterations(3),
 			)
 			.force("center", forceCenter(centerX, centerY))
+			.force("x", forceX(centerX).strength(0.2))
+			.force("y", forceY(centerY).strength(0.2))
 			.stop()
 
 		for (let index = 0; index < degradeProfile.simulationTickCap; index += 1) {
 			simulation.tick()
 		}
 
-		const nextNodes = seededNodes.map((node) => ({
+		const initialNodes = seededNodes.map((node) => ({
 			...node,
 			x: Number.isFinite(node.x) ? node.x : centerX,
 			y: Number.isFinite(node.y) ? node.y : centerY,
 		}))
 
-		setNodes(nextNodes)
+		setNodes(initialNodes)
 		setEdges(edgesToRender)
 		stopViewAnimation()
-		setViewState(getFittedView(nextNodes, size.width, size.height))
-		simulation.stop()
+		setViewState(getFittedView(initialNodes, size.width, size.height))
+
+		simulationRef.current = simulation
+
+		simulation.on("tick", () => {
+			setNodes([...seededNodes])
+		})
+		simulation.alpha(0.15).restart()
+
+		return () => {
+			simulation.stop()
+			simulation.on("tick", null)
+		}
 	}, [data, degradeProfile, setViewState, size, stopViewAnimation])
 
 	const toWorldPoint = (clientX: number, clientY: number) => {
@@ -473,6 +502,12 @@ export function GraphCanvas({
 			startWorldY: world.y,
 		}
 		event.currentTarget.setPointerCapture(event.pointerId)
+
+		const targetNode =
+			simulationRef.current?.nodes().find((n) => n.id === node.id) || node
+		targetNode.fx = targetNode.x
+		targetNode.fy = targetNode.y
+		simulationRef.current?.alphaTarget(0.15).restart()
 	}
 
 	const handleNodePointerMove = (
@@ -493,17 +528,10 @@ export function GraphCanvas({
 			return
 		}
 
-		setNodes((previous) =>
-			previous.map((entry) =>
-				entry.id === node.id
-					? {
-							...entry,
-							x: world.x - dragging.offsetX,
-							y: world.y - dragging.offsetY,
-						}
-					: entry,
-			),
-		)
+		const targetNode =
+			simulationRef.current?.nodes().find((n) => n.id === node.id) || node
+		targetNode.fx = world.x - dragging.offsetX
+		targetNode.fy = world.y - dragging.offsetY
 	}
 
 	const handleNodePointerUp = (
@@ -530,6 +558,12 @@ export function GraphCanvas({
 		nodeDragRef.current = null
 		event.currentTarget.releasePointerCapture(event.pointerId)
 
+		const targetNode =
+			simulationRef.current?.nodes().find((n) => n.id === node.id) || node
+		targetNode.fx = null
+		targetNode.fy = null
+		simulationRef.current?.alphaTarget(0).alpha(0.08).restart()
+
 		if (movedDistance < 4) {
 			onNodeSelect?.(node)
 		}
@@ -550,6 +584,12 @@ export function GraphCanvas({
 
 		nodeDragRef.current = null
 		event.currentTarget.releasePointerCapture(event.pointerId)
+
+		const targetNode =
+			simulationRef.current?.nodes().find((n) => n.id === node.id) || node
+		targetNode.fx = null
+		targetNode.fy = null
+		simulationRef.current?.alphaTarget(0).alpha(0.08).restart()
 	}
 
 	const renderLines = edges
@@ -560,6 +600,11 @@ export function GraphCanvas({
 				return null
 			}
 
+			const isDimmed =
+				hoveredNodeId !== null &&
+				edge.source !== hoveredNodeId &&
+				edge.target !== hoveredNodeId
+
 			return (
 				<line
 					key={`${edge.source}::${edge.target}`}
@@ -569,15 +614,25 @@ export function GraphCanvas({
 					y2={target.y}
 					strokeDasharray={edge.unresolved ? "4 6" : undefined}
 					className={cn(
-						"stroke-[1.1] transition-colors",
-						edge.unresolved
-							? "stroke-muted-foreground/20"
-							: "stroke-muted-foreground/35",
+						"stroke-[1.1] transition-all duration-300",
+						hoveredNodeId !== null &&
+							(edge.source === hoveredNodeId || edge.target === hoveredNodeId)
+							? "stroke-brand/40"
+							: edge.unresolved
+								? "stroke-muted-foreground/20"
+								: "stroke-muted-foreground/35",
+						isDimmed && "opacity-15",
 					)}
 				/>
 			)
 		})
 		.filter(Boolean)
+
+	const globalLabelOpacity = clamp(
+		(view.scale - (degradeProfile.labelVisibleScale - 0.2)) / 0.4,
+		0,
+		1,
+	)
 
 	return (
 		<div
@@ -609,18 +664,27 @@ export function GraphCanvas({
 								activeRelPath !== null && node.relPath === activeRelPath
 							const isFocused =
 								hoveredNodeId === node.id || selectedNodeId === node.id
-							const showLabel =
-								isCurrentNode ||
-								isFocused ||
-								view.scale >= degradeProfile.labelVisibleScale
+
+							const nodeLabelOpacity =
+								isCurrentNode || isFocused ? 1 : globalLabelOpacity
+							const showLabel = nodeLabelOpacity > 0
+
 							const radius = getNodeRadius(node)
 							const labelScale = 1 / view.scale
 							const labelOffsetX = radius * view.scale + 6
 
+							const isDimmed =
+								hoveredNodeId !== null &&
+								node.id !== hoveredNodeId &&
+								!neighborsOfHovered?.has(node.id)
+
 							return (
 								<g
 									key={node.id}
-									className="cursor-pointer"
+									className={cn(
+										"cursor-pointer transition-opacity duration-300",
+										isDimmed && "opacity-25",
+									)}
 									transform={`translate(${node.x},${node.y})`}
 									onPointerDown={(event) => handleNodePointerDown(event, node)}
 									onPointerMove={(event) => handleNodePointerMove(event, node)}
@@ -636,7 +700,7 @@ export function GraphCanvas({
 									{isCurrentNode && (
 										<circle
 											r={radius + 5.6}
-											className="fill-primary/20 stroke-primary/60 stroke-[1.6]"
+											className="fill-brand/10 stroke-brand/40 stroke-[1.6]"
 										/>
 									)}
 									<circle
@@ -647,11 +711,15 @@ export function GraphCanvas({
 											"transition-colors",
 											isCurrentNode
 												? node.unresolved
-													? "fill-transparent stroke-primary stroke-[2.2]"
-													: "fill-primary/90 stroke-primary stroke-[2.2]"
-												: node.unresolved
-													? "fill-transparent stroke-muted-foreground/55 stroke"
-													: "fill-primary/70 stroke-primary/90 stroke",
+													? "fill-transparent stroke-brand/80 stroke-[2.2]"
+													: "fill-brand/70 stroke-brand/80 stroke-[2.2]"
+												: isFocused
+													? "fill-brand/70 stroke-brand/80 stroke-[2.2]"
+													: neighborsOfHovered?.has(node.id)
+														? "fill-brand/40 stroke-brand/60 stroke"
+														: node.unresolved
+															? "fill-transparent stroke-muted-foreground/55 stroke"
+															: "fill-muted-foreground/40 stroke-muted-foreground/60 stroke",
 										)}
 									/>
 									{showLabel && (
@@ -659,6 +727,7 @@ export function GraphCanvas({
 											x={labelOffsetX}
 											y={4}
 											transform={`scale(${labelScale})`}
+											style={{ opacity: nodeLabelOpacity }}
 											className="fill-foreground/95 text-[11px] select-none pointer-events-none"
 										>
 											{node.fileName}
