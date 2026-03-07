@@ -32,7 +32,6 @@
 		"@mdit/editor": "workspace:*",
 		"@mdit/graph-view": "workspace:*",
 		"@mdit/git-sync": "workspace:*",
-		"@mdit/license": "workspace:*",
 		"@mdit/local-fs-origin": "workspace:*",
 		"@mdit/ui": "workspace:*",
 		"@platejs/ai": "^52.1.0",

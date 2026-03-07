@@ -12,6 +12,7 @@ import { useShallow } from "zustand/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
 import { useStore } from "@/store"
 import { EditorKit } from "../plugins/editor-kit"
+import { getDesktopAIMenuAccess } from "./ai-menu-access"
 
 const AI_COMMANDS_KEY = "ai-commands"
 const HIDDEN_DEFAULT_COMMANDS_KEY = "ai-hidden-default-selection-commands"
@@ -97,22 +98,17 @@ const resolveActiveChatConfig = async () => {
 }
 
 const useDesktopAIMenuRuntime: AIMenuHostDeps["useRuntime"] = () => {
-	const {
-		chatConfig,
-		enabledChatModels,
-		selectModel,
-		openSettingsWithTab,
-		licenseStatus,
-	} = useStore(
-		useShallow((s) => ({
-			chatConfig: s.chatConfig,
-			enabledChatModels: s.enabledChatModels,
-			selectModel: s.selectModel,
-			openSettingsWithTab: s.openSettingsWithTab,
-			licenseStatus: s.status,
-		})),
-	)
+	const { chatConfig, enabledChatModels, selectModel, openSettingsWithTab } =
+		useStore(
+			useShallow((s) => ({
+				chatConfig: s.chatConfig,
+				enabledChatModels: s.enabledChatModels,
+				selectModel: s.selectModel,
+				openSettingsWithTab: s.openSettingsWithTab,
+			})),
+		)
 	const windowLabel = useCurrentWindowLabel()
+	const access = getDesktopAIMenuAccess(windowLabel)
 	const chat = useEditorChat({
 		resolveActiveConfig: resolveActiveChatConfig,
 		codexBaseUrl: CODEX_BASE_URL,
@@ -136,8 +132,8 @@ const useDesktopAIMenuRuntime: AIMenuHostDeps["useRuntime"] = () => {
 		selectModel: (provider, model) => {
 			void selectModel(provider as Parameters<typeof selectModel>[0], model)
 		},
-		isLicenseValid: licenseStatus === "valid",
-		canOpenModelSettings: windowLabel === "main",
+		isLicenseValid: access.isLicenseValid,
+		canOpenModelSettings: access.canOpenModelSettings,
 		openModelSettings: () => openSettingsWithTab("ai"),
 	}
 }

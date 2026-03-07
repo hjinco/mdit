@@ -68,9 +68,6 @@ importers:
       '@mdit/graph-view':
         specifier: workspace:*
         version: link:../../packages/graph-view
-      '@mdit/license':
-        specifier: workspace:*
-        version: link:../../packages/license
       '@mdit/local-fs-origin':
         specifier: workspace:*
         version: link:../../packages/local-fs-origin

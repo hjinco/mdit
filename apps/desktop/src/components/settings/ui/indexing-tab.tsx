@@ -15,6 +15,7 @@ import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-uti
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
+import { getIndexingModelControlState } from "./indexing-ui-state"
 import { SettingsButton } from "./settings-button"
 import {
 	Select,
@@ -42,7 +43,6 @@ export function IndexingTab() {
 		handleModelChangeRequest,
 		confirmModelChange,
 		cancelModelChange,
-		licenseStatus,
 	} = useStore(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
@@ -61,7 +61,6 @@ export function IndexingTab() {
 			handleModelChangeRequest: state.handleModelChangeRequest,
 			confirmModelChange: state.confirmModelChange,
 			cancelModelChange: state.cancelModelChange,
-			licenseStatus: state.status,
 		})),
 	)
 
@@ -166,11 +165,11 @@ export function IndexingTab() {
 		isEmbeddingModelAvailable && embeddingProvider
 			? `${embeddingProvider}|${embeddingModel}`
 			: null
-	const isLicenseValid = licenseStatus === "valid"
 	const isIndexButtonDisabled =
 		isIndexing ||
 		isMetaLoading ||
 		(isEmbeddingModelConfigured && !isEmbeddingModelAvailable)
+	const modelControlState = getIndexingModelControlState()
 
 	const runIndex = async (forceReindex: boolean) => {
 		if (!workspacePath) {
@@ -215,23 +214,17 @@ export function IndexingTab() {
 							<FieldContent>
 								<FieldLabel>Embedding Model</FieldLabel>
 								<FieldDescription>
-									{isLicenseValid
-										? "Select the embedding model to use for indexing"
-										: "Register a license key to use embedding features"}
+									{modelControlState.description}
 								</FieldDescription>
 							</FieldContent>
 							<div className="flex items-center gap-2">
 								<Select
 									value={selectedEmbeddingModel ?? undefined}
 									onValueChange={handleEmbeddingModelChange}
-									disabled={!isLicenseValid}
+									disabled={modelControlState.disabled}
 								>
 									<SettingsSelectTrigger className="w-[240px]">
-										<SelectValue
-											placeholder={
-												isLicenseValid ? "Select a model" : "License required"
-											}
-										/>
+										<SelectValue placeholder={modelControlState.placeholder} />
 									</SettingsSelectTrigger>
 									<SelectContent align="end">
 										{ollamaEmbeddingModels.length > 0 ? (

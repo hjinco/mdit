@@ -57,10 +57,10 @@ beforeEach(() => {
 })
 
 describe("ui-slice local api settings", () => {
-	it("defaults localApiEnabled to true when no persisted value exists", () => {
+	it("defaults localApiEnabled to false when no persisted value exists", () => {
 		const store = createUISliceStore()
 
-		expect(store.getState().localApiEnabled).toBe(true)
+		expect(store.getState().localApiEnabled).toBe(false)
 	})
 
 	it("persists localApiEnabled changes to localStorage", () => {

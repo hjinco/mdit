@@ -21,7 +21,6 @@ import {
 	createIndexingSlice,
 	type IndexingSlice,
 } from "./indexing/indexing-slice"
-import { createLicenseSlice, type LicenseSlice } from "./license/license-slice"
 import { createTabSlice, type TabSlice } from "./tab/tab-slice"
 import { createUISlice, type UISlice } from "./ui/ui-slice"
 import {
@@ -38,7 +37,6 @@ export type StoreState = WorkspaceSlice &
 	ImageEditSlice &
 	IndexingSlice &
 	HotkeysSlice &
-	LicenseSlice &
 	UISlice
 
 export const useStore = create<StoreState>()((...a) => ({
@@ -51,6 +49,5 @@ export const useStore = create<StoreState>()((...a) => ({
 	...createImageEditSlice(...a),
 	...createIndexingSlice(...a),
 	...createHotkeysSlice(...a),
-	...createLicenseSlice(...a),
 	...createUISlice(...a),
 }))
