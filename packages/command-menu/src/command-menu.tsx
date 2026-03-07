@@ -11,14 +11,15 @@ import { motion } from "motion/react"
 import { useCallback, useDeferredValue, useEffect, useState } from "react"
 import useMeasure from "react-use-measure"
 import { highlightQuery } from "./highlight-query"
-import { getFileNameFromPath, stripMarkdownExtension } from "./path-utils"
+import { resolveNotePresentation } from "./note-presentation"
+import { getFileNameFromPath, getParentPathLabel } from "./path-utils"
 import type {
 	CommandMenuContentSearch,
 	CommandMenuEntry,
 	CommandMenuSemanticSearch,
 } from "./types"
 import { useNoteContentSearch } from "./use-note-content-search"
-import { toRelativePath, useNoteNameSearch } from "./use-note-name-search"
+import { useNoteNameSearch } from "./use-note-name-search"
 import { useSemanticSearch } from "./use-semantic-search"
 
 export type CommandMenuProps = {
@@ -146,7 +147,7 @@ export function CommandMenu({
 									<div className="flex flex-col">
 										<span>{note.label}</span>
 										<span className="text-muted-foreground/80 text-xs">
-											{note.relativePath}
+											{getParentPathLabel(note.relativePath)}
 										</span>
 									</div>
 								</CommandItem>
@@ -157,13 +158,13 @@ export function CommandMenu({
 						<CommandGroup heading="Suggestions">
 							{semanticResults.slice(0, 5).map((result) => {
 								const note = noteResultsByPath.get(result.path)
-								const label =
-									note?.label ||
-									stripMarkdownExtension(result.name).trim() ||
-									result.name
-								const relativePath =
-									note?.relativePath ??
-									toRelativePath(result.path, workspacePath)
+								const { label, relativePath, parentPathLabel } =
+									resolveNotePresentation({
+										note,
+										path: result.path,
+										workspacePath,
+										fallbackName: result.name,
+									})
 								const keywords = [label, relativePath, "semantic", "ai"].filter(
 									Boolean,
 								) as string[]
@@ -181,7 +182,7 @@ export function CommandMenu({
 												<span className="truncate">{label}</span>
 											</div>
 											<span className="text-muted-foreground/80 truncate text-xs">
-												{relativePath}
+												{parentPathLabel}
 											</span>
 										</div>
 									</CommandItem>
@@ -193,12 +194,13 @@ export function CommandMenu({
 						<CommandGroup heading="Content Matches">
 							{contentMatchesByNote.map((group) => {
 								const note = noteResultsByPath.get(group.path)
-								const label =
-									note?.label ??
-									stripMarkdownExtension(getFileNameFromPath(group.path))
-								const relativePath =
-									note?.relativePath ??
-									toRelativePath(group.path, workspacePath)
+								const { label, relativePath, parentPathLabel } =
+									resolveNotePresentation({
+										note,
+										path: group.path,
+										workspacePath,
+										fallbackName: getFileNameFromPath(group.path),
+									})
 								const keywords = [
 									label,
 									relativePath,
@@ -229,7 +231,7 @@ export function CommandMenu({
 												))}
 											</div>
 											<span className="text-muted-foreground text-xs">
-												{relativePath}
+												{parentPathLabel}
 											</span>
 										</div>
 									</CommandItem>
