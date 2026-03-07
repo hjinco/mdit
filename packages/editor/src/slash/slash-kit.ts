@@ -1,6 +1,7 @@
 import { SlashInputPlugin, SlashPlugin } from "@platejs/slash-command/react"
 import { KEYS } from "platejs"
 import { createSlashInputElement } from "../slash/node-slash"
+import { createSlashInputNode } from "../slash/slash-input"
 import type { SlashHostDeps } from "./slash-kit-types"
 
 export type { SlashHostDeps } from "./slash-kit-types"
@@ -12,6 +13,7 @@ type CreateSlashKitOptions = {
 export const createSlashKit = ({ host }: CreateSlashKitOptions = {}) => [
 	SlashPlugin.configure({
 		options: {
+			createComboboxInput: () => createSlashInputNode(),
 			triggerQuery: (editor) => {
 				// Don't trigger in code blocks
 				if (

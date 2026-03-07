@@ -38,7 +38,17 @@ type FilterFn = (
 	search: string,
 ) => boolean
 
+export type InlineComboboxCancelCause =
+	| "arrowLeft"
+	| "arrowRight"
+	| "backspace"
+	| "blur"
+	| "deselect"
+	| "escape"
+	| "manual"
+
 type InlineComboboxContextValue = {
+	containerRef: React.RefObject<HTMLSpanElement | null>
 	filter: FilterFn | false
 	inputProps: UseComboboxInputResult["props"]
 	inputRef: React.RefObject<HTMLInputElement | null>
@@ -71,6 +81,12 @@ type InlineComboboxProps = {
 	trigger: string
 	filter?: FilterFn | false
 	hideWhenNoValue?: boolean
+	onCancelInput?: (context: {
+		cause: InlineComboboxCancelCause
+		insertPoint: Point | null
+		trigger: string
+		value: string
+	}) => boolean | undefined
 	showTrigger?: boolean
 	value?: string
 	setValue?: (value: string) => void
@@ -81,11 +97,13 @@ const InlineCombobox = ({
 	element,
 	filter = defaultFilter,
 	hideWhenNoValue = false,
+	onCancelInput,
 	setValue: setValueProp,
 	showTrigger = true,
 	trigger,
 	value: valueProp,
 }: InlineComboboxProps) => {
+	const containerRef = useRef<HTMLSpanElement>(null)
 	const editor = useEditorRef()
 	const inputRef = useRef<HTMLInputElement>(null)
 	const cursorState = useHTMLInputCursorState(inputRef)
@@ -133,9 +151,19 @@ const InlineCombobox = ({
 		cursorState,
 		ref: inputRef,
 		onCancelInput: (cause) => {
+			if (
+				onCancelInput?.({
+					cause,
+					insertPoint: insertPoint.current,
+					trigger,
+					value,
+				})
+			) {
+				return
+			}
 			if (cause !== "backspace") {
 				editor.tf.insertText(trigger + value, {
-					at: insertPoint?.current ?? undefined,
+					at: insertPoint.current ?? undefined,
 				})
 			}
 			if (cause === "arrowLeft" || cause === "arrowRight") {
@@ -151,6 +179,7 @@ const InlineCombobox = ({
 
 	const contextValue: InlineComboboxContextValue = useMemo(
 		() => ({
+			containerRef,
 			filter,
 			inputProps,
 			inputRef,
@@ -211,6 +240,7 @@ const InlineComboboxInput = ({
 	triggerClassName?: string
 } & React.ComponentPropsWithoutRef<typeof Combobox>) => {
 	const {
+		containerRef,
 		inputProps,
 		inputRef: contextRef,
 		showTrigger,
@@ -245,7 +275,10 @@ const InlineComboboxInput = ({
 	 */
 
 	return (
-		<span className={cn("inline-flex items-center", containerClassName)}>
+		<span
+			ref={containerRef}
+			className={cn("inline-flex items-center", containerClassName)}
+		>
 			{showTrigger && <span className={triggerClassName}>{trigger}</span>}
 
 			<span className="relative min-h-lh">
@@ -281,6 +314,7 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
 	className,
 	...props
 }) => {
+	const { containerRef } = useContext(InlineComboboxContext)
 	const store = useComboboxContext()!
 	const currentPlacement = store.useState("currentPlacement")
 	const side = currentPlacement?.split("-")[0]
@@ -298,6 +332,9 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
 					"z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-md bg-popover shadow-lg border",
 					className,
 				)}
+				getAnchorRect={() => {
+					return containerRef.current?.getBoundingClientRect() ?? null
+				}}
 				render={
 					<motion.div
 						key={side ?? "bottom"}
