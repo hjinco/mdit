@@ -21,7 +21,7 @@ import {
 	TypeIcon,
 } from "lucide-react"
 import type { NodeComponent } from "platejs"
-import { KEYS, PointApi, type TComboboxInputElement } from "platejs"
+import { KEYS, PointApi } from "platejs"
 import type { PlateEditor, PlateElementProps } from "platejs/react"
 import { PlateElement } from "platejs/react"
 import { applyPreviousCodeBlockLanguage } from "../code/code-block-language"
@@ -41,8 +41,16 @@ import {
 	InlineComboboxInput,
 	InlineComboboxItem,
 } from "../shared/inline-combobox"
+import {
+	getSlashInputCancelBehavior,
+	type SlashInputElement as SlashInputNode,
+} from "../slash/slash-input"
 import type { SlashHostDeps } from "../slash/slash-kit-types"
-import { insertBlock, insertInlineElement } from "../slash/transforms"
+import {
+	getBlockType,
+	insertBlock,
+	insertInlineElement,
+} from "../slash/transforms"
 
 function insertImageNode(
 	editor: PlateEditor,
@@ -377,10 +385,18 @@ export const createSlashInputElement = (
 ): NodeComponent => {
 	const groups = createSlashGroups(host)
 
-	return function SlashInputElement(
-		props: PlateElementProps<TComboboxInputElement>,
-	) {
+	return function SlashInputElement(props: PlateElementProps<SlashInputNode>) {
 		const { editor, element } = props
+		const source = element.source
+		const shouldReuseCurrentBlock = (type: string) => {
+			const currentBlock = editor.api.block()
+
+			if (!currentBlock || !editor.api.isEmpty(currentBlock[0])) {
+				return false
+			}
+
+			return getBlockType(currentBlock[0]) === type
+		}
 
 		const elementPath = editor.api.findPath(element)
 		const beforePoint = elementPath ? editor.api.before(elementPath) : null
@@ -397,14 +413,41 @@ export const createSlashInputElement = (
 
 		return (
 			<PlateElement {...props} as="span">
-				<InlineCombobox element={element} trigger="/">
+				<InlineCombobox
+					element={element}
+					trigger="/"
+					showTrigger={source !== "insert-handle"}
+					onCancelInput={({ cause, insertPoint, trigger, value }) => {
+						const behavior = getSlashInputCancelBehavior({
+							cause,
+							source,
+							trigger,
+							value,
+						})
+
+						if (behavior.restoreText) {
+							editor.tf.insertText(behavior.restoreText, {
+								at: insertPoint ?? undefined,
+							})
+						}
+
+						if (behavior.move) {
+							editor.tf.move({
+								distance: 1,
+								reverse: behavior.move === "left",
+							})
+						}
+
+						return true
+					}}
+				>
 					<InlineComboboxInput
 						containerClassName="inline-flex items-center rounded-md bg-muted px-1 py-0.5 -ml-1 -mt-0.5"
 						className="placeholder:text-muted-foreground"
 						placeholder="Type to search"
 					/>
 
-					<InlineComboboxContent>
+					<InlineComboboxContent gutter={4}>
 						<InlineComboboxEmpty>No results</InlineComboboxEmpty>
 
 						{groups
@@ -432,6 +475,13 @@ export const createSlashInputElement = (
 													key={value}
 													value={value}
 													onClick={() => {
+														if (
+															group === "Basic blocks" &&
+															shouldReuseCurrentBlock(value)
+														) {
+															return
+														}
+
 														void onSelect(editor, value)
 													}}
 													label={label}

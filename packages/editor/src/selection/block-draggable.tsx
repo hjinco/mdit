@@ -2,10 +2,11 @@ import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
 import { GripVertical, Plus } from "lucide-react"
-import { KEYS, PathApi } from "platejs"
+import { KEYS, type TElement } from "platejs"
 import { type PlateElementProps, usePluginOption } from "platejs/react"
 import type { MouseEvent } from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
+import { insertSlashMenuBelow } from "../slash/insert-slash-menu"
 
 const headingTopMap: Record<string, string> = {
 	[KEYS.h1]: "top-13",
@@ -153,38 +154,14 @@ export function Draggable(
 	}
 
 	const handleInsertBelow = () => {
-		const entry = props.editor.api.node({
+		const entry = props.editor.api.node<TElement>({
 			at: [],
 			block: true,
 			match: (node) => node.id === elementId,
 		})
 		if (!entry) return
 
-		const [node, currentPath] = entry
-		if (currentPath.length !== 1) return
-
-		const listStyleType = (node as { listStyleType?: string }).listStyleType
-		const indent = (node as { indent?: number }).indent ?? 1
-
-		const insertPath = PathApi.next(currentPath)
-		const blockProps = listStyleType
-			? {
-					indent,
-					listStyleType,
-					...(listStyleType === KEYS.listTodo && { checked: false }),
-				}
-			: {}
-
-		props.editor.tf.insertNodes(
-			props.editor.api.create.block({
-				type: props.editor.getType(KEYS.p),
-				children: [{ text: "" }],
-				...blockProps,
-			}),
-			{ at: insertPath },
-		)
-		props.editor.tf.select(insertPath, { edge: "start" })
-		props.editor.tf.focus()
+		insertSlashMenuBelow(props.editor, entry)
 	}
 
 	return (
