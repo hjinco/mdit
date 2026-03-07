@@ -1,5 +1,5 @@
 import { cn } from "@mdit/ui/lib/utils"
-import { Image, ImagePlugin, useMediaState } from "@platejs/media/react"
+import { Image, useMediaState } from "@platejs/media/react"
 import { ResizableProvider, useResizableValue } from "@platejs/resizable"
 import { ImageOff } from "lucide-react"
 import { dirname, isAbsolute, resolve } from "pathe"
@@ -7,7 +7,10 @@ import type { NodeComponent, TImageElement } from "platejs"
 import type { PlateElementProps } from "platejs/react"
 import { PlateElement, withHOC } from "platejs/react"
 import { useMemo, useState } from "react"
+import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../link"
 import { Caption, CaptionTextarea } from "../media/caption"
+import { MediaImageModeSwitch } from "../media/media-image-mode-switch"
+import type { ImageElementWithEmbed } from "../media/media-image-mode-utils"
 import { MediaToolbar } from "../media/media-toolbar"
 import {
 	mediaResizeHandleVariants,
@@ -25,21 +28,28 @@ export type MediaImageHostDeps = {
 	toFileUrl: (absolutePath: string) => string
 }
 
-type ImageElementWithWiki = TImageElement & {
-	wiki?: boolean
-	wikiTarget?: string
+function isSafeEmbedTarget(path: string): boolean {
+	const normalized = path.trim()
+	if (!normalized) return false
+	if (normalized.startsWith("/")) return false
+	if (WINDOWS_ABSOLUTE_REGEX.test(normalized)) return false
+	return !hasParentTraversal(normalized)
 }
 
 function resolveImageSrc(
-	element: ImageElementWithWiki,
+	element: ImageElementWithEmbed,
 	workspaceState: MediaImageWorkspaceState,
 	toFileUrl: (absolutePath: string) => string,
 ): string {
 	const { tabPath, workspacePath } = workspaceState
-	const { url = "", wiki, wikiTarget } = element
-	const rawUrl = wikiTarget || url
+	const { url = "", embedTarget } = element
+	const rawUrl = embedTarget || url
 
 	if (!rawUrl) {
+		return ""
+	}
+
+	if (embedTarget && !isSafeEmbedTarget(embedTarget)) {
 		return ""
 	}
 
@@ -51,7 +61,7 @@ function resolveImageSrc(
 
 	if (isAbsolute(rawUrl)) {
 		baseSrc = rawUrl
-	} else if (wiki || wikiTarget) {
+	} else if (embedTarget) {
 		if (!workspacePath) {
 			return ""
 		}
@@ -78,16 +88,22 @@ export const createImageElement = (host: MediaImageHostDeps): NodeComponent =>
 			const width = useResizableValue("width")
 			const [hasError, setHasError] = useState(false)
 
-			const element = props.element as ImageElementWithWiki
+			const element = props.element as ImageElementWithEmbed
 			const src = useMemo(
 				() => resolveImageSrc(element, workspaceState, host.toFileUrl),
 				[element, workspaceState],
 			)
 
-			const isWikiImage = Boolean(element.wiki || element.wikiTarget)
+			const isEmbedImage = Boolean(element.embedTarget)
 
 			return (
-				<MediaToolbar plugin={ImagePlugin} hide={hasError}>
+				<MediaToolbar
+					hide={hasError}
+					toolbarContent={
+						<MediaImageModeSwitch workspaceState={workspaceState} />
+					}
+					showCaption={!isEmbedImage}
+				>
 					<PlateElement {...props} className="py-2.5">
 						{hasError ? (
 							<div
@@ -133,7 +149,7 @@ export const createImageElement = (host: MediaImageHostDeps): NodeComponent =>
 									/>
 								</Resizable>
 
-								{!isWikiImage && (
+								{!isEmbedImage && (
 									<Caption style={{ width }} align={align}>
 										<CaptionTextarea
 											readOnly={readOnly}

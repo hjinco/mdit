@@ -1,15 +1,8 @@
 import { Button } from "@mdit/ui/components/button"
 import { Popover, PopoverContent } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
-import {
-	FloatingMedia as FloatingMediaPrimitive,
-	FloatingMediaStore,
-	useFloatingMediaValue,
-	useImagePreviewValue,
-} from "@platejs/media/react"
-import { cva } from "class-variance-authority"
-import { Link, Trash2Icon } from "lucide-react"
-import type { WithRequiredKey } from "platejs"
+import { useImagePreviewValue } from "@platejs/media/react"
+import { Trash2Icon } from "lucide-react"
 import {
 	useEditorRef,
 	useEditorSelector,
@@ -19,21 +12,19 @@ import {
 	useRemoveNodeButton,
 	useSelected,
 } from "platejs/react"
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import { CaptionButton } from "./caption"
-
-const inputVariants = cva(
-	"flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:ring-transparent focus-visible:outline-none md:text-sm",
-)
 
 export function MediaToolbar({
 	children,
-	plugin,
 	hide,
+	toolbarContent,
+	showCaption = true,
 }: {
 	children: React.ReactNode
-	plugin: WithRequiredKey
 	hide?: boolean
+	toolbarContent?: React.ReactNode
+	showCaption?: boolean
 }) {
 	const editor = useEditorRef()
 	const readOnly = useReadOnly()
@@ -51,22 +42,9 @@ export function MediaToolbar({
 		selectionCollapsed &&
 		!isImagePreviewOpen &&
 		!hide
-	const isEditing = useFloatingMediaValue("isEditing")
 	const anchorRef = useRef<HTMLDivElement>(null)
 	const element = useElement()
 	const { props: buttonProps } = useRemoveNodeButton({ element })
-
-	const isWikiMedia = Boolean(
-		(element as { wiki?: boolean; wikiTarget?: string }).wiki ||
-			(element as { wiki?: boolean; wikiTarget?: string }).wikiTarget,
-	)
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: true
-	useEffect(() => {
-		if (!open && isEditing) {
-			FloatingMediaStore.set("isEditing", false)
-		}
-	}, [open])
 
 	return (
 		<Popover open={open} modal={false}>
@@ -77,42 +55,22 @@ export function MediaToolbar({
 				className="w-auto p-1"
 				initialFocus={false}
 			>
-				{isEditing ? (
-					<div className="flex w-[330px] flex-col">
-						<div className="flex items-center">
-							<div className="flex items-center pr-1 pl-2 text-muted-foreground">
-								<Link className="size-4" />
-							</div>
+				<div className="box-content flex items-center gap-1">
+					{toolbarContent}
 
-							<FloatingMediaPrimitive.UrlInput
-								className={inputVariants()}
-								placeholder="Paste the embed link..."
-								options={{ plugin }}
-							/>
-						</div>
-					</div>
-				) : (
-					<div className="box-content flex items-center">
-						{/* <FloatingMediaPrimitive.EditButton
-              className={buttonVariants({ size: 'sm', variant: 'ghost' })}
-            >
-              Edit link
-            </FloatingMediaPrimitive.EditButton> */}
+					{showCaption && (
+						<>
+							<CaptionButton size="sm" variant="ghost">
+								Caption
+							</CaptionButton>
+							<Separator orientation="vertical" className="mx-1 h-6" />
+						</>
+					)}
 
-						{!isWikiMedia && (
-							<>
-								<CaptionButton size="sm" variant="ghost">
-									Caption
-								</CaptionButton>
-								<Separator orientation="vertical" className="mx-1 h-6" />
-							</>
-						)}
-
-						<Button size="sm" variant="ghost" {...buttonProps}>
-							<Trash2Icon />
-						</Button>
-					</div>
-				)}
+					<Button size="sm" variant="ghost" {...buttonProps}>
+						<Trash2Icon />
+					</Button>
+				</div>
 			</PopoverContent>
 		</Popover>
 	)

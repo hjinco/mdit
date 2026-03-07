@@ -2,6 +2,7 @@ import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
 import { MarkdownKit, MarkdownKitNoMdx } from "./markdown-kit"
+import { OBSIDIAN_EMBED_KEY } from "./obsidian-embed-plugin"
 
 type LocalStorageLike = Pick<
 	Storage,
@@ -130,8 +131,8 @@ describe("markdown-kit serialization", () => {
 		const value = [
 			{
 				type: KEYS.img,
-				url: "./assets/pic.png",
-				wiki: true,
+				url: "assets/pic.png",
+				embedTarget: "assets/pic.png",
 				caption: [{ text: "Alt" }],
 				children: [{ text: "" }],
 			},
@@ -141,7 +142,24 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("![[assets/pic.png]]")
 	})
 
-	it("serializes internal images as markdown when not wiki", async () => {
+	it("serializes internal image embeds with dimensions", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.img,
+				url: "assets/pic.png",
+				embedTarget: "assets/pic.png",
+				width: 300,
+				height: 200,
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("![[assets/pic.png|300x200]]")
+	})
+
+	it("serializes internal images as markdown when not embed", async () => {
 		const editor = createMarkdownEditor()
 		const value = [
 			{
@@ -156,6 +174,27 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("![Alt](")
 		expect(markdown).toContain("./assets/pic.png")
 		expect(markdown).not.toContain("![[assets/pic.png]]")
+	})
+
+	it("serializes hidden embeds as embed syntax", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.p,
+				children: [
+					{ text: "See " },
+					{
+						type: OBSIDIAN_EMBED_KEY,
+						embedTarget: "docs/guide",
+						children: [{ text: "" }],
+					},
+					{ text: " now." },
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("See ![[docs/guide]] now.")
 	})
 
 	it("keeps external links in standard markdown", async () => {
@@ -253,8 +292,31 @@ describe("markdown-kit deserialization", () => {
 
 		expect(imageNode).toMatchObject({
 			url: "assets/pic.png",
-			wiki: true,
-			wikiTarget: "assets/pic.png",
+			embedTarget: "assets/pic.png",
+		})
+	})
+
+	it("deserializes image embeds with dimensions", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "![[assets/pic.png|300x200]]")
+		const imageNode = findNodeByType(value as any[], KEYS.img)
+
+		expect(imageNode).toMatchObject({
+			url: "assets/pic.png",
+			embedTarget: "assets/pic.png",
+			width: 300,
+			height: 200,
+		})
+	})
+
+	it("deserializes non-image embeds into hidden nodes", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "See ![[docs/guide]] now.")
+		const embedNode = findNodeByType(value as any[], OBSIDIAN_EMBED_KEY)
+
+		expect(embedNode).toMatchObject({
+			type: OBSIDIAN_EMBED_KEY,
+			embedTarget: "docs/guide",
 		})
 	})
 
