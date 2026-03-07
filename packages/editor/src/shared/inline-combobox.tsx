@@ -198,13 +198,18 @@ const InlineCombobox = ({
 }
 
 const InlineComboboxInput = ({
+	containerClassName,
 	propRef,
 	className,
+	placeholder,
+	triggerClassName,
 	...props
 }: {
+	containerClassName?: string
 	propRef?: React.RefObject<HTMLInputElement>
 	className?: string
-}) => {
+	triggerClassName?: string
+} & React.ComponentPropsWithoutRef<typeof Combobox>) => {
 	const {
 		inputProps,
 		inputRef: contextRef,
@@ -214,6 +219,7 @@ const InlineComboboxInput = ({
 
 	const store = useComboboxContext()!
 	const value = store.useState("value")
+	const sizingText = value || placeholder || ""
 
 	const ref = useComposedRef(propRef, contextRef)
 	const handleKeyDown = useCallback(
@@ -239,15 +245,16 @@ const InlineComboboxInput = ({
 	 */
 
 	return (
-		<>
-			{showTrigger && trigger}
+		<span className={cn("inline-flex items-center", containerClassName)}>
+			{showTrigger && <span className={triggerClassName}>{trigger}</span>}
 
 			<span className="relative min-h-lh">
 				<span
 					className="invisible overflow-hidden text-nowrap"
 					aria-hidden="true"
 				>
-					{value || "\u200B"}
+					{sizingText}
+					{"\u00A0"}
 				</span>
 
 				<Combobox
@@ -258,12 +265,13 @@ const InlineComboboxInput = ({
 					)}
 					value={value}
 					autoSelect
+					placeholder={placeholder}
 					{...inputProps}
 					{...props}
 					onKeyDown={handleKeyDown}
 				/>
 			</span>
-		</>
+		</span>
 	)
 }
 
