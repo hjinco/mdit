@@ -22,6 +22,10 @@ import {
 	FRONTMATTER_KEY,
 } from "../frontmatter"
 import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../link/link-utils"
+import {
+	OBSIDIAN_EMBED_KEY,
+	ObsidianEmbedPlugin,
+} from "./obsidian-embed-plugin"
 
 const EQUATION_ENVIRONMENT_REGEX =
 	/^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
@@ -35,6 +39,11 @@ type MdastNode = {
 	type?: string
 	children?: MdastNode[]
 	value?: string
+	data?: {
+		hName?: string
+		hProperties?: Record<string, unknown>
+		path?: string
+	}
 }
 
 function createRowId() {
@@ -93,12 +102,6 @@ function safelyDecodeUri(url: string): string {
 	}
 }
 
-function isInternalLink(url: string): boolean {
-	const trimmed = url.trim().toLowerCase()
-	if (!trimmed) return false
-	return !trimmed.startsWith("http://") && !trimmed.startsWith("https://")
-}
-
 function normalizeWikiTarget(url: string): string {
 	let value = safelyDecodeUri(url.trim())
 
@@ -151,6 +154,55 @@ function isEmptyParagraph(node: MdastNode | undefined): boolean {
 	})
 }
 
+function parsePositiveDimension(value: unknown): number | undefined {
+	if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+		return value
+	}
+
+	if (typeof value === "string" && /^\d+$/.test(value)) {
+		const parsed = Number.parseInt(value, 10)
+		return parsed > 0 ? parsed : undefined
+	}
+
+	return undefined
+}
+
+function getEmbedDimensions(mdastNode: MdastNode): {
+	width?: number
+	height?: number
+} {
+	const hProperties = mdastNode.data?.hProperties ?? {}
+	const width = parsePositiveDimension(hProperties["data-fs-width"])
+	const height = width
+		? parsePositiveDimension(hProperties["data-fs-height"])
+		: undefined
+
+	return { width, height }
+}
+
+function createEmbedNodeData(
+	width: unknown,
+	height: unknown,
+): {
+	hProperties?: Record<string, unknown>
+} {
+	const normalizedWidth = parsePositiveDimension(width)
+	const normalizedHeight = normalizedWidth
+		? parsePositiveDimension(height)
+		: undefined
+
+	if (!normalizedWidth) {
+		return {}
+	}
+
+	return {
+		hProperties: {
+			"data-fs-width": normalizedWidth,
+			...(normalizedHeight ? { "data-fs-height": normalizedHeight } : {}),
+		},
+	}
+}
+
 export type CreateMarkdownKitOptions = {
 	mdx?: boolean
 }
@@ -158,6 +210,7 @@ export type CreateMarkdownKitOptions = {
 export const createMarkdownKit = ({
 	mdx = true,
 }: CreateMarkdownKitOptions = {}) => [
+	ObsidianEmbedPlugin,
 	MarkdownPlugin.configure({
 		options: {
 			disallowedNodes: [KEYS.slashCommand],
@@ -271,26 +324,21 @@ export const createMarkdownKit = ({
 				[KEYS.img]: {
 					serialize: (node: any): any => {
 						const rawUrl = node.url ?? ""
-						const shouldSerializeWiki = Boolean(node.wiki || node.wikiTarget)
-						const wikiSource = node.wikiTarget || rawUrl
+						const embedTarget =
+							typeof node.embedTarget === "string"
+								? node.embedTarget.trim()
+								: ""
 
-						if (
-							shouldSerializeWiki &&
-							isInternalLink(wikiSource) &&
-							isWikiEmbedTargetSafe(wikiSource)
-						) {
-							const target = node.wikiTarget || normalizeWikiTarget(rawUrl)
-							if (target) {
-								return {
-									type: "paragraph",
-									children: [
-										{
-											type: "embed",
-											value: target,
-											data: {},
-										},
-									],
-								}
+						if (embedTarget) {
+							return {
+								type: "paragraph",
+								children: [
+									{
+										type: "embed",
+										value: embedTarget,
+										data: createEmbedNodeData(node.width, node.height),
+									},
+								],
 							}
 						}
 
@@ -313,32 +361,31 @@ export const createMarkdownKit = ({
 						}
 					},
 				},
+				[OBSIDIAN_EMBED_KEY]: {
+					serialize: (node: any) => {
+						const embedTarget =
+							typeof node.embedTarget === "string"
+								? node.embedTarget.trim()
+								: ""
+
+						if (!embedTarget) {
+							return { type: "text", value: "" }
+						}
+
+						return {
+							type: "embed",
+							value: embedTarget,
+							data: createEmbedNodeData(node.width, node.height),
+						}
+					},
+				},
 				embed: {
 					deserialize: (mdastNode, _deco, options) => {
 						const target = mdastNode.value || ""
-						if (!isWikiEmbedTargetSafe(target)) {
-							const hName = mdastNode.data?.hName
-							const hProperties = mdastNode.data?.hProperties ?? {}
-							if (hName === "img") {
-								const altText =
-									typeof hProperties.alt === "string" ? hProperties.alt : ""
-								return {
-									type: getPluginType(options.editor!, KEYS.img),
-									url: "",
-									caption: [{ text: altText }],
-									children: [{ text: "" }],
-								}
-							}
-							return {
-								type: getPluginType(options.editor!, KEYS.link),
-								url: "",
-								children: [{ text: target }],
-							}
-						}
-
 						const hName = mdastNode.data?.hName
 						const hProperties = mdastNode.data?.hProperties ?? {}
 						const url = hProperties.src || mdastNode.data?.path || target
+						const { width, height } = getEmbedDimensions(mdastNode)
 
 						if (hName === "img") {
 							const altText =
@@ -347,19 +394,20 @@ export const createMarkdownKit = ({
 							return {
 								type: getPluginType(options.editor!, KEYS.img),
 								url,
-								wiki: true,
-								wikiTarget: target,
+								embedTarget: target,
+								width,
+								height,
 								caption: [{ text: altText }],
 								children: [{ text: "" }],
 							}
 						}
 
 						return {
-							type: getPluginType(options.editor!, KEYS.link),
-							url,
-							wiki: true,
-							wikiTarget: target,
-							children: [{ text: target }],
+							type: getPluginType(options.editor!, OBSIDIAN_EMBED_KEY),
+							embedTarget: target,
+							width,
+							height,
+							children: [{ text: "" }],
 						}
 					},
 				},

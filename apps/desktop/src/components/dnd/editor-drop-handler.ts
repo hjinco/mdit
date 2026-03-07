@@ -109,9 +109,7 @@ function handleFileDropToEditor({
 		const imageNode = {
 			type: editor.getType(KEYS.img),
 			url: imageData.url,
-			...(imageData.wiki
-				? { wiki: true, wikiTarget: imageData.wikiTarget }
-				: {}),
+			...(imageData.embedTarget ? { embedTarget: imageData.embedTarget } : {}),
 			children: [{ text: "" }],
 		}
 

@@ -9,28 +9,27 @@ import { isPathEqualOrDescendant } from "@/utils/path-utils"
 
 export type ImageLinkData = {
 	url: string
-	wiki: boolean
-	wikiTarget?: string
+	embedTarget?: string
 }
 
 export function buildImageLinkData(path: string): ImageLinkData {
 	if (!path) {
-		return { url: path, wiki: false }
+		return { url: path }
 	}
 
 	const trimmed = path.trim()
 	if (!trimmed || trimmed.startsWith("http")) {
-		return { url: path, wiki: false }
+		return { url: path }
 	}
 
 	const workspacePath = useStore.getState().workspacePath
 	if (!workspacePath) {
-		return { url: path, wiki: false }
+		return { url: path }
 	}
 
 	if (isAbsoluteLike(trimmed)) {
 		if (!isPathEqualOrDescendant(trimmed, workspacePath)) {
-			return { url: trimmed, wiki: false }
+			return { url: trimmed }
 		}
 
 		const relativePath = normalizePathSeparators(
@@ -38,18 +37,16 @@ export function buildImageLinkData(path: string): ImageLinkData {
 		)
 		return {
 			url: relativePath,
-			wiki: true,
-			wikiTarget: relativePath,
+			embedTarget: relativePath,
 		}
 	}
 
 	const normalized = normalizePathSeparators(trimmed)
 	if (hasParentTraversal(normalized)) {
-		return { url: normalized, wiki: false }
+		return { url: normalized }
 	}
 	return {
 		url: normalized,
-		wiki: true,
-		wikiTarget: normalized,
+		embedTarget: normalized,
 	}
 }

@@ -2,8 +2,7 @@ import type { FrontmatterRow as KVRow } from "../frontmatter"
 
 export type SlashResolvedImageLink = {
 	url: string
-	wiki: boolean
-	wikiTarget?: string
+	embedTarget?: string
 }
 
 export type SlashHostDeps = {
