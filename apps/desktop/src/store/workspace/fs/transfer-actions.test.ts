@@ -46,7 +46,7 @@ describe("fs-transfer-actions", () => {
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
 	})
 
-	it("copyEntry returns null when image copy fails", async () => {
+	it("copyEntry returns null when file copy fails", async () => {
 		const { context, setState, deps, getState } = createActionTestContext()
 		const actions = createFsTransferActions(context)
 		setState({ workspacePath: "/ws" })
