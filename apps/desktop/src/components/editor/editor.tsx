@@ -220,7 +220,7 @@ function EditorContent({
 	return (
 		<div
 			ref={editorContainerRef}
-			className={isExternalDropOver ? "h-full bg-accent/20" : "h-full"}
+className={`h-full ${isExternalDropOver ? "bg-accent/20" : ""}`}
 		>
 			<EditorSurface
 				editor={editor}
