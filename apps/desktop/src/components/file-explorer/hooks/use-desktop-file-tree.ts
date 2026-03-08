@@ -8,6 +8,7 @@ import type {
 	WorkspaceEntry,
 	WorkspaceEntrySelection,
 } from "@/store/workspace/workspace-slice"
+import { normalizePathSeparators } from "@/utils/path-utils"
 
 export const workspaceEntryFileTreeAdapter: FileTreeAdapter<WorkspaceEntry> = {
 	getId: (entry) => entry.path,
@@ -79,11 +80,33 @@ export function useDesktopFileTree({
 		[setEntrySelection],
 	)
 
-	return useFileTree({
+	const fileTree = useFileTree({
 		entries,
 		adapter: workspaceEntryFileTreeAdapter,
 		state,
 		onExpandedIdsChange: handleExpandedIdsChange,
 		onSelectionChange: handleSelectionChange,
 	})
+
+	const lookupEntryByPath = useCallback(
+		(path: string) => {
+			const entry = fileTree.nodeById.get(path)
+			if (entry) {
+				return entry
+			}
+
+			const normalizedPath = normalizePathSeparators(path)
+			if (normalizedPath === path) {
+				return undefined
+			}
+
+			return fileTree.nodeById.get(normalizedPath)
+		},
+		[fileTree.nodeById],
+	)
+
+	return {
+		...fileTree,
+		lookupEntryByPath,
+	}
 }

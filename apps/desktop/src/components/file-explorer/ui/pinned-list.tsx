@@ -4,20 +4,23 @@ import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 
 import { useStore } from "@/store"
+import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import {
 	getFolderNameFromPath,
 	normalizePathSeparators,
 } from "@/utils/path-utils"
-import { useEntryMap } from "../hooks/use-entry-map"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 
-export function PinnedList() {
+type PinnedListProps = {
+	lookupEntryByPath: (path: string) => WorkspaceEntry | undefined
+}
+
+export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
 	const {
 		currentCollectionPath,
 		setCurrentCollectionPath,
 		pinnedDirectories,
 		workspacePath,
-		entries,
 		unpinDirectory,
 	} = useStore(
 		useShallow((state) => ({
@@ -25,12 +28,9 @@ export function PinnedList() {
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			pinnedDirectories: state.pinnedDirectories,
 			workspacePath: state.workspacePath,
-			entries: state.entries,
 			unpinDirectory: state.unpinDirectory,
 		})),
 	)
-
-	const entryMap = useEntryMap(entries)
 
 	const normalizedWorkspacePath = useMemo(
 		() => (workspacePath ? normalizePathSeparators(workspacePath) : null),
@@ -41,7 +41,7 @@ export function PinnedList() {
 		return pinnedDirectories
 			.map((path) => {
 				const normalizedPath = normalizePathSeparators(path)
-				const entry = entryMap.get(normalizedPath) ?? entryMap.get(path)
+				const entry = lookupEntryByPath(path)
 				const isWorkspaceRoot = normalizedWorkspacePath
 					? normalizedPath === normalizedWorkspacePath
 					: false
@@ -60,7 +60,7 @@ export function PinnedList() {
 				}
 			})
 			.filter((item) => item.exists)
-	}, [entryMap, normalizedWorkspacePath, pinnedDirectories])
+	}, [lookupEntryByPath, normalizedWorkspacePath, pinnedDirectories])
 
 	const handlePinnedClick = useCallback(
 		(path: string) => {

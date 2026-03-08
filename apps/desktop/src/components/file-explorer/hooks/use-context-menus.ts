@@ -22,7 +22,6 @@ import { useStore } from "@/store"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"
 import { normalizePathSeparators } from "@/utils/path-utils"
-import { useEntryMap } from "./use-entry-map"
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
 const REVEAL_ACCELERATOR = "CmdOrCtrl+Alt+R"
@@ -56,6 +55,7 @@ type UseFileExplorerMenusProps = {
 		anchorId: string | null
 	}) => void
 	resetSelection: () => void
+	lookupEntryByPath: (path: string) => WorkspaceEntry | undefined
 	entries: WorkspaceEntry[]
 	pinnedDirectories: string[]
 	pinDirectory: (path: string) => Promise<void>
@@ -77,6 +77,7 @@ export const useFileExplorerMenus = ({
 	selectionAnchorPath,
 	setEntrySelection,
 	resetSelection,
+	lookupEntryByPath,
 	entries,
 	pinnedDirectories,
 	pinDirectory,
@@ -88,7 +89,6 @@ export const useFileExplorerMenus = ({
 			copyEntry: state.copyEntry,
 		})),
 	)
-	const entryMap = useEntryMap(entries)
 
 	const showEntryMenu = useCallback(
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {
@@ -98,12 +98,12 @@ export const useFileExplorerMenus = ({
 					selectionPaths.length > 0 ? selectionPaths : [entry.path]
 				const hasLockedTargets = hasLockedPathConflict(targets)
 				const aiRenameTargets = collectAIRenameTargets(targets, (path) =>
-					entryMap.get(path),
+					lookupEntryByPath(path),
 				)
 				const aiMoveTargets = Array.from(
 					new Map(
 						selectionPaths
-							.map((path) => entryMap.get(path))
+							.map((path) => lookupEntryByPath(path))
 							.filter((target): target is WorkspaceEntry =>
 								Boolean(
 									target &&
@@ -276,7 +276,7 @@ export const useFileExplorerMenus = ({
 			renameNotesWithAI,
 			canMoveNotesWithAI,
 			moveNotesWithAI,
-			entryMap,
+			lookupEntryByPath,
 			openImageEdit,
 			workspacePath,
 		],

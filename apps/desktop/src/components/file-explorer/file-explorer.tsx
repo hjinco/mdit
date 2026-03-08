@@ -108,7 +108,7 @@ export function FileExplorer() {
 	>(null)
 	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const { moveNotesWithAI, canMoveNotesWithAI } = useMoveNotesWithAI()
-	const { tree, nodeById, handleItemPress, toggleExpanded } =
+	const { tree, nodeById, handleItemPress, toggleExpanded, lookupEntryByPath } =
 		useDesktopFileTree({
 			entries,
 			expandedDirectories,
@@ -285,6 +285,7 @@ export function FileExplorer() {
 			selectionAnchorPath,
 			setEntrySelection,
 			resetSelection,
+			lookupEntryByPath,
 			entries,
 			pinnedDirectories,
 			pinDirectory,
@@ -364,7 +365,7 @@ export function FileExplorer() {
 						onContextMenu={handleRootContextMenu}
 						onClick={resetSelection}
 					>
-						<PinnedList />
+						<PinnedList lookupEntryByPath={lookupEntryByPath} />
 						<ul className="space-y-0.5 pb-4">
 							{pendingNewFolderPath === workspacePath && workspacePath && (
 								<RootNewFolderInput
