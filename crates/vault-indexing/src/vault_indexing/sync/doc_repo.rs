@@ -32,10 +32,7 @@ impl DocRecord {
     }
 
     pub(super) fn last_hash_matches(&self, doc_hash: &str) -> bool {
-        self.last_hash
-            .as_deref()
-            .map(|hash| hash == doc_hash)
-            .unwrap_or(false)
+        self.last_hash.as_deref() == Some(doc_hash)
     }
 
     pub(super) fn embedding_target_matches(&self, model: &str, target_dim: i32) -> bool {
