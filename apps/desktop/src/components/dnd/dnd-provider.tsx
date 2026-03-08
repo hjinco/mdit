@@ -41,7 +41,7 @@ export function DndProvider({ children }: DndProviderProps) {
 				return
 			}
 
-			const handledByEditorDrop = handleEditorDrop({
+			const handledByEditorDrop = await handleEditorDrop({
 				event,
 				editor,
 				selectedEntryPaths,

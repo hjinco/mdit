@@ -46,7 +46,7 @@ describe("fs-transfer-actions", () => {
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
 	})
 
-	it("copyEntry returns false when fs copy fails", async () => {
+	it("copyEntry returns null when image copy fails", async () => {
 		const { context, setState, deps, getState } = createActionTestContext()
 		const actions = createFsTransferActions(context)
 		setState({ workspacePath: "/ws" })
@@ -57,19 +57,19 @@ describe("fs-transfer-actions", () => {
 
 		const result = await actions.copyEntry("/external/a.md", "/ws")
 
-		expect(result).toBe(false)
+		expect(result).toBeNull()
 		expect(getState().entryImported).not.toHaveBeenCalled()
 		errorSpy.mockRestore()
 	})
 
-	it("copyEntry returns false when destination is outside workspace", async () => {
+	it("copyEntry returns null when destination is outside workspace", async () => {
 		const { context, deps, setState } = createActionTestContext()
 		const actions = createFsTransferActions(context)
 		setState({ workspacePath: "/ws" })
 
 		const result = await actions.copyEntry("/ws/source/a.md", "/external")
 
-		expect(result).toBe(false)
+		expect(result).toBeNull()
 		expect(deps.fileSystemRepository.copy).not.toHaveBeenCalled()
 	})
 
@@ -85,6 +85,65 @@ describe("fs-transfer-actions", () => {
 		const result = await actions.moveExternalEntry("/external/a.md", "/ws")
 
 		expect(result).toBe(false)
+		expect(getState().entryImported).not.toHaveBeenCalled()
+		errorSpy.mockRestore()
+	})
+
+	it("copyEntry returns the copied path", async () => {
+		const { context, setState, deps, getState } = createActionTestContext()
+		const actions = createFsTransferActions(context)
+		setState({ workspacePath: "/ws" })
+
+		const result = await actions.copyEntry("/external/a.png", "/ws")
+
+		expect(result).toBe("/ws/a.png")
+		expect(deps.fileSystemRepository.copy).toHaveBeenCalledWith(
+			"/external/a.png",
+			"/ws/a.png",
+		)
+		expect(getState().entryImported).toHaveBeenCalledWith({
+			destinationDirPath: "/ws",
+			entry: {
+				path: "/ws/a.png",
+				name: "a.png",
+				isDirectory: false,
+				children: undefined,
+				createdAt: undefined,
+				modifiedAt: undefined,
+			},
+			expandIfDirectory: false,
+		})
+	})
+
+	it("copyEntry auto-renames when destination file already exists", async () => {
+		const { context, setState, deps } = createActionTestContext()
+		const actions = createFsTransferActions(context)
+		setState({ workspacePath: "/ws" })
+		deps.fileSystemRepository.exists.mockImplementation(
+			async (path: string) => path === "/ws/a.png",
+		)
+
+		const result = await actions.copyEntry("/external/a.png", "/ws")
+
+		expect(result).toBe("/ws/a (1).png")
+		expect(deps.fileSystemRepository.copy).toHaveBeenCalledWith(
+			"/external/a.png",
+			"/ws/a (1).png",
+		)
+	})
+
+	it("copyEntry returns null when fs copy fails", async () => {
+		const { context, setState, deps, getState } = createActionTestContext()
+		const actions = createFsTransferActions(context)
+		setState({ workspacePath: "/ws" })
+		deps.fileSystemRepository.copy.mockRejectedValueOnce(
+			new Error("copy failed"),
+		)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		const result = await actions.copyEntry("/external/a.png", "/ws")
+
+		expect(result).toBeNull()
 		expect(getState().entryImported).not.toHaveBeenCalled()
 		errorSpy.mockRestore()
 	})
@@ -249,7 +308,7 @@ describe("fs-transfer-actions", () => {
 
 		const result = await actions.copyEntry("/ws/source/a.md", "/ws/dest")
 
-		expect(result).toBe(true)
+		expect(result).toBe("/ws/dest/a.md")
 		expect(getState().entryImported).toHaveBeenCalledWith({
 			destinationDirPath: "/ws/dest",
 			entry: {
@@ -303,7 +362,7 @@ describe("fs-transfer-actions", () => {
 
 		const result = await actions.copyEntry("/external/dir", "/ws/dest")
 
-		expect(result).toBe(true)
+		expect(result).toBe("/ws/dest/dir")
 		expect(getState().entryImported).toHaveBeenCalledWith({
 			destinationDirPath: "/ws/dest",
 			entry: {

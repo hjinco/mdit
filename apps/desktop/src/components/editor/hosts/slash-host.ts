@@ -11,7 +11,7 @@ import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { dirname, resolve } from "pathe"
 import YAML from "yaml"
 import { useStore } from "@/store"
-import { buildImageLinkData } from "../utils/image-link"
+import { prepareImageForEditorInsert } from "./image-import-host"
 
 const MAX_REFERENCED_NOTES = 5
 
@@ -59,7 +59,7 @@ type DesktopSlashHostRuntimeDeps = {
 	readDirectory: typeof readDir
 	readMarkdownFile: typeof readTextFile
 	getTabPath: () => string | null
-	resolveImageLink: typeof buildImageLinkData
+	resolveImageLink: typeof prepareImageForEditorInsert
 }
 
 const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
@@ -67,7 +67,7 @@ const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 	readDirectory: readDir,
 	readMarkdownFile: readTextFile,
 	getTabPath: () => useStore.getState().tab?.path ?? null,
-	resolveImageLink: buildImageLinkData,
+	resolveImageLink: prepareImageForEditorInsert,
 }
 
 export const createDesktopSlashHost = (
@@ -180,7 +180,7 @@ export const createDesktopSlashHost = (
 
 			return typeof path === "string" ? path : null
 		},
-		resolveImageLink: (path: string) => runtimeDeps.resolveImageLink(path),
+		resolveImageLink: runtimeDeps.resolveImageLink,
 		getFrontmatterDefaults,
 	}
 }

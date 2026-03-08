@@ -32,6 +32,7 @@ import {
 	requestFrontmatterFocus,
 } from "../frontmatter"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "../link/wiki-link-constants"
+import { insertResolvedImage } from "../media/image-insert"
 import {
 	InlineCombobox,
 	InlineComboboxContent,
@@ -52,28 +53,22 @@ import {
 	insertInlineElement,
 } from "../slash/transforms"
 
-function insertImageNode(
+async function insertImageNode(
 	editor: PlateEditor,
 	path: string,
 	resolveImageLink?: SlashHostDeps["resolveImageLink"],
-	options?: any,
+	options?: Parameters<PlateEditor["tf"]["insertNodes"]>[1],
 ) {
 	const imageData = resolveImageLink
-		? resolveImageLink(path)
+		? await resolveImageLink(path)
 		: {
 				url: path,
 			}
-	const imageNode = {
-		type: editor.getType(KEYS.img),
-		url: imageData.url,
-		...(imageData.embedTarget ? { embedTarget: imageData.embedTarget } : {}),
-		children: [{ text: "" }],
-	}
 
-	editor.tf.insertNodes(imageNode, {
+	insertResolvedImage(editor, imageData, {
 		nextBlock: true,
 		...options,
-	} as any)
+	})
 }
 
 type Group = {
@@ -258,12 +253,12 @@ function createSlashGroups(host: SlashHostDeps): Group[] {
 						if (path) {
 							const block = editor.api.block()
 							if (block) {
-								insertImageNode(editor, path, host.resolveImageLink, {
+								await insertImageNode(editor, path, host.resolveImageLink, {
 									at: block[1],
 									nextBlock: false,
 								})
 							} else {
-								insertImageNode(editor, path, host.resolveImageLink)
+								await insertImageNode(editor, path, host.resolveImageLink)
 							}
 						}
 					},

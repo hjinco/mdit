@@ -1,8 +1,9 @@
+import { insertResolvedImage } from "@mdit/editor/media"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
 import { extname } from "pathe"
 import { KEYS, type Path, PathApi } from "platejs"
 import type { PlateEditor } from "platejs/react"
-import { buildImageLinkData } from "@/components/editor/utils/image-link"
+import { prepareImageForEditorInsert } from "@/components/editor/hosts/image-import-host"
 import { isImageFile } from "@/utils/file-icon"
 import {
 	type DndDragEndEvent,
@@ -81,12 +82,12 @@ function findBlockEntryById(
 	}) as BlockEntry | undefined
 }
 
-function handleFileDropToEditor({
+async function handleFileDropToEditor({
 	activeData,
 	editor,
 	overData,
 	selectedEntryPaths,
-}: HandleFileDropToEditorParams): boolean {
+}: HandleFileDropToEditorParams): Promise<boolean> {
 	const imagePaths = collectImagePaths(activeData, selectedEntryPaths)
 	if (!overData.id || imagePaths.length === 0) {
 		return true
@@ -105,15 +106,8 @@ function handleFileDropToEditor({
 	const insertPath = isCodeOrTable ? PathApi.next(targetPath) : targetPath
 
 	for (const imagePath of imagePaths) {
-		const imageData = buildImageLinkData(imagePath)
-		const imageNode = {
-			type: editor.getType(KEYS.img),
-			url: imageData.url,
-			...(imageData.embedTarget ? { embedTarget: imageData.embedTarget } : {}),
-			children: [{ text: "" }],
-		}
-
-		editor.tf.insertNodes(imageNode, {
+		const imageData = await prepareImageForEditorInsert(imagePath)
+		insertResolvedImage(editor, imageData, {
 			at: insertPath,
 			nextBlock: position === "bottom" && !isCodeOrTable,
 		})
@@ -342,11 +336,11 @@ function handleBlockDropToEditor({
 	})
 }
 
-export function handleEditorDrop({
+export async function handleEditorDrop({
 	event,
 	editor,
 	selectedEntryPaths,
-}: HandleEditorDropParams): boolean {
+}: HandleEditorDropParams): Promise<boolean> {
 	const overData = event.operation.target?.data
 	if (!isEditorDropTarget(overData)) {
 		return false

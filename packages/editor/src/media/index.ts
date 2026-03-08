@@ -4,6 +4,11 @@ export {
 	FILE_PASTE_KEY,
 	type FilePasteHostDeps,
 } from "./file-paste-kit"
+export {
+	createImageNode,
+	insertResolvedImage,
+	type ResolvedEditorImageLink,
+} from "./image-insert"
 export { createMediaKit, type MediaHostDeps } from "./media-kit"
 export { MediaToolbar } from "./media-toolbar"
 export {

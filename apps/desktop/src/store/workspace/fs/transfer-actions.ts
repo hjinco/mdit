@@ -23,7 +23,10 @@ export type WorkspaceFsTransferActions = {
 		destinationPath: string,
 		options?: MoveEntryOptions,
 	) => Promise<boolean>
-	copyEntry: (sourcePath: string, destinationPath: string) => Promise<boolean>
+	copyEntry: (
+		sourcePath: string,
+		destinationPath: string,
+	) => Promise<string | null>
 	moveExternalEntry: (
 		sourcePath: string,
 		destinationPath: string,
@@ -200,20 +203,20 @@ export const createFsTransferActions = (
 	copyEntry: async (sourcePath: string, destinationPath: string) => {
 		const workspacePath = ctx.get().workspacePath
 		if (!workspacePath) {
-			return false
+			return null
 		}
 
 		if (sourcePath === destinationPath) {
-			return false
+			return null
 		}
 
 		if (!isPathInsideWorkspace(destinationPath, workspacePath)) {
-			return false
+			return null
 		}
 
 		const fileName = getFileNameFromPath(sourcePath)
 		if (!fileName) {
-			return false
+			return null
 		}
 
 		try {
@@ -242,10 +245,10 @@ export const createFsTransferActions = (
 				operation: "copy",
 			})
 
-			return true
+			return newPath
 		} catch (error) {
 			console.error("Failed to copy entry:", sourcePath, destinationPath, error)
-			return false
+			return null
 		}
 	},
 

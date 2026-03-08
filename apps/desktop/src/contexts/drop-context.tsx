@@ -20,15 +20,17 @@ export type DropEvent = {
 }
 
 export type DropZoneConfig = {
+	id?: string
 	ref: React.RefObject<HTMLDivElement | null>
 	path: string | null
 	depth?: number
 	onEnter?: (e: DropEvent) => void
 	onLeave?: () => void
-	onDrop?: (paths: string[], e: DropEvent) => void
+	onDrop?: (paths: string[], e: DropEvent) => void | Promise<void>
 }
 
 type ZoneInternal = DropZoneConfig & {
+	id: string
 	setIsOver: (v: boolean) => void
 	depth: number
 }
@@ -42,18 +44,21 @@ type DropAPI = {
 
 const DropContext = createContext<DropAPI | null>(null)
 
-function findZoneAtPoint(zones: Map<string, ZoneInternal>, pt: Point) {
+export function findZoneAtPoint(zones: Map<string, ZoneInternal>, pt: Point) {
 	// Get all elements at the point (not just the top one)
 	const elements = document.elementsFromPoint(pt.x, pt.y)
 
 	// Find all zones that contain these elements
-	const foundZones = elements
-		.map((el) => {
-			const host = el.closest<HTMLElement>("[data-drop-zone-id]")
-			const id = host?.getAttribute("data-drop-zone-id")
-			return id ? zones.get(id) : undefined
-		})
-		.filter((zone): zone is ZoneInternal => zone !== undefined)
+	const foundZoneMap = new Map<string, ZoneInternal>()
+	for (const el of elements) {
+		const host = el.closest<HTMLElement>("[data-drop-zone-id]")
+		const id = host?.getAttribute("data-drop-zone-id")
+		const zone = id ? zones.get(id) : undefined
+		if (zone) {
+			foundZoneMap.set(zone.id, zone)
+		}
+	}
+	const foundZones = [...foundZoneMap.values()]
 
 	if (foundZones.length === 0) {
 		return
@@ -68,6 +73,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
 	const zonesRef = useRef(new Map<string, ZoneInternal>())
 	const currentZoneIdRef = useRef<string | null>(null)
+	const previousWorkspacePathRef = useRef<string | null | undefined>(undefined)
 	const unlistenRef = useRef<null | (() => void)>(null)
 	const workspacePath = useStore((state) => state.workspacePath)
 
@@ -75,27 +81,29 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 		(cfg, setIsOver) => {
 			const path = cfg.path
 			if (!path) return () => {}
+			const id = cfg.id ?? path
 
 			const zone: ZoneInternal = {
 				...cfg,
+				id,
 				setIsOver,
 				depth: cfg.depth ?? -1,
 			}
-			zonesRef.current.set(path, zone)
+			zonesRef.current.set(id, zone)
 
 			if (!cfg.ref) {
 				throw new Error("drop zone ref is not attached yet")
 			}
 
 			const el = cfg.ref.current
-			if (el) el.setAttribute("data-drop-zone-id", path)
+			if (el) el.setAttribute("data-drop-zone-id", id)
 
 			return () => {
 				const el = cfg.ref?.current
-				if (el?.getAttribute("data-drop-zone-id") === path) {
+				if (el?.getAttribute("data-drop-zone-id") === id) {
 					el?.removeAttribute("data-drop-zone-id")
 				}
-				zonesRef.current.delete(path)
+				zonesRef.current.delete(id)
 			}
 		},
 		[],
@@ -138,7 +146,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 
 					if (kind === "over") {
 						const prevId = currentZoneIdRef.current
-						const nextId = zoneAtPoint?.path ?? null
+						const nextId = zoneAtPoint?.id ?? null
 						if (prevId !== nextId) {
 							if (prevId) {
 								const prev = zones.get(prevId)
@@ -155,10 +163,14 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 					}
 
 					if (kind === "drop") {
-						const activeId = zoneAtPoint?.path ?? currentZoneIdRef.current
+						const activeId = zoneAtPoint?.id ?? currentZoneIdRef.current
 						if (activeId) {
 							const z = zones.get(activeId)
-							z?.onDrop?.(paths ?? [], e)
+							void Promise.resolve(z?.onDrop?.(paths ?? [], e)).catch(
+								(error) => {
+									console.error("drop zone onDrop failed", error)
+								},
+							)
 						}
 
 						if (currentZoneIdRef.current) {
@@ -191,11 +203,18 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 	}, [])
 
 	useEffect(() => {
-		for (const [path, zone] of zonesRef.current.entries()) {
-			if (zone.path !== workspacePath) {
-				zonesRef.current.delete(path)
+		if (previousWorkspacePathRef.current === workspacePath) {
+			return
+		}
+		previousWorkspacePathRef.current = workspacePath
+
+		for (const zone of zonesRef.current.values()) {
+			const el = zone.ref.current
+			if (el?.getAttribute("data-drop-zone-id") === zone.id) {
+				el.removeAttribute("data-drop-zone-id")
 			}
 		}
+		zonesRef.current.clear()
 		currentZoneIdRef.current = null
 	}, [workspacePath])
 
@@ -209,13 +228,24 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 export function useDropZone(config: DropZoneConfig) {
 	const api = useContext(DropContext)
 	const [isOver, setIsOver] = useState(false)
+	const { depth, id, onDrop, onEnter, onLeave, path, ref } = config
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: true
 	useEffect(() => {
 		if (!api) return
 		// Reason for return: registerZone provides an unregister function.
-		return api.registerZone(config, setIsOver)
-	}, [api])
+		return api.registerZone(
+			{
+				depth,
+				id,
+				onDrop,
+				onEnter,
+				onLeave,
+				path,
+				ref,
+			},
+			setIsOver,
+		)
+	}, [api, depth, id, onDrop, onEnter, onLeave, path, ref])
 
 	return { isOver }
 }
