@@ -79,7 +79,6 @@ export type LinkIndexingDependencies = {
 		currentNotePath?: string | null
 		rawTarget: string
 	}) => Promise<ResolveWikiLinkResult>
-	indexNote: (workspacePath: string, notePath: string) => Promise<void>
 	renameIndexedNote: (
 		workspacePath: string,
 		oldNotePath: string,

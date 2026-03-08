@@ -187,3 +187,26 @@ fn given_embedding_dimension_drift_when_reindexing_with_embeddings_then_doc_tags
     );
     assert!(harness.doc_tag_audit_events().is_empty());
 }
+
+#[test]
+fn given_embedding_only_refresh_when_model_changes_then_doc_tags_are_preserved() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-tags-embedding-refresh");
+    harness.write_note("note.md", "Body #project/alpha");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.install_doc_tag_audit();
+
+    let summary = harness.refresh_workspace_embeddings("test", "model-b");
+
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(
+        harness.doc_embedding_metadata("note.md"),
+        Some((Some("model-b".to_string()), Some(3)))
+    );
+    assert_eq!(
+        harness.doc_tags("note.md"),
+        vec![("project/alpha".to_string(), "project/alpha".to_string())]
+    );
+    assert!(harness.doc_tag_audit_events().is_empty());
+}

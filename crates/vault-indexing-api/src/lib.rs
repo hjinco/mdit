@@ -30,7 +30,7 @@ pub struct BacklinkEntry {
 }
 
 pub trait VaultIndexingRuntime: Send + Sync {
-    fn run_workspace_index(&self, workspace_root: &Path, db_path: &Path) -> Result<()>;
+    fn index_vault_documents(&self, workspace_root: &Path, db_path: &Path) -> Result<()>;
     fn index_note(&self, workspace_root: &Path, db_path: &Path, note_path: &Path) -> Result<()>;
     fn delete_indexed_note(
         &self,

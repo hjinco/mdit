@@ -126,12 +126,6 @@ export const createWorkspaceSlice = prepareWorkspaceSlice({
 				currentNotePath,
 				rawTarget,
 			}),
-		indexNote: (workspacePath: string, notePath: string) =>
-			invoke<void>("index_note_command", {
-				workspacePath,
-				notePath,
-				includeEmbeddings: false,
-			}),
 		renameIndexedNote: (
 			workspacePath: string,
 			oldNotePath: string,

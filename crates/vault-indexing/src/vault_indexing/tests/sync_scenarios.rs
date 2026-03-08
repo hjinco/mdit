@@ -154,6 +154,112 @@ fn given_embedding_model_drift_when_reindexing_with_embeddings_then_doc_rows_and
 }
 
 #[test]
+fn given_note_reindexed_without_embeddings_then_document_state_updates_without_touching_vectors() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-note-document-only");
+    harness.write_note("note.md", "Body #project/alpha");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    let original_segment_stats = harness
+        .doc_segment_stats("note.md")
+        .expect("segment stats should exist");
+
+    harness.write_note("note.md", "Updated body #project/beta");
+    let indexed = harness
+        .run_note_index("note.md")
+        .expect("note indexing should succeed");
+
+    assert_eq!(indexed.embeddings_written, 0);
+    assert_eq!(
+        harness.doc_embedding_metadata("note.md"),
+        Some((Some("model-a".to_string()), Some(3)))
+    );
+    assert_eq!(
+        harness.doc_segment_stats("note.md"),
+        Some(original_segment_stats)
+    );
+    assert_eq!(
+        harness.doc_tags("note.md"),
+        vec![("project/beta".to_string(), "project/beta".to_string())]
+    );
+    assert_eq!(
+        harness.doc_content("note.md"),
+        Some("Updated body #project/beta".to_string())
+    );
+}
+
+#[test]
+fn given_embedding_only_refresh_when_model_changes_then_document_state_stays_stable() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-embedding-refresh");
+    harness.write_note("source.md", "Body #project [[target]]\n");
+    harness.write_note("target.md", "# Target\n");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.install_doc_tag_audit();
+    let source_doc_id = harness
+        .doc_id("source.md")
+        .expect("source doc id should exist");
+    let source_content = harness
+        .doc_content("source.md")
+        .expect("source content should exist");
+
+    let summary = harness.refresh_workspace_embeddings("test", "model-b");
+
+    assert_eq!(summary.docs_deleted, 0);
+    assert_eq!(summary.docs_inserted, 0);
+    assert_eq!(summary.links_written, 0);
+    assert_eq!(summary.links_deleted, 0);
+    assert_eq!(harness.doc_id("source.md"), Some(source_doc_id));
+    assert_eq!(
+        harness.doc_embedding_metadata("source.md"),
+        Some((Some("model-b".to_string()), Some(3)))
+    );
+    assert_eq!(harness.doc_content("source.md"), Some(source_content));
+    assert_eq!(harness.link_targets_for("source.md"), vec!["target.md"]);
+    assert_eq!(
+        harness.doc_tags("source.md"),
+        vec![("project".to_string(), "project".to_string())]
+    );
+    assert!(harness.doc_tag_audit_events().is_empty());
+}
+
+#[test]
+fn given_unindexed_file_when_refreshing_embeddings_then_it_is_skipped_without_creating_doc() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-embedding-refresh-skip");
+    harness.write_note("indexed.md", "# Indexed\n");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.write_note("new.md", "# New\n");
+
+    let summary = harness.refresh_workspace_embeddings("test", "model-a");
+
+    assert_eq!(summary.docs_inserted, 0);
+    assert_eq!(summary.files_processed, 1);
+    assert_eq!(harness.doc_id("new.md"), None);
+    assert_eq!(
+        harness.doc_embedding_metadata("indexed.md"),
+        Some((Some("model-a".to_string()), Some(3)))
+    );
+}
+
+#[test]
+fn given_content_changed_when_refreshing_embeddings_then_vectors_update_without_document_refresh() {
+    let harness = IndexingHarness::new("mdit-vault-indexing-sync-embedding-content-drift");
+    harness.write_note("note.md", "Old body");
+
+    harness.run_workspace_index_with_embeddings("test", "model-a");
+    harness.write_note("note.md", "New body");
+
+    let summary = harness.refresh_workspace_embeddings("test", "model-a");
+
+    assert!(summary.embeddings_written > 0);
+    assert_eq!(harness.doc_content("note.md"), Some("Old body".to_string()));
+    assert_eq!(
+        harness.doc_embedding_metadata("note.md"),
+        Some((Some("model-a".to_string()), Some(3)))
+    );
+}
+
+#[test]
 fn given_unrelated_doc_insert_when_reindexing_then_unrelated_wiki_sources_are_not_refreshed() {
     let harness = IndexingHarness::new("mdit-vault-indexing-sync-unrelated-insert");
     harness.write_note("source.md", "[[target]]\n");

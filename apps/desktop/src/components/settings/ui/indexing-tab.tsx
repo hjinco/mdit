@@ -31,7 +31,7 @@ export function IndexingTab() {
 		entries,
 		ollamaEmbeddingModels,
 		fetchOllamaModels,
-		indexWorkspace,
+		indexVaultDocuments,
 		indexingState,
 		configs,
 		indexedDocCount,
@@ -49,7 +49,7 @@ export function IndexingTab() {
 			entries: state.entries,
 			ollamaEmbeddingModels: state.ollamaEmbeddingModels,
 			fetchOllamaModels: state.fetchOllamaModels,
-			indexWorkspace: state.indexWorkspace,
+			indexVaultDocuments: state.indexVaultDocuments,
 			indexingState: state.indexingState,
 			configs: state.configs,
 			indexedDocCount: state.indexedDocCount,
@@ -177,10 +177,10 @@ export function IndexingTab() {
 		}
 
 		try {
-			await indexWorkspace(workspacePath, forceReindex)
+			await indexVaultDocuments(workspacePath, forceReindex)
 			await loadIndexingMeta(workspacePath)
 		} catch (error) {
-			console.error("Failed to index workspace:", error)
+			console.error("Failed to index vault documents:", error)
 		}
 	}
 

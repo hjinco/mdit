@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 use app_storage::vault::VaultEmbeddingConfig;
 use mdit_vault_indexing::{
     delete_indexed_note, get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes,
-    index_note, index_workspace, rename_indexed_note, resolve_wiki_link, search_notes_by_tag,
-    search_notes_for_query, BacklinkEntry, GraphViewData, IndexSummary, IndexingMeta,
-    RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
-    TagNoteEntry,
+    index_note, index_vault_documents, refresh_workspace_embeddings, rename_indexed_note,
+    resolve_wiki_link, search_notes_by_tag, search_notes_for_query, BacklinkEntry, GraphViewData,
+    IndexSummary, IndexingMeta, RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult,
+    SemanticNoteEntry, TagNoteEntry,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -35,7 +35,7 @@ fn resolve_embedding_for_workspace(
 }
 
 #[tauri::command]
-pub async fn index_workspace_command(
+pub async fn index_vault_documents_command(
     app_handle: tauri::AppHandle,
     workspace_path: String,
     force_reindex: bool,
@@ -46,7 +46,7 @@ pub async fn index_workspace_command(
         resolve_embedding_for_workspace(&db_path, &workspace_path)?;
 
     run_blocking(move || {
-        index_workspace(
+        index_vault_documents(
             &workspace_path,
             &db_path,
             &embedding_provider,
@@ -79,6 +79,27 @@ pub async fn index_note_command(
             &workspace_path,
             &db_path,
             &note_path,
+            &embedding_provider,
+            &embedding_model,
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn refresh_workspace_embeddings_command(
+    app_handle: tauri::AppHandle,
+    workspace_path: String,
+) -> Result<IndexSummary, String> {
+    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
+    let workspace_path = PathBuf::from(workspace_path);
+    let (embedding_provider, embedding_model) =
+        resolve_embedding_for_workspace(&db_path, &workspace_path)?;
+
+    run_blocking(move || {
+        refresh_workspace_embeddings(
+            &workspace_path,
+            &db_path,
             &embedding_provider,
             &embedding_model,
         )

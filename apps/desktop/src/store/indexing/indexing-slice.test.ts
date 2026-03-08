@@ -84,88 +84,32 @@ describe("indexing-slice config", () => {
 	})
 })
 
-describe("indexing-slice indexNote", () => {
-	it("skips new note indexing request when workspace indexing is already running", async () => {
-		let resolveInvoke: (() => void) | undefined
-		const invoke = vi.fn().mockImplementation(
-			() =>
-				new Promise<unknown>((resolve) => {
-					resolveInvoke = () => resolve({})
-				}),
-		) as unknown as InvokeFunction
-		const { store } = createIndexingStore({ invoke })
-
-		const firstRequest = store.getState().indexNote("/ws", "/ws/a.md")
-
-		const skipped = await store.getState().indexNote("/ws", "/ws/b.md")
-
-		expect(skipped).toBe(false)
-		expect(invoke).toHaveBeenCalledTimes(1)
-
-		resolveInvoke?.()
-		await expect(firstRequest).resolves.toBe(true)
-	})
-
-	it("sends expected invoke payload for note indexing", async () => {
+describe("indexing-slice indexVaultDocuments", () => {
+	it("sends expected invoke payload for vault document indexing", async () => {
 		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
 		const { store } = createIndexingStore({ invoke })
 
-		const result = await store.getState().indexNote("/ws", "/ws/a.md")
+		await store.getState().indexVaultDocuments("/ws", true)
 
-		expect(result).toBe(true)
-		expect(invoke).toHaveBeenCalledWith("index_note_command", {
-			workspacePath: "/ws",
-			notePath: "/ws/a.md",
-			includeEmbeddings: true,
-		})
-		expect(store.getState().indexingState["/ws"]).toBe(false)
-	})
-
-	it("can disable embeddings for note indexing", async () => {
-		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
-		const { store } = createIndexingStore({ invoke })
-
-		const result = await store
-			.getState()
-			.indexNote("/ws", "/ws/a.md", { includeEmbeddings: false })
-
-		expect(result).toBe(true)
-		expect(invoke).toHaveBeenCalledWith("index_note_command", {
-			workspacePath: "/ws",
-			notePath: "/ws/a.md",
-			includeEmbeddings: false,
-		})
-	})
-
-	it("returns false and clears lock when note indexing fails", async () => {
-		const invoke = vi
-			.fn()
-			.mockRejectedValue(
-				new Error("indexing failed"),
-			) as unknown as InvokeFunction
-		const { store } = createIndexingStore({ invoke })
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-
-		const result = await store.getState().indexNote("/ws", "/ws/a.md")
-
-		expect(result).toBe(false)
-		expect(store.getState().indexingState["/ws"]).toBe(false)
-
-		errorSpy.mockRestore()
-	})
-})
-
-describe("indexing-slice indexWorkspace", () => {
-	it("sends expected invoke payload for workspace indexing", async () => {
-		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
-		const { store } = createIndexingStore({ invoke })
-
-		await store.getState().indexWorkspace("/ws", true)
-
-		expect(invoke).toHaveBeenCalledWith("index_workspace_command", {
+		expect(invoke).toHaveBeenCalledWith("index_vault_documents_command", {
 			workspacePath: "/ws",
 			forceReindex: true,
 		})
+		expect(store.getState().indexingState["/ws"]).toBe(false)
+	})
+
+	it("sends expected invoke payload for embedding-only workspace refresh", async () => {
+		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({ invoke })
+
+		await store.getState().refreshWorkspaceEmbeddings("/ws")
+
+		expect(invoke).toHaveBeenCalledWith(
+			"refresh_workspace_embeddings_command",
+			{
+				workspacePath: "/ws",
+			},
+		)
 		expect(store.getState().indexingState["/ws"]).toBe(false)
 	})
 
@@ -191,10 +135,13 @@ describe("indexing-slice indexWorkspace", () => {
 				embeddingModel: "mxbai-embed-large",
 			},
 		)
-		expect(invoke).toHaveBeenNthCalledWith(2, "index_workspace_command", {
-			workspacePath: "/ws",
-			forceReindex: false,
-		})
+		expect(invoke).toHaveBeenNthCalledWith(
+			2,
+			"refresh_workspace_embeddings_command",
+			{
+				workspacePath: "/ws",
+			},
+		)
 		expect(invoke).toHaveBeenNthCalledWith(3, "get_indexing_meta_command", {
 			workspacePath: "/ws",
 		})

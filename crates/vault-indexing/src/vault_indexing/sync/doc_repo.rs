@@ -31,27 +31,16 @@ impl DocRecord {
         Ok((rel_path, record))
     }
 
-    pub(super) fn is_up_to_date(&self, doc_hash: &str, model: &str, target_dim: i32) -> bool {
+    pub(super) fn last_hash_matches(&self, doc_hash: &str) -> bool {
         self.last_hash
             .as_deref()
             .map(|hash| hash == doc_hash)
             .unwrap_or(false)
-            && self
-                .last_embedding_model
-                .as_deref()
-                .map(|stored| stored == model)
-                .unwrap_or(false)
-            && self
-                .last_embedding_dim
-                .map(|dim| dim == target_dim)
-                .unwrap_or(false)
     }
 
-    pub(super) fn links_up_to_date(&self, doc_hash: &str) -> bool {
-        self.last_hash
-            .as_deref()
-            .map(|hash| hash == doc_hash)
-            .unwrap_or(false)
+    pub(super) fn embedding_target_matches(&self, model: &str, target_dim: i32) -> bool {
+        self.last_embedding_model.as_deref() == Some(model)
+            && self.last_embedding_dim == Some(target_dim)
     }
 
     pub(super) fn source_stat_matches(&self, file: &MarkdownFile) -> bool {
@@ -82,16 +71,7 @@ enum DocUpdate<'a> {
         indexed_content: &'a str,
         file: &'a MarkdownFile,
     },
-    FullMetadata {
-        doc_hash: &'a str,
-        indexed_content: &'a str,
-        file: &'a MarkdownFile,
-        model: &'a str,
-        target_dim: i32,
-    },
-    FullMetadataWithoutContent {
-        doc_hash: &'a str,
-        file: &'a MarkdownFile,
+    EmbeddingMetadata {
         model: &'a str,
         target_dim: i32,
     },
@@ -219,40 +199,17 @@ pub(super) fn update_hash_and_content(
     )
 }
 
-pub(super) fn update_full_metadata(
+pub(super) fn update_embedding_metadata(
     conn: &Connection,
     doc_record: &mut DocRecord,
-    doc_hash: &str,
-    indexed_content: &str,
-    file: &MarkdownFile,
     model: &str,
     target_dim: i32,
-    refresh_indexed_content: bool,
 ) -> Result<()> {
-    if refresh_indexed_content {
-        apply_doc_update(
-            conn,
-            doc_record,
-            DocUpdate::FullMetadata {
-                doc_hash,
-                indexed_content,
-                file,
-                model,
-                target_dim,
-            },
-        )
-    } else {
-        apply_doc_update(
-            conn,
-            doc_record,
-            DocUpdate::FullMetadataWithoutContent {
-                doc_hash,
-                file,
-                model,
-                target_dim,
-            },
-        )
-    }
+    apply_doc_update(
+        conn,
+        doc_record,
+        DocUpdate::EmbeddingMetadata { model, target_dim },
+    )
 }
 
 fn apply_doc_update(
@@ -296,63 +253,16 @@ fn apply_doc_update(
             doc_record.last_hash = Some(doc_hash.to_string());
             doc_record.update_source_stat(file);
         }
-        DocUpdate::FullMetadata {
-            doc_hash,
-            indexed_content,
-            file,
-            model,
-            target_dim,
-        } => {
+        DocUpdate::EmbeddingMetadata { model, target_dim } => {
             conn.execute(
                 "UPDATE doc \
-                 SET chunking_version = ?1, last_hash = ?2, last_source_size = ?3, last_source_mtime_ns = ?4, \
-                     last_embedding_model = ?5, last_embedding_dim = ?6, content = ?7 \
-                 WHERE id = ?8",
-                params![
-                    TARGET_CHUNKING_VERSION,
-                    doc_hash,
-                    file.last_source_size,
-                    file.last_source_mtime_ns,
-                    model,
-                    target_dim,
-                    indexed_content,
-                    doc_record.id
-                ],
+                 SET chunking_version = ?1, last_embedding_model = ?2, last_embedding_dim = ?3 \
+                 WHERE id = ?4",
+                params![TARGET_CHUNKING_VERSION, model, target_dim, doc_record.id],
             )
-            .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
+            .with_context(|| format!("Failed to update embedding metadata {}", doc_record.id))?;
 
             doc_record.chunking_version = TARGET_CHUNKING_VERSION;
-            doc_record.last_hash = Some(doc_hash.to_string());
-            doc_record.update_source_stat(file);
-            doc_record.last_embedding_model = Some(model.to_string());
-            doc_record.last_embedding_dim = Some(target_dim);
-        }
-        DocUpdate::FullMetadataWithoutContent {
-            doc_hash,
-            file,
-            model,
-            target_dim,
-        } => {
-            conn.execute(
-                "UPDATE doc \
-                 SET chunking_version = ?1, last_hash = ?2, last_source_size = ?3, last_source_mtime_ns = ?4, \
-                     last_embedding_model = ?5, last_embedding_dim = ?6 \
-                 WHERE id = ?7",
-                params![
-                    TARGET_CHUNKING_VERSION,
-                    doc_hash,
-                    file.last_source_size,
-                    file.last_source_mtime_ns,
-                    model,
-                    target_dim,
-                    doc_record.id
-                ],
-            )
-            .with_context(|| format!("Failed to update doc metadata {}", doc_record.id))?;
-
-            doc_record.chunking_version = TARGET_CHUNKING_VERSION;
-            doc_record.last_hash = Some(doc_hash.to_string());
-            doc_record.update_source_stat(file);
             doc_record.last_embedding_model = Some(model.to_string());
             doc_record.last_embedding_dim = Some(target_dim);
         }
@@ -367,7 +277,7 @@ mod tests {
 
     use rusqlite::{params, Connection};
 
-    use super::{update_full_metadata, DocRecord};
+    use super::{update_embedding_metadata, update_hash_and_content, DocRecord};
     use crate::vault_indexing::files::MarkdownFile;
 
     fn make_doc(model: Option<&str>, dim: Option<i32>) -> DocRecord {
@@ -416,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn full_metadata_without_content_does_not_trigger_content_update() {
+    fn embedding_metadata_update_does_not_trigger_content_update() {
         let conn = open_doc_update_connection();
         conn.execute(
             "INSERT INTO doc (
@@ -427,19 +337,9 @@ mod tests {
         .expect("failed to insert doc");
 
         let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
-        let file = make_file(10, 20);
 
-        update_full_metadata(
-            &conn,
-            &mut doc,
-            "hash",
-            "changed content",
-            &file,
-            "nomic-embed-text",
-            768,
-            false,
-        )
-        .expect("failed to update metadata without content");
+        update_embedding_metadata(&conn, &mut doc, "nomic-embed-text", 768)
+            .expect("failed to update embedding metadata");
 
         let audit_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM content_update_audit", [], |row| {
@@ -455,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn full_metadata_with_content_triggers_content_update() {
+    fn hash_and_content_update_triggers_content_update() {
         let conn = open_doc_update_connection();
         conn.execute(
             "INSERT INTO doc (
@@ -468,17 +368,8 @@ mod tests {
         let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
         let file = make_file(10, 20);
 
-        update_full_metadata(
-            &conn,
-            &mut doc,
-            "next-hash",
-            "changed content",
-            &file,
-            "nomic-embed-text",
-            768,
-            true,
-        )
-        .expect("failed to update metadata with content");
+        update_hash_and_content(&conn, &mut doc, "next-hash", "changed content", &file)
+            .expect("failed to update hash and content");
 
         let audit_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM content_update_audit", [], |row| {

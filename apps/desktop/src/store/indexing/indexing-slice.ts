@@ -41,15 +41,13 @@ export type IndexingSlice = {
 		embeddingProvider: string,
 		embeddingModel: string,
 	) => Promise<void>
-	indexWorkspace: (
+	indexVaultDocuments: (
 		workspacePath: string,
 		forceReindex: boolean,
 	) => Promise<WorkspaceIndexSummary>
-	indexNote: (
+	refreshWorkspaceEmbeddings: (
 		workspacePath: string,
-		notePath: string,
-		options?: { includeEmbeddings?: boolean },
-	) => Promise<boolean>
+	) => Promise<WorkspaceIndexSummary>
 
 	loadIndexingMeta: (workspacePath: string) => Promise<void>
 	startIndexingMetaPolling: (workspacePath: string) => void
@@ -176,7 +174,10 @@ export const prepareIndexingSlice = ({
 			}))
 		},
 
-		indexWorkspace: async (workspacePath: string, forceReindex: boolean) => {
+		indexVaultDocuments: async (
+			workspacePath: string,
+			forceReindex: boolean,
+		) => {
 			const isRunning = get().indexingState[workspacePath]
 			if (isRunning) {
 				throw new Error("Indexing is already running for this workspace")
@@ -191,7 +192,7 @@ export const prepareIndexingSlice = ({
 
 			try {
 				const indexingPort = createIndexingPort(workspacePath)
-				const result = await indexingPort.indexWorkspace(forceReindex)
+				const result = await indexingPort.indexVaultDocuments(forceReindex)
 				return result
 			} finally {
 				set((state) => ({
@@ -203,14 +204,10 @@ export const prepareIndexingSlice = ({
 			}
 		},
 
-		indexNote: async (
-			workspacePath: string,
-			notePath: string,
-			options?: { includeEmbeddings?: boolean },
-		) => {
+		refreshWorkspaceEmbeddings: async (workspacePath: string) => {
 			const isRunning = get().indexingState[workspacePath]
 			if (isRunning) {
-				return false
+				throw new Error("Indexing is already running for this workspace")
 			}
 
 			set((state) => ({
@@ -222,11 +219,7 @@ export const prepareIndexingSlice = ({
 
 			try {
 				const indexingPort = createIndexingPort(workspacePath)
-				await indexingPort.indexNote(notePath, options)
-				return true
-			} catch (error) {
-				console.error("Failed to index note:", error)
-				return false
+				return await indexingPort.refreshWorkspaceEmbeddings()
 			} finally {
 				set((state) => ({
 					indexingState: {
@@ -349,7 +342,7 @@ export const prepareIndexingSlice = ({
 			if (forceReindex) {
 				try {
 					// Model changes refresh embeddings without wiping docs, links, or tags.
-					await get().indexWorkspace(workspacePath, false)
+					await get().refreshWorkspaceEmbeddings(workspacePath)
 					await get().loadIndexingMeta(workspacePath)
 				} catch {
 					// Error handling is done by caller or can be improved

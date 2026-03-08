@@ -168,7 +168,7 @@ mod tests {
         fs::write(&alpha_path, build_content("nebula")).expect("failed to write Alpha.md");
         fs::write(&beta_path, build_content("nebula")).expect("failed to write Beta.md");
 
-        vault_indexing::index_workspace(
+        vault_indexing::index_vault_documents(
             Path::new(&harness.workspace_path),
             Path::new(&harness.db_path),
             "",

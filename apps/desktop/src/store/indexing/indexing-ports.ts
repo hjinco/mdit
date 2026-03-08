@@ -14,11 +14,8 @@ export type IndexingPort = {
 		embeddingProvider: string,
 		embeddingModel: string,
 	) => Promise<void>
-	indexWorkspace: (forceReindex: boolean) => Promise<WorkspaceIndexSummary>
-	indexNote: (
-		notePath: string,
-		options?: { includeEmbeddings?: boolean },
-	) => Promise<WorkspaceIndexSummary>
+	indexVaultDocuments: (forceReindex: boolean) => Promise<WorkspaceIndexSummary>
+	refreshWorkspaceEmbeddings: () => Promise<WorkspaceIndexSummary>
 }
 
 export const createTauriIndexingPort = (
@@ -39,15 +36,13 @@ export const createTauriIndexingPort = (
 			embeddingProvider,
 			embeddingModel,
 		}),
-	indexWorkspace: (forceReindex: boolean) =>
-		invoke<WorkspaceIndexSummary>("index_workspace_command", {
+	indexVaultDocuments: (forceReindex: boolean) =>
+		invoke<WorkspaceIndexSummary>("index_vault_documents_command", {
 			workspacePath,
 			forceReindex,
 		}),
-	indexNote: (notePath: string, options?: { includeEmbeddings?: boolean }) =>
-		invoke<WorkspaceIndexSummary>("index_note_command", {
+	refreshWorkspaceEmbeddings: () =>
+		invoke<WorkspaceIndexSummary>("refresh_workspace_embeddings_command", {
 			workspacePath,
-			notePath,
-			includeEmbeddings: options?.includeEmbeddings ?? true,
 		}),
 })
