@@ -15,6 +15,16 @@ export type PrepareImageForEditorInsertDeps = {
 	buildImageLink: (path: string) => ImageLinkData
 }
 
+export class EditorImageImportError extends Error {
+	readonly path: string
+
+	constructor(path: string) {
+		super("Failed to import image into workspace.")
+		this.name = "EditorImageImportError"
+		this.path = path
+	}
+}
+
 const defaultRuntimeDeps: PrepareImageForEditorInsertDeps = {
 	getWorkspacePath: () => useStore.getState().workspacePath,
 	copyEntry: (sourcePath, destinationPath) =>
@@ -41,10 +51,12 @@ export async function prepareImageForEditorInsert(
 	}
 
 	const copiedPath = await runtimeDeps.copyEntry(trimmedPath, workspacePath)
-	const finalPath = copiedPath ?? trimmedPath
+	if (!copiedPath) {
+		throw new EditorImageImportError(trimmedPath)
+	}
 
 	return {
-		absolutePath: finalPath,
-		...runtimeDeps.buildImageLink(finalPath),
+		absolutePath: copiedPath,
+		...runtimeDeps.buildImageLink(copiedPath),
 	}
 }

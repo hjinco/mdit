@@ -1,9 +1,9 @@
-import { insertResolvedImage } from "@mdit/editor/media"
+import { insertResolvedImage, resolveEditorImageLink } from "@mdit/editor/media"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
 import { extname } from "pathe"
 import { KEYS, type Path, PathApi } from "platejs"
 import type { PlateEditor } from "platejs/react"
-import { prepareImageForEditorInsert } from "@/components/editor/hosts/image-import-host"
+import { desktopImageImportHost } from "@/components/editor/hosts/image-import-runtime"
 import { isImageFile } from "@/utils/file-icon"
 import {
 	type DndDragEndEvent,
@@ -106,7 +106,14 @@ async function handleFileDropToEditor({
 	const insertPath = isCodeOrTable ? PathApi.next(targetPath) : targetPath
 
 	for (const imagePath of imagePaths) {
-		const imageData = await prepareImageForEditorInsert(imagePath)
+		const imageData = await resolveEditorImageLink(
+			imagePath,
+			desktopImageImportHost,
+		)
+		if (!imageData) {
+			continue
+		}
+
 		insertResolvedImage(editor, imageData, {
 			at: insertPath,
 			nextBlock: position === "bottom" && !isCodeOrTable,

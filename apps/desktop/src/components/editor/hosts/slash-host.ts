@@ -11,7 +11,10 @@ import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { dirname, resolve } from "pathe"
 import YAML from "yaml"
 import { useStore } from "@/store"
-import { prepareImageForEditorInsert } from "./image-import-host"
+import {
+	type DesktopImageImportHostDeps,
+	desktopImageImportHost,
+} from "./image-import-runtime"
 
 const MAX_REFERENCED_NOTES = 5
 
@@ -59,15 +62,14 @@ type DesktopSlashHostRuntimeDeps = {
 	readDirectory: typeof readDir
 	readMarkdownFile: typeof readTextFile
 	getTabPath: () => string | null
-	resolveImageLink: typeof prepareImageForEditorInsert
-}
+} & DesktopImageImportHostDeps
 
 const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 	openDialog: open,
 	readDirectory: readDir,
 	readMarkdownFile: readTextFile,
 	getTabPath: () => useStore.getState().tab?.path ?? null,
-	resolveImageLink: prepareImageForEditorInsert,
+	...desktopImageImportHost,
 }
 
 export const createDesktopSlashHost = (
@@ -180,7 +182,11 @@ export const createDesktopSlashHost = (
 
 			return typeof path === "string" ? path : null
 		},
-		resolveImageLink: runtimeDeps.resolveImageLink,
+		resolveImageLink:
+			runtimeDeps.resolveImageLink ?? desktopImageImportHost.resolveImageLink,
+		onResolveImageLinkError:
+			runtimeDeps.onResolveImageLinkError ??
+			desktopImageImportHost.onResolveImageLinkError,
 		getFrontmatterDefaults,
 	}
 }

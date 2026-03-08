@@ -1,20 +1,33 @@
 import type { FilePasteHostDeps } from "@mdit/editor/media"
 import clipboard from "tauri-plugin-clipboard-api"
 import { isImageFile } from "@/utils/file-icon"
-import { prepareImageForEditorInsert } from "./image-import-host"
+import {
+	type DesktopImageImportHostDeps,
+	desktopImageImportHost,
+} from "./image-import-runtime"
 
-const defaultRuntimeDeps: FilePasteHostDeps = {
+type DesktopFilePasteHostRuntimeDeps = Pick<
+	FilePasteHostDeps,
+	"readClipboardFiles" | "isImageFile"
+> &
+	DesktopImageImportHostDeps
+
+const defaultRuntimeDeps: DesktopFilePasteHostRuntimeDeps = {
 	readClipboardFiles: () => clipboard.readFiles(),
 	isImageFile,
-	resolveImageLink: prepareImageForEditorInsert,
+	...desktopImageImportHost,
 }
 
 export const createDesktopFilePasteHost = (
-	runtimeDeps: FilePasteHostDeps = defaultRuntimeDeps,
+	runtimeDeps: DesktopFilePasteHostRuntimeDeps = defaultRuntimeDeps,
 ): FilePasteHostDeps => ({
 	readClipboardFiles: runtimeDeps.readClipboardFiles,
 	isImageFile: runtimeDeps.isImageFile,
-	resolveImageLink: runtimeDeps.resolveImageLink,
+	resolveImageLink:
+		runtimeDeps.resolveImageLink ?? desktopImageImportHost.resolveImageLink,
+	onResolveImageLinkError:
+		runtimeDeps.onResolveImageLinkError ??
+		desktopImageImportHost.onResolveImageLinkError,
 })
 
 export const desktopFilePasteHost = createDesktopFilePasteHost()

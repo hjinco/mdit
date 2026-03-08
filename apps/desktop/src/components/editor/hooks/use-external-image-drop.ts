@@ -1,10 +1,10 @@
-import { insertResolvedImage } from "@mdit/editor/media"
+import { insertResolvedImage, resolveEditorImageLink } from "@mdit/editor/media"
 import { extname } from "pathe"
 import type { PlateEditor } from "platejs/react"
 import { type RefObject, useCallback } from "react"
+import { desktopImageImportHost } from "@/components/editor/hosts/image-import-runtime"
 import { type DropEvent, useDropZone } from "@/contexts/drop-context"
 import { isImageFile } from "@/utils/file-icon"
-import { prepareImageForEditorInsert } from "../hosts/image-import-host"
 import {
 	applyDropSelectionFromPoint,
 	focusEditorForExternalDropFallback,
@@ -45,7 +45,14 @@ export function useExternalImageDrop(
 			}
 
 			for (const imagePath of imagePaths) {
-				const imageData = await prepareImageForEditorInsert(imagePath)
+				const imageData = await resolveEditorImageLink(
+					imagePath,
+					desktopImageImportHost,
+				)
+				if (!imageData) {
+					continue
+				}
+
 				insertResolvedImage(editor, imageData, { nextBlock: true })
 			}
 
