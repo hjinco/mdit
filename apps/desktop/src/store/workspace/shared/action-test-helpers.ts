@@ -57,7 +57,6 @@ export function createActionTestContext() {
 				disambiguated: false,
 				unresolved: true,
 			}),
-			indexNote: vi.fn().mockResolvedValue(undefined),
 			renameIndexedNote: vi.fn().mockResolvedValue(false),
 			deleteIndexedNote: vi.fn().mockResolvedValue(false),
 		},

@@ -156,6 +156,29 @@ pub(super) fn sync_segments_for_doc(
     prune_extra_segments(conn, doc_id, chunks.len())
 }
 
+pub(super) fn segments_match_current_chunks(
+    conn: &Connection,
+    doc_id: i64,
+    chunks: &[String],
+) -> Result<bool> {
+    let existing = load_segments_for_doc(conn, doc_id)?;
+    if existing.len() != chunks.len() {
+        return Ok(false);
+    }
+
+    for (ordinal, chunk) in chunks.iter().enumerate() {
+        let Some(segment) = existing.get(&(ordinal as i64)) else {
+            return Ok(false);
+        };
+
+        if segment.last_hash != hash_content(chunk) || !segment.has_embedding {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
 fn load_segments_for_doc(conn: &Connection, doc_id: i64) -> Result<HashMap<i64, SegmentRecord>> {
     let mut stmt = conn
         .prepare(

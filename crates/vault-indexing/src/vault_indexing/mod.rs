@@ -1,7 +1,7 @@
 //! Indexing pipeline for Markdown files inside a workspace directory.
 //!
 //! The overall flow is:
-//! 1. `index_workspace` prepares the SQLite database, collects Markdown files,
+//! 1. `index_vault_documents` prepares the SQLite database, collects Markdown files,
 //!    and orchestrates synchronization for every document.
 //! 2. New or changed documents are chunked based on the requested chunking
 //!    version, persisted as `segment` rows, and receive fresh embeddings.
@@ -33,7 +33,9 @@ use embedding::{resolve_embedding_dimension, EmbeddingClient};
 use files::collect_markdown_files;
 use links::resolve_wiki_link_target;
 pub use search::{search_notes_by_tag, search_notes_for_query, SemanticNoteEntry, TagNoteEntry};
-use sync::{clear_segment_vectors_for_vault, sync_documents_with_prune};
+use sync::{
+    clear_segment_vectors_for_vault, sync_documents_with_prune, sync_embeddings_for_prepared,
+};
 pub use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult};
 
 const TARGET_CHUNKING_VERSION: i64 = 1;
@@ -209,8 +211,9 @@ pub(super) fn find_vault_id(conn: &Connection, workspace_root: &Path) -> Result<
 pub struct VaultIndexingRuntimeAdapter;
 
 impl VaultIndexingRuntime for VaultIndexingRuntimeAdapter {
-    fn run_workspace_index(&self, workspace_root: &Path, db_path: &Path) -> Result<()> {
-        crate::vault_indexing::index_workspace(workspace_root, db_path, "", "", false).map(|_| ())
+    fn index_vault_documents(&self, workspace_root: &Path, db_path: &Path) -> Result<()> {
+        crate::vault_indexing::index_vault_documents(workspace_root, db_path, "", "", false)
+            .map(|_| ())
     }
 
     fn index_note(&self, workspace_root: &Path, db_path: &Path, note_path: &Path) -> Result<()> {
@@ -266,7 +269,7 @@ impl VaultIndexingRuntime for VaultIndexingRuntimeAdapter {
     }
 }
 
-pub fn index_workspace(
+pub fn index_vault_documents(
     workspace_root: &Path,
     db_path: &Path,
     embedding_provider: &str,
@@ -283,6 +286,23 @@ pub fn index_workspace(
         markdown_files,
         true,
         force_reindex,
+    )
+}
+
+pub fn refresh_workspace_embeddings(
+    workspace_root: &Path,
+    db_path: &Path,
+    embedding_provider: &str,
+    embedding_model: &str,
+) -> Result<IndexSummary> {
+    let _ = canonicalize_workspace_root(workspace_root)?;
+    let files = collect_markdown_files(workspace_root)?;
+    run_embedding_refresh_for_files(
+        workspace_root,
+        db_path,
+        embedding_provider,
+        embedding_model,
+        files,
     )
 }
 
@@ -426,7 +446,7 @@ fn run_indexing_for_files(
         ..Default::default()
     };
 
-    sync_documents_with_prune(
+    let prepared_documents = sync_documents_with_prune(
         &mut conn,
         workspace_root,
         vault_id,
@@ -434,6 +454,64 @@ fn run_indexing_for_files(
         embedding_context.as_ref(),
         &mut summary,
         prune_deleted_docs,
+    )?;
+
+    if let Some(embedding_context) = embedding_context.as_ref() {
+        sync_embeddings_for_prepared(
+            &mut conn,
+            vault_id,
+            &prepared_documents,
+            embedding_context,
+            &mut summary,
+            false,
+        )?;
+    }
+
+    Ok(summary)
+}
+
+fn run_embedding_refresh_for_files(
+    workspace_root: &Path,
+    db_path: &Path,
+    embedding_provider: &str,
+    embedding_model: &str,
+    files: Vec<files::MarkdownFile>,
+) -> Result<IndexSummary> {
+    let embedding_context = create_embedding_context(embedding_provider, embedding_model)?;
+    let mut summary = IndexSummary {
+        files_discovered: files.len(),
+        ..Default::default()
+    };
+
+    let Some(embedding_context) = embedding_context.as_ref() else {
+        return Ok(summary);
+    };
+
+    let mut prepared_documents = Vec::with_capacity(files.len());
+    for file in files {
+        let abs_path = file.abs_path.clone();
+        match sync::PreparedDocument::load(file) {
+            Ok(prepared) => prepared_documents.push(prepared),
+            Err(error) => {
+                summary
+                    .skipped_files
+                    .push(format!("{}: {}", abs_path.display(), error));
+            }
+        }
+    }
+
+    let mut conn = open_indexing_connection(db_path)?;
+    let Some(vault_id) = find_vault_id(&conn, workspace_root)? else {
+        return Ok(summary);
+    };
+
+    sync_embeddings_for_prepared(
+        &mut conn,
+        vault_id,
+        &prepared_documents,
+        embedding_context,
+        &mut summary,
+        true,
     )?;
 
     Ok(summary)

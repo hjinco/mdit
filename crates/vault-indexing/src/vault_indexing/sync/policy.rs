@@ -7,19 +7,13 @@ pub(super) enum FileSyncAction {
     Process { source_stat_changed: bool },
 }
 
-pub(super) fn decide_file_sync_action(
+pub(super) fn decide_document_sync_action(
     doc_record: &DocRecord,
     file: &MarkdownFile,
     force_link_refresh_for_doc: bool,
-    embedding: Option<&EmbeddingContext>,
 ) -> FileSyncAction {
     let source_stat_changed = !doc_record.source_stat_matches(file);
-    if !force_link_refresh_for_doc
-        && !source_stat_changed
-        && doc_record.chunking_version == TARGET_CHUNKING_VERSION
-        && doc_record.last_hash.is_some()
-        && embedding_target_matches(doc_record, embedding)
-    {
+    if !force_link_refresh_for_doc && !source_stat_changed && doc_record.last_hash.is_some() {
         return FileSyncAction::Skip;
     }
 
@@ -28,37 +22,56 @@ pub(super) fn decide_file_sync_action(
     }
 }
 
+pub(super) fn can_skip_file_without_loading(
+    doc_record: &DocRecord,
+    file: &MarkdownFile,
+    force_link_refresh_for_doc: bool,
+    embedding: Option<&EmbeddingContext>,
+) -> bool {
+    let source_stat_changed = !doc_record.source_stat_matches(file);
+    if force_link_refresh_for_doc
+        || source_stat_changed
+        || doc_record.chunking_version != TARGET_CHUNKING_VERSION
+        || doc_record.last_hash.is_none()
+    {
+        return false;
+    }
+
+    let Some(embedding) = embedding else {
+        return true;
+    };
+
+    doc_record.chunking_version == TARGET_CHUNKING_VERSION
+        && doc_record
+            .embedding_target_matches(embedding.embedder.model_name(), embedding.target_dim)
+}
+
 pub(super) fn embedding_target_changed(
     doc_record: &DocRecord,
     model: &str,
     target_dim: i32,
 ) -> bool {
-    doc_record.last_embedding_model.as_deref() != Some(model)
-        || doc_record.last_embedding_dim != Some(target_dim)
-}
-
-fn embedding_target_matches(doc_record: &DocRecord, embedding: Option<&EmbeddingContext>) -> bool {
-    let Some(embedding) = embedding else {
-        return true;
-    };
-
-    doc_record.last_embedding_model.as_deref() == Some(embedding.embedder.model_name())
-        && doc_record.last_embedding_dim == Some(embedding.target_dim)
+    !doc_record.embedding_target_matches(model, target_dim)
 }
 
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use super::{decide_file_sync_action, embedding_target_changed, FileSyncAction};
-    use crate::vault_indexing::{files::MarkdownFile, TARGET_CHUNKING_VERSION};
+    use super::{
+        can_skip_file_without_loading, decide_document_sync_action, embedding_target_changed,
+        FileSyncAction,
+    };
+    use crate::vault_indexing::{
+        embedding::EmbeddingClient, files::MarkdownFile, EmbeddingContext, TARGET_CHUNKING_VERSION,
+    };
 
     use super::super::doc_repo::DocRecord;
 
     fn make_doc(model: Option<&str>, dim: Option<i32>) -> DocRecord {
         DocRecord {
             id: 1,
-            chunking_version: 2,
+            chunking_version: TARGET_CHUNKING_VERSION,
             last_hash: Some("hash".to_string()),
             last_source_size: Some(10),
             last_source_mtime_ns: Some(20),
@@ -73,6 +86,14 @@ mod tests {
             rel_path: "test.md".to_string(),
             last_source_size: Some(size),
             last_source_mtime_ns: Some(mtime_ns),
+        }
+    }
+
+    fn make_embedding_context(model: &str, target_dim: i32) -> EmbeddingContext {
+        EmbeddingContext {
+            embedder: EmbeddingClient::new("test", model)
+                .expect("test embedding client should build"),
+            target_dim,
         }
     }
 
@@ -96,12 +117,21 @@ mod tests {
     }
 
     #[test]
-    fn chunk_version_mismatch_forces_processing_even_when_other_metadata_matches() {
-        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
-        doc.chunking_version = TARGET_CHUNKING_VERSION + 1;
+    fn document_sync_skips_when_hash_exists_and_source_stat_matches() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
         let file = make_file(10, 20);
 
-        let action = decide_file_sync_action(&doc, &file, false, None);
+        let action = decide_document_sync_action(&doc, &file, false);
+
+        assert_eq!(action, FileSyncAction::Skip);
+    }
+
+    #[test]
+    fn document_sync_processes_when_link_refresh_is_forced() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
+        let file = make_file(10, 20);
+
+        let action = decide_document_sync_action(&doc, &file, true);
 
         assert_eq!(
             action,
@@ -112,13 +142,39 @@ mod tests {
     }
 
     #[test]
-    fn matching_chunk_version_allows_skip_when_everything_else_matches() {
-        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
-        doc.chunking_version = TARGET_CHUNKING_VERSION;
+    fn skip_without_loading_when_unchanged_and_embedding_target_matches() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
+        let embedding = make_embedding_context("nomic-embed-text", 768);
         let file = make_file(10, 20);
 
-        let action = decide_file_sync_action(&doc, &file, false, None);
+        assert!(can_skip_file_without_loading(
+            &doc,
+            &file,
+            false,
+            Some(&embedding),
+        ));
+    }
 
-        assert_eq!(action, FileSyncAction::Skip);
+    #[test]
+    fn do_not_skip_without_loading_when_embedding_target_changes() {
+        let doc = make_doc(Some("nomic-embed-text"), Some(768));
+        let embedding = make_embedding_context("other-model", 768);
+        let file = make_file(10, 20);
+
+        assert!(!can_skip_file_without_loading(
+            &doc,
+            &file,
+            false,
+            Some(&embedding),
+        ));
+    }
+
+    #[test]
+    fn do_not_skip_without_loading_when_chunking_version_drifts() {
+        let mut doc = make_doc(Some("nomic-embed-text"), Some(768));
+        doc.chunking_version = TARGET_CHUNKING_VERSION - 1;
+        let file = make_file(10, 20);
+
+        assert!(!can_skip_file_without_loading(&doc, &file, false, None));
     }
 }

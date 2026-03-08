@@ -163,7 +163,7 @@ fn spawn_worker(
             match message {
                 WorkerMessage::StartupCatchup => {
                     if let Err(error) =
-                        run_workspace_index(indexing_runtime.as_ref(), &workspace_path, &db_path)
+                        index_vault_documents(indexing_runtime.as_ref(), &workspace_path, &db_path)
                     {
                         eprintln!("vault-indexer: startup catch-up failed: {error:#}");
                     }
@@ -188,7 +188,7 @@ fn process_batch(
     batch: VaultChangeBatch,
 ) -> Result<()> {
     if batch.rescan {
-        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
+        index_vault_documents(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
@@ -295,7 +295,7 @@ fn process_batch(
     }
 
     if requires_rescan {
-        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
+        index_vault_documents(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
@@ -324,7 +324,7 @@ fn process_batch(
     }
 
     if prefix_delete_failed {
-        run_workspace_index(indexing_runtime, workspace_path, db_path)?;
+        index_vault_documents(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
@@ -600,16 +600,16 @@ fn normalized_abs_eq(left: &Path, right: &Path) -> bool {
     normalize_slashes(&left.to_string_lossy()) == normalize_slashes(&right.to_string_lossy())
 }
 
-fn run_workspace_index(
+fn index_vault_documents(
     indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
 ) -> Result<()> {
     indexing_runtime
-        .run_workspace_index(workspace_path, db_path)
+        .index_vault_documents(workspace_path, db_path)
         .with_context(|| {
             format!(
-                "failed to run workspace indexing for {}",
+                "failed to index vault documents for {}",
                 workspace_path.display()
             )
         })
@@ -657,7 +657,7 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     enum RuntimeCall {
-        RunWorkspaceIndex,
+        IndexVaultDocuments,
         IndexNote(String),
         DeleteIndexedNote(String),
         DeleteIndexedNotesByPrefix(String),
@@ -687,11 +687,11 @@ mod tests {
     }
 
     impl VaultIndexingRuntime for FakeVaultIndexingRuntime {
-        fn run_workspace_index(&self, _workspace_root: &Path, _db_path: &Path) -> Result<()> {
+        fn index_vault_documents(&self, _workspace_root: &Path, _db_path: &Path) -> Result<()> {
             self.calls
                 .lock()
                 .expect("calls lock poisoned")
-                .push(RuntimeCall::RunWorkspaceIndex);
+                .push(RuntimeCall::IndexVaultDocuments);
             Ok(())
         }
 
@@ -846,7 +846,7 @@ mod tests {
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
 
-        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+        assert_eq!(runtime.calls(), vec![RuntimeCall::IndexVaultDocuments]);
     }
 
     #[test]
@@ -955,7 +955,7 @@ mod tests {
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
 
-        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+        assert_eq!(runtime.calls(), vec![RuntimeCall::IndexVaultDocuments]);
     }
 
     #[test]
@@ -979,7 +979,7 @@ mod tests {
             runtime.calls(),
             vec![
                 RuntimeCall::DeleteIndexedNotesByPrefix(normalize_path(&workspace.join("folder"))),
-                RuntimeCall::RunWorkspaceIndex,
+                RuntimeCall::IndexVaultDocuments,
             ]
         );
     }
@@ -1000,7 +1000,7 @@ mod tests {
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
 
-        assert_eq!(runtime.calls(), vec![RuntimeCall::RunWorkspaceIndex]);
+        assert_eq!(runtime.calls(), vec![RuntimeCall::IndexVaultDocuments]);
 
         let ignored_runtime = FakeVaultIndexingRuntime::default();
         let mut ignored_batch = empty_batch();

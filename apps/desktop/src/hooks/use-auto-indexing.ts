@@ -2,13 +2,19 @@ import { useEffect, useRef } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
-const AUTO_INDEX_INTERVAL_MS = 10 * 60 * 1000 // 10 minutes
+const AUTO_INDEX_INTERVAL_MS = 30 * 60 * 1000 // 30 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
-	const { getIndexingConfig, indexWorkspace, isMigrationsComplete } = useStore(
+	const {
+		getIndexingConfig,
+		indexVaultDocuments,
+		refreshWorkspaceEmbeddings,
+		isMigrationsComplete,
+	} = useStore(
 		useShallow((state) => ({
 			getIndexingConfig: state.getIndexingConfig,
-			indexWorkspace: state.indexWorkspace,
+			indexVaultDocuments: state.indexVaultDocuments,
+			refreshWorkspaceEmbeddings: state.refreshWorkspaceEmbeddings,
 			isMigrationsComplete: state.isMigrationsComplete,
 		})),
 	)
@@ -34,29 +40,42 @@ export function useAutoIndexing(workspacePath: string | null) {
 			return
 		}
 
-		// Function to run indexing
-		const runAutoIndex = async () => {
-			// Skip if indexing is already running (check current state from store)
-			// Use getState() to get the latest state instead of relying on closure
-			const currentState = useStore.getState().indexingState
-			if (currentState[workspacePath]) {
+		const isIndexingRunning = () =>
+			Boolean(useStore.getState().indexingState[workspacePath])
+
+		const runInitialIndex = async () => {
+			if (isIndexingRunning()) {
 				return
 			}
 
 			try {
-				await indexWorkspace(workspacePath, false)
+				await indexVaultDocuments(workspacePath, false)
+			} catch (error) {
+				console.error("Initial auto-indexing failed:", error)
+			}
+		}
+
+		const runEmbeddingRefresh = async () => {
+			// Skip if indexing is already running (check current state from store)
+			// Use getState() to get the latest state instead of relying on closure
+			if (isIndexingRunning()) {
+				return
+			}
+
+			try {
+				await refreshWorkspaceEmbeddings(workspacePath)
 			} catch (error) {
 				// Silent failure - just log to console
 				console.error("Auto-indexing failed:", error)
 			}
 		}
 
-		// Run immediately on start
-		runAutoIndex()
+		// Seed document rows and embeddings once on startup before background refreshes.
+		void runInitialIndex()
 
 		// Set up interval for subsequent runs
 		intervalRef.current = window.setInterval(
-			runAutoIndex,
+			runEmbeddingRefresh,
 			AUTO_INDEX_INTERVAL_MS,
 		)
 
@@ -67,5 +86,10 @@ export function useAutoIndexing(workspacePath: string | null) {
 				intervalRef.current = null
 			}
 		}
-	}, [workspacePath, indexWorkspace, isMigrationsComplete])
+	}, [
+		workspacePath,
+		indexVaultDocuments,
+		refreshWorkspaceEmbeddings,
+		isMigrationsComplete,
+	])
 }

@@ -6,8 +6,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use app_storage::migrations;
 
 use super::super::{
-    find_vault_id, get_backlinks, get_indexing_meta, index_note, index_workspace,
-    search_notes_by_tag, BacklinkEntry, IndexSummary, IndexingMeta,
+    find_vault_id, get_backlinks, get_indexing_meta, index_note, index_vault_documents,
+    refresh_workspace_embeddings, search_notes_by_tag, BacklinkEntry, IndexSummary, IndexingMeta,
 };
 
 pub(super) struct IndexingHarness {
@@ -57,7 +57,7 @@ impl IndexingHarness {
     }
 
     pub(super) fn run_workspace_index(&self) -> IndexSummary {
-        index_workspace(&self.root, &self.db_path, "", "", false)
+        index_vault_documents(&self.root, &self.db_path, "", "", false)
             .expect("workspace indexing should succeed")
     }
 
@@ -66,7 +66,7 @@ impl IndexingHarness {
         embedding_provider: &str,
         embedding_model: &str,
     ) -> IndexSummary {
-        index_workspace(
+        index_vault_documents(
             &self.root,
             &self.db_path,
             embedding_provider,
@@ -74,6 +74,20 @@ impl IndexingHarness {
             false,
         )
         .expect("workspace indexing with embeddings should succeed")
+    }
+
+    pub(super) fn refresh_workspace_embeddings(
+        &self,
+        embedding_provider: &str,
+        embedding_model: &str,
+    ) -> IndexSummary {
+        refresh_workspace_embeddings(
+            &self.root,
+            &self.db_path,
+            embedding_provider,
+            embedding_model,
+        )
+        .expect("workspace embedding refresh should succeed")
     }
 
     pub(super) fn run_note_index(&self, rel_path: &str) -> Result<IndexSummary> {
@@ -285,6 +299,10 @@ impl IndexingHarness {
         self.doc_queries().embedding_metadata(rel_path)
     }
 
+    pub(super) fn doc_segment_stats(&self, rel_path: &str) -> Option<(usize, usize)> {
+        self.doc_queries().segment_stats(rel_path)
+    }
+
     pub(super) fn set_doc_source_stat(
         &self,
         rel_path: &str,
@@ -388,6 +406,26 @@ impl DocQueries<'_> {
         )
         .optional()
         .expect("failed to query doc embedding metadata")
+    }
+
+    fn segment_stats(&self, rel_path: &str) -> Option<(usize, usize)> {
+        let (conn, vault_id) = self.harness.open_vault_connection()?;
+        conn.query_row(
+            "SELECT COUNT(DISTINCT s.id), COUNT(DISTINCT sv.rowid) \
+             FROM doc d \
+             LEFT JOIN segment s ON s.doc_id = d.id \
+             LEFT JOIN segment_vec sv ON sv.rowid = s.id \
+             WHERE d.vault_id = ?1 AND d.rel_path = ?2",
+            params![vault_id, rel_path],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)? as usize,
+                    row.get::<_, i64>(1)? as usize,
+                ))
+            },
+        )
+        .optional()
+        .expect("failed to query doc segment stats")
     }
 }
 

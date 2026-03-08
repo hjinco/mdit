@@ -254,7 +254,6 @@ describe("fs-structure-actions", () => {
 		expect(deps.linkIndexing.getBacklinks).not.toHaveBeenCalled()
 		expect(deps.linkIndexing.resolveWikiLink).not.toHaveBeenCalled()
 		expect(deps.linkIndexing.renameIndexedNote).not.toHaveBeenCalled()
-		expect(deps.linkIndexing.indexNote).not.toHaveBeenCalled()
 	})
 
 	it("deleteEntries uses moveManyToTrash for multiple items", async () => {
@@ -327,6 +326,5 @@ describe("fs-structure-actions", () => {
 
 		expect(deps.linkIndexing.getBacklinks).not.toHaveBeenCalled()
 		expect(deps.linkIndexing.deleteIndexedNote).not.toHaveBeenCalled()
-		expect(deps.linkIndexing.indexNote).not.toHaveBeenCalled()
 	})
 })
