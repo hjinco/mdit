@@ -9,6 +9,7 @@ import {
 	useState,
 } from "react"
 import { useStore } from "@/store"
+import { resetCurrentDropZone } from "./drop-context.helpers"
 
 type DropKind = "over" | "drop" | "leave" | "enter"
 type Point = { x: number; y: number }
@@ -208,14 +209,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 		}
 		previousWorkspacePathRef.current = workspacePath
 
-		for (const zone of zonesRef.current.values()) {
-			const el = zone.ref.current
-			if (el?.getAttribute("data-drop-zone-id") === zone.id) {
-				el.removeAttribute("data-drop-zone-id")
-			}
-		}
-		zonesRef.current.clear()
-		currentZoneIdRef.current = null
+		resetCurrentDropZone(zonesRef.current, currentZoneIdRef)
 	}, [workspacePath])
 
 	return (
