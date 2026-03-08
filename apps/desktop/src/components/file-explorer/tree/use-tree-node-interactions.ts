@@ -1,13 +1,10 @@
 import { useDraggable } from "@dnd-kit/react"
-import { useCallback, useMemo } from "react"
+import type { FileTreeRenderNode } from "@mdit/file-tree"
+import { useCallback } from "react"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 
 type UseTreeNodeInteractionsParams = {
-	entry: WorkspaceEntry
-	aiLockedEntryPaths: Set<string>
-	renamingEntryPath: string | null
-	selectedEntryPaths: Set<string>
+	node: FileTreeRenderNode<WorkspaceEntry>
 	onEntryPrimaryAction: (
 		entry: WorkspaceEntry,
 		event: React.MouseEvent<HTMLButtonElement>,
@@ -16,20 +13,15 @@ type UseTreeNodeInteractionsParams = {
 }
 
 export function useTreeNodeInteractions({
-	entry,
-	aiLockedEntryPaths,
-	renamingEntryPath,
-	selectedEntryPaths,
+	node,
 	onEntryPrimaryAction,
 	onEntryContextMenu,
 }: UseTreeNodeInteractionsParams) {
-	const isRenaming = renamingEntryPath === entry.path
-	const isLocked = useMemo(
-		() => hasPathConflictWithLockedPaths([entry.path], aiLockedEntryPaths),
-		[aiLockedEntryPaths, entry.path],
-	)
+	const { entry } = node
+	const isRenaming = node.isRenaming
+	const isLocked = node.isLocked
 	const isBusy = isRenaming || isLocked
-	const isSelected = selectedEntryPaths.has(entry.path)
+	const isSelected = node.isSelected
 
 	const { ref: draggableRef, isDragging } = useDraggable({
 		id: entry.path,

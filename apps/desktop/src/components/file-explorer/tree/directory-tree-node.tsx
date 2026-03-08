@@ -14,26 +14,21 @@ import { useTreeNodeInteractions } from "./use-tree-node-interactions"
 const INDENTATION_WIDTH = 12
 
 export function DirectoryTreeNode({
-	entry,
+	node,
 	isFileExplorerOpen,
-	depth,
-	expandedDirectories,
 	onDirectoryClick,
 	onEntryPrimaryAction,
 	onEntryContextMenu,
-	selectedEntryPaths,
-	aiLockedEntryPaths,
-	renamingEntryPath,
 	onRenameSubmit,
 	onRenameCancel,
-	pendingNewFolderPath,
 	onNewFolderSubmit,
 	onNewFolderCancel,
 	onCollectionViewOpen,
 	childrenTree,
 }: DirectoryTreeNodeProps) {
-	const hasChildren = (entry.children?.length ?? 0) > 0
-	const isExpanded = expandedDirectories.includes(entry.path)
+	const { entry } = node
+	const hasChildren = node.hasChildren
+	const isExpanded = node.isExpanded
 	const {
 		isRenaming,
 		isLocked,
@@ -44,10 +39,7 @@ export function DirectoryTreeNode({
 		handlePrimaryAction,
 		handleContextMenu,
 	} = useTreeNodeInteractions({
-		entry,
-		aiLockedEntryPaths,
-		renamingEntryPath,
-		selectedEntryPaths,
+		node,
 		onEntryPrimaryAction,
 		onEntryContextMenu,
 	})
@@ -57,14 +49,14 @@ export function DirectoryTreeNode({
 		data: {
 			path: entry.path,
 			isDirectory: entry.isDirectory,
-			depth,
+			depth: node.depth,
 		},
 		disabled: !entry.isDirectory || isBusy || !isFileExplorerOpen,
 	})
 
 	const { isOver: isOverExternal, ref: externalDropRef } = useFolderDropZone({
 		folderPath: entry.isDirectory ? entry.path : null,
-		depth,
+		depth: node.depth,
 	})
 
 	const isOver = isDropTarget || isOverExternal
@@ -101,7 +93,7 @@ export function DirectoryTreeNode({
 		onCancel: onRenameCancel,
 	})
 
-	const hasPendingNewFolder = pendingNewFolderPath === entry.path
+	const hasPendingNewFolder = node.isPendingCreateDirectory
 	const newFolderInput = useInlineEditableInput({
 		active: hasPendingNewFolder,
 		initialValue: "",
@@ -139,7 +131,7 @@ export function DirectoryTreeNode({
 								widthClass: "flex-1",
 							}),
 						)}
-						style={{ paddingLeft: `${depth * INDENTATION_WIDTH}px` }}
+						style={{ paddingLeft: `${node.depth * INDENTATION_WIDTH}px` }}
 						disabled={isBusy}
 					>
 						<div
@@ -203,7 +195,7 @@ export function DirectoryTreeNode({
 						onBlur={newFolderInput.onBlur}
 						className="px-2 mt-0.5"
 						style={{
-							paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px`,
+							paddingLeft: `${(node.depth + 1) * INDENTATION_WIDTH}px`,
 						}}
 					/>
 				)}

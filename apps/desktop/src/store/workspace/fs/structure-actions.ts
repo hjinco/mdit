@@ -75,8 +75,10 @@ export const createFsStructureActions = (
 				expandNewDirectory: true,
 			})
 
-			ctx.get().setSelectedEntryPaths(new Set([folderPath]))
-			ctx.get().setSelectionAnchorPath(folderPath)
+			ctx.get().setEntrySelection({
+				selectedIds: new Set([folderPath]),
+				anchorId: folderPath,
+			})
 
 			return folderPath
 		} catch (error) {
@@ -123,8 +125,10 @@ export const createFsStructureActions = (
 
 		if (options?.openTab) {
 			await ctx.ports.tab.openTab(filePath)
-			ctx.get().setSelectedEntryPaths(new Set([filePath]))
-			ctx.get().setSelectionAnchorPath(filePath)
+			ctx.get().setEntrySelection({
+				selectedIds: new Set([filePath]),
+				anchorId: filePath,
+			})
 		}
 
 		return filePath

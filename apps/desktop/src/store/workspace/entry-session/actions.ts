@@ -1,9 +1,11 @@
 import { normalizePathSeparators } from "@/utils/path-utils"
 import type { WorkspaceActionContext } from "../workspace-action-context"
+import type { WorkspaceEntrySelection } from "../workspace-state"
 
 export type WorkspaceEntrySessionActions = {
 	lockAiEntries: (paths: string[]) => void
 	unlockAiEntries: (paths: string[]) => void
+	setEntrySelection: (selection: WorkspaceEntrySelection) => void
 	setSelectedEntryPaths: (paths: Set<string>) => void
 	setSelectionAnchorPath: (path: string | null) => void
 	resetSelection: () => void
@@ -38,6 +40,13 @@ export const createEntrySessionActions = (
 		})
 	},
 
+	setEntrySelection: ({ selectedIds, anchorId }) => {
+		ctx.set({
+			selectedEntryPaths: selectedIds,
+			selectionAnchorPath: anchorId,
+		})
+	},
+
 	setSelectedEntryPaths: (paths) => {
 		ctx.set({ selectedEntryPaths: paths })
 	},
@@ -47,9 +56,9 @@ export const createEntrySessionActions = (
 	},
 
 	resetSelection: () => {
-		ctx.set({
-			selectedEntryPaths: new Set(),
-			selectionAnchorPath: null,
+		ctx.get().setEntrySelection({
+			selectedIds: new Set(),
+			anchorId: null,
 		})
 	},
 })

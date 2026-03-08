@@ -134,6 +134,15 @@ export function createActionTestContext() {
 		renameEntry: vi.fn(),
 		registerLocalMutation: vi.fn(),
 		updateEntryModifiedDate: vi.fn(),
+		setEntrySelection: vi.fn(
+			(selection: { selectedIds: Set<string>; anchorId: string | null }) => {
+				state = {
+					...state,
+					selectedEntryPaths: selection.selectedIds,
+					selectionAnchorPath: selection.anchorId,
+				}
+			},
+		),
 		setSelectedEntryPaths: vi.fn((paths: Set<string>) => {
 			state = { ...state, selectedEntryPaths: paths }
 		}),

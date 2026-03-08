@@ -22,12 +22,16 @@ export type WorkspaceDirectoryUiActions = {
 		nextEntries: WorkspaceEntry[]
 		options?: SyncWorkspaceDirectoryUiStateOptions
 	}) => Promise<void>
+	setExpandedDirectories: (next: Set<string> | string[]) => Promise<void>
 	expandDirectory: (path: string) => Promise<void>
 	collapseDirectory: (path: string) => Promise<void>
 	toggleDirectory: (path: string) => Promise<void>
 	pinDirectory: (path: string) => Promise<void>
 	unpinDirectory: (path: string) => Promise<void>
 }
+
+const toExpandedDirectoryList = (next: Set<string> | string[]) =>
+	Array.isArray(next) ? next : [...next]
 
 export const createDirectoryUiActions = (
 	ctx: WorkspaceActionContext,
@@ -45,46 +49,48 @@ export const createDirectoryUiActions = (
 		)
 	},
 
-	expandDirectory: async (path: string) => {
+	setExpandedDirectories: async (next) => {
 		const { workspacePath, expandedDirectories } = ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
+
+		await persistExpandedDirectoriesIfChanged(
+			ctx,
+			workspacePath,
+			expandedDirectories,
+			toExpandedDirectoryList(next),
+		)
+	},
+
+	expandDirectory: async (path: string) => {
+		const { expandedDirectories } = ctx.get()
 		if (expandedDirectories.includes(path)) {
 			return
 		}
 
-		await persistExpandedDirectoriesIfChanged(
-			ctx,
-			workspacePath,
-			expandedDirectories,
-			[...expandedDirectories, path],
-		)
+		await ctx.get().setExpandedDirectories([...expandedDirectories, path])
 	},
 
 	collapseDirectory: async (path: string) => {
-		const { workspacePath, expandedDirectories } = ctx.get()
-		if (!workspacePath) throw new Error("Workspace path is not set")
+		const { expandedDirectories } = ctx.get()
 		if (!expandedDirectories.includes(path)) {
 			return
 		}
 
-		await persistExpandedDirectoriesIfChanged(
-			ctx,
-			workspacePath,
-			expandedDirectories,
-			expandedDirectories.filter((entry) => entry !== path),
-		)
+		await ctx
+			.get()
+			.setExpandedDirectories(
+				expandedDirectories.filter((entry) => entry !== path),
+			)
 	},
 
 	toggleDirectory: async (path: string) => {
-		const { workspacePath, expandedDirectories } = ctx.get()
-		if (!workspacePath) throw new Error("Workspace path is not set")
+		const { expandedDirectories } = ctx.get()
 
-		await persistExpandedDirectoriesIfChanged(
-			ctx,
-			workspacePath,
-			expandedDirectories,
-			toggleExpandedDirectory(expandedDirectories, path),
-		)
+		await ctx
+			.get()
+			.setExpandedDirectories(
+				toggleExpandedDirectory(expandedDirectories, path),
+			)
 	},
 
 	pinDirectory: async (path: string) => {

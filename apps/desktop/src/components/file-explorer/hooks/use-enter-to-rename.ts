@@ -7,7 +7,7 @@ type UseEnterToRenameOptions = {
 	selectionAnchorPath: string | null
 	renamingEntryPath: string | null
 	beginRenaming: (entry: WorkspaceEntry) => void
-	entryMap: Map<string, WorkspaceEntry>
+	nodeById: ReadonlyMap<string, WorkspaceEntry>
 }
 
 export function useEnterToRename({
@@ -15,7 +15,7 @@ export function useEnterToRename({
 	selectionAnchorPath,
 	renamingEntryPath,
 	beginRenaming,
-	entryMap,
+	nodeById,
 }: UseEnterToRenameOptions) {
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -48,7 +48,7 @@ export function useEnterToRename({
 				return
 			}
 
-			const entry = entryMap.get(selectionAnchorPath)
+			const entry = nodeById.get(selectionAnchorPath)
 			if (!entry) {
 				return
 			}
@@ -65,7 +65,7 @@ export function useEnterToRename({
 	}, [
 		beginRenaming,
 		containerRef,
-		entryMap,
+		nodeById,
 		renamingEntryPath,
 		selectionAnchorPath,
 	])
