@@ -25,11 +25,7 @@ import {
 	useMemo,
 	useState,
 } from "react"
-import type {
-	LinkHostDeps,
-	LinkIndexingConfig,
-	LinkWorkspaceState,
-} from "../link/link-kit"
+import type { LinkWorkspaceState } from "../link/link-kit"
 import {
 	createPathQueryCandidates,
 	ensureUriEncoding,
@@ -49,6 +45,12 @@ import {
 	type WorkspaceFileOption,
 } from "../link/link-toolbar-utils"
 import { exitLinkForwardAtSelection } from "./link-exit"
+import type { LinkServices } from "./link-ports"
+import {
+	createLinkedNote,
+	loadLinkSuggestions,
+	resolvePreferredTarget,
+} from "./link-use-cases"
 import { startsWithHttpProtocol } from "./link-utils"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "./wiki-link-constants"
 
@@ -65,21 +67,16 @@ type SearchableWorkspaceFile = {
 
 export function LinkUrlInput({
 	inputRef,
-	host,
+	services,
 	workspaceState,
 }: {
 	inputRef: RefObject<HTMLInputElement | null>
-	host: LinkHostDeps
+	services: LinkServices
 	workspaceState: LinkWorkspaceState
 }) {
 	const editor = useEditorRef()
 	const { api, setOption } = useEditorPlugin(LinkPlugin)
 	const { entries: workspaceEntries, workspacePath, tab } = workspaceState
-	const [indexingConfig, setIndexingConfig] =
-		useState<LinkIndexingConfig | null>(null)
-	const hasEmbeddingConfig = Boolean(
-		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
-	)
 	const currentTabPath = tab?.path ?? null
 	const currentRelativeDir = useMemo(() => {
 		if (currentTabPath && workspacePath) {
@@ -227,59 +224,23 @@ export function LinkUrlInput({
 	const suggestionsEnabled = !isHttpLink
 
 	useEffect(() => {
-		if (!workspacePath || linkMode !== "wiki" || trimmedValue) {
-			return
-		}
-
-		if (!host.getIndexingConfig) {
-			setIndexingConfig(null)
-			return
-		}
-
-		let cancelled = false
-		void host
-			.getIndexingConfig(workspacePath)
-			.then((config) => {
-				if (!cancelled) {
-					setIndexingConfig(config)
-				}
-			})
-			.catch((error) => {
-				if (!cancelled) {
-					console.error("Failed to load indexing config:", error)
-					setIndexingConfig(null)
-				}
-			})
-
-		return () => {
-			cancelled = true
-		}
-	}, [host, linkMode, trimmedValue, workspacePath])
-
-	useEffect(() => {
 		if (
-			!workspacePath ||
-			!currentTabPath ||
 			linkMode !== "wiki" ||
 			trimmedValue ||
-			!hasEmbeddingConfig
+			!workspacePath ||
+			!currentTabPath
 		) {
 			setRelatedSuggestions([])
 			return
 		}
 
 		let cancelled = false
-		if (!host.getRelatedNotes) {
-			setRelatedSuggestions([])
-			return
-		}
-
-		host
-			.getRelatedNotes({
-				workspacePath,
-				currentTabPath,
-				limit: RELATED_NOTES_LIMIT,
-			})
+		void loadLinkSuggestions({
+			currentTabPath,
+			limit: RELATED_NOTES_LIMIT,
+			services,
+			workspacePath,
+		})
 			.then((entries) => {
 				if (!cancelled) {
 					setRelatedSuggestions(entries)
@@ -295,14 +256,7 @@ export function LinkUrlInput({
 		return () => {
 			cancelled = true
 		}
-	}, [
-		currentTabPath,
-		hasEmbeddingConfig,
-		host.getRelatedNotes,
-		linkMode,
-		trimmedValue,
-		workspacePath,
-	])
+	}, [currentTabPath, linkMode, services, trimmedValue, workspacePath])
 
 	const { hasExactMatch, suggestions: filteredSuggestions } = useMemo(() => {
 		if (!suggestionsEnabled) {
@@ -377,7 +331,8 @@ export function LinkUrlInput({
 		hasQuery &&
 		suggestionsEnabled &&
 		!hasExactMatch &&
-		filteredSuggestions.length === 0
+		filteredSuggestions.length === 0 &&
+		Boolean(services.noteCreation)
 	const activeSuggestions = showRelatedSuggestionList
 		? relatedSuggestions
 		: filteredSuggestions
@@ -498,7 +453,7 @@ export function LinkUrlInput({
 	)
 
 	const resolvePreferredWikiTarget = useCallback(
-		async ({
+		({
 			rawTarget,
 			fallbackTarget,
 			preferFallbackWhenUnresolved,
@@ -508,32 +463,17 @@ export function LinkUrlInput({
 			fallbackTarget: string
 			preferFallbackWhenUnresolved: boolean
 			warnContext: string
-		}): Promise<string> => {
-			if (!workspacePath) {
-				return fallbackTarget
-			}
-
-			try {
-				const resolved = await host.resolveWikiLink({
-					workspacePath,
-					currentNotePath: currentTabPath,
-					rawTarget,
-				})
-				const canonicalTarget = normalizeWikiTargetForDisplay(
-					resolved.canonicalTarget,
-				)
-
-				if (preferFallbackWhenUnresolved && resolved.unresolved) {
-					return fallbackTarget || canonicalTarget
-				}
-
-				return canonicalTarget || fallbackTarget
-			} catch (error) {
-				console.warn(warnContext, error)
-				return fallbackTarget
-			}
-		},
-		[currentTabPath, host, workspacePath],
+		}) =>
+			resolvePreferredTarget({
+				currentTabPath,
+				fallbackTarget,
+				preferFallbackWhenUnresolved,
+				rawTarget,
+				services,
+				warnContext,
+				workspacePath,
+			}),
+		[currentTabPath, services, workspacePath],
 	)
 
 	const handleSelectSuggestion = useCallback(
@@ -680,45 +620,32 @@ export function LinkUrlInput({
 	])
 
 	const handleCreateNote = useCallback(async () => {
-		if (!workspacePath) return
-		const targetDirectory = currentTabPath
-			? pathDirname(currentTabPath)
-			: workspacePath
-
-		const fallbackName = trimmedValue || "Untitled"
-
-		const newFilePath = await host.createNote(targetDirectory, {
-			initialName: fallbackName,
-			openTab: false,
+		const createdLink = await createLinkedNote({
+			currentTabPath,
+			linkMode,
+			services,
+			value: trimmedValue,
+			workspacePath,
 		})
 
-		if (!newFilePath) return
-
-		let finalUrl = fallbackName
-		let nextWikiTarget: string | null = fallbackName
-
-		if (linkMode === "markdown") {
-			const relativePath = normalizePathSeparators(
-				relative(targetDirectory, newFilePath),
-			)
-			finalUrl = formatMarkdownPath(relativePath)
-			nextWikiTarget = null
-		} else {
-			const baseName =
-				newFilePath.split("/").pop()?.replace(/\.md$/, "") || fallbackName
-			finalUrl = baseName
-			nextWikiTarget = baseName
-		}
+		if (!createdLink) return
 
 		submitLink({
 			mode: linkMode,
-			nextUrl: finalUrl,
+			nextUrl: createdLink.nextUrl,
 			isWebLink: false,
-			wikiTarget: nextWikiTarget,
+			wikiTarget: createdLink.nextWikiTarget,
 		})
 
-		await host.openTab(newFilePath)
-	}, [host, workspacePath, currentTabPath, trimmedValue, linkMode, submitLink])
+		await services.navigation.openPath(createdLink.newFilePath)
+	}, [
+		services,
+		workspacePath,
+		currentTabPath,
+		trimmedValue,
+		linkMode,
+		submitLink,
+	])
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {

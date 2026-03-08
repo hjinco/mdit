@@ -1,5 +1,4 @@
 import { join, dirname as pathDirname, resolve } from "pathe"
-import type { LinkHostDeps, LinkWorkspaceState } from "../link/link-kit"
 import {
 	flattenWorkspaceFiles,
 	isPathInsideWorkspaceRoot,
@@ -8,14 +7,14 @@ import {
 	safelyDecodeUrl,
 	stripLeadingSlashes,
 } from "../link/link-toolbar-utils"
+import type { LinkOpenServices } from "./link-ports"
 import { startsWithHttpProtocol } from "./link-utils"
 
 export type OpenEditorLinkOptions = {
 	href: string
 	wiki?: boolean
 	wikiTarget?: string
-	host: LinkHostDeps
-	workspaceState: LinkWorkspaceState
+	services: LinkOpenServices
 }
 
 export async function openEditorLink(options: OpenEditorLinkOptions) {
@@ -28,7 +27,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 	const isWebLink = startsWithHttpProtocol(targetUrl)
 	if (isWebLink) {
 		try {
-			await options.host.openExternalLink(targetUrl)
+			await options.services.navigation.openExternal(targetUrl)
 		} catch (error) {
 			console.error("Failed to open external link:", error)
 		}
@@ -44,8 +43,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 		entries: workspaceEntries,
 		tab: currentTab,
 		workspacePath,
-	} = options.workspaceState
-	const { openTab } = options.host
+	} = options.services.workspace.getSnapshot()
 
 	try {
 		if (!workspacePath) {
@@ -59,9 +57,9 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 		const isWikiLink = Boolean(options.wiki || options.wikiTarget)
 		const rawTarget = options.wikiTarget || targetUrl
 
-		if (isWikiLink) {
+		if (isWikiLink && options.services.resolver) {
 			try {
-				const resolved = await options.host.resolveWikiLink({
+				const resolved = await options.services.resolver.resolveWikiLink({
 					workspacePath,
 					currentNotePath: currentTab?.path ?? null,
 					rawTarget,
@@ -78,7 +76,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 						)
 						return
 					}
-					await openTab(absoluteResolved)
+					await options.services.navigation.openPath(absoluteResolved)
 				}
 				return
 			} catch (error) {
@@ -100,7 +98,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 		})
 
 		if (resolvedPath) {
-			await openTab(resolvedPath)
+			await options.services.navigation.openPath(resolvedPath)
 			return
 		}
 
@@ -126,7 +124,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 			return
 		}
 
-		await openTab(absolutePath)
+		await options.services.navigation.openPath(absolutePath)
 	} catch (error) {
 		console.error("Failed to open workspace link:", error)
 	}

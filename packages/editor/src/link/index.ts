@@ -1,5 +1,5 @@
 export { exitLinkForwardAtSelection } from "./link-exit"
-export { createLinkKit, type LinkHostDeps } from "./link-kit"
+export { createLinkKit } from "./link-kit"
 export type {
 	LinkIndexingConfig,
 	LinkWorkspaceEntry,
@@ -9,6 +9,17 @@ export type {
 	WorkspaceFileOption,
 } from "./link-kit-types"
 export { type OpenEditorLinkOptions, openEditorLink } from "./link-open"
+export type {
+	LinkCreateNoteOptions,
+	LinkNavigationPort,
+	LinkNoteCreationPort,
+	LinkOpenPathOptions,
+	LinkOpenServices,
+	LinkServices,
+	LinkSuggestionPort,
+	LinkWorkspacePort,
+	WikiLinkResolverPort,
+} from "./link-ports"
 export {
 	createPathQueryCandidates,
 	ensureUriEncoding,
@@ -29,6 +40,11 @@ export {
 	stripLeadingSlashes,
 	toWorkspaceRelativeWikiTarget,
 } from "./link-toolbar-utils"
+export {
+	createLinkedNote,
+	loadLinkSuggestions,
+	resolvePreferredTarget,
+} from "./link-use-cases"
 export {
 	hasParentTraversal,
 	isAbsoluteLike,
