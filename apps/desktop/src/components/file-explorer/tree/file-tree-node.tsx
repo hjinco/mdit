@@ -9,17 +9,13 @@ import { useTreeNodeInteractions } from "./use-tree-node-interactions"
 const INDENTATION_WIDTH = 12
 
 export function FileTreeNode({
-	entry,
-	activeTabPath,
-	depth,
+	node,
 	onEntryPrimaryAction,
 	onEntryContextMenu,
-	selectedEntryPaths,
-	aiLockedEntryPaths,
-	renamingEntryPath,
 	onRenameSubmit,
 	onRenameCancel,
 }: TreeNodeProps) {
+	const { entry } = node
 	const {
 		isRenaming,
 		isLocked,
@@ -30,10 +26,7 @@ export function FileTreeNode({
 		handlePrimaryAction,
 		handleContextMenu,
 	} = useTreeNodeInteractions({
-		entry,
-		aiLockedEntryPaths,
-		renamingEntryPath,
-		selectedEntryPaths,
+		node,
 		onEntryPrimaryAction,
 		onEntryContextMenu,
 	})
@@ -63,7 +56,7 @@ export function FileTreeNode({
 		() => !entry.isDirectory && extension.toLowerCase() === ".md",
 		[entry.isDirectory, extension],
 	)
-	const isActiveNote = isMarkdown && entry.path === activeTabPath
+	const isActiveNote = isMarkdown && node.isActive
 	const showExtension = !isMarkdown && extension
 
 	const renameInput = useInlineEditableInput({
@@ -98,7 +91,7 @@ export function FileTreeNode({
 					}),
 					showExtension && "pr-1",
 				)}
-				style={{ paddingLeft: `${(depth + 1) * INDENTATION_WIDTH}px` }}
+				style={{ paddingLeft: `${(node.depth + 1) * INDENTATION_WIDTH}px` }}
 				aria-current={isActiveNote ? "page" : undefined}
 				disabled={isBusy}
 			>

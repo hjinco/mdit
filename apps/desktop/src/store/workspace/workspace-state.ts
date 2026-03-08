@@ -9,6 +9,11 @@ export type WorkspaceEntry = {
 	modifiedAt?: Date
 }
 
+export type WorkspaceEntrySelection = {
+	selectedIds: Set<string>
+	anchorId: string | null
+}
+
 export type WorkspaceState = {
 	isLoading: boolean
 	isEditMode: boolean

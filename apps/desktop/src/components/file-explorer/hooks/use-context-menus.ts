@@ -50,8 +50,11 @@ type UseFileExplorerMenusProps = {
 	) => Promise<string>
 	workspacePath: string | null
 	selectedEntryPaths: Set<string>
-	setSelectedEntryPaths: (paths: Set<string>) => void
-	setSelectionAnchorPath: (path: string | null) => void
+	selectionAnchorPath: string | null
+	setEntrySelection: (selection: {
+		selectedIds: Set<string>
+		anchorId: string | null
+	}) => void
 	resetSelection: () => void
 	entries: WorkspaceEntry[]
 	pinnedDirectories: string[]
@@ -71,8 +74,8 @@ export const useFileExplorerMenus = ({
 	createNote,
 	workspacePath,
 	selectedEntryPaths,
-	setSelectedEntryPaths,
-	setSelectionAnchorPath,
+	selectionAnchorPath,
+	setEntrySelection,
 	resetSelection,
 	entries,
 	pinnedDirectories,
@@ -493,10 +496,10 @@ export const useFileExplorerMenus = ({
 				const hadSelection = nextSelection.size > 0
 				nextSelection.add(entry.path)
 				selectionTargets = Array.from(nextSelection)
-				setSelectedEntryPaths(nextSelection)
-				if (!hadSelection) {
-					setSelectionAnchorPath(entry.path)
-				}
+				setEntrySelection({
+					selectedIds: nextSelection,
+					anchorId: hadSelection ? selectionAnchorPath : entry.path,
+				})
 			}
 
 			if (entry.isDirectory) {
@@ -507,8 +510,8 @@ export const useFileExplorerMenus = ({
 		},
 		[
 			selectedEntryPaths,
-			setSelectedEntryPaths,
-			setSelectionAnchorPath,
+			selectionAnchorPath,
+			setEntrySelection,
 			showDirectoryMenu,
 			showEntryMenu,
 		],

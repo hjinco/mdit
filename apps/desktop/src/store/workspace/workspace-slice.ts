@@ -43,7 +43,7 @@ import { createWorkspacePorts } from "./workspace-ports"
 import type { WorkspaceState } from "./workspace-state"
 import { buildWorkspaceState } from "./workspace-state"
 
-export type { WorkspaceEntry } from "./workspace-state"
+export type { WorkspaceEntry, WorkspaceEntrySelection } from "./workspace-state"
 
 export type WorkspaceActions = WorkspaceTreeActions &
 	WorkspaceDirectoryUiActions &

@@ -5,34 +5,24 @@ import type { TreeNodeProps } from "./tree-node.types"
 export type { TreeNodeProps } from "./tree-node.types"
 
 export function TreeNode(props: TreeNodeProps) {
-	const { entry } = props
+	const { node } = props
 
-	if (entry.isDirectory) {
-		const isExpanded = props.expandedDirectories.includes(entry.path)
-		const childrenTree = isExpanded
-			? entry.children?.map((child) => (
-					<TreeNode
-						key={child.path}
-						entry={child}
-						activeTabPath={props.activeTabPath}
-						isFileExplorerOpen={props.isFileExplorerOpen}
-						depth={props.depth + 1}
-						expandedDirectories={props.expandedDirectories}
-						onDirectoryClick={props.onDirectoryClick}
-						onEntryPrimaryAction={props.onEntryPrimaryAction}
-						onEntryContextMenu={props.onEntryContextMenu}
-						selectedEntryPaths={props.selectedEntryPaths}
-						aiLockedEntryPaths={props.aiLockedEntryPaths}
-						renamingEntryPath={props.renamingEntryPath}
-						onRenameSubmit={props.onRenameSubmit}
-						onRenameCancel={props.onRenameCancel}
-						pendingNewFolderPath={props.pendingNewFolderPath}
-						onNewFolderSubmit={props.onNewFolderSubmit}
-						onNewFolderCancel={props.onNewFolderCancel}
-						onCollectionViewOpen={props.onCollectionViewOpen}
-					/>
-				))
-			: undefined
+	if (node.kind === "directory") {
+		const childrenTree = node.children?.map((child) => (
+			<TreeNode
+				key={child.path}
+				node={child}
+				isFileExplorerOpen={props.isFileExplorerOpen}
+				onDirectoryClick={props.onDirectoryClick}
+				onEntryPrimaryAction={props.onEntryPrimaryAction}
+				onEntryContextMenu={props.onEntryContextMenu}
+				onRenameSubmit={props.onRenameSubmit}
+				onRenameCancel={props.onRenameCancel}
+				onNewFolderSubmit={props.onNewFolderSubmit}
+				onNewFolderCancel={props.onNewFolderCancel}
+				onCollectionViewOpen={props.onCollectionViewOpen}
+			/>
+		))
 
 		return <DirectoryTreeNode {...props} childrenTree={childrenTree} />
 	}

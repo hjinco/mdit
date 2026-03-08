@@ -3,6 +3,19 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createDirectoryUiActions } from "./actions"
 
 describe("directory-ui/actions", () => {
+	it("setExpandedDirectories persists Set input", async () => {
+		const { context, deps, setState, getState } = createActionTestContext()
+		setState({ workspacePath: "/ws", expandedDirectories: ["/ws"] })
+		const actions = createDirectoryUiActions(context)
+
+		await actions.setExpandedDirectories(new Set(["/ws", "/ws/docs"]))
+
+		expect(getState().expandedDirectories).toEqual(["/ws", "/ws/docs"])
+		expect(
+			deps.settingsRepository.persistExpandedDirectories,
+		).toHaveBeenCalledWith("/ws", ["/ws", "/ws/docs"])
+	})
+
 	it("expandDirectory persists when path is newly expanded", async () => {
 		const { context, deps, setState, getState } = createActionTestContext()
 		setState({ workspacePath: "/ws", expandedDirectories: ["/ws"] })

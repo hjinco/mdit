@@ -30,6 +30,7 @@
 		"@mdit/command-menu": "workspace:*",
 		"@mdit/credentials": "workspace:*",
 		"@mdit/editor": "workspace:*",
+		"@mdit/file-tree": "workspace:*",
 		"@mdit/graph-view": "workspace:*",
 		"@mdit/git-sync": "workspace:*",
 		"@mdit/local-fs-origin": "workspace:*",

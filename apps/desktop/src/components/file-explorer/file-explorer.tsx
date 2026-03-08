@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/react"
 import { motion } from "motion/react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useMoveNotesWithAI } from "@/components/common/explorer-agent/hooks/use-move-notes-with-ai"
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
@@ -12,8 +12,8 @@ import { hasPathConflictWithLockedPaths } from "@/utils/path-utils"
 import { FeedbackButton } from "./feedback"
 import { useFileExplorerMenus } from "./hooks/use-context-menus"
 import { useDeleteShortcut } from "./hooks/use-delete-shortcut"
+import { useDesktopFileTree } from "./hooks/use-desktop-file-tree"
 import { useEnterToRename } from "./hooks/use-enter-to-rename"
-import { useEntryMap } from "./hooks/use-entry-map"
 import { useEntryPrimaryAction } from "./hooks/use-entry-primary-action"
 import { useFolderDropZone } from "./hooks/use-folder-drop-zone"
 import { RootNewFolderInput, TreeNode } from "./tree"
@@ -24,7 +24,6 @@ import { SettingsMenu } from "./ui/settings-menu"
 import { TopMenu } from "./ui/top-menu"
 import { UpdateButton } from "./ui/update-button"
 import { WorkspaceDropdown } from "./ui/workspace-dropdown"
-import { collectVisibleEntryPaths } from "./utils/entry-tree"
 
 export function FileExplorer() {
 	const fileExplorerRef = useRef<HTMLElement | null>(null)
@@ -46,8 +45,8 @@ export function FileExplorer() {
 		entries,
 		expandedDirectories,
 		expandDirectory,
+		setExpandedDirectories,
 		recentWorkspacePaths,
-		toggleDirectory,
 		setWorkspace,
 		removeWorkspaceFromHistory,
 		openFolderPicker,
@@ -65,8 +64,7 @@ export function FileExplorer() {
 		aiLockedEntryPaths,
 		selectedEntryPaths,
 		selectionAnchorPath,
-		setSelectedEntryPaths,
-		setSelectionAnchorPath,
+		setEntrySelection,
 		resetSelection,
 		lockAiEntries,
 		unlockAiEntries,
@@ -76,8 +74,8 @@ export function FileExplorer() {
 			entries: state.entries,
 			expandedDirectories: state.expandedDirectories,
 			expandDirectory: state.expandDirectory,
+			setExpandedDirectories: state.setExpandedDirectories,
 			recentWorkspacePaths: state.recentWorkspacePaths,
-			toggleDirectory: state.toggleDirectory,
 			setWorkspace: state.setWorkspace,
 			removeWorkspaceFromHistory: state.removeWorkspaceFromHistory,
 			openFolderPicker: state.openFolderPicker,
@@ -95,8 +93,7 @@ export function FileExplorer() {
 			aiLockedEntryPaths: state.aiLockedEntryPaths,
 			selectedEntryPaths: state.selectedEntryPaths,
 			selectionAnchorPath: state.selectionAnchorPath,
-			setSelectedEntryPaths: state.setSelectedEntryPaths,
-			setSelectionAnchorPath: state.setSelectionAnchorPath,
+			setEntrySelection: state.setEntrySelection,
 			resetSelection: state.resetSelection,
 			lockAiEntries: state.lockAiEntries,
 			unlockAiEntries: state.unlockAiEntries,
@@ -111,19 +108,19 @@ export function FileExplorer() {
 	>(null)
 	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const { moveNotesWithAI, canMoveNotesWithAI } = useMoveNotesWithAI()
-	const visibleEntryPaths = useMemo(
-		() => collectVisibleEntryPaths(entries, expandedDirectories),
-		[entries, expandedDirectories],
-	)
-
-	const entryOrderMap = useMemo(() => {
-		const map = new Map<string, number>()
-		visibleEntryPaths.forEach((path, index) => {
-			map.set(path, index)
+	const { tree, nodeById, handleItemPress, toggleExpanded } =
+		useDesktopFileTree({
+			entries,
+			expandedDirectories,
+			selectedEntryPaths,
+			selectionAnchorPath,
+			renamingEntryPath,
+			pendingNewFolderPath,
+			aiLockedEntryPaths,
+			activeTabPath: tab?.path ?? null,
+			setExpandedDirectories,
+			setEntrySelection,
 		})
-		return map
-	}, [visibleEntryPaths])
-	const entryMap = useEntryMap(entries)
 
 	const hasLockedPathConflict = useCallback(
 		(paths: string[]) =>
@@ -218,7 +215,7 @@ export function FileExplorer() {
 		selectionAnchorPath,
 		renamingEntryPath,
 		beginRenaming,
-		entryMap,
+		nodeById,
 	})
 
 	const handleDeleteEntries = useCallback(
@@ -285,8 +282,8 @@ export function FileExplorer() {
 			createNote: createNoteAndScroll,
 			workspacePath,
 			selectedEntryPaths,
-			setSelectedEntryPaths,
-			setSelectionAnchorPath,
+			selectionAnchorPath,
+			setEntrySelection,
 			resetSelection,
 			entries,
 			pinnedDirectories,
@@ -295,15 +292,10 @@ export function FileExplorer() {
 		})
 
 	const handleEntryPrimaryAction = useEntryPrimaryAction({
-		entryOrderMap,
+		handleItemPress,
 		openTab,
-		selectedEntryPaths,
-		selectionAnchorPath,
-		setSelectedEntryPaths,
-		setSelectionAnchorPath,
-		visibleEntryPaths,
 		openImagePreview,
-		toggleDirectory,
+		toggleExpanded,
 	})
 
 	const handleCollectionViewOpen = useCallback(
@@ -370,9 +362,7 @@ export function FileExplorer() {
 						className="flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom"
 						onPointerDownCapture={handleExplorerPointerDownCapture}
 						onContextMenu={handleRootContextMenu}
-						onClick={() => {
-							setSelectedEntryPaths(new Set())
-						}}
+						onClick={resetSelection}
 					>
 						<PinnedList />
 						<ul className="space-y-0.5 pb-4">
@@ -383,23 +373,16 @@ export function FileExplorer() {
 									workspacePath={workspacePath}
 								/>
 							)}
-							{entries.map((entry) => (
+							{tree.map((node) => (
 								<TreeNode
-									key={entry.path}
-									entry={entry}
-									activeTabPath={tab?.path ?? null}
+									key={node.path}
+									node={node}
 									isFileExplorerOpen={isFileExplorerOpen}
-									depth={0}
-									expandedDirectories={expandedDirectories}
-									onDirectoryClick={toggleDirectory}
+									onDirectoryClick={toggleExpanded}
 									onEntryPrimaryAction={handleEntryPrimaryAction}
 									onEntryContextMenu={handleEntryContextMenu}
-									selectedEntryPaths={selectedEntryPaths}
-									aiLockedEntryPaths={aiLockedEntryPaths}
-									renamingEntryPath={renamingEntryPath}
 									onRenameSubmit={handleRenameSubmit}
 									onRenameCancel={cancelRenaming}
-									pendingNewFolderPath={pendingNewFolderPath}
 									onNewFolderSubmit={handleNewFolderSubmit}
 									onNewFolderCancel={cancelNewFolder}
 									onCollectionViewOpen={handleCollectionViewOpen}
