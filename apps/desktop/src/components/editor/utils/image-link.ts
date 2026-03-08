@@ -29,7 +29,7 @@ export function buildImageLinkData(path: string): ImageLinkData {
 
 	if (isAbsoluteLike(trimmed)) {
 		if (!isPathEqualOrDescendant(trimmed, workspacePath)) {
-			return { url: trimmed }
+			return { url: "" }
 		}
 
 		const relativePath = normalizePathSeparators(

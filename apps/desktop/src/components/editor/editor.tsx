@@ -17,6 +17,7 @@ import { isMac } from "@/utils/platform"
 import { Header } from "./header/header"
 import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
+import { useExternalImageDrop } from "./hooks/use-external-image-drop"
 import { useLinkedTabName } from "./hooks/use-linked-tab-name"
 import { EditorKit, EditorKitNoMdx } from "./plugins/editor-kit"
 import {
@@ -101,6 +102,8 @@ function EditorContent({
 		})),
 	)
 	const resetFocusMode = useStore((s) => s.resetFocusMode)
+	const workspacePath = useStore((s) => s.workspacePath)
+	const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
 	const editor = usePlateEditor({
 		plugins: EditorKit,
@@ -194,6 +197,12 @@ function EditorContent({
 	useCommandMenuSelectionRestore(editor)
 	useLinkedTabName(path, value)
 
+	const { isExternalDropOver } = useExternalImageDrop(
+		editor,
+		workspacePath,
+		editorContainerRef,
+	)
+
 	const handleTypingDetection = useCallback(
 		(event: KeyboardEvent) => {
 			if (event.metaKey || event.ctrlKey || event.altKey) return
@@ -209,20 +218,25 @@ function EditorContent({
 	)
 
 	return (
-		<EditorSurface
-			editor={editor}
-			onValueChange={() => {
-				if (isInitializing.current) {
-					isInitializing.current = false
-				} else {
-					isSaved.current = false
-					setTabSaved(false)
-				}
-			}}
-			onKeyDown={handleTypingDetection}
-			onBlur={() => {
-				void handleSave()
-			}}
-		/>
+		<div
+			ref={editorContainerRef}
+			className={isExternalDropOver ? "h-full bg-accent/20" : "h-full"}
+		>
+			<EditorSurface
+				editor={editor}
+				onValueChange={() => {
+					if (isInitializing.current) {
+						isInitializing.current = false
+					} else {
+						isSaved.current = false
+						setTabSaved(false)
+					}
+				}}
+				onKeyDown={handleTypingDetection}
+				onBlur={() => {
+					void handleSave()
+				}}
+			/>
+		</div>
 	)
 }

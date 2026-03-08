@@ -1,3 +1,5 @@
+import { normalize } from "pathe"
+
 const PATH_SEGMENT_REGEX = /[/\\]/
 const BACKSLASH_REGEX = /\\/g
 const MULTIPLE_SLASHES_REGEX = /\/{2,}/g
@@ -39,6 +41,15 @@ export const normalizePathSeparators = (path: string): string => {
 		return collapsed
 	}
 	return collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed
+}
+
+const normalizePathForComparison = (path: string): string => {
+	const separatorNormalized = normalizePathSeparators(path)
+	if (!separatorNormalized) {
+		return separatorNormalized
+	}
+
+	return normalizePathSeparators(normalize(separatorNormalized))
 }
 
 /**
@@ -126,8 +137,8 @@ export const isPathEqualOrDescendant = (
 	path: string,
 	parentPath: string,
 ): boolean => {
-	const normalizedPath = normalizePathSeparators(path)
-	const normalizedParent = normalizePathSeparators(parentPath)
+	const normalizedPath = normalizePathForComparison(path)
+	const normalizedParent = normalizePathForComparison(parentPath)
 
 	if (normalizedPath === normalizedParent) {
 		return true

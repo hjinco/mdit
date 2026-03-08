@@ -1,11 +1,18 @@
-import { insertImage } from "@platejs/media"
 import { createPlatePlugin } from "platejs/react"
+import { insertResolvedImage } from "./image-insert"
+import {
+	type EditorImageLinkErrorHandler,
+	type EditorImageLinkResolver,
+	resolveEditorImageLink,
+} from "./image-link-resolver"
 
 export const FILE_PASTE_KEY = "FilePaste"
 
 export type FilePasteHostDeps = {
 	readClipboardFiles: () => Promise<string[] | null | undefined>
 	isImageFile: (path: string) => boolean
+	resolveImageLink?: EditorImageLinkResolver
+	onResolveImageLinkError?: EditorImageLinkErrorHandler
 }
 
 type CreateFilePasteKitOptions = {
@@ -40,7 +47,11 @@ export const createFilePasteKit = ({
 
 					event.preventDefault()
 					for (const absPath of imageFiles) {
-						insertImage(editor, absPath)
+						const imageData = await resolveEditorImageLink(absPath, host)
+						if (!imageData) {
+							continue
+						}
+						insertResolvedImage(editor, imageData, { nextBlock: true })
 					}
 				})()
 			},
