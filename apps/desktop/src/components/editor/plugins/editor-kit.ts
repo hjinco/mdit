@@ -36,7 +36,7 @@ import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopFrontmatterHost } from "../hosts/frontmatter-host"
-import { createDesktopLinkHost } from "../hosts/link-host"
+import { desktopLinkServices } from "../hosts/link-host"
 import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { createDesktopTagHost } from "../hosts/tag-host"
@@ -55,10 +55,9 @@ const DndKit = [
 	}),
 ]
 
-const desktopLinkHost = createDesktopLinkHost()
 const desktopTagHost = createDesktopTagHost()
 const desktopFrontmatterHost = createDesktopFrontmatterHost({
-	linkHost: desktopLinkHost,
+	linkServices: desktopLinkServices,
 	tagHost: desktopTagHost,
 })
 const desktopBlockSelectionHost = createDesktopBlockSelectionHost()
@@ -84,7 +83,7 @@ const createEditorKit = ({ mdx = true }: CreateEditorKitOptions = {}) => [
 	...DateKit,
 	...DndKit,
 	...FloatingToolbarKit,
-	...createLinkKit({ host: desktopLinkHost }),
+	...createLinkKit({ services: desktopLinkServices }),
 	...ListKit,
 	...(mdx ? MarkdownKit : MarkdownKitNoMdx),
 	...MathKit,

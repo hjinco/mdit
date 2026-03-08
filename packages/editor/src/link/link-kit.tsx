@@ -7,13 +7,7 @@ import {
 	LinkFloatingToolbar,
 } from "../link/link-toolbar"
 import { LinkElement } from "../link/node-link"
-import type {
-	LinkIndexingConfig,
-	LinkWorkspaceState,
-	ResolveWikiLinkParams,
-	ResolveWikiLinkResult,
-	WorkspaceFileOption,
-} from "./link-kit-types"
+import type { LinkServices } from "./link-ports"
 
 export type {
 	LinkIndexingConfig,
@@ -23,39 +17,6 @@ export type {
 	ResolveWikiLinkResult,
 	WorkspaceFileOption,
 } from "./link-kit-types"
-
-export type LinkHostDeps = {
-	useWorkspaceState: () => LinkWorkspaceState
-	getWorkspaceState: () => LinkWorkspaceState
-	openExternalLink: (href: string) => Promise<void> | void
-	openTab: (
-		path: string,
-		skipHistory?: boolean,
-		force?: boolean,
-		options?: {
-			allowCreate?: boolean
-		},
-	) => Promise<void> | void
-	createNote: (
-		directoryPath: string,
-		options?: {
-			initialName?: string
-			initialContent?: string
-			openTab?: boolean
-		},
-	) => Promise<string>
-	resolveWikiLink: (
-		params: ResolveWikiLinkParams,
-	) => Promise<ResolveWikiLinkResult>
-	getIndexingConfig?: (
-		workspacePath: string | null,
-	) => Promise<LinkIndexingConfig | null>
-	getRelatedNotes?: (input: {
-		workspacePath: string
-		currentTabPath: string
-		limit: number
-	}) => Promise<WorkspaceFileOption[]>
-}
 
 type LinkLeafAttributes = Pick<
 	AnchorHTMLAttributes<HTMLAnchorElement>,
@@ -80,14 +41,20 @@ const LinkExitPlugin = createPlatePlugin({
 	},
 })
 
-export const createLinkKit = ({ host }: { host: LinkHostDeps }) => {
+export const createLinkKit = ({ services }: { services: LinkServices }) => {
 	const FloatingToolbar = () => {
-		const workspaceState = host.useWorkspaceState()
-		return <LinkFloatingToolbar host={host} workspaceState={workspaceState} />
+		const workspaceState = services.workspace.useSnapshot()
+		return (
+			<LinkFloatingToolbar
+				services={services}
+				workspaceState={workspaceState}
+			/>
+		)
 	}
 
 	const defaultLinkAttributes: LinkLeafAttributes =
-		createLinkLeafDefaultAttributes(host, host.getWorkspaceState)
+		createLinkLeafDefaultAttributes(services)
+
 	return [
 		LinkExitPlugin,
 		LinkPlugin.configure({

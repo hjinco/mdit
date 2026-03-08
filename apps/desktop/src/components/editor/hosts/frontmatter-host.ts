@@ -1,21 +1,22 @@
 import type { FrontmatterHostDeps } from "@mdit/editor/frontmatter"
-import type { LinkHostDeps } from "@mdit/editor/link"
 import {
+	type LinkOpenServices,
+	type LinkServices,
 	normalizeWikiTargetForDisplay,
 	openEditorLink,
 } from "@mdit/editor/link"
 import type { TagHostDeps } from "@mdit/editor/tag"
-import { createDesktopLinkHost } from "./link-host"
+import { desktopLinkServices } from "./link-host"
 import { createDesktopTagHost } from "./tag-host"
 
 type DesktopFrontmatterHostRuntimeDeps = {
-	linkHost: LinkHostDeps
+	linkServices: LinkOpenServices & Pick<LinkServices, "resolver">
 	tagHost: TagHostDeps
 	onResolveWikiLinkError?: (error: unknown) => void
 }
 
 const defaultRuntimeDeps: DesktopFrontmatterHostRuntimeDeps = {
-	linkHost: createDesktopLinkHost(),
+	linkServices: desktopLinkServices,
 	tagHost: createDesktopTagHost(),
 	onResolveWikiLinkError: (error) => {
 		console.warn(
@@ -39,20 +40,19 @@ export const createDesktopFrontmatterHost = (
 				href: target,
 				wiki: true,
 				wikiTarget: target,
-				host: deps.linkHost,
-				workspaceState: deps.linkHost.getWorkspaceState(),
+				services: deps.linkServices,
 			}),
-		getLinkWorkspaceState: deps.linkHost.getWorkspaceState,
+		getLinkWorkspaceState: deps.linkServices.workspace.getSnapshot,
 		resolveWikiLinkTarget: async (rawTarget, fallbackTarget) => {
-			const workspaceState = deps.linkHost.getWorkspaceState()
+			const workspaceState = deps.linkServices.workspace.getSnapshot()
 			const workspacePath = workspaceState.workspacePath
 			const currentTabPath = workspaceState.tab?.path ?? null
-			if (!workspacePath) {
+			if (!workspacePath || !deps.linkServices.resolver) {
 				return fallbackTarget
 			}
 
 			try {
-				const resolved = await deps.linkHost.resolveWikiLink({
+				const resolved = await deps.linkServices.resolver.resolveWikiLink({
 					workspacePath,
 					currentNotePath: currentTabPath,
 					rawTarget,

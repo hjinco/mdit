@@ -16,9 +16,10 @@ import {
 	usePluginOption,
 } from "platejs/react"
 import { type AnchorHTMLAttributes, useEffect, useMemo, useRef } from "react"
-import type { LinkHostDeps, LinkWorkspaceState } from "../link/link-kit"
+import type { LinkWorkspaceState } from "../link/link-kit"
 import { isJavaScriptUrl } from "../link/link-toolbar-utils"
 import { openEditorLink } from "./link-open"
+import type { LinkServices } from "./link-ports"
 import { LinkUrlInput } from "./link-url-input"
 
 const popoverVariants = cva(
@@ -27,11 +28,11 @@ const popoverVariants = cva(
 
 export function LinkFloatingToolbar({
 	state,
-	host,
+	services,
 	workspaceState,
 }: {
 	state?: LinkFloatingToolbarState
-	host: LinkHostDeps
+	services: LinkServices
 	workspaceState: LinkWorkspaceState
 }) {
 	const editor = useEditorRef()
@@ -189,7 +190,7 @@ export function LinkFloatingToolbar({
 			<div className="flex w-[360px] flex-col" {...inputProps}>
 				<LinkUrlInput
 					inputRef={toolbarProps.inputRef}
-					host={host}
+					services={services}
 					workspaceState={workspaceState}
 				/>
 			</div>
@@ -198,8 +199,7 @@ export function LinkFloatingToolbar({
 }
 
 export function createLinkLeafDefaultAttributes(
-	host: LinkHostDeps,
-	getWorkspaceState: () => LinkWorkspaceState,
+	services: LinkServices,
 ): AnchorHTMLAttributes<HTMLAnchorElement> {
 	return {
 		onMouseDown: (event) => {
@@ -227,8 +227,7 @@ export function createLinkLeafDefaultAttributes(
 				href: url,
 				wiki: currentTarget.dataset.wiki === "true",
 				wikiTarget: currentTarget.dataset.wikiTarget || undefined,
-				host,
-				workspaceState: getWorkspaceState(),
+				services,
 			})
 		},
 		onClick: (event) => {
