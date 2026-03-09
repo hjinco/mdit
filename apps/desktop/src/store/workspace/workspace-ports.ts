@@ -1,5 +1,6 @@
 import type { CollectionSlice } from "../collection/collection-slice"
 import type { GitSyncSlice } from "../git-sync/git-sync-slice"
+import type { IndexingSlice } from "../indexing/indexing-slice"
 import type { TabSlice } from "../tab/tab-slice"
 
 export type WorkspacePorts = {
@@ -26,9 +27,13 @@ export type WorkspacePorts = {
 		| "getCurrentCollectionPath"
 	>
 	gitSync: Pick<GitSyncSlice, "initGitSync">
+	indexing: Pick<IndexingSlice, "resetIndexingState" | "getIndexingConfig">
 }
 
-type WorkspacePortSource = TabSlice & CollectionSlice & GitSyncSlice
+type WorkspacePortSource = TabSlice &
+	CollectionSlice &
+	GitSyncSlice &
+	IndexingSlice
 
 export const createWorkspacePorts = (
 	get: () => WorkspacePortSource,
@@ -56,5 +61,9 @@ export const createWorkspacePorts = (
 	},
 	gitSync: {
 		initGitSync: (...args) => get().initGitSync(...args),
+	},
+	indexing: {
+		resetIndexingState: () => get().resetIndexingState(),
+		getIndexingConfig: (...args) => get().getIndexingConfig(...args),
 	},
 })

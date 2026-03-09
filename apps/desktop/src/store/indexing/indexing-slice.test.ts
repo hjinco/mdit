@@ -4,6 +4,10 @@ import { createTauriIndexingPort, type InvokeFunction } from "./indexing-ports"
 import { type IndexingSlice, prepareIndexingSlice } from "./indexing-slice"
 
 type TestStoreState = IndexingSlice & { ollamaEmbeddingModels: string[] }
+type ConfigResolver = (value: {
+	embeddingProvider: string
+	embeddingModel: string
+}) => void
 
 function createIndexingStore({
 	invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction,
@@ -15,11 +19,6 @@ function createIndexingStore({
 	const createSlice = prepareIndexingSlice({
 		createIndexingPort: (workspacePath) =>
 			createTauriIndexingPort(invoke, workspacePath),
-		timerUtils: {
-			setInterval: vi.fn().mockReturnValue(1),
-			clearInterval: vi.fn(),
-			Date,
-		},
 	})
 
 	const store = createStore<TestStoreState>()((set, get, api) => ({
@@ -51,7 +50,7 @@ describe("indexing-slice config", () => {
 			embeddingProvider: "ollama",
 			embeddingModel: "mxbai-embed-large",
 		})
-		expect(store.getState().configs["/ws"]).toEqual({
+		expect(store.getState().config).toEqual({
 			embeddingProvider: "ollama",
 			embeddingModel: "mxbai-embed-large",
 		})
@@ -77,10 +76,39 @@ describe("indexing-slice config", () => {
 			embeddingProvider: "ollama",
 			embeddingModel: "mxbai-embed-large",
 		})
-		expect(store.getState().configs["/ws"]).toEqual({
+		expect(store.getState().config).toEqual({
 			embeddingProvider: "ollama",
 			embeddingModel: "mxbai-embed-large",
 		})
+	})
+
+	it("ignores late config responses after reset", async () => {
+		let resolveConfig: ConfigResolver | undefined
+		const invoke = vi.fn().mockImplementation((command: string) => {
+			if (command === "get_vault_embedding_config_command") {
+				return new Promise<{
+					embeddingProvider: string
+					embeddingModel: string
+				}>((resolve) => {
+					resolveConfig = resolve
+				})
+			}
+			return Promise.resolve({})
+		}) as unknown as InvokeFunction
+		const { store } = createIndexingStore({ invoke })
+
+		const configPromise = store.getState().getIndexingConfig("/ws")
+		store.getState().resetIndexingState()
+		resolveConfig?.({
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
+		})
+
+		await expect(configPromise).resolves.toEqual({
+			embeddingProvider: "ollama",
+			embeddingModel: "mxbai-embed-large",
+		})
+		expect(store.getState().config).toBeNull()
 	})
 })
 
@@ -95,7 +123,7 @@ describe("indexing-slice indexVaultDocuments", () => {
 			workspacePath: "/ws",
 			forceReindex: true,
 		})
-		expect(store.getState().indexingState["/ws"]).toBe(false)
+		expect(store.getState().isIndexing).toBe(false)
 	})
 
 	it("sends expected invoke payload for embedding-only workspace refresh", async () => {
@@ -110,42 +138,27 @@ describe("indexing-slice indexVaultDocuments", () => {
 				workspacePath: "/ws",
 			},
 		)
-		expect(store.getState().indexingState["/ws"]).toBe(false)
+		expect(store.getState().isIndexing).toBe(false)
 	})
 
-	it("reindexes after model confirmation without forcing a full reset", async () => {
-		const invoke = vi.fn().mockResolvedValue({}) as unknown as InvokeFunction
-		const { store } = createIndexingStore({ invoke })
+	it("resetIndexingState clears current workspace state", () => {
+		const { store } = createIndexingStore()
 
 		store.setState({
-			pendingModelChange: {
-				provider: "ollama",
-				model: "mxbai-embed-large",
-			},
-		})
-
-		await store.getState().confirmModelChange("/ws", true)
-
-		expect(invoke).toHaveBeenNthCalledWith(
-			1,
-			"set_vault_embedding_config_command",
-			{
-				workspacePath: "/ws",
+			config: {
 				embeddingProvider: "ollama",
 				embeddingModel: "mxbai-embed-large",
 			},
-		)
-		expect(invoke).toHaveBeenNthCalledWith(
-			2,
-			"refresh_workspace_embeddings_command",
-			{
-				workspacePath: "/ws",
-			},
-		)
-		expect(invoke).toHaveBeenNthCalledWith(3, "get_indexing_meta_command", {
-			workspacePath: "/ws",
+			isIndexing: true,
+			indexedDocCount: 42,
+			isMetaLoading: true,
 		})
-		expect(store.getState().showModelChangeDialog).toBe(false)
-		expect(store.getState().pendingModelChange).toBeNull()
+
+		store.getState().resetIndexingState()
+
+		expect(store.getState().config).toBeNull()
+		expect(store.getState().isIndexing).toBe(false)
+		expect(store.getState().indexedDocCount).toBe(0)
+		expect(store.getState().isMetaLoading).toBe(false)
 	})
 })

@@ -16,7 +16,8 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("setWorkspace unwatches existing watcher when workspace path changes", async () => {
-		const { context, deps, setState, getState } = createActionTestContext()
+		const { context, deps, ports, setState, getState } =
+			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -34,6 +35,8 @@ describe("lifecycle-actions", () => {
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.touchWorkspace).toHaveBeenCalledWith("/new")
 		expect(deps.historyRepository.listWorkspacePaths).toHaveBeenCalled()
+		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
+		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/new")
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -58,7 +61,8 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("clearWorkspace unwatches existing watcher", async () => {
-		const { context, deps, setState, getState } = createActionTestContext()
+		const { context, deps, ports, setState, getState } =
+			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -72,12 +76,14 @@ describe("lifecycle-actions", () => {
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith("/old")
+		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
 	})
 
 	it("initializeWorkspace unwatches existing watcher when workspace path changes", async () => {
-		const { context, deps, setState, getState } = createActionTestContext()
+		const { context, deps, ports, setState, getState } =
+			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
 		setState({
@@ -90,8 +96,34 @@ describe("lifecycle-actions", () => {
 		await actions.initializeWorkspace()
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
+		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
+		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/new")
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
+	})
+
+	it("initializeWorkspace does not fail when indexing preload fails", async () => {
+		const { context, deps, ports, getState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+		const preloadError = new Error("preload failed")
+
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
+		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
+		ports.indexing.getIndexingConfig.mockRejectedValue(preloadError)
+
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		await actions.initializeWorkspace()
+
+		expect(getState().workspacePath).toBe("/ws")
+		expect(getState().isTreeLoading).toBe(false)
+		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/ws")
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Failed to preload indexing config:",
+			preloadError,
+		)
+
+		errorSpy.mockRestore()
 	})
 
 	it("initializeWorkspace preserves watcher when workspace path is unchanged", async () => {

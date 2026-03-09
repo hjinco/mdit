@@ -10,26 +10,24 @@ import {
 
 type EmbeddingModelChangeDialogProps = {
 	open: boolean
-	onOpenChange: (open: boolean) => void
+	onCancel: () => void
 	onConfirm: () => void
 }
 
 export function EmbeddingModelChangeDialog({
 	open,
-	onOpenChange,
+	onCancel,
 	onConfirm,
 }: EmbeddingModelChangeDialogProps) {
-	const handleConfirm = () => {
-		onConfirm()
-		onOpenChange(false)
-	}
-
-	const handleCancel = () => {
-		onOpenChange(false)
-	}
-
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (!nextOpen) {
+					onCancel()
+				}
+			}}
+		>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Change Embedding Model</DialogTitle>
@@ -41,10 +39,10 @@ export function EmbeddingModelChangeDialog({
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<Button variant="outline" onClick={handleCancel}>
+					<Button variant="outline" onClick={onCancel}>
 						Cancel
 					</Button>
-					<Button onClick={handleConfirm}>Confirm</Button>
+					<Button onClick={onConfirm}>Confirm</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

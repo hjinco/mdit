@@ -1,23 +1,7 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core"
 import type { StateCreator } from "zustand"
-import {
-	isModelChanging,
-	parseEmbeddingModelValue,
-	shouldShowModelChangeWarning,
-} from "./helpers/indexing-utils"
 import { createTauriIndexingPort, type IndexingPort } from "./indexing-ports"
-import type {
-	IndexingConfig,
-	IndexingMeta,
-	WorkspaceIndexSummary,
-} from "./indexing-types"
-
-type IndexingState = Record<string, boolean>
-
-type PendingModelChange = {
-	provider: string
-	model: string
-}
+import type { IndexingConfig, WorkspaceIndexSummary } from "./indexing-types"
 
 type EmbeddingModelsState = {
 	ollamaEmbeddingModels: string[]
@@ -25,14 +9,13 @@ type EmbeddingModelsState = {
 
 export type IndexingSlice = {
 	// State
-	indexingState: IndexingState
-	configs: Record<string, IndexingConfig>
+	config: IndexingConfig | null
+	isIndexing: boolean
 	indexedDocCount: number
 	isMetaLoading: boolean
-	showModelChangeDialog: boolean
-	pendingModelChange: PendingModelChange | null
 
 	// Existing actions
+	resetIndexingState: () => void
 	getIndexingConfig: (
 		workspacePath: string | null,
 	) => Promise<IndexingConfig | null>
@@ -50,318 +33,156 @@ export type IndexingSlice = {
 	) => Promise<WorkspaceIndexSummary>
 
 	loadIndexingMeta: (workspacePath: string) => Promise<void>
-	startIndexingMetaPolling: (workspacePath: string) => void
-	stopIndexingMetaPolling: (clearWorkspacePath?: boolean) => void
-	handleModelChangeRequest: (
-		value: string,
-		workspacePath: string,
-		currentConfig: IndexingConfig | null,
-		indexedCount: number,
-	) => Promise<void>
-	confirmModelChange: (
-		workspacePath: string,
-		forceReindex: boolean,
-	) => Promise<void>
-	cancelModelChange: () => void
-}
-
-type TimerUtils = {
-	setInterval: (handler: TimerHandler, timeout?: number) => number
-	clearInterval: (id: number) => void
-	Date: typeof Date
 }
 
 type IndexingSliceDependencies = {
 	createIndexingPort: (path: string) => IndexingPort
-	timerUtils?: TimerUtils
 }
 
-const defaultTimerUtils: TimerUtils = {
-	setInterval: (handler: TimerHandler, timeout?: number) =>
-		window.setInterval(handler, timeout),
-	clearInterval: (id: number) => window.clearInterval(id),
-	Date,
+const buildStoredConfig = (
+	embeddingProvider: string | null | undefined,
+	embeddingModel: string | null | undefined,
+): IndexingConfig | null => {
+	const normalizedModel = embeddingModel?.trim() ?? ""
+	if (!normalizedModel) {
+		return null
+	}
+
+	const normalizedProvider = embeddingProvider?.trim() || "ollama"
+	return {
+		embeddingProvider: normalizedProvider,
+		embeddingModel: normalizedModel,
+	}
 }
+
+const buildInitialIndexingState = () => ({
+	config: null,
+	isIndexing: false,
+	indexedDocCount: 0,
+	isMetaLoading: false,
+})
 
 export const prepareIndexingSlice = ({
 	createIndexingPort,
-	timerUtils = defaultTimerUtils,
 }: IndexingSliceDependencies): StateCreator<
 	IndexingSlice & EmbeddingModelsState,
 	[],
 	[],
 	IndexingSlice
 > => {
-	let pollingIntervalId: number | null = null
-	let currentWorkspacePath: string | null = null
+	let workspaceSessionId = 0
 
-	return (set, get) => ({
-		indexingState: {},
-		configs: {},
-		indexedDocCount: 0,
-		isMetaLoading: false,
-		showModelChangeDialog: false,
-		pendingModelChange: null,
+	return (set, get) => {
+		const isSessionActive = (sessionId: number) =>
+			workspaceSessionId === sessionId
 
-		getIndexingConfig: async (workspacePath: string | null) => {
-			if (!workspacePath) {
-				return null
+		const runExclusiveIndexingTask = async <T>(
+			workspacePath: string,
+			task: (indexingPort: IndexingPort) => Promise<T>,
+		): Promise<T> => {
+			const sessionId = workspaceSessionId
+			if (get().isIndexing) {
+				throw new Error("Indexing is already running for this workspace")
 			}
 
-			const state = get()
-			if (state.configs[workspacePath]) {
-				return state.configs[workspacePath]
+			if (isSessionActive(sessionId)) {
+				set({ isIndexing: true })
 			}
 
-			const indexingPort = createIndexingPort(workspacePath)
-			const dbConfig = await indexingPort.getIndexingConfig()
+			try {
+				return await task(createIndexingPort(workspacePath))
+			} finally {
+				if (isSessionActive(sessionId)) {
+					set({ isIndexing: false })
+				}
+			}
+		}
 
-			if (dbConfig) {
-				const config: IndexingConfig = {
-					embeddingProvider: dbConfig.embeddingProvider ?? "",
-					embeddingModel: dbConfig.embeddingModel ?? "",
+		return {
+			...buildInitialIndexingState(),
+
+			resetIndexingState: () => {
+				workspaceSessionId += 1
+				set(buildInitialIndexingState())
+			},
+
+			getIndexingConfig: async (workspacePath: string | null) => {
+				if (!workspacePath) {
+					return null
 				}
 
-				set((state) => ({
-					configs: {
-						...state.configs,
-						[workspacePath]: config,
-					},
-				}))
+				const state = get()
+				if (state.config) {
+					return state.config
+				}
+
+				const sessionId = workspaceSessionId
+				const indexingPort = createIndexingPort(workspacePath)
+				const dbConfig = await indexingPort.getIndexingConfig()
+				const config = buildStoredConfig(
+					dbConfig?.embeddingProvider,
+					dbConfig?.embeddingModel,
+				)
+
+				if (workspaceSessionId === sessionId) {
+					set({ config })
+				}
 
 				return config
-			}
+			},
 
-			set((state) => {
-				const nextConfigs = { ...state.configs }
-				delete nextConfigs[workspacePath]
-				return { configs: nextConfigs }
-			})
-
-			return null
-		},
-
-		setIndexingConfig: async (
-			workspacePath: string,
-			embeddingProvider: string,
-			embeddingModel: string,
-		) => {
-			const indexingPort = createIndexingPort(workspacePath)
-			await indexingPort.setIndexingConfig(embeddingProvider, embeddingModel)
-			const trimmedModel = embeddingModel.trim()
-
-			if (!trimmedModel) {
-				set((state) => {
-					const nextConfigs = { ...state.configs }
-					delete nextConfigs[workspacePath]
-					return { configs: nextConfigs }
-				})
-				return
-			}
-
-			const trimmedProvider = embeddingProvider.trim()
-			const normalizedProvider = trimmedProvider || "ollama"
-			const newConfig: IndexingConfig = {
-				embeddingProvider: normalizedProvider,
-				embeddingModel: trimmedModel,
-			}
-
-			set((state) => ({
-				configs: {
-					...state.configs,
-					[workspacePath]: newConfig,
-				},
-			}))
-		},
-
-		indexVaultDocuments: async (
-			workspacePath: string,
-			forceReindex: boolean,
-		) => {
-			const isRunning = get().indexingState[workspacePath]
-			if (isRunning) {
-				throw new Error("Indexing is already running for this workspace")
-			}
-
-			set((state) => ({
-				indexingState: {
-					...state.indexingState,
-					[workspacePath]: true,
-				},
-			}))
-
-			try {
+			setIndexingConfig: async (
+				workspacePath: string,
+				embeddingProvider: string,
+				embeddingModel: string,
+			) => {
+				const sessionId = workspaceSessionId
 				const indexingPort = createIndexingPort(workspacePath)
-				const result = await indexingPort.indexVaultDocuments(forceReindex)
-				return result
-			} finally {
-				set((state) => ({
-					indexingState: {
-						...state.indexingState,
-						[workspacePath]: false,
-					},
-				}))
-			}
-		},
-
-		refreshWorkspaceEmbeddings: async (workspacePath: string) => {
-			const isRunning = get().indexingState[workspacePath]
-			if (isRunning) {
-				throw new Error("Indexing is already running for this workspace")
-			}
-
-			set((state) => ({
-				indexingState: {
-					...state.indexingState,
-					[workspacePath]: true,
-				},
-			}))
-
-			try {
-				const indexingPort = createIndexingPort(workspacePath)
-				return await indexingPort.refreshWorkspaceEmbeddings()
-			} finally {
-				set((state) => ({
-					indexingState: {
-						...state.indexingState,
-						[workspacePath]: false,
-					},
-				}))
-			}
-		},
-
-		loadIndexingMeta: async (workspacePath: string) => {
-			currentWorkspacePath = workspacePath
-			set({ isMetaLoading: true })
-
-			try {
-				const indexingPort = createIndexingPort(workspacePath)
-				const meta = await indexingPort.getIndexingMeta()
-
-				// Only update if we're still viewing the same workspace
-				if (currentWorkspacePath === workspacePath) {
-					set({ indexedDocCount: meta.indexedDocCount ?? 0 })
+				await indexingPort.setIndexingConfig(embeddingProvider, embeddingModel)
+				if (workspaceSessionId !== sessionId) {
+					return
 				}
-			} catch {
-				if (currentWorkspacePath === workspacePath) {
-					set({ indexedDocCount: 0 })
-				}
-			} finally {
-				if (currentWorkspacePath === workspacePath) {
-					set({ isMetaLoading: false })
-				}
-			}
-		},
 
-		startIndexingMetaPolling: (workspacePath: string) => {
-			// Clear any existing interval
-			if (pollingIntervalId !== null) {
-				timerUtils.clearInterval(pollingIntervalId)
-				pollingIntervalId = null
-			}
-
-			currentWorkspacePath = workspacePath
-
-			// Load immediately and start polling
-			const poll = () => {
-				const indexingPort = createIndexingPort(workspacePath)
-				indexingPort
-					.getIndexingMeta()
-					.then((meta: IndexingMeta) => {
-						if (currentWorkspacePath === workspacePath) {
-							set({ indexedDocCount: meta.indexedDocCount ?? 0 })
-						}
-					})
-					.catch(() => {
-						if (currentWorkspacePath === workspacePath) {
-							set({ indexedDocCount: 0 })
-						}
-					})
-			}
-
-			poll()
-			pollingIntervalId = timerUtils.setInterval(poll, 5000)
-		},
-
-		stopIndexingMetaPolling: (clearWorkspacePath = false) => {
-			if (pollingIntervalId !== null) {
-				timerUtils.clearInterval(pollingIntervalId)
-				pollingIntervalId = null
-			}
-			if (clearWorkspacePath) {
-				currentWorkspacePath = null
-			}
-		},
-
-		handleModelChangeRequest: async (
-			value: string,
-			workspacePath: string,
-			currentConfig: IndexingConfig | null,
-			indexedCount: number,
-		) => {
-			const parsed = parseEmbeddingModelValue(value)
-			if (!parsed) {
-				return
-			}
-
-			const { provider, model } = parsed
-
-			const isChanging = isModelChanging(currentConfig, provider, model)
-			const shouldShowWarning = shouldShowModelChangeWarning(
-				isChanging,
-				indexedCount,
-			)
-
-			if (shouldShowWarning) {
 				set({
-					pendingModelChange: { provider, model },
-					showModelChangeDialog: true,
+					config: buildStoredConfig(embeddingProvider, embeddingModel),
 				})
-				return
-			}
+			},
 
-			// No warning needed, update model directly
-			await get().setIndexingConfig(workspacePath, provider, model)
-		},
+			indexVaultDocuments: (workspacePath: string, forceReindex: boolean) =>
+				runExclusiveIndexingTask(workspacePath, (indexingPort) =>
+					indexingPort.indexVaultDocuments(forceReindex),
+				),
 
-		confirmModelChange: async (
-			workspacePath: string,
-			forceReindex: boolean,
-		) => {
-			const pending = get().pendingModelChange
-			if (!pending) {
-				return
-			}
+			refreshWorkspaceEmbeddings: (workspacePath: string) =>
+				runExclusiveIndexingTask(workspacePath, (indexingPort) =>
+					indexingPort.refreshWorkspaceEmbeddings(),
+				),
 
-			const { provider, model } = pending
-
-			// Update model first
-			await get().setIndexingConfig(workspacePath, provider, model)
-
-			// Then run indexing if needed
-			if (forceReindex) {
-				try {
-					// Model changes refresh embeddings without wiping docs, links, or tags.
-					await get().refreshWorkspaceEmbeddings(workspacePath)
-					await get().loadIndexingMeta(workspacePath)
-				} catch {
-					// Error handling is done by caller or can be improved
+			loadIndexingMeta: async (workspacePath: string) => {
+				const sessionId = workspaceSessionId
+				if (workspaceSessionId === sessionId) {
+					set({ isMetaLoading: true })
 				}
-			}
 
-			set({
-				pendingModelChange: null,
-				showModelChangeDialog: false,
-			})
-		},
+				try {
+					const indexingPort = createIndexingPort(workspacePath)
+					const meta = await indexingPort.getIndexingMeta()
 
-		cancelModelChange: () => {
-			set({
-				pendingModelChange: null,
-				showModelChangeDialog: false,
-			})
-		},
-	})
+					if (workspaceSessionId === sessionId) {
+						set({ indexedDocCount: meta.indexedDocCount ?? 0 })
+					}
+				} catch {
+					if (workspaceSessionId === sessionId) {
+						set({ indexedDocCount: 0 })
+					}
+				} finally {
+					if (workspaceSessionId === sessionId) {
+						set({ isMetaLoading: false })
+					}
+				}
+			},
+		}
+	}
 }
 
 export const createIndexingSlice = prepareIndexingSlice({

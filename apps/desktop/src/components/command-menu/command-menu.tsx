@@ -5,7 +5,7 @@ import {
 	CommandMenu as SharedCommandMenu,
 } from "@mdit/command-menu"
 import { invoke } from "@tauri-apps/api/core"
-import { useCallback, useEffect } from "react"
+import { useCallback } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { searchMarkdownContent } from "./utils/note-content-search"
@@ -32,7 +32,6 @@ export function CommandMenu() {
 		isCommandMenuOpen,
 		commandMenuInitialQuery,
 		setCommandMenuOpen,
-		getIndexingConfig,
 	} = useStore(
 		useShallow((state) => ({
 			entries: state.entries,
@@ -41,19 +40,8 @@ export function CommandMenu() {
 			isCommandMenuOpen: state.isCommandMenuOpen,
 			commandMenuInitialQuery: state.commandMenuInitialQuery,
 			setCommandMenuOpen: state.setCommandMenuOpen,
-			getIndexingConfig: state.getIndexingConfig,
 		})),
 	)
-
-	useEffect(() => {
-		if (!workspacePath) {
-			return
-		}
-
-		getIndexingConfig(workspacePath).catch((error) => {
-			console.error("Failed to load indexing config:", error)
-		})
-	}, [getIndexingConfig, workspacePath])
 
 	const handleSelectNote = useCallback(
 		(notePath: string) => {
