@@ -18,7 +18,7 @@ export function getEntryButtonClassName({
 	widthClass = "w-full",
 }: GetEntryButtonClassNameParams = {}) {
 	return cn(
-		`${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity cursor-pointer outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
+		`${widthClass} text-left flex items-center pr-2 py-0.5 text-accent-foreground/90 min-w-0 rounded-sm transition-opacity outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px]`,
 		isSelected
 			? "bg-background/80 text-accent-foreground"
 			: isActive

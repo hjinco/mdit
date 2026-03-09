@@ -246,7 +246,7 @@ export function InfoButton() {
 										type="button"
 										key={entry.relPath}
 										onClick={() => handleNoteClick(entry.relPath)}
-										className="group flex w-full items-center justify-between gap-2 px-2 py-1.5 text-xs rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-all cursor-pointer text-left"
+										className="group flex w-full items-center justify-between gap-2 px-2 py-1.5 text-xs rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-all text-left"
 										title={entry.relPath}
 									>
 										<span className="truncate">{entry.fileName}</span>
@@ -274,7 +274,7 @@ export function InfoButton() {
 										<button
 											type="button"
 											onClick={() => handleNoteClick(entry.relPath)}
-											className="flex-1 text-left text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted transition-colors cursor-pointer truncate"
+											className="flex-1 text-left text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted transition-colors truncate"
 										>
 											<span className="truncate">{entry.fileName}</span>
 										</button>
@@ -286,7 +286,7 @@ export function InfoButton() {
 											onMouseDown={(event) => {
 												event.preventDefault()
 											}}
-											className="inline-flex shrink-0 h-7 px-1.75 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+											className="inline-flex shrink-0 h-7 px-1.75 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
 											aria-label={`Link ${entry.fileName} to current note`}
 											title="Link to current note"
 										>

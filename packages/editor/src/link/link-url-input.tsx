@@ -842,7 +842,7 @@ export function LinkUrlInput({
 										role="button"
 										tabIndex={0}
 										className={cn(
-											"relative flex cursor-pointer select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
+											"relative flex select-none flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-hidden",
 											highlightedIndex <= 0
 												? "bg-accent text-accent-foreground"
 												: "text-foreground",

@@ -172,7 +172,7 @@ const EmojiButton = memo(function EmojiButton({
 }) {
 	return (
 		<button
-			className="group relative flex size-9 cursor-pointer items-center justify-center border-none bg-transparent text-2xl leading-none"
+			className="group relative flex size-9 items-center justify-center border-none bg-transparent text-2xl leading-none"
 			onClick={() => onSelect(emoji)}
 			onMouseEnter={() => onMouseOver(emoji)}
 			onMouseLeave={() => onMouseOver()}
@@ -398,7 +398,7 @@ function EmojiPickerSearchAndClear({
 					size="icon"
 					variant="ghost"
 					className={cn(
-						"absolute top-1/2 right-0.5 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-popover-foreground hover:bg-transparent",
+						"absolute top-1/2 right-0.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border-none bg-transparent text-popover-foreground hover:bg-transparent",
 					)}
 					onClick={clearSearch}
 					title={i18n.clear}

@@ -149,7 +149,7 @@ export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
 											handleUnpinClick(item.path, e)
 										}
 									}}
-									className="shrink-0 mx-1.75 outline-none focus-visible:ring-1 focus-visible:ring-ring/50 cursor-pointer group"
+									className="shrink-0 mx-1.75 outline-none focus-visible:ring-1 focus-visible:ring-ring/50 group"
 									aria-label="Unpin folder"
 								>
 									<PinIcon className="size-3.5 group-hover:hidden" />

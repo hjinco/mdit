@@ -187,7 +187,7 @@ export function Tab() {
 					type="button"
 					onClick={handleStartEditing}
 					className={cn(
-						"absolute -right-4 top-1/2 opacity-0 will-change-transform -translate-y-1/2 items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:opacity-100 group-hover:opacity-100 transition-opacity cursor-pointer",
+						"absolute -right-4 top-1/2 opacity-0 will-change-transform -translate-y-1/2 items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:opacity-100 group-hover:opacity-100 transition-opacity",
 					)}
 				>
 					<SquarePenIcon className="h-3.5 w-3.5" aria-hidden />
