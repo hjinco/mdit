@@ -52,26 +52,17 @@ export function InfoButton() {
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
 	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
 
-	const {
-		tab,
-		workspacePath,
-		openTab,
-		getIndexingConfig,
-		isNoteInfoOpen,
-		setNoteInfoOpen,
-	} = useStore(
-		useShallow((s) => ({
-			tab: s.tab,
-			workspacePath: s.workspacePath,
-			openTab: s.openTab,
-			getIndexingConfig: s.getIndexingConfig,
-			isNoteInfoOpen: s.isNoteInfoOpen,
-			setNoteInfoOpen: s.setNoteInfoOpen,
-		})),
-	)
-	const indexingConfig = useStore((s) =>
-		workspacePath ? (s.configs[workspacePath] ?? null) : null,
-	)
+	const { tab, workspacePath, openTab, isNoteInfoOpen, setNoteInfoOpen } =
+		useStore(
+			useShallow((s) => ({
+				tab: s.tab,
+				workspacePath: s.workspacePath,
+				openTab: s.openTab,
+				isNoteInfoOpen: s.isNoteInfoOpen,
+				setNoteInfoOpen: s.setNoteInfoOpen,
+			})),
+		)
+	const indexingConfig = useStore((s) => s.config)
 	const hasEmbeddingConfig = Boolean(
 		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
 	)
@@ -114,16 +105,6 @@ export function InfoButton() {
 			cancelled = true
 		}
 	}, [isNoteInfoOpen, workspacePath, tab?.path])
-
-	useEffect(() => {
-		if (!isNoteInfoOpen || !workspacePath) {
-			return
-		}
-
-		getIndexingConfig(workspacePath).catch((error) => {
-			console.error("Failed to load indexing config:", error)
-		})
-	}, [isNoteInfoOpen, workspacePath, getIndexingConfig])
 
 	useEffect(() => {
 		if (

@@ -130,6 +130,9 @@ const bootstrapWorkspace = async (
 			},
 		})
 		ctx.set({ isTreeLoading: false })
+		void ctx.ports.indexing.getIndexingConfig(workspacePath).catch((error) => {
+			console.error("Failed to preload indexing config:", error)
+		})
 
 		if (options?.restoreLastOpenedFiles) {
 			await restoreLastOpenedFileHistoryFromSettings(
@@ -178,6 +181,7 @@ export const createLifecycleActions = (
 				ctx,
 				workspacePath,
 			)
+			ctx.ports.indexing.resetIndexingState()
 
 			ctx.set(
 				buildWorkspaceState({
@@ -205,6 +209,7 @@ export const createLifecycleActions = (
 				}),
 			)
 			ctx.ports.collection.resetCollectionPath()
+			ctx.ports.indexing.resetIndexingState()
 		}
 	},
 
@@ -229,6 +234,7 @@ export const createLifecycleActions = (
 			}
 
 			ctx.ports.tab.clearHistory()
+			ctx.ports.indexing.resetIndexingState()
 
 			await ctx.deps.historyRepository.touchWorkspace(path)
 			const updatedHistory =
@@ -246,7 +252,6 @@ export const createLifecycleActions = (
 			ctx.ports.collection.resetCollectionPath()
 
 			await ctx.ports.gitSync.initGitSync(path)
-
 			await bootstrapWorkspace(ctx, path)
 		} catch (error) {
 			console.error("Failed to set workspace:", error)
@@ -283,6 +288,7 @@ export const createLifecycleActions = (
 			return
 		}
 
+		ctx.ports.indexing.resetIndexingState()
 		await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
 
 		const activeTabPath = ctx.ports.tab.getActiveTabPath()

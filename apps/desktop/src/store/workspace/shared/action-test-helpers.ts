@@ -100,6 +100,10 @@ export function createActionTestContext() {
 		gitSync: {
 			initGitSync: vi.fn().mockResolvedValue(undefined),
 		},
+		indexing: {
+			resetIndexingState: vi.fn(),
+			getIndexingConfig: vi.fn().mockResolvedValue(null),
+		},
 	}
 
 	state = {
@@ -156,6 +160,7 @@ export function createActionTestContext() {
 			}
 		}),
 		refreshWorkspaceEntries: vi.fn().mockResolvedValue(undefined),
+		getIndexingConfig: vi.fn().mockResolvedValue(null),
 	}
 
 	const set: WorkspaceActionContext["set"] = (partial) => {

@@ -16,6 +16,7 @@ import {
 } from "@/utils/frontmatter-utils"
 import type { CollectionSlice } from "../collection/collection-slice"
 import type { GitSyncSlice } from "../git-sync/git-sync-slice"
+import type { IndexingSlice } from "../indexing/indexing-slice"
 import type { TabSlice } from "../tab/tab-slice"
 import {
 	createDirectoryUiActions,
@@ -57,7 +58,8 @@ export type WorkspaceSlice = WorkspaceState & WorkspaceActions
 type WorkspaceSliceStoreState = WorkspaceSlice &
 	TabSlice &
 	CollectionSlice &
-	GitSyncSlice
+	GitSyncSlice &
+	IndexingSlice
 
 export const prepareWorkspaceSlice =
 	(

@@ -8,11 +8,13 @@ import {
 	FieldSet,
 } from "@mdit/ui/components/field"
 import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-utils"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import { useIndexingMetaPolling } from "../hooks/use-indexing-meta-polling"
+import { useIndexingModelChange } from "../hooks/use-indexing-model-change"
 import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 import { INDEXING_MODEL_CONTROL_STATE } from "./indexing-ui-state"
@@ -32,17 +34,10 @@ export function IndexingTab() {
 		ollamaEmbeddingModels,
 		fetchOllamaModels,
 		indexVaultDocuments,
-		indexingState,
-		configs,
+		isIndexing,
+		config,
 		indexedDocCount,
 		isMetaLoading,
-		showModelChangeDialog,
-		loadIndexingMeta,
-		startIndexingMetaPolling,
-		stopIndexingMetaPolling,
-		handleModelChangeRequest,
-		confirmModelChange,
-		cancelModelChange,
 	} = useStore(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
@@ -50,33 +45,23 @@ export function IndexingTab() {
 			ollamaEmbeddingModels: state.ollamaEmbeddingModels,
 			fetchOllamaModels: state.fetchOllamaModels,
 			indexVaultDocuments: state.indexVaultDocuments,
-			indexingState: state.indexingState,
-			configs: state.configs,
+			isIndexing: state.isIndexing,
+			config: state.config,
 			indexedDocCount: state.indexedDocCount,
 			isMetaLoading: state.isMetaLoading,
-			showModelChangeDialog: state.showModelChangeDialog,
-			loadIndexingMeta: state.loadIndexingMeta,
-			startIndexingMetaPolling: state.startIndexingMetaPolling,
-			stopIndexingMetaPolling: state.stopIndexingMetaPolling,
-			handleModelChangeRequest: state.handleModelChangeRequest,
-			confirmModelChange: state.confirmModelChange,
-			cancelModelChange: state.cancelModelChange,
 		})),
 	)
 
-	const isIndexing = workspacePath
-		? (indexingState[workspacePath] ?? false)
-		: false
 	const { isRefreshingModels, refreshOllamaModels } =
 		useOllamaModelRefresh(fetchOllamaModels)
-
-	// Get current config from store
-	const currentConfig = useMemo(() => {
-		if (!workspacePath) {
-			return null
-		}
-		return configs[workspacePath] ?? null
-	}, [workspacePath, configs])
+	const currentConfig = config
+	useIndexingMetaPolling(workspacePath, isIndexing)
+	const {
+		isDialogOpen,
+		requestModelChange,
+		confirmModelChange,
+		cancelModelChange,
+	} = useIndexingModelChange(workspacePath, currentConfig, indexedDocCount)
 
 	const embeddingProvider = currentConfig?.embeddingProvider ?? ""
 	const embeddingModel = currentConfig?.embeddingModel ?? ""
@@ -87,74 +72,6 @@ export function IndexingTab() {
 		() => calculateIndexingProgress(indexedDocCount, totalFiles),
 		[indexedDocCount, totalFiles],
 	)
-
-	// Load config when workspace changes
-	useEffect(() => {
-		if (!workspacePath) {
-			return
-		}
-
-		const { getIndexingConfig } = useStore.getState()
-		getIndexingConfig(workspacePath)
-	}, [workspacePath])
-
-	// Load indexing meta and start polling when workspace changes
-	useEffect(() => {
-		if (!workspacePath) {
-			return
-		}
-
-		loadIndexingMeta(workspacePath)
-	}, [workspacePath, loadIndexingMeta])
-
-	// Start/stop polling based on indexing state
-	useEffect(() => {
-		if (!workspacePath) {
-			stopIndexingMetaPolling(true)
-			return
-		}
-
-		if (!isIndexing) {
-			stopIndexingMetaPolling()
-			return
-		}
-
-		startIndexingMetaPolling(workspacePath)
-		return () => stopIndexingMetaPolling()
-	}, [
-		workspacePath,
-		isIndexing,
-		startIndexingMetaPolling,
-		stopIndexingMetaPolling,
-	])
-
-	const handleEmbeddingModelChange = useCallback(
-		async (value: string | null) => {
-			if (!workspacePath || !value) {
-				return
-			}
-
-			await handleModelChangeRequest(
-				value,
-				workspacePath,
-				currentConfig,
-				indexedDocCount,
-			)
-		},
-		[workspacePath, currentConfig, indexedDocCount, handleModelChangeRequest],
-	)
-
-	const handleConfirmModelChange = useCallback(async () => {
-		if (!workspacePath) {
-			return
-		}
-
-		await confirmModelChange(workspacePath, true)
-	}, [workspacePath, confirmModelChange])
-
-	const handleDialogCancel = useCallback(() => {
-		cancelModelChange()
-	}, [cancelModelChange])
 
 	const isEmbeddingModelConfigured = embeddingModel !== ""
 	const isEmbeddingModelAvailable =
@@ -178,7 +95,7 @@ export function IndexingTab() {
 
 		try {
 			await indexVaultDocuments(workspacePath, forceReindex)
-			await loadIndexingMeta(workspacePath)
+			await useStore.getState().loadIndexingMeta(workspacePath)
 		} catch (error) {
 			console.error("Failed to index vault documents:", error)
 		}
@@ -193,15 +110,9 @@ export function IndexingTab() {
 	return (
 		<>
 			<EmbeddingModelChangeDialog
-				open={showModelChangeDialog}
-				onOpenChange={(open) => {
-					if (open) {
-						// Dialog is controlled by store, shouldn't open manually
-					} else {
-						handleDialogCancel()
-					}
-				}}
-				onConfirm={handleConfirmModelChange}
+				open={isDialogOpen}
+				onCancel={cancelModelChange}
+				onConfirm={confirmModelChange}
 			/>
 			<div className="flex-1 overflow-y-auto p-12">
 				<FieldSet>
@@ -220,7 +131,7 @@ export function IndexingTab() {
 							<div className="flex items-center gap-2">
 								<Select
 									value={selectedEmbeddingModel ?? undefined}
-									onValueChange={handleEmbeddingModelChange}
+									onValueChange={requestModelChange}
 									disabled={modelControlState.disabled}
 								>
 									<SettingsSelectTrigger className="w-[240px]">

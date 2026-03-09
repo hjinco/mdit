@@ -6,27 +6,17 @@ const AUTO_INDEX_INTERVAL_MS = 30 * 60 * 1000 // 30 minutes
 
 export function useAutoIndexing(workspacePath: string | null) {
 	const {
-		getIndexingConfig,
 		indexVaultDocuments,
 		refreshWorkspaceEmbeddings,
 		isMigrationsComplete,
 	} = useStore(
 		useShallow((state) => ({
-			getIndexingConfig: state.getIndexingConfig,
 			indexVaultDocuments: state.indexVaultDocuments,
 			refreshWorkspaceEmbeddings: state.refreshWorkspaceEmbeddings,
 			isMigrationsComplete: state.isMigrationsComplete,
 		})),
 	)
 	const intervalRef = useRef<number | null>(null)
-
-	useEffect(() => {
-		if (workspacePath) {
-			getIndexingConfig(workspacePath).catch((error) => {
-				console.error("Failed to load indexing config:", error)
-			})
-		}
-	}, [workspacePath, getIndexingConfig])
 
 	useEffect(() => {
 		// Clear any existing interval
@@ -40,8 +30,7 @@ export function useAutoIndexing(workspacePath: string | null) {
 			return
 		}
 
-		const isIndexingRunning = () =>
-			Boolean(useStore.getState().indexingState[workspacePath])
+		const isIndexingRunning = () => useStore.getState().isIndexing
 
 		const runInitialIndex = async () => {
 			if (isIndexingRunning()) {
