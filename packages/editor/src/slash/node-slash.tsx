@@ -210,7 +210,7 @@ function createSlashGroups(host: SlashHostDeps): Group[] {
 				{
 					description: "Insert a highlighted block.",
 					icon: <LightbulbIcon />,
-					keywords: ["note"],
+					keywords: ["note", "callout", "obsidian", "[!"],
 					label: "Callout",
 					value: KEYS.callout,
 				},

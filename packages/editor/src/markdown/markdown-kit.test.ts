@@ -197,6 +197,116 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("See ![[docs/guide]] now.")
 	})
 
+	it("serializes callouts as Obsidian block syntax", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				calloutType: "tip",
+				defaultFolded: false,
+				isFoldable: true,
+				children: [
+					{
+						type: KEYS.p,
+						calloutTitle: true,
+						children: [{ text: "Heads up" }],
+					},
+					{
+						type: KEYS.p,
+						children: [{ text: "Details" }],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("> [!tip]+ Heads up")
+		expect(markdown).toContain("> Details")
+	})
+
+	it("serializes multiline callout bodies with quoted blank lines", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				calloutType: "warning",
+				children: [
+					{
+						type: KEYS.p,
+						children: [{ text: "First paragraph" }],
+					},
+					{
+						type: KEYS.p,
+						children: [{ text: "Second paragraph" }],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("> [!warning]")
+		expect(markdown).toContain("> First paragraph")
+		expect(markdown).toContain(">\n> Second paragraph")
+	})
+
+	it("serializes title-only callouts without inventing a body", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				calloutType: "info",
+				children: [
+					{
+						type: KEYS.p,
+						calloutTitle: true,
+						children: [{ text: "Read me" }],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toBe("> [!info] Read me\n")
+	})
+
+	it("defaults callouts without a type to note", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				children: [
+					{
+						type: KEYS.p,
+						calloutTitle: true,
+						children: [{ text: "Fallback" }],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("> [!note] Fallback")
+	})
+
+	it("preserves exact supported types on serialization", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				calloutType: "faq",
+				children: [
+					{
+						type: KEYS.p,
+						children: [{ text: "" }],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("> [!faq]")
+	})
+
 	it("keeps external links in standard markdown", async () => {
 		const editor = createMarkdownEditor()
 		const value = [
@@ -371,6 +481,131 @@ describe("markdown-kit deserialization", () => {
 			texExpression: "E=mc^2",
 		})
 	})
+
+	it("deserializes Obsidian callouts into callout nodes", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "> [!warning] Watch out\n> Body")
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({
+			type: KEYS.callout,
+			calloutType: "warning",
+		})
+		expect(calloutNode?.children?.[0]).toMatchObject({
+			type: KEYS.p,
+			calloutTitle: true,
+		})
+		expect(extractText(calloutNode)).toContain("Body")
+	})
+
+	it("deserializes Obsidian callouts without MDX enabled", async () => {
+		const editor = createMarkdownEditor({ mdx: false })
+		const value = deserializeMd(editor, "> [!warning] Watch out\n> Body")
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({
+			type: KEYS.callout,
+			calloutType: "warning",
+		})
+		expect(calloutNode?.children?.[0]).toMatchObject({
+			type: KEYS.p,
+			calloutTitle: true,
+		})
+		expect(extractText(calloutNode)).toContain("Body")
+	})
+
+	it("preserves exact supported types on deserialize", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "> [!faq]\n> Body")
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({
+			type: KEYS.callout,
+			calloutType: "faq",
+		})
+	})
+
+	it("normalizes unsupported types to note", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "> [!custom-type]\n> Body")
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({
+			type: KEYS.callout,
+			calloutType: "note",
+		})
+	})
+
+	it("deserializes custom titles into callout children", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(
+			editor,
+			"> [!tip] Read this first\n> Then continue",
+		)
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({ calloutType: "tip" })
+		expect(calloutNode?.children?.[0]).toMatchObject({
+			type: KEYS.p,
+			calloutTitle: true,
+		})
+		expect(extractText(calloutNode?.children?.[0])).toBe("Read this first")
+		expect(extractText(calloutNode)).toContain("Then continue")
+	})
+
+	it("deserializes fold markers into foldable state", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "> [!warning]- Hidden\n> Body")
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toMatchObject({
+			calloutType: "warning",
+			defaultFolded: true,
+			isFoldable: true,
+		})
+		expect(calloutNode?.children?.[0]).toMatchObject({
+			type: KEYS.p,
+			calloutTitle: true,
+		})
+		expect(extractText(calloutNode?.children?.[0])).toBe("Hidden")
+		expect(extractText(calloutNode)).toContain("Body")
+	})
+
+	it("round-trips fold markers and titles", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "> [!warning]- Hidden\n> Body")
+
+		const markdown = serializeMd(editor, { value: value as any })
+		expect(markdown).toContain("> [!warning]- Hidden")
+		expect(markdown).toContain("> Body")
+	})
+
+	it("preserves nested callouts inside callout bodies", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.callout,
+				calloutType: "note",
+				children: [
+					{
+						type: KEYS.callout,
+						calloutType: "warning",
+						children: [
+							{
+								type: KEYS.p,
+								children: [{ text: "Nested body" }],
+							},
+						],
+					},
+				],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("> [!note]")
+		expect(markdown).toContain("> > [!warning]")
+		expect(markdown).toContain("> > Nested body")
+	})
 })
 
 describe("markdown-kit invalid mdx input", () => {
@@ -385,5 +620,17 @@ describe("markdown-kit invalid mdx input", () => {
 		const value = deserializeMd(editor, "<callout icon={>Broken</callout>")
 
 		expect(extractText(value[0] as any)).toContain("Broken")
+	})
+})
+
+describe("markdown-kit legacy mdx callout input", () => {
+	it("does not deserialize legacy mdx callout elements as callout nodes", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, '<callout icon="💡">Body</callout>')
+		const calloutNode = findNodeByType(value as any[], KEYS.callout)
+
+		expect(calloutNode).toBeNull()
+		expect(extractText(value[0] as any)).toContain("callout")
+		expect(extractText(value[0] as any)).toContain("Body")
 	})
 })

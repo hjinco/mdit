@@ -63,6 +63,7 @@
 		"@platejs/suggestion": "^52.0.11",
 		"@platejs/table": "^52.0.11",
 		"@platejs/toc": "^52.0.11",
+		"@r4ai/remark-callout": "^0.6.2",
 		"@tabler/icons-react": "^3.37.1",
 		"@tanstack/react-table": "^8.21.3",
 		"@udecode/cn": "^49.0.15",
