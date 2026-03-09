@@ -344,6 +344,7 @@ impl PendingBatch {
             return;
         }
 
+        let tracker = event.tracker();
         for path in &event.paths {
             let Some(rel_path) = to_vault_rel_path(vault_root, path) else {
                 continue;
@@ -357,8 +358,32 @@ impl PendingBatch {
             self.rename_from.push_back(RenameFromCandidate {
                 rel_path,
                 entry_kind,
+                tracker,
                 seen_at: now,
             });
+        }
+    }
+
+    fn match_split_rename_from_candidate(
+        &mut self,
+        now: Instant,
+        rename_window: Duration,
+        vault_root: &Path,
+        tracker: Option<usize>,
+    ) -> Option<RenameFromCandidate> {
+        match tracker {
+            Some(tracker) => {
+                self.match_rename_from_by_tracker(now, rename_window, vault_root, tracker)
+            }
+            None => match self.pending_rename_from_count(now, rename_window, vault_root) {
+                0 => None,
+                1 => self.match_rename_from(now, rename_window, vault_root),
+                _ => {
+                    self.clear_pending_rename_from();
+                    self.mark_rescan(true);
+                    None
+                }
+            },
         }
     }
 
@@ -369,6 +394,7 @@ impl PendingBatch {
         now: Instant,
         rename_window: Duration,
     ) {
+        let tracker = event.tracker();
         let to_paths = event
             .paths
             .iter()
@@ -376,7 +402,9 @@ impl PendingBatch {
             .collect::<Vec<_>>();
 
         if to_paths.is_empty() {
-            if let Some(from_candidate) = self.match_rename_from(now, rename_window, vault_root) {
+            if let Some(from_candidate) =
+                self.match_split_rename_from_candidate(now, rename_window, vault_root, tracker)
+            {
                 self.finalize_unmatched_rename_from(vault_root, from_candidate);
             } else {
                 self.mark_rescan(false);
@@ -385,7 +413,10 @@ impl PendingBatch {
         }
 
         for (to_rel, to_path) in to_paths {
-            if let Some(from_candidate) = self.match_rename_from(now, rename_window, vault_root) {
+            let from_candidate =
+                self.match_split_rename_from_candidate(now, rename_window, vault_root, tracker);
+
+            if let Some(from_candidate) = from_candidate {
                 let inferred_kind = from_candidate
                     .entry_kind
                     .or_else(|| self.infer_entry_kind(vault_root, &from_candidate.rel_path, None))
