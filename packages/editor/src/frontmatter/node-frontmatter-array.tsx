@@ -241,7 +241,7 @@ export function FrontmatterArray({
 								className={cn(
 									"max-w-[12rem] truncate rounded-sm text-left",
 									getFrontmatterTagQuery(item)
-										? "cursor-pointer hover:bg-brand/18"
+										? "hover:bg-brand/18"
 										: "cursor-default",
 								)}
 								title={formatFrontmatterTagLabel(item)}
@@ -272,7 +272,7 @@ export function FrontmatterArray({
 						)}
 						<button
 							type="button"
-							className="rounded-sm py-0.5 text-muted-foreground transition-colors hover:text-destructive cursor-pointer"
+							className="rounded-sm py-0.5 text-muted-foreground transition-colors hover:text-destructive"
 							onClick={(event) => {
 								event.stopPropagation()
 								removeItem(index)

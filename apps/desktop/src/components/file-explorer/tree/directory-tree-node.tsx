@@ -176,7 +176,6 @@ export function DirectoryTreeNode({
 							"absolute right-1 shrink-0 px-0.5 py-0.5 outline-none",
 							"bg-background text-foreground/70 hover:text-foreground rounded-sm",
 							"opacity-0 group-hover:opacity-100 transition-opacity duration-250",
-							"cursor-pointer",
 							isBusy && "cursor-not-allowed opacity-50",
 							isRenaming && "opacity-0",
 						)}

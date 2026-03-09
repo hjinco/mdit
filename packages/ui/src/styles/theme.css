@@ -68,3 +68,10 @@
 	--input: oklch(0.39 0.003 70 / 65%);
 	--ring: oklch(0.6 0.012 72);
 }
+
+@layer base {
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
+	}
+}

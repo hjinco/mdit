@@ -162,7 +162,7 @@ export function AIBatchResultsToast({
 											/>
 											<button
 												type="button"
-												className="truncate text-left text-[15px] font-medium cursor-pointer text-[#2f2f2f] transition-colors hover:text-[#191919] hover:underline dark:text-[#ededea] dark:hover:text-[#ffffff]"
+												className="truncate text-left text-[15px] font-medium text-[#2f2f2f] transition-colors hover:text-[#191919] hover:underline dark:text-[#ededea] dark:hover:text-[#ffffff]"
 												onClick={() => onOpenPath(item.openPath)}
 											>
 												{toRelativeWorkspacePath(item.openPath, workspacePath)}
@@ -179,7 +179,7 @@ export function AIBatchResultsToast({
 										className={cn(
 											"flex shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-[12px] font-medium outline-none select-none",
 											!isUndoDisabled
-												? "cursor-pointer text-[#6d6d68] hover:bg-[#e9e9e7] hover:text-[#2f2f2f] dark:text-[#aaa9a3] dark:hover:bg-[#333331] dark:hover:text-[#f2f2ee]"
+												? "text-[#6d6d68] hover:bg-[#e9e9e7] hover:text-[#2f2f2f] dark:text-[#aaa9a3] dark:hover:bg-[#333331] dark:hover:text-[#f2f2ee]"
 												: "cursor-default opacity-45",
 											isUndoDone && "text-muted-foreground",
 										)}
@@ -199,7 +199,7 @@ export function AIBatchResultsToast({
 			<div className="px-3 flex justify-end">
 				<Button
 					type="button"
-					className="cursor-pointer rounded-[8px] bg-[#2f2f2f] px-3.5 py-1.5 text-[12px] font-semibold text-[#f7f7f5] transition-colors hover:bg-[#1f1f1f] focus-visible:ring-2 focus-visible:ring-[#a8a8a2] focus-visible:ring-offset-1 focus-visible:ring-offset-[#f7f7f5] dark:bg-[#f2f2ef] dark:text-[#252524] dark:hover:bg-[#ffffff] dark:focus-visible:ring-offset-[#252524]"
+					className="rounded-[8px] bg-[#2f2f2f] px-3.5 py-1.5 text-[12px] font-semibold text-[#f7f7f5] transition-colors hover:bg-[#1f1f1f] focus-visible:ring-2 focus-visible:ring-[#a8a8a2] focus-visible:ring-offset-1 focus-visible:ring-offset-[#f7f7f5] dark:bg-[#f2f2ef] dark:text-[#252524] dark:hover:bg-[#ffffff] dark:focus-visible:ring-offset-[#252524]"
 					onClick={onConfirm}
 				>
 					Done

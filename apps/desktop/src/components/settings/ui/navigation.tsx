@@ -95,7 +95,7 @@ export function SettingsNavigation({
 								type="button"
 								onClick={() => onTabChange(tabId)}
 								className={cn(
-									"inline-flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1 text-left text-sm font-medium text-foreground/80 outline-none transition-colors",
+									"inline-flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm font-medium text-foreground/80 outline-none transition-colors",
 									"focus-visible:ring-2 focus-visible:ring-ring/50",
 									activeTab === tabId
 										? "bg-muted text-foreground hover:bg-muted"
