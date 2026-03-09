@@ -159,6 +159,22 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("![[assets/pic.png|300x200]]")
 	})
 
+	it("serializes internal image embeds with width only", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.img,
+				url: "assets/pic.png",
+				embedTarget: "assets/pic.png",
+				width: 300,
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("![[assets/pic.png|300]]")
+	})
+
 	it("serializes internal images as markdown when not embed", async () => {
 		const editor = createMarkdownEditor()
 		const value = [
@@ -174,6 +190,24 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("![Alt](")
 		expect(markdown).toContain("./assets/pic.png")
 		expect(markdown).not.toContain("![[assets/pic.png]]")
+	})
+
+	it("does not serialize markdown images with resize dimensions", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: KEYS.img,
+				url: "./assets/pic.png",
+				width: 300,
+				caption: [{ text: "Alt" }],
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("![Alt](")
+		expect(markdown).toContain("./assets/pic.png")
+		expect(markdown).not.toContain("|300")
 	})
 
 	it("serializes hidden embeds as embed syntax", async () => {
@@ -417,6 +451,44 @@ describe("markdown-kit deserialization", () => {
 			width: 300,
 			height: 200,
 		})
+	})
+
+	it("deserializes image embeds with width only", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "![[assets/pic.png|300]]")
+		const imageNode = findNodeByType(value as any[], KEYS.img)
+
+		expect(imageNode).toMatchObject({
+			url: "assets/pic.png",
+			embedTarget: "assets/pic.png",
+			width: 300,
+		})
+		expect(imageNode?.height).toBeUndefined()
+	})
+
+	it("round-trips width-only image embeds", async () => {
+		const editor = createMarkdownEditor()
+		const initialValue = [
+			{
+				type: KEYS.img,
+				url: "assets/pic.png",
+				embedTarget: "assets/pic.png",
+				width: 300,
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value: initialValue })
+		const deserializedValue = deserializeMd(editor, markdown)
+		const imageNode = findNodeByType(deserializedValue as any[], KEYS.img)
+
+		expect(markdown).toContain("![[assets/pic.png|300]]")
+		expect(imageNode).toMatchObject({
+			url: "assets/pic.png",
+			embedTarget: "assets/pic.png",
+			width: 300,
+		})
+		expect(imageNode?.height).toBeUndefined()
 	})
 
 	it("deserializes non-image embeds into hidden nodes", async () => {
