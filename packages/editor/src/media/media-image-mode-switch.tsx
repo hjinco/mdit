@@ -1,10 +1,12 @@
-import { Switch } from "@mdit/ui/components/switch"
+import { cn } from "@mdit/ui/lib/utils"
+import { FileText, ImageIcon } from "lucide-react"
 import type { TImageElement } from "platejs"
 import { useEditorRef, useElement } from "platejs/react"
 import {
 	buildImageModeUpdate,
 	isImageModeToggleDisabled,
 } from "./media-image-mode-utils"
+import { MediaOverlayButton } from "./media-overlay-button"
 import type { MediaImageWorkspaceState } from "./node-media-image"
 
 type ImageElementWithEmbed = TImageElement & {
@@ -14,8 +16,10 @@ type ImageElementWithEmbed = TImageElement & {
 
 export function MediaImageModeSwitch({
 	workspaceState,
+	className,
 }: {
 	workspaceState: MediaImageWorkspaceState
+	className?: string
 }) {
 	const editor = useEditorRef()
 	const element = useElement() as ImageElementWithEmbed
@@ -43,15 +47,24 @@ export function MediaImageModeSwitch({
 	}
 
 	return (
-		<div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
-			<span>Markdown</span>
-			<Switch
-				checked={checked}
-				disabled={disabled}
-				onCheckedChange={handleCheckedChange}
-				aria-label="Toggle image embed mode"
-			/>
-			<span>Embed</span>
-		</div>
+		<MediaOverlayButton
+			className={cn(
+				checked && "bg-background text-foreground shadow-xs",
+				className,
+			)}
+			disabled={disabled}
+			aria-label={
+				checked
+					? "Convert image to markdown mode"
+					: "Convert image to embed mode"
+			}
+			aria-pressed={checked}
+			onMouseDown={(e) => {
+				e.preventDefault()
+			}}
+			onClick={() => handleCheckedChange(!checked)}
+		>
+			{checked ? <ImageIcon /> : <FileText />}
+		</MediaOverlayButton>
 	)
 }

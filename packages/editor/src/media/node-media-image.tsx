@@ -5,13 +5,12 @@ import { ImageOff } from "lucide-react"
 import { dirname, isAbsolute, resolve } from "pathe"
 import type { NodeComponent, TImageElement } from "platejs"
 import type { PlateElementProps } from "platejs/react"
-import { PlateElement, withHOC } from "platejs/react"
+import { PlateElement, useRemoveNodeButton, withHOC } from "platejs/react"
 import { useMemo, useState } from "react"
 import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../link"
 import { Caption, CaptionTextarea } from "../media/caption"
-import { MediaImageModeSwitch } from "../media/media-image-mode-switch"
 import type { ImageElementWithEmbed } from "../media/media-image-mode-utils"
-import { MediaToolbar } from "../media/media-toolbar"
+import { MediaImageOverlay } from "../media/media-image-overlay"
 import {
 	mediaResizeHandleVariants,
 	Resizable,
@@ -89,83 +88,90 @@ export const createImageElement = (host: MediaImageHostDeps): NodeComponent =>
 			const [hasError, setHasError] = useState(false)
 
 			const element = props.element as ImageElementWithEmbed
+			const { props: removeButtonProps } = useRemoveNodeButton({ element })
+			const { onMouseDown: removeButtonMouseDown, ...removeButtonRestProps } =
+				removeButtonProps
 			const src = useMemo(
 				() => resolveImageSrc(element, workspaceState, host.toFileUrl),
 				[element, workspaceState],
 			)
 
 			const isEmbedImage = Boolean(element.embedTarget)
+			const overlayVisible = focused && selected
 
 			return (
-				<MediaToolbar
-					hide={hasError}
-					toolbarContent={
-						<MediaImageModeSwitch workspaceState={workspaceState} />
-					}
-					showCaption={!isEmbedImage}
-				>
-					<PlateElement {...props} className="py-2.5">
-						{hasError ? (
-							<div
-								className={cn(
-									"flex flex-col items-center justify-center w-full min-h-[200px] bg-muted rounded-sm borderpx-4 py-8 cursor-default",
-									focused && selected && "ring-2 ring-ring ring-offset-2",
-								)}
-								contentEditable={false}
+				<PlateElement {...props} className="py-2.5">
+					{hasError ? (
+						<div
+							className={cn(
+								"flex flex-col items-center justify-center w-full min-h-[200px] bg-muted rounded-sm border px-4 py-8 cursor-default",
+								focused && selected && "ring-2 ring-ring ring-offset-2",
+							)}
+							contentEditable={false}
+						>
+							<ImageOff className="w-12 h-12 text-muted-foreground/50 mb-3" />
+							<p className="text-sm text-muted-foreground text-center">
+								Failed to load image. Please check the file path.
+							</p>
+						</div>
+					) : (
+						<figure className="group/media m-0" contentEditable={false}>
+							<Resizable
+								align={align}
+								className="group/image-resizable relative"
+								options={{
+									align,
+									readOnly,
+								}}
 							>
-								<ImageOff className="w-12 h-12 text-muted-foreground/50 mb-3" />
-								<p className="text-sm text-muted-foreground text-center">
-									Failed to load image. Please check the file path.
-								</p>
-							</div>
-						) : (
-							<figure className="group relative m-0" contentEditable={false}>
-								<Resizable
-									align={align}
-									options={{
-										align,
-										readOnly,
-									}}
-								>
-									<ResizeHandle
-										className={mediaResizeHandleVariants({ direction: "left" })}
-										options={{ direction: "left" }}
+								{!readOnly && (
+									<MediaImageOverlay
+										deleteButtonProps={removeButtonRestProps}
+										isEmbedImage={isEmbedImage}
+										onDeleteMouseDown={removeButtonMouseDown}
+										overlayVisible={overlayVisible}
+										workspaceState={workspaceState}
 									/>
-									<Image
-										className={cn(
-											"block w-full max-w-full cursor-pointer object-cover px-0",
-											"rounded-sm",
-											focused && selected && "ring-2 ring-ring ring-offset-2",
-										)}
-										alt={props.attributes.alt as string | undefined}
-										src={src}
-										onError={() => setHasError(true)}
-									/>
-									<ResizeHandle
-										className={mediaResizeHandleVariants({
-											direction: "right",
-										})}
-										options={{ direction: "right" }}
-									/>
-								</Resizable>
-
-								{!isEmbedImage && (
-									<Caption style={{ width }} align={align}>
-										<CaptionTextarea
-											readOnly={readOnly}
-											onFocus={(e) => {
-												e.preventDefault()
-											}}
-											placeholder="Write a caption..."
-										/>
-									</Caption>
 								)}
-							</figure>
-						)}
 
-						{props.children}
-					</PlateElement>
-				</MediaToolbar>
+								<ResizeHandle
+									className={mediaResizeHandleVariants({ direction: "left" })}
+									options={{ direction: "left" }}
+								/>
+								<Image
+									className={cn(
+										"block w-full max-w-full cursor-pointer object-cover px-0",
+										"rounded-sm",
+										focused && selected && "ring-2 ring-brand/75 ring-offset-2",
+									)}
+									alt={props.attributes.alt as string | undefined}
+									src={src}
+									onError={() => setHasError(true)}
+								/>
+								<ResizeHandle
+									className={mediaResizeHandleVariants({
+										direction: "right",
+									})}
+									options={{ direction: "right" }}
+								/>
+							</Resizable>
+
+							{!isEmbedImage && (
+								<Caption style={{ width }} align={align}>
+									<CaptionTextarea
+										readOnly={readOnly}
+										onFocus={(e) => {
+											e.preventDefault()
+										}}
+										placeholder="Write a caption..."
+									/>
+								</Caption>
+							)}
+						</figure>
+					)}
+
+					{props.children}
+				</PlateElement>
 			)
 		},
 	)
