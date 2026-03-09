@@ -19,6 +19,10 @@ fn event(kind: EventKind, paths: &[PathBuf]) -> Event {
     }
 }
 
+fn event_with_tracker(kind: EventKind, paths: &[PathBuf], tracker: usize) -> Event {
+    event(kind, paths).set_tracker(tracker)
+}
+
 fn temp_vault_dir() -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -624,6 +628,140 @@ fn hidden_rename_from_does_not_consume_visible_rename_match() {
 }
 
 #[test]
+fn split_rename_matches_interleaved_pairs_by_tracker() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let a_from = root.join("a-old.md");
+    let a_to = root.join("a-new.md");
+    let b_from = root.join("b-old.md");
+    let b_to = root.join("b-new.md");
+    write_file(&a_from);
+    write_file(&b_from);
+
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&a_from),
+            1,
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&b_from),
+            2,
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+
+    std::fs::remove_file(&a_from).expect("first source file should be removed");
+    std::fs::remove_file(&b_from).expect("second source file should be removed");
+    write_file(&a_to);
+    write_file(&b_to);
+
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&b_to),
+            2,
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&a_to),
+            1,
+        ),
+        now + Duration::from_millis(30),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![
+            VaultChange::Moved {
+                from_rel: "a-old.md".to_string(),
+                to_rel: "a-new.md".to_string(),
+                entry_kind: VaultEntryKind::File
+            },
+            VaultChange::Moved {
+                from_rel: "b-old.md".to_string(),
+                to_rel: "b-new.md".to_string(),
+                entry_kind: VaultEntryKind::File
+            }
+        ]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn trackerless_split_rename_with_multiple_pending_forces_rescan() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let a_from = root.join("a-old.md");
+    let b_from = root.join("b-old.md");
+    let b_to = root.join("b-new.md");
+    write_file(&a_from);
+    write_file(&b_from);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&a_from),
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&b_from),
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+
+    std::fs::remove_file(&a_from).expect("first source file should be removed");
+    std::fs::remove_file(&b_from).expect("second source file should be removed");
+    write_file(&b_to);
+
+    pending.apply_notify_event(
+        &root,
+        &event(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&b_to),
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert!(batch.rescan);
+    assert!(batch.changes.is_empty());
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn hidden_rename_from_without_match_is_ignored_after_expiry() {
     let root = temp_vault_dir();
     let mut pending = pending_for_root_with_hidden_prefixes(&root, hidden_prefixes());
@@ -718,6 +856,88 @@ fn rename_file_to_outside_vault_emits_deleted_file() {
             rel_path: "old.md".to_string(),
             entry_kind: VaultEntryKind::File
         }]
+    );
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tracked_rename_to_outside_vault_matches_pending_from_by_tracker() {
+    let root = temp_vault_dir();
+    let mut pending = pending_for_root(&root);
+    let now = Instant::now();
+    let rename_window = Duration::from_secs(1);
+
+    let a_from = root.join("a-old.md");
+    let b_from = root.join("b-old.md");
+    let a_to = root.join("a-new.md");
+    let outside_b = root
+        .parent()
+        .expect("temp dir should have parent")
+        .join("outside-b-old.md");
+    write_file(&a_from);
+    write_file(&b_from);
+
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&a_from),
+            1,
+        ),
+        now,
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+            std::slice::from_ref(&b_from),
+            2,
+        ),
+        now + Duration::from_millis(10),
+        rename_window,
+    );
+
+    std::fs::remove_file(&a_from).expect("first source file should be removed");
+    std::fs::remove_file(&b_from).expect("second source file should be removed");
+    write_file(&a_to);
+
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&outside_b),
+            2,
+        ),
+        now + Duration::from_millis(20),
+        rename_window,
+    );
+    pending.apply_notify_event(
+        &root,
+        &event_with_tracker(
+            EventKind::Modify(ModifyKind::Name(RenameMode::To)),
+            std::slice::from_ref(&a_to),
+            1,
+        ),
+        now + Duration::from_millis(30),
+        rename_window,
+    );
+
+    let batch = pending.take_batch(1, 100).expect("batch should exist");
+    assert_eq!(
+        batch.changes,
+        vec![
+            VaultChange::Deleted {
+                rel_path: "b-old.md".to_string(),
+                entry_kind: VaultEntryKind::File
+            },
+            VaultChange::Moved {
+                from_rel: "a-old.md".to_string(),
+                to_rel: "a-new.md".to_string(),
+                entry_kind: VaultEntryKind::File
+            }
+        ]
     );
 
     let _ = std::fs::remove_dir_all(&root);

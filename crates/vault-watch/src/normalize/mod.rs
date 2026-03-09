@@ -14,6 +14,7 @@ use crate::types::{VaultChangeBatch, VaultEntryKind};
 pub(super) struct RenameFromCandidate {
     rel_path: String,
     entry_kind: Option<VaultEntryKind>,
+    tracker: Option<usize>,
     seen_at: Instant,
 }
 
@@ -123,6 +124,35 @@ impl PendingBatch {
     ) -> Option<RenameFromCandidate> {
         self.expire_stale_rename_from(vault_root, now, rename_window);
         self.rename_from.pop_front()
+    }
+
+    pub(super) fn match_rename_from_by_tracker(
+        &mut self,
+        now: Instant,
+        rename_window: Duration,
+        vault_root: &Path,
+        tracker: usize,
+    ) -> Option<RenameFromCandidate> {
+        self.expire_stale_rename_from(vault_root, now, rename_window);
+        let position = self
+            .rename_from
+            .iter()
+            .position(|candidate| candidate.tracker == Some(tracker))?;
+        self.rename_from.remove(position)
+    }
+
+    pub(super) fn pending_rename_from_count(
+        &mut self,
+        now: Instant,
+        rename_window: Duration,
+        vault_root: &Path,
+    ) -> usize {
+        self.expire_stale_rename_from(vault_root, now, rename_window);
+        self.rename_from.len()
+    }
+
+    pub(super) fn clear_pending_rename_from(&mut self) {
+        self.rename_from.clear();
     }
 
     pub(crate) fn take_batch(
