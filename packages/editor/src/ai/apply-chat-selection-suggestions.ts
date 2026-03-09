@@ -10,16 +10,22 @@ import { deserializeMd } from "@platejs/markdown"
 import { diffToSuggestions } from "@platejs/suggestion"
 import { SuggestionPlugin } from "@platejs/suggestion/react"
 import { ElementApi, KEYS } from "platejs"
+import type { PlateEditor } from "platejs/react"
 
-const hasTransientSuggestions = (editor: any) =>
-	editor
-		.getApi(SuggestionPlugin)
-		.suggestion.node({ at: [], mode: "lowest", transient: true }) != null
+const transientSuggestionQuery = {
+	at: [],
+	mode: "lowest",
+	transient: true,
+} as any
 
-const getTransientSuggestionRange = (editor: any) => {
+const hasTransientSuggestions = (editor: PlateEditor) =>
+	editor.getApi(SuggestionPlugin).suggestion.node(transientSuggestionQuery) !=
+	null
+
+const getTransientSuggestionRange = (editor: PlateEditor) => {
 	const transientSuggestions = editor
 		.getApi(SuggestionPlugin)
-		.suggestion.nodes({ at: [], mode: "lowest", transient: true })
+		.suggestion.nodes(transientSuggestionQuery)
 
 	if (transientSuggestions.length === 0) {
 		return null
