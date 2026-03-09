@@ -1,4 +1,3 @@
-import { insertCallout } from "@platejs/callout"
 import { insertCodeBlock, toggleCodeBlock } from "@platejs/code-block"
 import { insertCodeDrawing } from "@platejs/code-drawing"
 import { insertDate } from "@platejs/date"
@@ -21,6 +20,7 @@ import {
 	type TElement,
 } from "platejs"
 import type { PlateEditor } from "platejs/react"
+import { normalizeObsidianCalloutData } from "../callout/obsidian-callout"
 import { CODE_DRAWING_KEY } from "../code/code-drawing-kit"
 
 const ACTION_THREE_COLUMNS = "action_three_columns"
@@ -46,7 +46,21 @@ const insertBlockMap: Record<
 	[ACTION_THREE_COLUMNS]: (editor) =>
 		insertColumnGroup(editor, { columns: 3, select: true }),
 	[KEYS.audio]: (editor) => insertAudioPlaceholder(editor, { select: true }),
-	[KEYS.callout]: (editor) => insertCallout(editor, { select: true }),
+	[KEYS.callout]: (editor) => {
+		const callout = normalizeObsidianCalloutData()
+
+		editor.tf.insertNodes(
+			{
+				calloutTitle: callout.calloutTitle,
+				calloutType: callout.calloutType,
+				defaultFolded: callout.defaultFolded,
+				isFoldable: callout.isFoldable,
+				children: [{ text: "" }],
+				type: editor.getType(KEYS.callout),
+			},
+			{ select: true },
+		)
+	},
 	[KEYS.codeBlock]: (editor) => insertCodeBlock(editor, { select: true }),
 	[CODE_DRAWING_KEY]: (editor) => {
 		const codeDrawingType = editor.getType(CODE_DRAWING_KEY) || CODE_DRAWING_KEY
