@@ -47,6 +47,7 @@ export function AIMenu({ host }: AIMenuProps) {
 		<Popover open={open} onOpenChange={onPopoverOpenChange}>
 			<PopoverContent
 				anchor={anchorElement ?? undefined}
+				finalFocus={false}
 				// For the animation
 				key={addCommandOpen ? "addCommand" : "content"}
 				className="border-none bg-transparent backdrop-blur-none p-0 shadow-none"
