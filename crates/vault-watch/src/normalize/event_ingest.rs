@@ -371,19 +371,18 @@ impl PendingBatch {
         vault_root: &Path,
         tracker: Option<usize>,
     ) -> Option<RenameFromCandidate> {
-        match tracker {
-            Some(tracker) => {
-                self.match_rename_from_by_tracker(now, rename_window, vault_root, tracker)
+        if let Some(tracker) = tracker {
+            return self.match_rename_from_by_tracker(now, rename_window, vault_root, tracker);
+        }
+
+        match self.pending_rename_from_count(now, rename_window, vault_root) {
+            0 => None,
+            1 => self.match_rename_from(now, rename_window, vault_root),
+            _ => {
+                self.clear_pending_rename_from();
+                self.mark_rescan(true);
+                None
             }
-            None => match self.pending_rename_from_count(now, rename_window, vault_root) {
-                0 => None,
-                1 => self.match_rename_from(now, rename_window, vault_root),
-                _ => {
-                    self.clear_pending_rename_from();
-                    self.mark_rescan(true);
-                    None
-                }
-            },
         }
     }
 
