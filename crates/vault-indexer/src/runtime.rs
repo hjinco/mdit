@@ -126,12 +126,6 @@ pub fn start_vault_indexer(
         worker_rx,
     );
 
-    if config.startup_catchup {
-        worker_tx
-            .send(WorkerMessage::StartupCatchup)
-            .map_err(|_| VaultIndexerError::WorkerChannel)?;
-    }
-
     let callback_tx = worker_tx.clone();
     let watcher = start_vault_watch(
         canonical_workspace.clone(),
@@ -144,12 +138,24 @@ pub fn start_vault_indexer(
         },
     )?;
 
-    Ok(VaultIndexerHandle {
+    let mut handle = VaultIndexerHandle {
         watcher: Some(watcher),
         worker_tx: Some(worker_tx),
         worker_thread: Some(worker_thread),
         stopped: false,
-    })
+    };
+
+    if config.startup_catchup
+        && handle
+            .worker_tx
+            .as_ref()
+            .is_some_and(|tx| tx.send(WorkerMessage::StartupCatchup).is_err())
+    {
+        let _ = handle.stop_inner();
+        return Err(VaultIndexerError::WorkerChannel);
+    }
+
+    Ok(handle)
 }
 
 fn spawn_worker(
