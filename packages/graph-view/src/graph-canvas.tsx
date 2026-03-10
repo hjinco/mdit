@@ -364,27 +364,44 @@ export function GraphCanvas({
 			.force("y", forceY(centerY).strength(0.2))
 			.stop()
 
+		const initialPositions = seededNodes.map((node) => ({
+			x: node.x,
+			y: node.y,
+		}))
+
 		for (let index = 0; index < degradeProfile.simulationTickCap; index += 1) {
 			simulation.tick()
 		}
 
-		const initialNodes = seededNodes.map((node) => ({
+		const finalNodes = seededNodes.map((node) => ({
 			...node,
 			x: Number.isFinite(node.x) ? node.x : centerX,
 			y: Number.isFinite(node.y) ? node.y : centerY,
 		}))
 
-		setNodes(initialNodes)
+		setViewState(getFittedView(finalNodes, size.width, size.height))
+
+		for (let i = 0; i < seededNodes.length; i++) {
+			seededNodes[i].x = Number.isFinite(initialPositions[i].x)
+				? initialPositions[i].x
+				: centerX
+			seededNodes[i].y = Number.isFinite(initialPositions[i].y)
+				? initialPositions[i].y
+				: centerY
+			seededNodes[i].vx = 0
+			seededNodes[i].vy = 0
+		}
+
+		setNodes([...seededNodes])
 		setEdges(edgesToRender)
 		stopViewAnimation()
-		setViewState(getFittedView(initialNodes, size.width, size.height))
 
 		simulationRef.current = simulation
 
 		simulation.on("tick", () => {
 			setNodes([...seededNodes])
 		})
-		simulation.alpha(0.15).restart()
+		simulation.alpha(0.2).restart()
 
 		return () => {
 			simulation.stop()
