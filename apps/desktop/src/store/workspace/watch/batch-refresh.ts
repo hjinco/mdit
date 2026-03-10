@@ -1,23 +1,78 @@
-import { hasHiddenEntryInPaths } from "@/utils/path-utils"
+import { resolve } from "pathe"
+import {
+	hasHiddenEntryInPaths,
+	isPathEqualOrDescendant,
+	normalizePathSeparators,
+} from "@/utils/path-utils"
 import { reconcileWorkspaceTreeFromFallback } from "../tree/reconcile"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { applyWatchBatchChanges } from "./batch-apply"
-import type { EnqueueBatchRefresh, VaultWatchBatchPayload } from "./types"
+import { collapseDirectoryPaths } from "./tree-patch"
+import type {
+	EnqueueBatchRefresh,
+	VaultWatchBatch,
+	VaultWatchBatchPayload,
+	VaultWatchOp,
+} from "./types"
 
-const collectChangedPaths = (payload: VaultWatchBatchPayload): string[] => {
-	return payload.batch.changes.flatMap((change) => {
-		if (change.type === "moved") {
-			return [change.fromRel, change.toRel]
+const collectChangedPaths = (ops: VaultWatchOp[]): string[] => {
+	return ops.flatMap((op) => {
+		if (op.type === "move") {
+			return [op.fromRel, op.toRel]
 		}
-		return [change.relPath]
+		if (op.type === "pathState") {
+			return [op.relPath]
+		}
+		if (op.type === "scanTree") {
+			return [op.relPrefix]
+		}
+		return []
 	})
 }
 
 const isVisiblePath = (path: string): boolean => !hasHiddenEntryInPaths([path])
 
-const collectVisibleChangedPaths = (
-	payload: VaultWatchBatchPayload,
-): string[] => collectChangedPaths(payload).filter(isVisiblePath)
+const hasFullRescan = (batch: VaultWatchBatch): boolean =>
+	batch.ops.some((op) => op.type === "fullRescan")
+
+const incrementalOps = (batch: VaultWatchBatch): VaultWatchOp[] =>
+	batch.ops.filter((op) => op.type === "pathState" || op.type === "move")
+
+const collectVisibleIncrementalPaths = (batch: VaultWatchBatch): string[] =>
+	collectChangedPaths(incrementalOps(batch)).filter(isVisiblePath)
+
+const collectScanTreeRefreshPaths = (
+	workspacePath: string,
+	batch: VaultWatchBatch,
+): { directoryPaths: string[]; requiresFullRefresh: boolean } => {
+	const normalizedWorkspacePath = normalizePathSeparators(workspacePath)
+	const directoryPaths = new Set<string>()
+	let requiresFullRefresh = false
+
+	for (const op of batch.ops) {
+		if (op.type !== "scanTree" || !isVisiblePath(op.relPrefix)) {
+			continue
+		}
+
+		const absolutePath = normalizePathSeparators(
+			resolve(workspacePath, op.relPrefix),
+		)
+		if (!isPathEqualOrDescendant(absolutePath, normalizedWorkspacePath)) {
+			requiresFullRefresh = true
+			continue
+		}
+
+		directoryPaths.add(absolutePath)
+	}
+
+	return {
+		directoryPaths: collapseDirectoryPaths(
+			normalizedWorkspacePath,
+			Array.from(directoryPaths),
+		),
+		requiresFullRefresh,
+	}
+}
 
 export const createBatchRefreshEnqueuer = (
 	ctx: WorkspaceActionContext,
@@ -25,14 +80,20 @@ export const createBatchRefreshEnqueuer = (
 	isActive: () => boolean,
 ): EnqueueBatchRefresh => {
 	let refreshQueue = Promise.resolve()
+	let latestStreamId: string | null = null
 	let latestQueuedBatchSeq = -1
 
 	return (batch, refresh) => {
-		if (batch.seq <= latestQueuedBatchSeq) {
+		if (latestStreamId !== batch.streamId) {
+			latestStreamId = batch.streamId
+			latestQueuedBatchSeq = -1
+		}
+
+		if (batch.seqInStream <= latestQueuedBatchSeq) {
 			return
 		}
 
-		latestQueuedBatchSeq = batch.seq
+		latestQueuedBatchSeq = batch.seqInStream
 		refreshQueue = refreshQueue
 			.then(async () => {
 				if (!isActive() || ctx.get().workspacePath !== workspacePath) {
@@ -43,7 +104,8 @@ export const createBatchRefreshEnqueuer = (
 			})
 			.catch((error) => {
 				console.warn("Failed to process vault watch batch refresh:", {
-					batchSeq: batch.seq,
+					streamId: batch.streamId,
+					batchSeqInStream: batch.seqInStream,
 					error,
 				})
 			})
@@ -56,34 +118,51 @@ export const enqueueBatchPayloadRefresh = (
 	payload: VaultWatchBatchPayload,
 	enqueueBatchRefresh: EnqueueBatchRefresh,
 ) => {
-	const visibleChangedPaths = collectVisibleChangedPaths(payload)
-	if (!payload.batch.rescan && visibleChangedPaths.length === 0) {
-		return
-	}
-
-	if (payload.batch.rescan) {
+	if (hasFullRescan(payload.batch)) {
 		enqueueBatchRefresh(payload.batch, () =>
 			ctx.get().refreshWorkspaceEntries(),
 		)
 		return
 	}
 
-	const { externalRelPaths } = ctx.runtime.originJournal.resolve({
+	const scanTreeRefresh = collectScanTreeRefreshPaths(
 		workspacePath,
-		relPaths: visibleChangedPaths,
-	})
-	if (externalRelPaths.length === 0) {
+		payload.batch,
+	)
+	const visibleChangedPaths = collectVisibleIncrementalPaths(payload.batch)
+	const externalRelPaths =
+		visibleChangedPaths.length === 0
+			? []
+			: ctx.runtime.originJournal.resolve({
+					workspacePath,
+					relPaths: visibleChangedPaths,
+				}).externalRelPaths
+
+	if (
+		externalRelPaths.length === 0 &&
+		scanTreeRefresh.directoryPaths.length === 0 &&
+		!scanTreeRefresh.requiresFullRefresh
+	) {
 		return
 	}
 
 	enqueueBatchRefresh(payload.batch, async () => {
 		try {
-			const { fallbackDirectoryPaths, requiresFullRefresh } =
-				await applyWatchBatchChanges(ctx, {
+			let fallbackDirectoryPaths = scanTreeRefresh.directoryPaths
+			let requiresFullRefresh = scanTreeRefresh.requiresFullRefresh
+
+			if (externalRelPaths.length > 0) {
+				const incrementalResult = await applyWatchBatchChanges(ctx, {
 					workspacePath,
-					changes: payload.batch.changes,
+					ops: incrementalOps(payload.batch),
 					externalRelPaths,
 				})
+				fallbackDirectoryPaths = collapseDirectoryPaths(workspacePath, [
+					...fallbackDirectoryPaths,
+					...incrementalResult.fallbackDirectoryPaths,
+				])
+				requiresFullRefresh ||= incrementalResult.requiresFullRefresh
+			}
 
 			await reconcileWorkspaceTreeFromFallback(ctx, {
 				workspacePath,

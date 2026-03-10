@@ -8,11 +8,11 @@ import { findEntryByPath, findParentDirectory } from "../tree/domain/entry-tree"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { collapseDirectoryPaths } from "./tree-patch"
-import type { VaultWatchChange } from "./types"
+import type { VaultWatchOp } from "./types"
 
 export type ApplyWatchBatchChangesInput = {
 	workspacePath: string
-	changes: VaultWatchChange[]
+	ops: VaultWatchOp[]
 	externalRelPaths: string[]
 }
 
@@ -22,17 +22,21 @@ export type ApplyWatchBatchChangesResult = {
 }
 
 const isExternalChange = (
-	change: VaultWatchChange,
+	op: VaultWatchOp,
 	externalRelPathSet: ReadonlySet<string>,
 ): boolean => {
-	if (change.type === "moved") {
+	if (op.type === "move") {
 		return (
-			externalRelPathSet.has(normalizePathSeparators(change.fromRel)) ||
-			externalRelPathSet.has(normalizePathSeparators(change.toRel))
+			externalRelPathSet.has(normalizePathSeparators(op.fromRel)) ||
+			externalRelPathSet.has(normalizePathSeparators(op.toRel))
 		)
 	}
 
-	return externalRelPathSet.has(normalizePathSeparators(change.relPath))
+	if (op.type === "pathState") {
+		return externalRelPathSet.has(normalizePathSeparators(op.relPath))
+	}
+
+	return false
 }
 
 const toAbsolutePath = (
@@ -148,21 +152,21 @@ export const applyWatchBatchChanges = async (
 	const fallbackDirectoryPaths = new Set<string>()
 	let requiresFullRefresh = false
 
-	for (const change of input.changes) {
-		if (!isExternalChange(change, externalRelPathSet)) {
+	for (const op of input.ops) {
+		if (!isExternalChange(op, externalRelPathSet)) {
 			continue
 		}
 
-		if (change.type === "moved") {
+		if (op.type === "move") {
 			const fromPath = toAbsolutePath(
 				input.workspacePath,
 				normalizedWorkspacePath,
-				change.fromRel,
+				op.fromRel,
 			)
 			const toPath = toAbsolutePath(
 				input.workspacePath,
 				normalizedWorkspacePath,
-				change.toRel,
+				op.toRel,
 			)
 			if (!fromPath || !toPath) {
 				requiresFullRefresh = true
@@ -186,7 +190,7 @@ export const applyWatchBatchChanges = async (
 
 			const fromParentPath = normalizePathSeparators(dirname(fromPath))
 			const toParentPath = normalizePathSeparators(dirname(toPath))
-			const isDirectory = change.entryKind === "directory"
+			const isDirectory = op.entryKind === "directory"
 
 			if (fromParentPath === toParentPath) {
 				try {
@@ -247,17 +251,21 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
+		if (op.type !== "pathState") {
+			continue
+		}
+
 		const absolutePath = toAbsolutePath(
 			input.workspacePath,
 			normalizedWorkspacePath,
-			change.relPath,
+			op.relPath,
 		)
 		if (!absolutePath) {
 			requiresFullRefresh = true
 			continue
 		}
 
-		if (change.type === "deleted") {
+		if (op.after === "missing") {
 			try {
 				await ctx.get().entriesDeleted({ paths: [absolutePath] })
 			} catch {
@@ -274,13 +282,14 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
-		if (change.type === "modified") {
-			if (change.entryKind === "directory") {
+		if (op.before === "missing") {
+			const parentPath = normalizePathSeparators(dirname(absolutePath))
+			if (op.after === "unknown") {
 				if (
 					!addFallbackDirectoryPath(
 						fallbackDirectoryPaths,
 						normalizedWorkspacePath,
-						absolutePath,
+						parentPath,
 					)
 				) {
 					requiresFullRefresh = true
@@ -288,27 +297,44 @@ export const applyWatchBatchChanges = async (
 				continue
 			}
 
-			if (!findEntryByPath(ctx.get().entries, absolutePath)) {
+			if (op.after !== "file" && op.after !== "directory") {
+				requiresFullRefresh = true
+				continue
+			}
+
+			if (!hasDirectoryInEntries(ctx, normalizedWorkspacePath, parentPath)) {
 				if (
-					!addFallbackParentDirectoryPath(
+					!addFallbackDirectoryPath(
 						fallbackDirectoryPaths,
 						normalizedWorkspacePath,
-						absolutePath,
+						parentPath,
 					)
 				) {
 					requiresFullRefresh = true
 				}
+				continue
+			}
+
+			if (findEntryByPath(ctx.get().entries, absolutePath)) {
 				continue
 			}
 
 			try {
-				await ctx.get().updateEntryModifiedDate(absolutePath)
+				const entry = await buildCreatedEntrySnapshot(
+					ctx,
+					absolutePath,
+					op.after === "directory",
+				)
+				await ctx.get().entryCreated({
+					parentPath,
+					entry,
+				})
 			} catch {
 				if (
-					!addFallbackParentDirectoryPath(
+					!addFallbackDirectoryPath(
 						fallbackDirectoryPaths,
 						normalizedWorkspacePath,
-						absolutePath,
+						parentPath,
 					)
 				) {
 					requiresFullRefresh = true
@@ -317,13 +343,17 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
-		const parentPath = normalizePathSeparators(dirname(absolutePath))
-		if (!hasDirectoryInEntries(ctx, normalizedWorkspacePath, parentPath)) {
+		if (op.before !== op.after) {
+			requiresFullRefresh = true
+			continue
+		}
+
+		if (op.after === "directory") {
 			if (
 				!addFallbackDirectoryPath(
 					fallbackDirectoryPaths,
 					normalizedWorkspacePath,
-					parentPath,
+					absolutePath,
 				)
 			) {
 				requiresFullRefresh = true
@@ -331,26 +361,32 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
-		if (findEntryByPath(ctx.get().entries, absolutePath)) {
+		if (op.after !== "file") {
+			requiresFullRefresh = true
+			continue
+		}
+
+		if (!findEntryByPath(ctx.get().entries, absolutePath)) {
+			if (
+				!addFallbackParentDirectoryPath(
+					fallbackDirectoryPaths,
+					normalizedWorkspacePath,
+					absolutePath,
+				)
+			) {
+				requiresFullRefresh = true
+			}
 			continue
 		}
 
 		try {
-			const entry = await buildCreatedEntrySnapshot(
-				ctx,
-				absolutePath,
-				change.entryKind === "directory",
-			)
-			await ctx.get().entryCreated({
-				parentPath,
-				entry,
-			})
+			await ctx.get().updateEntryModifiedDate(absolutePath)
 		} catch {
 			if (
-				!addFallbackDirectoryPath(
+				!addFallbackParentDirectoryPath(
 					fallbackDirectoryPaths,
 					normalizedWorkspacePath,
-					parentPath,
+					absolutePath,
 				)
 			) {
 				requiresFullRefresh = true

@@ -32,6 +32,20 @@ describe("watch/actions", () => {
 		await new Promise((resolve) => setTimeout(resolve, 0))
 	}
 
+	const watchBatch = (
+		seqInStream: number,
+		ops: any[],
+		streamId = "stream-1",
+	) => ({
+		streamId,
+		seqInStream,
+		ops,
+		emittedAtUnixMs: 1000 + seqInStream,
+	})
+
+	const fullRescanBatch = (seqInStream: number, reason = "watcherError") =>
+		watchBatch(seqInStream, [{ type: "fullRescan", reason }])
+
 	it("unwatchWorkspace runs unwatch function and clears state", () => {
 		const { context, setState, getState, originJournal } =
 			createActionTestContext()
@@ -117,18 +131,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 1,
-					changes: [
-						{
-							type: "created",
-							relPath: "docs/local.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1000,
-				},
+				batch: watchBatch(1, [
+					{
+						type: "pathState",
+						relPath: "docs/local.md",
+						before: "missing",
+						after: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -173,18 +183,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 2,
-					changes: [
-						{
-							type: "created",
-							relPath: "docs/created.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1001,
-				},
+				batch: watchBatch(2, [
+					{
+						type: "pathState",
+						relPath: "docs/created.md",
+						before: "missing",
+						after: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -245,18 +251,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 3,
-					changes: [
-						{
-							type: "created",
-							relPath: "docs/new-dir",
-							entryKind: "directory",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1002,
-				},
+				batch: watchBatch(3, [
+					{
+						type: "pathState",
+						relPath: "docs/new-dir",
+						before: "missing",
+						after: "directory",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -296,18 +298,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 4,
-					changes: [
-						{
-							type: "deleted",
-							relPath: "docs/deleted.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1003,
-				},
+				batch: watchBatch(4, [
+					{
+						type: "pathState",
+						relPath: "docs/deleted.md",
+						before: "file",
+						after: "missing",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -334,18 +332,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 5,
-					changes: [
-						{
-							type: "deleted",
-							relPath: "docs",
-							entryKind: "directory",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1004,
-				},
+				batch: watchBatch(5, [
+					{
+						type: "pathState",
+						relPath: "docs",
+						before: "directory",
+						after: "missing",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -388,19 +382,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 6,
-					changes: [
-						{
-							type: "moved",
-							fromRel: "docs/old.md",
-							toRel: "docs/new.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1005,
-				},
+				batch: watchBatch(6, [
+					{
+						type: "move",
+						fromRel: "docs/old.md",
+						toRel: "docs/new.md",
+						entryKind: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -453,19 +442,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 7,
-					changes: [
-						{
-							type: "moved",
-							fromRel: "docs/old.md",
-							toRel: "archive/renamed.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1006,
-				},
+				batch: watchBatch(7, [
+					{
+						type: "move",
+						fromRel: "docs/old.md",
+						toRel: "archive/renamed.md",
+						entryKind: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -519,19 +503,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 8,
-					changes: [
-						{
-							type: "moved",
-							fromRel: "docs/folder",
-							toRel: "archive/folder-renamed",
-							entryKind: "directory",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1007,
-				},
+				batch: watchBatch(8, [
+					{
+						type: "move",
+						fromRel: "docs/folder",
+						toRel: "archive/folder-renamed",
+						entryKind: "directory",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -577,18 +556,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 9,
-					changes: [
-						{
-							type: "modified",
-							relPath: "docs/a.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1008,
-				},
+				batch: watchBatch(9, [
+					{
+						type: "pathState",
+						relPath: "docs/a.md",
+						before: "file",
+						after: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -624,18 +599,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 10,
-					changes: [
-						{
-							type: "modified",
-							relPath: "docs",
-							entryKind: "directory",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1009,
-				},
+				batch: watchBatch(10, [
+					{
+						type: "pathState",
+						relPath: "docs",
+						before: "directory",
+						after: "directory",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -675,19 +646,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 11,
-					changes: [
-						{
-							type: "moved",
-							fromRel: "docs/missing.md",
-							toRel: "archive/missing.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1010,
-				},
+				batch: watchBatch(11, [
+					{
+						type: "move",
+						fromRel: "docs/missing.md",
+						toRel: "archive/missing.md",
+						entryKind: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -711,12 +677,7 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 3,
-					changes: [],
-					rescan: true,
-					emittedAtUnixMs: 1002,
-				},
+				batch: fullRescanBatch(3),
 			},
 		})
 		await flushQueue()
@@ -755,18 +716,14 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 12,
-					changes: [
-						{
-							type: "modified",
-							relPath: "docs",
-							entryKind: "directory",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1011,
-				},
+				batch: watchBatch(12, [
+					{
+						type: "pathState",
+						relPath: "docs",
+						before: "directory",
+						after: "directory",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -790,23 +747,20 @@ describe("watch/actions", () => {
 		listener({
 			payload: {
 				workspacePath: "/ws",
-				batch: {
-					seq: 4,
-					changes: [
-						{
-							type: "created",
-							relPath: "visible.md",
-							entryKind: "file",
-						},
-						{
-							type: "created",
-							relPath: ".hidden/secret.md",
-							entryKind: "file",
-						},
-					],
-					rescan: false,
-					emittedAtUnixMs: 1003,
-				},
+				batch: watchBatch(4, [
+					{
+						type: "pathState",
+						relPath: "visible.md",
+						before: "missing",
+						after: "file",
+					},
+					{
+						type: "pathState",
+						relPath: ".hidden/secret.md",
+						before: "missing",
+						after: "file",
+					},
+				]),
 			},
 		})
 		await flushQueue()
@@ -815,5 +769,168 @@ describe("watch/actions", () => {
 			workspacePath: "/ws",
 			relPaths: ["visible.md"],
 		})
+	})
+
+	it("reconciles the target subtree on scanTree batches", async () => {
+		const { context, setState, getState, originJournal } =
+			createActionTestContext()
+		const actions = createWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: watchBatch(13, [
+					{
+						type: "scanTree",
+						relPrefix: "docs",
+						reason: "directoryMoveWithin",
+					},
+				]),
+			},
+		})
+		await flushQueue()
+
+		expect(originJournal.resolve).not.toHaveBeenCalled()
+		expect(getState().readWorkspaceEntriesFromPath).toHaveBeenCalledWith(
+			"/ws/docs",
+		)
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
+	})
+
+	it("applies directory moves before reconciling scanTree descendants", async () => {
+		const { context, setState, getState, originJournal } =
+			createActionTestContext()
+		const actions = createWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/folder",
+							name: "folder",
+							isDirectory: true,
+							children: [],
+						},
+					],
+				},
+				{
+					path: "/ws/archive",
+					name: "archive",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/folder", "archive/folder-renamed"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: watchBatch(14, [
+					{
+						type: "move",
+						fromRel: "docs/folder",
+						toRel: "archive/folder-renamed",
+						entryKind: "directory",
+					},
+					{
+						type: "scanTree",
+						relPrefix: "archive/folder-renamed",
+						reason: "directoryMoveWithin",
+					},
+				]),
+			},
+		})
+		await flushQueue()
+
+		expect(originJournal.resolve).toHaveBeenCalledWith({
+			workspacePath: "/ws",
+			relPaths: ["docs/folder", "archive/folder-renamed"],
+		})
+		expect(getState().entryMoved).toHaveBeenCalledWith({
+			sourcePath: "/ws/docs/folder",
+			destinationDirPath: "/ws/archive",
+			newPath: "/ws/archive/folder-renamed",
+			isDirectory: true,
+		})
+		expect(getState().entryMoved.mock.invocationCallOrder[0]).toBeLessThan(
+			getState().readWorkspaceEntriesFromPath.mock.invocationCallOrder[0],
+		)
+		expect(getState().readWorkspaceEntriesFromPath).toHaveBeenCalledWith(
+			"/ws/archive/folder-renamed",
+		)
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
+	})
+
+	it("falls back to parent directory refresh for missing to unknown pathState", async () => {
+		const { context, setState, getState, originJournal } =
+			createActionTestContext()
+		const actions = createWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [],
+				},
+			],
+		})
+
+		listenMock.mockImplementation(() => Promise.resolve(vi.fn()))
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/link"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
+		listener({
+			payload: {
+				workspacePath: "/ws",
+				batch: watchBatch(15, [
+					{
+						type: "pathState",
+						relPath: "docs/link",
+						before: "missing",
+						after: "unknown",
+					},
+				]),
+			},
+		})
+		await flushQueue()
+
+		expect(getState().entryCreated).not.toHaveBeenCalled()
+		expect(getState().readWorkspaceEntriesFromPath).toHaveBeenCalledWith(
+			"/ws/docs",
+		)
+		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
 	})
 })
