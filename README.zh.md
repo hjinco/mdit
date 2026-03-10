@@ -40,7 +40,7 @@ Mdit 适合这样的人：喜欢现代工作空间工具的写作体验，但也
 
 ## Get Mdit
 
-可从 [GitHub Releases](https://github.com/hjinco/mdit/releases) 下载最新版本。
+可从 [GitHub Releases](https://github.com/hjinco/mdit/releases/latest) 下载最新版本。
 当前发布版本仅支持 macOS。Windows 和移动端仍在计划中。
 
 ---

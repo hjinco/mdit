@@ -40,7 +40,7 @@ Mdit is for people who want modern note-taking UX without giving up file ownersh
 
 ## Get Mdit
 
-Download the latest release from [GitHub Releases](https://github.com/hjinco/mdit/releases).
+Download the latest release from [GitHub Releases](https://github.com/hjinco/mdit/releases/latest).
 Current releases support macOS only. Windows and mobile are planned.
 
 ---
