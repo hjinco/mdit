@@ -125,21 +125,6 @@ pub(crate) fn spawn_worker(
                     break;
                 }
             }
-
-            pending.expire_pending_renames(
-                &vault_root,
-                std::time::Instant::now(),
-                rename_pair_window,
-            );
-            merge_pending_rescan_reason(&mut pending, &rescan_reason);
-            flush_pending(
-                &mut pending,
-                &vault_root,
-                &stream_id,
-                &mut seq_in_stream,
-                config.max_batch_paths,
-                &mut on_batch,
-            );
         }
     })
 }
