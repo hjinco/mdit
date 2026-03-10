@@ -12,8 +12,8 @@ use anyhow::{Context, Result};
 use thiserror::Error;
 use vault_indexing_api::{BacklinkEntry, ResolveWikiLinkRequest, VaultIndexingRuntime};
 use vault_watch::{
-    start_vault_watch, VaultChange, VaultChangeBatch, VaultEntryKind, VaultWatchError,
-    VaultWatcherHandle, WatchConfig,
+    start_vault_watch, VaultEntryKind, VaultEntryState, VaultWatchBatch, VaultWatchError,
+    VaultWatchOp, VaultWatcherHandle, WatchConfig,
 };
 
 use crate::rewrite::{
@@ -56,7 +56,7 @@ pub enum VaultIndexerError {
 
 enum WorkerMessage {
     StartupCatchup,
-    Batch(VaultChangeBatch),
+    Batch(VaultWatchBatch),
     Stop,
 }
 
@@ -107,7 +107,7 @@ pub fn start_vault_indexer(
     db_path: impl AsRef<Path>,
     indexing_runtime: Arc<dyn VaultIndexingRuntime>,
     config: VaultIndexerConfig,
-    mut on_batch: impl FnMut(VaultChangeBatch) + Send + 'static,
+    mut on_batch: impl FnMut(VaultWatchBatch) + Send + 'static,
 ) -> Result<VaultIndexerHandle, VaultIndexerError> {
     let workspace_path = workspace_path.as_ref();
     let canonical_workspace = std::fs::canonicalize(workspace_path).map_err(|source| {
@@ -185,118 +185,32 @@ fn process_batch(
     indexing_runtime: &dyn VaultIndexingRuntime,
     workspace_path: &Path,
     db_path: &Path,
-    batch: VaultChangeBatch,
+    batch: VaultWatchBatch,
 ) -> Result<()> {
-    if batch.rescan {
+    let plan = build_indexing_plan(batch, workspace_path);
+    if matches!(plan, IndexingPlan::FullReindex) {
         index_vault_documents(indexing_runtime, workspace_path, db_path)?;
         return Ok(());
     }
 
-    let mut requires_rescan = false;
-    let mut index_targets: BTreeSet<PathBuf> = BTreeSet::new();
-    let mut delete_targets: BTreeSet<PathBuf> = BTreeSet::new();
-    let mut delete_prefix_targets: BTreeSet<PathBuf> = BTreeSet::new();
+    let IndexingPlan::Incremental {
+        index_targets,
+        delete_targets,
+        delete_prefix_targets,
+        markdown_moves,
+    } = plan
+    else {
+        unreachable!("full reindex already returned");
+    };
 
-    for change in batch.changes {
-        match change {
-            VaultChange::Created {
-                rel_path,
-                entry_kind: VaultEntryKind::File,
-            }
-            | VaultChange::Modified {
-                rel_path,
-                entry_kind: VaultEntryKind::File,
-            } => {
-                if should_ignore_rel_path(&rel_path) {
-                    continue;
-                }
-
-                if is_markdown_note_path(&rel_path) {
-                    index_targets.insert(workspace_path.join(rel_path));
-                }
-            }
-            VaultChange::Created {
-                entry_kind: VaultEntryKind::Directory,
-                ..
-            }
-            | VaultChange::Modified {
-                entry_kind: VaultEntryKind::Directory,
-                ..
-            } => {}
-            VaultChange::Deleted {
-                rel_path,
-                entry_kind: VaultEntryKind::File,
-            } => {
-                if should_ignore_rel_path(&rel_path) {
-                    continue;
-                }
-
-                if is_markdown_note_path(&rel_path) {
-                    delete_targets.insert(workspace_path.join(rel_path));
-                }
-            }
-            VaultChange::Deleted {
-                rel_path,
-                entry_kind: VaultEntryKind::Directory,
-            } => {
-                if should_ignore_rel_path(&rel_path) {
-                    continue;
-                }
-                delete_prefix_targets.insert(workspace_path.join(rel_path));
-            }
-            VaultChange::Moved {
-                from_rel,
-                to_rel,
-                entry_kind: VaultEntryKind::File,
-            } => {
-                let from_ignored = should_ignore_rel_path(&from_rel);
-                let to_ignored = should_ignore_rel_path(&to_rel);
-
-                match (
-                    is_markdown_note_path(&from_rel),
-                    is_markdown_note_path(&to_rel),
-                    from_ignored,
-                    to_ignored,
-                ) {
-                    (true, true, false, false) => {
-                        process_markdown_move(
-                            indexing_runtime,
-                            workspace_path,
-                            db_path,
-                            &from_rel,
-                            &to_rel,
-                        )?;
-                    }
-                    (true, false, false, true) => {
-                        delete_targets.insert(workspace_path.join(from_rel));
-                    }
-                    (false, true, true, false) => {
-                        index_targets.insert(workspace_path.join(to_rel));
-                    }
-                    (_, _, true, true) => {}
-                    _ => {
-                        requires_rescan = true;
-                    }
-                }
-            }
-            VaultChange::Moved {
-                from_rel,
-                to_rel,
-                entry_kind: VaultEntryKind::Directory,
-            } => {
-                let from_ignored = should_ignore_rel_path(&from_rel);
-                let to_ignored = should_ignore_rel_path(&to_rel);
-                if from_ignored && to_ignored {
-                    continue;
-                }
-                requires_rescan = true;
-            }
-        }
-    }
-
-    if requires_rescan {
-        index_vault_documents(indexing_runtime, workspace_path, db_path)?;
-        return Ok(());
+    for (from_rel, to_rel) in markdown_moves {
+        process_markdown_move(
+            indexing_runtime,
+            workspace_path,
+            db_path,
+            &from_rel,
+            &to_rel,
+        )?;
     }
 
     for note_path in delete_targets {
@@ -338,6 +252,85 @@ fn process_batch(
     }
 
     Ok(())
+}
+
+enum IndexingPlan {
+    FullReindex,
+    Incremental {
+        index_targets: BTreeSet<PathBuf>,
+        delete_targets: BTreeSet<PathBuf>,
+        delete_prefix_targets: BTreeSet<PathBuf>,
+        markdown_moves: Vec<(String, String)>,
+    },
+}
+
+fn build_indexing_plan(batch: VaultWatchBatch, workspace_path: &Path) -> IndexingPlan {
+    let mut index_targets: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut delete_targets: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut delete_prefix_targets: BTreeSet<PathBuf> = BTreeSet::new();
+    let mut markdown_moves = Vec::new();
+
+    for op in batch.ops {
+        match op {
+            VaultWatchOp::FullRescan { .. } | VaultWatchOp::ScanTree { .. } => {
+                return IndexingPlan::FullReindex;
+            }
+            VaultWatchOp::PathState {
+                rel_path,
+                before,
+                after,
+            } => match (before, after) {
+                (VaultEntryState::Missing, VaultEntryState::File)
+                | (VaultEntryState::File, VaultEntryState::File) => {
+                    if is_markdown_note_path(&rel_path) {
+                        index_targets.insert(workspace_path.join(rel_path));
+                    }
+                }
+                (VaultEntryState::File, VaultEntryState::Missing) => {
+                    if is_markdown_note_path(&rel_path) {
+                        delete_targets.insert(workspace_path.join(rel_path));
+                    }
+                }
+                (VaultEntryState::Directory, VaultEntryState::Missing) => {
+                    delete_prefix_targets.insert(workspace_path.join(rel_path));
+                }
+                (VaultEntryState::Missing, VaultEntryState::Directory)
+                | (VaultEntryState::Directory, VaultEntryState::Directory)
+                | (VaultEntryState::Missing, VaultEntryState::Missing) => {}
+                _ => return IndexingPlan::FullReindex,
+            },
+            VaultWatchOp::Move {
+                from_rel,
+                to_rel,
+                entry_kind: VaultEntryKind::File,
+            } => {
+                match (
+                    is_markdown_note_path(&from_rel),
+                    is_markdown_note_path(&to_rel),
+                ) {
+                    (true, true) => {
+                        markdown_moves.push((from_rel, to_rel));
+                    }
+                    _ => return IndexingPlan::FullReindex,
+                }
+            }
+            VaultWatchOp::Move {
+                from_rel,
+                to_rel,
+                entry_kind: VaultEntryKind::Directory,
+            } => {
+                let _ = (from_rel, to_rel);
+                return IndexingPlan::FullReindex;
+            }
+        }
+    }
+
+    IndexingPlan::Incremental {
+        index_targets,
+        delete_targets,
+        delete_prefix_targets,
+        markdown_moves,
+    }
 }
 
 fn process_markdown_move(
@@ -636,11 +629,6 @@ fn is_markdown_note_path(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".md")
 }
 
-fn should_ignore_rel_path(path: &str) -> bool {
-    let normalized = normalize_slashes(path);
-    normalized == ".mdit" || normalized.starts_with(".mdit/")
-}
-
 #[cfg(test)]
 mod tests {
     #[cfg(unix)]
@@ -819,19 +807,13 @@ mod tests {
             .as_nanos()
     }
 
-    fn empty_batch() -> VaultChangeBatch {
-        VaultChangeBatch {
-            seq: 1,
-            changes: Vec::new(),
-            rescan: false,
+    fn empty_batch() -> VaultWatchBatch {
+        VaultWatchBatch {
+            stream_id: "stream-1".to_string(),
+            seq_in_stream: 1,
+            ops: Vec::new(),
             emitted_at_unix_ms: 0,
         }
-    }
-
-    #[test]
-    fn default_config_has_no_explicit_hidden_boundary_prefixes() {
-        let config = VaultIndexerConfig::default();
-        assert!(config.watch_config.hidden_boundary_prefixes.is_empty());
     }
 
     #[test]
@@ -841,7 +823,9 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.rescan = true;
+        batch.ops = vec![VaultWatchOp::FullRescan {
+            reason: vault_watch::VaultWatchReason::WatcherError,
+        }];
 
         process_batch(&runtime, &workspace, &db_path, batch)
             .expect("batch processing should succeed");
@@ -856,42 +840,41 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.changes = vec![
-            VaultChange::Created {
+        batch.ops = vec![
+            VaultWatchOp::PathState {
                 rel_path: "new.md".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::Missing,
+                after: VaultEntryState::File,
             },
-            VaultChange::Created {
+            VaultWatchOp::PathState {
                 rel_path: "image.png".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::Missing,
+                after: VaultEntryState::File,
             },
-            VaultChange::Created {
-                rel_path: ".mdit/hidden.md".to_string(),
-                entry_kind: VaultEntryKind::File,
-            },
-            VaultChange::Modified {
+            VaultWatchOp::PathState {
                 rel_path: "edit.md".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::File,
+                after: VaultEntryState::File,
             },
-            VaultChange::Modified {
+            VaultWatchOp::PathState {
                 rel_path: "note.txt".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::File,
+                after: VaultEntryState::File,
             },
-            VaultChange::Deleted {
+            VaultWatchOp::PathState {
                 rel_path: "gone.md".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::File,
+                after: VaultEntryState::Missing,
             },
-            VaultChange::Deleted {
+            VaultWatchOp::PathState {
                 rel_path: "diagram.svg".to_string(),
-                entry_kind: VaultEntryKind::File,
+                before: VaultEntryState::File,
+                after: VaultEntryState::Missing,
             },
-            VaultChange::Deleted {
+            VaultWatchOp::PathState {
                 rel_path: "folder".to_string(),
-                entry_kind: VaultEntryKind::Directory,
-            },
-            VaultChange::Deleted {
-                rel_path: ".mdit/cache".to_string(),
-                entry_kind: VaultEntryKind::Directory,
+                before: VaultEntryState::Directory,
+                after: VaultEntryState::Missing,
             },
         ];
 
@@ -916,7 +899,7 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.changes = vec![VaultChange::Moved {
+        batch.ops = vec![VaultWatchOp::Move {
             from_rel: "old.md".to_string(),
             to_rel: "new.md".to_string(),
             entry_kind: VaultEntryKind::File,
@@ -946,7 +929,7 @@ mod tests {
         let db_path = workspace.join("index.db");
 
         let mut batch = empty_batch();
-        batch.changes = vec![VaultChange::Moved {
+        batch.ops = vec![VaultWatchOp::Move {
             from_rel: "old.md".to_string(),
             to_rel: "old.txt".to_string(),
             entry_kind: VaultEntryKind::File,
@@ -967,9 +950,10 @@ mod tests {
         runtime.fail_prefix_delete_for(&failing_prefix);
 
         let mut batch = empty_batch();
-        batch.changes = vec![VaultChange::Deleted {
+        batch.ops = vec![VaultWatchOp::PathState {
             rel_path: "folder".to_string(),
-            entry_kind: VaultEntryKind::Directory,
+            before: VaultEntryState::Directory,
+            after: VaultEntryState::Missing,
         }];
 
         process_batch(&runtime, &workspace, &db_path, batch)
@@ -991,7 +975,7 @@ mod tests {
 
         let runtime = FakeVaultIndexingRuntime::default();
         let mut batch = empty_batch();
-        batch.changes = vec![VaultChange::Moved {
+        batch.ops = vec![VaultWatchOp::Move {
             from_rel: "docs".to_string(),
             to_rel: "archive".to_string(),
             entry_kind: VaultEntryKind::Directory,
@@ -1001,19 +985,6 @@ mod tests {
             .expect("batch processing should succeed");
 
         assert_eq!(runtime.calls(), vec![RuntimeCall::IndexVaultDocuments]);
-
-        let ignored_runtime = FakeVaultIndexingRuntime::default();
-        let mut ignored_batch = empty_batch();
-        ignored_batch.changes = vec![VaultChange::Moved {
-            from_rel: ".mdit/cache/docs".to_string(),
-            to_rel: ".mdit/cache/archive".to_string(),
-            entry_kind: VaultEntryKind::Directory,
-        }];
-
-        process_batch(&ignored_runtime, &workspace, &db_path, ignored_batch)
-            .expect("batch processing should succeed");
-
-        assert_eq!(ignored_runtime.calls(), Vec::<RuntimeCall>::new());
     }
 
     #[cfg(unix)]

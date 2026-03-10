@@ -1,22 +1,43 @@
-export type VaultWatchBatch = {
-	seq: number
-	changes: VaultWatchChange[]
-	rescan: boolean
-	emittedAtUnixMs: number
-}
+export type VaultWatchEntryState = "missing" | "file" | "directory" | "unknown"
 
-export type VaultWatchChange =
+export type VaultWatchReason =
+	| "bootstrapFailure"
+	| "watcherOverflow"
+	| "watcherError"
+	| "ambiguousRename"
+	| "directoryCreate"
+	| "directoryMoveIn"
+	| "directoryMoveWithin"
+
+export type VaultWatchOp =
 	| {
-			type: "created" | "modified" | "deleted"
+			type: "pathState"
 			relPath: string
-			entryKind: "file" | "directory"
+			before: VaultWatchEntryState
+			after: VaultWatchEntryState
 	  }
 	| {
-			type: "moved"
+			type: "move"
 			fromRel: string
 			toRel: string
 			entryKind: "file" | "directory"
 	  }
+	| {
+			type: "scanTree"
+			relPrefix: string
+			reason: VaultWatchReason
+	  }
+	| {
+			type: "fullRescan"
+			reason: VaultWatchReason
+	  }
+
+export type VaultWatchBatch = {
+	streamId: string
+	seqInStream: number
+	ops: VaultWatchOp[]
+	emittedAtUnixMs: number
+}
 
 export type VaultWatchBatchPayload = {
 	workspacePath: string

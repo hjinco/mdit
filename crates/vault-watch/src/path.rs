@@ -18,6 +18,12 @@ pub(crate) fn to_vault_rel_path(vault_root: &Path, event_path: &Path) -> Option<
     normalize_rel_path(rel)
 }
 
+pub(crate) fn is_hidden_vault_rel_path(rel_path: &str) -> bool {
+    rel_path.split('/').any(|segment| {
+        !segment.is_empty() && segment.starts_with('.') && segment != "." && segment != ".."
+    })
+}
+
 fn has_symlink_ancestor(vault_root: &Path, candidate: &Path) -> bool {
     let Ok(relative_path) = candidate.strip_prefix(vault_root) else {
         return false;
@@ -62,8 +68,22 @@ fn normalize_rel_path(path: &Path) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::to_vault_rel_path;
-    use std::path::Path;
+    use super::{is_hidden_vault_rel_path, to_vault_rel_path};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    fn temp_vault_dir() -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should move forward")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("vault-watch-path-test-{nanos}"));
+        fs::create_dir_all(&path).expect("temp vault should be created");
+        path
+    }
 
     #[test]
     fn converts_absolute_path_inside_vault() {
@@ -91,5 +111,27 @@ mod tests {
         let root = Path::new("/vault");
         let path = Path::new("../outside.md");
         assert_eq!(to_vault_rel_path(root, path), None);
+    }
+
+    #[test]
+    fn hidden_rel_path_matches_dot_prefixed_segments() {
+        assert!(is_hidden_vault_rel_path(".obsidian"));
+        assert!(is_hidden_vault_rel_path("docs/.cache/note.md"));
+        assert!(!is_hidden_vault_rel_path("docs/note.md"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_path_with_symlink_ancestor_inside_vault() {
+        let root = temp_vault_dir();
+        let real_dir = root.join("real");
+        let link_dir = root.join("link");
+        fs::create_dir_all(&real_dir).expect("real dir should be created");
+        std::os::unix::fs::symlink(&real_dir, &link_dir).expect("symlink dir should be created");
+
+        let candidate = link_dir.join("note.md");
+        assert_eq!(to_vault_rel_path(&root, &candidate), None);
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

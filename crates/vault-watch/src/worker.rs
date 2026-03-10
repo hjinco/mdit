@@ -1,147 +1,211 @@
 use std::{
-    collections::BTreeSet,
-    path::Path,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicU8, Ordering},
         mpsc::{Receiver, RecvTimeoutError},
         Arc,
     },
     thread::{self, JoinHandle},
-    time::{Duration, Instant},
+    time::Duration,
 };
+
+use notify::ErrorKind;
+use notify_debouncer_full::DebouncedEvent;
 
 use crate::{
-    normalize::PendingBatch,
-    path::to_vault_rel_path,
-    types::{VaultChangeBatch, WatchConfig},
+    entry_index::collect_entry_index,
+    observe::PendingBatch,
+    types::{VaultWatchBatch, VaultWatchReason, WatchConfig},
 };
 
-const IDLE_POLL_INTERVAL_MS: u64 = 200;
+const IDLE_POLL_INTERVAL_MS: u64 = 50;
 
 pub(crate) enum WorkerMessage {
-    RawEvent(notify::Event),
+    DebouncedEvents(Vec<DebouncedEvent>),
+    DebouncerErrors(Vec<notify::Error>),
     Stop,
 }
 
 pub(crate) fn spawn_worker(
     vault_root: PathBuf,
+    stream_id: String,
     config: WatchConfig,
     rx: Receiver<WorkerMessage>,
-    rescan_flag: Arc<AtomicBool>,
-    mut on_batch: Box<dyn FnMut(VaultChangeBatch) + Send + 'static>,
+    rescan_reason: Arc<AtomicU8>,
+    mut on_batch: Box<dyn FnMut(VaultWatchBatch) + Send + 'static>,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        let debounce = Duration::from_millis(config.debounce_ms);
-        let rename_window = Duration::from_millis(config.rename_pair_window_ms);
         let idle_poll = Duration::from_millis(IDLE_POLL_INTERVAL_MS);
-
-        let (initial_dir_index, bootstrap_failed) = if config.bootstrap_dir_index {
-            match collect_directory_index(&vault_root) {
+        let rename_pair_window = Duration::from_millis(config.rename_pair_window_ms);
+        let (initial_entry_index, bootstrap_failed) = if config.bootstrap_dir_index {
+            match collect_entry_index(&vault_root) {
                 Ok(index) => (index, false),
                 Err(error) => {
                     eprintln!(
-                        "vault-watch: failed to bootstrap directory index for {}: {error}",
+                        "vault-watch: failed to bootstrap entry index for {}: {error}",
                         vault_root.display()
                     );
-                    (BTreeSet::new(), true)
+                    (Default::default(), true)
                 }
             }
         } else {
-            (BTreeSet::new(), false)
+            (Default::default(), false)
         };
 
-        let mut pending =
-            PendingBatch::new(initial_dir_index, config.hidden_boundary_prefixes.clone());
-        let mut seq: u64 = 0;
-        let mut last_input_at: Option<Instant> = if bootstrap_failed {
-            pending.mark_rescan(true);
-            Some(Instant::now())
-        } else {
-            None
-        };
+        let mut pending = PendingBatch::with_trusted_entry_index(
+            initial_entry_index,
+            config.bootstrap_dir_index && !bootstrap_failed,
+        );
+        let mut seq_in_stream: u64 = 0;
+
+        if bootstrap_failed {
+            pending.mark_full_rescan(VaultWatchReason::BootstrapFailure);
+            flush_pending(
+                &mut pending,
+                &vault_root,
+                &stream_id,
+                &mut seq_in_stream,
+                config.max_batch_paths,
+                &mut on_batch,
+            );
+        }
 
         loop {
-            let now = Instant::now();
-            pending.expire_stale_rename_from(&vault_root, now, rename_window);
-
-            if rescan_flag.swap(false, Ordering::SeqCst) {
-                pending.mark_rescan(true);
-                last_input_at = Some(now);
-            }
-
-            if should_flush(&pending, last_input_at, debounce, now) {
-                seq += 1;
-                if let Some(batch) = pending.take_batch(seq, config.max_batch_paths) {
-                    on_batch(batch);
-                }
-
-                if !pending.has_emitable_changes() {
-                    last_input_at = None;
-                }
-            }
-
-            let timeout = next_timeout(
-                &pending,
-                last_input_at,
-                debounce,
-                rename_window,
-                now,
-                idle_poll,
+            pending.expire_pending_renames(
+                &vault_root,
+                std::time::Instant::now(),
+                rename_pair_window,
             );
-            match rx.recv_timeout(timeout) {
-                Ok(WorkerMessage::RawEvent(event)) => {
-                    let event_now = Instant::now();
-                    pending.apply_notify_event(&vault_root, &event, event_now, rename_window);
-                    last_input_at = Some(event_now);
-                }
-                Ok(WorkerMessage::Stop) => {
-                    if rescan_flag.swap(false, Ordering::SeqCst) {
-                        pending.mark_rescan(true);
-                    }
-                    pending.flush_unmatched_rename_from_as_removed(&vault_root);
+            merge_pending_rescan_reason(&mut pending, &rescan_reason);
+            flush_pending(
+                &mut pending,
+                &vault_root,
+                &stream_id,
+                &mut seq_in_stream,
+                config.max_batch_paths,
+                &mut on_batch,
+            );
 
-                    if pending.has_pending_activity() {
-                        seq += 1;
-                        if let Some(batch) = pending.take_batch(seq, config.max_batch_paths) {
-                            on_batch(batch);
-                        }
-                    }
+            let message = match rx.recv_timeout(idle_poll) {
+                Ok(message) => message,
+                Err(RecvTimeoutError::Timeout) => continue,
+                Err(RecvTimeoutError::Disconnected) => {
+                    pending.finalize_pending_renames(&vault_root);
+                    merge_pending_rescan_reason(&mut pending, &rescan_reason);
+                    flush_pending(
+                        &mut pending,
+                        &vault_root,
+                        &stream_id,
+                        &mut seq_in_stream,
+                        config.max_batch_paths,
+                        &mut on_batch,
+                    );
                     break;
                 }
-                Err(RecvTimeoutError::Timeout) => continue,
-                Err(RecvTimeoutError::Disconnected) => break,
+            };
+
+            match message {
+                WorkerMessage::DebouncedEvents(events) => {
+                    pending.apply_debounced_events(&vault_root, &events);
+                }
+                WorkerMessage::DebouncerErrors(errors) => {
+                    pending.mark_full_rescan(classify_debouncer_errors(&errors));
+                }
+                WorkerMessage::Stop => {
+                    pending.finalize_pending_renames(&vault_root);
+                    merge_pending_rescan_reason(&mut pending, &rescan_reason);
+                    flush_pending(
+                        &mut pending,
+                        &vault_root,
+                        &stream_id,
+                        &mut seq_in_stream,
+                        config.max_batch_paths,
+                        &mut on_batch,
+                    );
+                    break;
+                }
             }
+
+            pending.expire_pending_renames(
+                &vault_root,
+                std::time::Instant::now(),
+                rename_pair_window,
+            );
+            merge_pending_rescan_reason(&mut pending, &rescan_reason);
+            flush_pending(
+                &mut pending,
+                &vault_root,
+                &stream_id,
+                &mut seq_in_stream,
+                config.max_batch_paths,
+                &mut on_batch,
+            );
         }
     })
 }
 
-fn collect_directory_index(vault_root: &Path) -> std::io::Result<BTreeSet<String>> {
-    let mut directory_index = BTreeSet::new();
-
-    for entry in walkdir::WalkDir::new(vault_root)
-        .min_depth(1)
-        .follow_links(false)
+fn flush_pending(
+    pending: &mut PendingBatch,
+    vault_root: &PathBuf,
+    stream_id: &str,
+    seq_in_stream: &mut u64,
+    max_batch_paths: usize,
+    on_batch: &mut dyn FnMut(VaultWatchBatch),
+) {
+    if let Some(batch) =
+        pending.take_batch(vault_root, stream_id, *seq_in_stream + 1, max_batch_paths)
     {
-        let entry = entry.map_err(std::io::Error::other)?;
-        if !entry.file_type().is_dir() {
-            continue;
-        }
-
-        if let Some(rel_path) = to_vault_rel_path(vault_root, entry.path()) {
-            directory_index.insert(rel_path);
-        }
+        *seq_in_stream += 1;
+        on_batch(batch);
     }
+}
 
-    Ok(directory_index)
+fn merge_pending_rescan_reason(pending: &mut PendingBatch, signal: &AtomicU8) {
+    if let Some(reason) = take_rescan_reason(signal) {
+        pending.mark_full_rescan(reason);
+    }
+}
+
+fn take_rescan_reason(signal: &AtomicU8) -> Option<VaultWatchReason> {
+    match signal.swap(0, Ordering::SeqCst) {
+        1 => Some(VaultWatchReason::WatcherOverflow),
+        2 => Some(VaultWatchReason::WatcherError),
+        _ => None,
+    }
+}
+
+fn classify_debouncer_errors(errors: &[notify::Error]) -> VaultWatchReason {
+    if errors
+        .iter()
+        .any(|error| matches!(error.kind, ErrorKind::MaxFilesWatch))
+    {
+        VaultWatchReason::WatcherOverflow
+    } else {
+        VaultWatchReason::WatcherError
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::collect_directory_index;
     use std::{
         path::{Path, PathBuf},
-        time::{SystemTime, UNIX_EPOCH},
+        sync::{
+            atomic::{AtomicU8, Ordering},
+            mpsc, Arc,
+        },
+        time::Duration,
+        time::{Instant, SystemTime, UNIX_EPOCH},
+    };
+
+    use notify::event::{EventAttributes, ModifyKind, RenameMode};
+    use notify::{Event, EventKind};
+    use notify_debouncer_full::DebouncedEvent;
+
+    use super::{spawn_worker, WorkerMessage};
+    use crate::{
+        entry_index::collect_entry_index,
+        types::{VaultEntryState, VaultWatchOp, WatchConfig},
+        VaultWatchReason,
     };
 
     fn temp_vault_dir() -> PathBuf {
@@ -154,6 +218,18 @@ mod tests {
         path
     }
 
+    fn event(kind: EventKind, paths: &[PathBuf]) -> Event {
+        Event {
+            kind,
+            paths: paths.to_vec(),
+            attrs: EventAttributes::new(),
+        }
+    }
+
+    fn debounced_event_at(kind: EventKind, paths: &[PathBuf], time: Instant) -> DebouncedEvent {
+        DebouncedEvent::new(event(kind, paths), time)
+    }
+
     #[cfg(unix)]
     fn symlink_dir(link_target: &Path, link_path: &Path) {
         std::os::unix::fs::symlink(link_target, link_path)
@@ -162,7 +238,7 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn collect_directory_index_handles_symlink_cycle() {
+    fn collect_entry_index_handles_symlink_cycle() {
         let root = temp_vault_dir();
         let nested = root.join("a/b");
         std::fs::create_dir_all(&nested).expect("nested directory should be created");
@@ -170,56 +246,153 @@ mod tests {
         let back_to_root = nested.join("back_to_root");
         symlink_dir(&root, &back_to_root);
 
-        let index = collect_directory_index(&root).expect("index should be collected");
+        let index = collect_entry_index(&root).expect("index should be collected");
 
-        assert!(index.contains("a"));
-        assert!(index.contains("a/b"));
+        assert_eq!(index.get("a"), Some(&VaultEntryState::Directory));
+        assert_eq!(index.get("a/b"), Some(&VaultEntryState::Directory));
 
         let _ = std::fs::remove_dir_all(&root);
     }
-}
 
-fn should_flush(
-    pending: &PendingBatch,
-    last_input_at: Option<Instant>,
-    debounce: Duration,
-    now: Instant,
-) -> bool {
-    if !pending.has_emitable_changes() {
-        return false;
+    #[test]
+    fn emits_full_rescan_when_rescan_reason_arrives_without_new_messages() {
+        let root = temp_vault_dir();
+        let (worker_tx, worker_rx) = mpsc::channel();
+        let (batch_tx, batch_rx) = mpsc::channel();
+        let rescan_reason = Arc::new(AtomicU8::new(0));
+
+        let worker = spawn_worker(
+            root.clone(),
+            "stream-1".to_string(),
+            WatchConfig::default(),
+            worker_rx,
+            Arc::clone(&rescan_reason),
+            Box::new(move |batch| {
+                let _ = batch_tx.send(batch);
+            }),
+        );
+
+        rescan_reason.store(1, Ordering::SeqCst);
+
+        let batch = batch_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker should emit full rescan after idle poll");
+        assert_eq!(batch.seq_in_stream, 1);
+        assert_eq!(
+            batch.ops,
+            vec![VaultWatchOp::FullRescan {
+                reason: VaultWatchReason::WatcherOverflow,
+            }]
+        );
+
+        worker_tx
+            .send(WorkerMessage::Stop)
+            .expect("worker stop should send");
+        worker.join().expect("worker thread should join");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
-    let Some(last_input_at) = last_input_at else {
-        return true;
-    };
+    #[test]
+    fn expires_split_rename_from_candidates_during_idle_poll() {
+        let root = temp_vault_dir();
+        let file = root.join("a.md");
+        std::fs::write(&file, "content").expect("file should be written");
+        let (worker_tx, worker_rx) = mpsc::channel();
+        let (batch_tx, batch_rx) = mpsc::channel();
+        let rescan_reason = Arc::new(AtomicU8::new(0));
 
-    now.duration_since(last_input_at) >= debounce
-}
+        let worker = spawn_worker(
+            root.clone(),
+            "stream-1".to_string(),
+            WatchConfig {
+                rename_pair_window_ms: 20,
+                ..WatchConfig::default()
+            },
+            worker_rx,
+            Arc::clone(&rescan_reason),
+            Box::new(move |batch| {
+                let _ = batch_tx.send(batch);
+            }),
+        );
 
-fn next_timeout(
-    pending: &PendingBatch,
-    last_input_at: Option<Instant>,
-    debounce: Duration,
-    rename_window: Duration,
-    now: Instant,
-    idle_poll: Duration,
-) -> Duration {
-    let mut timeout = idle_poll;
+        std::thread::sleep(Duration::from_millis(50));
+        std::fs::remove_file(&file).expect("file should be removed");
+        worker_tx
+            .send(WorkerMessage::DebouncedEvents(vec![debounced_event_at(
+                EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+                std::slice::from_ref(&file),
+                Instant::now(),
+            )]))
+            .expect("rename-from event should send");
 
-    if let Some(last_input_at) = last_input_at {
-        if pending.has_emitable_changes() {
-            let deadline = last_input_at + debounce;
-            timeout = timeout.min(
-                deadline
-                    .checked_duration_since(now)
-                    .unwrap_or_else(|| Duration::from_millis(0)),
-            );
-        }
+        let batch = batch_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker should flush expired rename-from as delete");
+        assert_eq!(
+            batch.ops,
+            vec![VaultWatchOp::PathState {
+                rel_path: "a.md".to_string(),
+                before: VaultEntryState::File,
+                after: VaultEntryState::Missing,
+            }]
+        );
+
+        worker_tx
+            .send(WorkerMessage::Stop)
+            .expect("worker stop should send");
+        worker.join().expect("worker thread should join");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
-    if let Some(until_rename_expiry) = pending.next_rename_expiry_in(rename_window, now) {
-        timeout = timeout.min(until_rename_expiry);
-    }
+    #[test]
+    fn stop_flushes_pending_rename_from_candidates() {
+        let root = temp_vault_dir();
+        let file = root.join("a.md");
+        std::fs::write(&file, "content").expect("file should be written");
+        let (worker_tx, worker_rx) = mpsc::channel();
+        let (batch_tx, batch_rx) = mpsc::channel();
+        let rescan_reason = Arc::new(AtomicU8::new(0));
 
-    timeout
+        let worker = spawn_worker(
+            root.clone(),
+            "stream-1".to_string(),
+            WatchConfig {
+                rename_pair_window_ms: 1000,
+                ..WatchConfig::default()
+            },
+            worker_rx,
+            Arc::clone(&rescan_reason),
+            Box::new(move |batch| {
+                let _ = batch_tx.send(batch);
+            }),
+        );
+
+        std::thread::sleep(Duration::from_millis(50));
+        std::fs::remove_file(&file).expect("file should be removed");
+        worker_tx
+            .send(WorkerMessage::DebouncedEvents(vec![debounced_event_at(
+                EventKind::Modify(ModifyKind::Name(RenameMode::From)),
+                std::slice::from_ref(&file),
+                Instant::now(),
+            )]))
+            .expect("rename-from event should send");
+        worker_tx
+            .send(WorkerMessage::Stop)
+            .expect("worker stop should send");
+
+        let batch = batch_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("stop should flush pending rename-from");
+        assert_eq!(
+            batch.ops,
+            vec![VaultWatchOp::PathState {
+                rel_path: "a.md".to_string(),
+                before: VaultEntryState::File,
+                after: VaultEntryState::Missing,
+            }]
+        );
+
+        worker.join().expect("worker thread should join");
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
