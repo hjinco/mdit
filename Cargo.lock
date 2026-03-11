@@ -910,6 +910,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "credentials"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2993,6 +3002,7 @@ dependencies = [
  "anyhow",
  "app-storage",
  "axum",
+ "credentials",
  "image-processing",
  "local-api",
  "note",

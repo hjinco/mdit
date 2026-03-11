@@ -1,7 +1,7 @@
 import type { ProviderId } from "@mdit/ai"
-import type { CodexOAuthCredential } from "@mdit/credentials"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
+import type { CodexOAuthCredential } from "@/lib/credentials"
 import {
 	type AISettingsSlice,
 	prepareAISettingsSlice,
