@@ -1,0 +1,18 @@
+[package]
+name = "sync-client"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+base64 = "0.22"
+blake3 = "1"
+serde = { version = "1", features = ["derive"] }
+sync-engine = { path = "../sync-engine" }
+thiserror = "2"
+tokio = { version = "1", features = ["rt"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }

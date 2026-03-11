@@ -1,0 +1,11 @@
+[package]
+name = "mdit-sync-cli"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "mdit-sync"
+path = "src/main.rs"
+
+[dependencies]
+mdit-sync-runtime = { package = "sync-runtime", path = "../../crates/sync-runtime" }

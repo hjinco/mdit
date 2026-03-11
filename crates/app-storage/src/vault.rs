@@ -31,7 +31,7 @@ fn map_vault_workspace_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<VaultWor
     })
 }
 
-fn open_vault_connection(db_path: &Path) -> Result<Connection> {
+pub(crate) fn open_vault_connection(db_path: &Path) -> Result<Connection> {
     let conn = Connection::open(db_path)
         .with_context(|| format!("Failed to open appdata database at {}", db_path.display()))?;
 
