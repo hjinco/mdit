@@ -20,7 +20,7 @@
 	],
 	"r2_buckets": [
 		{
-			"bucket_name": "mdit-sync",
+			"bucket_name": "mdit-sync-beta",
 			"binding": "BUCKET"
 		}
 	]

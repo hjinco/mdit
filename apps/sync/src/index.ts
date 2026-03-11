@@ -1,12 +1,9 @@
-import { auth } from "./lib/auth"
+import { Hono } from "hono"
 
-export default {
-	async fetch(request, _env, _ctx): Promise<Response> {
-		const url = new URL(request.url)
-		if (url.pathname.startsWith("/api/auth")) {
-			return auth.handler(request)
-		}
+type AppBindings = {
+	Bindings: Env
+}
 
-		return new Response("Not found", { status: 404 })
-	},
-} satisfies ExportedHandler<Env>
+const app = new Hono<AppBindings>()
+
+export default app
