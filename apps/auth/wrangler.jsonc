@@ -6,6 +6,9 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "mdit-auth",
 	"main": "src/index.ts",
+	"assets": {
+		"directory": "./public"
+	},
 	"compatibility_date": "2025-09-27",
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": {

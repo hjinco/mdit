@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Create account</title>
+		<style>
+			:root {
+				color-scheme: light;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background: #fff;
+				color: #111;
+				font-family: "Times New Roman", Times, serif;
+			}
+
+			main {
+				width: min(100%, 32rem);
+				margin: 0 auto;
+				padding: 4rem 1.5rem;
+			}
+
+			section {
+				border: 1px solid #111;
+				padding: 1.5rem;
+				background: #fff;
+			}
+
+			h1 {
+				margin: 0 0 0.5rem;
+				font-size: 1.5rem;
+				font-weight: 400;
+			}
+
+			p {
+				margin: 0;
+				line-height: 1.5;
+			}
+
+			form {
+				margin-top: 1.5rem;
+			}
+
+			.form-section[hidden] {
+				display: none;
+			}
+
+			.verification-section {
+				margin-top: 1.5rem;
+			}
+
+			.verification-section[hidden] {
+				display: none;
+			}
+
+			label {
+				display: block;
+				margin-top: 1rem;
+				font-size: 0.95rem;
+			}
+
+			input {
+				width: 100%;
+				margin-top: 0.35rem;
+				padding: 0.75rem;
+				border: 1px solid #111;
+				border-radius: 0;
+				background: #fff;
+				color: #111;
+				font: inherit;
+			}
+
+			button {
+				margin-top: 1.25rem;
+				padding: 0.75rem 1rem;
+				border: 1px solid #111;
+				border-radius: 0;
+				background: #fff;
+				color: #111;
+				font: inherit;
+				cursor: pointer;
+			}
+
+			button[disabled] {
+				cursor: default;
+			}
+
+			.status {
+				margin-top: 1rem;
+				min-height: 1.5rem;
+			}
+
+			.status[hidden] {
+				display: none;
+			}
+
+			.actions {
+				margin-top: 1rem;
+			}
+
+			.actions[hidden] {
+				display: none;
+			}
+
+			.footer {
+				margin-top: 1rem;
+				font-size: 0.9rem;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<section>
+				<h1>Create account</h1>
+				<p>Use your email address to create a new account.</p>
+
+				<div id="form-section" class="form-section">
+					<form id="signup-form" novalidate>
+						<label for="email">
+							Email
+							<input
+								id="email"
+								name="email"
+								type="email"
+								autocomplete="email"
+								required
+							/>
+						</label>
+
+						<label for="password">
+							Password
+							<input
+								id="password"
+								name="password"
+								type="password"
+								autocomplete="new-password"
+								required
+							/>
+						</label>
+
+						<label for="password-confirmation">
+							Confirm password
+							<input
+								id="password-confirmation"
+								name="passwordConfirmation"
+								type="password"
+								autocomplete="new-password"
+								required
+							/>
+						</label>
+
+						<button id="submit-button" type="submit">Create account</button>
+						<p id="status" class="status" aria-live="polite" hidden></p>
+					</form>
+
+					<p class="footer">After sign up, check your email for a verification link.</p>
+				</div>
+
+				<div id="verification-section" class="verification-section" hidden>
+					<p id="verification-status" class="status" aria-live="polite"></p>
+					<div id="actions" class="actions">
+						<button id="resend-button" type="button">Resend verification email</button>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<script>
+			const form = document.getElementById("signup-form")
+			const formSection = document.getElementById("form-section")
+			const verificationSection = document.getElementById("verification-section")
+			const emailInput = document.getElementById("email")
+			const passwordInput = document.getElementById("password")
+			const passwordConfirmationInput = document.getElementById(
+				"password-confirmation",
+			)
+			const submitButton = document.getElementById("submit-button")
+			const resendButton = document.getElementById("resend-button")
+			const status = document.getElementById("status")
+			const verificationStatus = document.getElementById("verification-status")
+			const actions = document.getElementById("actions")
+			let pendingVerificationEmail = ""
+
+			const getCallbackURL = () => new URL("/success", window.location.origin).toString()
+
+			const setStatus = (message) => {
+				status.hidden = !message
+				status.textContent = message
+			}
+
+			const setVerificationStatus = (message) => {
+				verificationStatus.hidden = !message
+				verificationStatus.textContent = message
+			}
+
+			const setActionsVisible = (visible) => {
+				actions.hidden = !visible
+			}
+
+			const showSignupForm = () => {
+				formSection.hidden = false
+				verificationSection.hidden = true
+			}
+
+			const showVerificationSection = (message) => {
+				formSection.hidden = true
+				verificationSection.hidden = false
+				setVerificationStatus(message)
+				setActionsVisible(true)
+			}
+
+			form.addEventListener("submit", async (event) => {
+				event.preventDefault()
+				setStatus("")
+				setVerificationStatus("")
+				showSignupForm()
+
+				if (passwordInput.value !== passwordConfirmationInput.value) {
+					setStatus("Passwords do not match.")
+					passwordConfirmationInput.focus()
+					return
+				}
+
+				const email = emailInput.value.trim()
+
+				submitButton.disabled = true
+				submitButton.textContent = "Creating..."
+
+				try {
+					const response = await fetch("/api/auth/sign-up/email", {
+						method: "POST",
+						headers: {
+							"content-type": "application/json",
+						},
+						body: JSON.stringify({
+							email,
+							password: passwordInput.value,
+							callbackURL: getCallbackURL(),
+						}),
+					})
+
+					const payload = await response.json().catch(() => null)
+
+					if (!response.ok) {
+						setStatus(
+							payload && typeof payload.message === "string"
+								? payload.message
+								: "Unable to create your account.",
+						)
+						return
+					}
+
+					pendingVerificationEmail = email
+					form.reset()
+					showVerificationSection(
+						"Account created. Check your email for a verification link.",
+					)
+				} catch {
+					setStatus("Unable to create your account.")
+				} finally {
+					submitButton.disabled = false
+					submitButton.textContent = "Create account"
+				}
+			})
+
+			resendButton.addEventListener("click", async () => {
+				if (!pendingVerificationEmail) {
+					return
+				}
+
+				resendButton.disabled = true
+				resendButton.textContent = "Sending..."
+				setVerificationStatus("")
+
+				try {
+					const response = await fetch("/api/auth/send-verification-email", {
+						method: "POST",
+						headers: {
+							"content-type": "application/json",
+						},
+						body: JSON.stringify({
+							email: pendingVerificationEmail,
+							callbackURL: getCallbackURL(),
+						}),
+					})
+
+					const payload = await response.json().catch(() => null)
+
+					if (!response.ok) {
+						setVerificationStatus(
+							payload && typeof payload.message === "string"
+								? payload.message
+								: "Unable to resend the verification email.",
+						)
+						return
+					}
+
+					setVerificationStatus(
+						"Verification email sent again. Check your inbox.",
+					)
+				} catch {
+					setVerificationStatus("Unable to resend the verification email.")
+				} finally {
+					resendButton.disabled = false
+					resendButton.textContent = "Resend verification email"
+				}
+			})
+		</script>
+	</body>
+</html>
