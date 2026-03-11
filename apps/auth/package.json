@@ -1,0 +1,30 @@
+{
+	"name": "@mdit/auth",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit",
+		"cf-typegen": "wrangler types",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "wrangler d1 migrations apply mdit-beta",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"better-auth": "^1.5.0",
+		"drizzle-orm": "^0.45.1",
+		"hono": "^4.12.7",
+		"resend": "^6.9.3"
+	},
+	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
+		"@types/node": "^25.3.3",
+		"@typescript/native-preview": "7.0.0-dev.20260220.1",
+		"drizzle-kit": "^0.31.9",
+		"vitest": "~3.2.4",
+		"wrangler": "^4.69.0"
+	}
+}
