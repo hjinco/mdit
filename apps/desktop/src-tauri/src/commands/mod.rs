@@ -1,4 +1,5 @@
 pub mod content;
+pub mod credentials;
 pub mod filesystem;
 pub mod image;
 pub mod local_api;

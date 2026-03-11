@@ -19,6 +19,7 @@ tauri-build = { version = "2.5.5", features = [] }
 
 [dependencies]
 app-storage = { path = "../../../crates/app-storage" }
+mdit-credentials = { package = "credentials", path = "../../../crates/credentials" }
 mdit-image-processing = { package = "image-processing", path = "../../../crates/image-processing" }
 mdit-vault-indexing = { package = "vault-indexing", path = "../../../crates/vault-indexing" }
 mdit-vault-indexer = { package = "vault-indexer", path = "../../../crates/vault-indexer" }

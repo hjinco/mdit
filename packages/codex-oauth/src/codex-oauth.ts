@@ -225,7 +225,7 @@ export async function startCodexBrowserOAuth(): Promise<CodexOAuthResult> {
 			rejectCallback = reject
 			let settled = false
 
-			const timeoutId = window.setTimeout(() => {
+			const timeoutId = globalThis.setTimeout(() => {
 				if (settled) return
 				settled = true
 				reject(
@@ -236,7 +236,7 @@ export async function startCodexBrowserOAuth(): Promise<CodexOAuthResult> {
 			const settle = (fn: () => void) => {
 				if (settled) return
 				settled = true
-				window.clearTimeout(timeoutId)
+				globalThis.clearTimeout(timeoutId)
 				fn()
 			}
 

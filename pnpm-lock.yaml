@@ -41,9 +41,6 @@ importers:
       '@emoji-mart/data':
         specifier: ^1.2.1
         version: 1.2.1
-      '@fabianlars/tauri-plugin-oauth':
-        specifier: ^2.0.0
-        version: 2.0.0
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.71.1(react@19.2.4))
@@ -53,12 +50,12 @@ importers:
       '@mdit/assets':
         specifier: workspace:*
         version: link:../../packages/assets
+      '@mdit/codex-oauth':
+        specifier: workspace:*
+        version: link:../../packages/codex-oauth
       '@mdit/command-menu':
         specifier: workspace:*
         version: link:../../packages/command-menu
-      '@mdit/credentials':
-        specifier: workspace:*
-        version: link:../../packages/credentials
       '@mdit/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -287,9 +284,6 @@ importers:
       tauri-plugin-clipboard-api:
         specifier: ^2.1.11
         version: 2.1.11(typescript@5.9.3)
-      tauri-plugin-keyring-api:
-        specifier: ^0.1.1
-        version: 0.1.1
       unicode-segmenter:
         specifier: ^0.14.0
         version: 0.14.5
@@ -521,6 +515,19 @@ importers:
         specifier: ^19.2.14
         version: 19.2.14
 
+  packages/codex-oauth:
+    dependencies:
+      '@fabianlars/tauri-plugin-oauth':
+        specifier: ^2.0.0
+        version: 2.0.0
+      '@tauri-apps/plugin-opener':
+        specifier: ~2.5.3
+        version: 2.5.3
+    devDependencies:
+      vitest:
+        specifier: ^4.0.9
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/command-menu:
     dependencies:
       '@mdit/ui':
@@ -554,21 +561,6 @@ importers:
       vitest:
         specifier: ^4.0.9
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.31.1)(tsx@4.21.0)(yaml@2.8.2)
-
-  packages/credentials:
-    dependencies:
-      '@fabianlars/tauri-plugin-oauth':
-        specifier: ^2.0.0
-        version: 2.0.0
-      '@mdit/ai':
-        specifier: workspace:*
-        version: link:../ai
-      '@tauri-apps/plugin-opener':
-        specifier: ~2.5.3
-        version: 2.5.3
-      tauri-plugin-keyring-api:
-        specifier: ^0.1.1
-        version: 0.1.1
 
   packages/editor:
     dependencies:
@@ -5782,9 +5774,6 @@ packages:
 
   tauri-plugin-clipboard-api@2.1.11:
     resolution: {integrity: sha512-VNkGaVPPfRoHg7/rJBcWqsvLvn4/kNEOOlzqwyI9Qdf6g54B3mc31GLZdnq/HWtX0vZskw3J8b/EF9YkASDCBQ==}
-
-  tauri-plugin-keyring-api@0.1.1:
-    resolution: {integrity: sha512-vs1ztf6REJPfvUDBY3VgNHiW+xBHvBtMf3ZQIJKB8UCWdb2bLFoDS+BjUHe58deCPGTInCh+SEtd69pZvV/b4w==}
 
   text-segmentation@1.0.3:
     resolution: {integrity: sha512-iOiPUo/BGnZ6+54OsWxZidGCsdU8YbE4PSpdPinp7DeMtUJNJBoJ/ouUSTJjHkh1KntHaltHl/gDs2FC4i5+Nw==}
@@ -11742,10 +11731,6 @@ snapshots:
       valibot: 0.40.0(typescript@5.9.3)
     transitivePeerDependencies:
       - typescript
-
-  tauri-plugin-keyring-api@0.1.1:
-    dependencies:
-      '@tauri-apps/api': 2.10.1
 
   text-segmentation@1.0.3:
     dependencies:

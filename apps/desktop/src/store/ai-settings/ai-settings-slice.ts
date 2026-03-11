@@ -5,18 +5,20 @@ import {
 	type ProviderId,
 } from "@mdit/ai"
 import {
+	isCodexCredentialExpiringSoon,
+	refreshCodexAccessToken,
+	startCodexBrowserOAuth,
+} from "@mdit/codex-oauth"
+import type { StateCreator } from "zustand"
+import {
 	type CodexOAuthCredential,
 	deleteCredential as deleteCredentialFromStore,
 	getCredential as getCredentialFromStore,
-	isCodexCredentialExpiringSoon,
 	listCredentialProviders,
 	type ProviderCredential,
-	refreshCodexAccessToken,
 	setApiKeyCredential,
 	setCodexCredential,
-	startCodexBrowserOAuth,
-} from "@mdit/credentials"
-import type { StateCreator } from "zustand"
+} from "@/lib/credentials"
 import {
 	fetchOllamaModels as fetchOllamaModelsFromApi,
 	type OllamaModels,

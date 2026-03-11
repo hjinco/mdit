@@ -1,15 +1,19 @@
 {
-	"name": "@mdit/credentials",
+	"name": "@mdit/codex-oauth",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
+	"scripts": {
+		"test": "vitest run"
+	},
 	"exports": {
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@mdit/ai": "workspace:*",
 		"@fabianlars/tauri-plugin-oauth": "^2.0.0",
-		"@tauri-apps/plugin-opener": "~2.5.3",
-		"tauri-plugin-keyring-api": "^0.1.1"
+		"@tauri-apps/plugin-opener": "~2.5.3"
+	},
+	"devDependencies": {
+		"vitest": "^4.0.9"
 	}
 }

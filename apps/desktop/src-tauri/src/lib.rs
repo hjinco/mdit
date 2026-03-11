@@ -45,6 +45,14 @@ pub fn run() {
         .manage(commands::vault_watch::VaultWatchRuntimeState::default())
         .invoke_handler(tauri::generate_handler![
             app::window_lifecycle::show_main_window,
+            commands::credentials::list_credential_providers_command,
+            commands::credentials::get_credential_command,
+            commands::credentials::set_api_key_credential_command,
+            commands::credentials::set_codex_credential_command,
+            commands::credentials::delete_credential_command,
+            commands::credentials::get_app_secret_command,
+            commands::credentials::set_app_secret_command,
+            commands::credentials::delete_app_secret_command,
             commands::filesystem::copy,
             commands::content::get_file_frontmatter,
             commands::filesystem::move_to_trash,
