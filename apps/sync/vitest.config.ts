@@ -4,6 +4,14 @@ export default defineWorkersConfig({
 	test: {
 		poolOptions: {
 			workers: {
+				miniflare: {
+					serviceBindings: {
+						AUTH_SERVICE: () =>
+							new Response("AUTH_SERVICE test stub", {
+								status: 501,
+							}),
+					},
+				},
 				wrangler: { configPath: "./wrangler.jsonc" },
 			},
 		},

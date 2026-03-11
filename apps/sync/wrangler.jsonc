@@ -23,5 +23,12 @@
 			"bucket_name": "mdit-sync-beta",
 			"binding": "BUCKET"
 		}
+	],
+	"services": [
+		{
+			"binding": "AUTH_SERVICE",
+			"service": "mdit-auth",
+			"entrypoint": "AuthEntrypoint"
+		}
 	]
 }
