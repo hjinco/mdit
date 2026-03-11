@@ -1,0 +1,6 @@
+{
+	"extends": "@mdit/tsconfig/node",
+	"compilerOptions": {
+		"types": ["./worker-configuration.d.ts", "node"]
+	}
+}
