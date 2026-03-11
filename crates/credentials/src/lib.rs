@@ -170,48 +170,19 @@ fn secret_key_field(key: AppSecretKey) -> &'static str {
     }
 }
 
-fn decode_api_key_credential(value: &Value) -> Option<ApiKeyCredential> {
-    let object = value_as_object(value)?;
-    let type_name = object.get("type")?.as_str()?;
-    let api_key = object.get("apiKey")?.as_str()?;
-    if type_name != "api_key" {
-        return None;
-    }
-    Some(ApiKeyCredential {
-        api_key: api_key.to_owned(),
-    })
-}
-
-fn decode_codex_oauth_credential(value: &Value) -> Option<CodexOAuthCredential> {
-    let object = value_as_object(value)?;
-    let type_name = object.get("type")?.as_str()?;
-    let access_token = object.get("accessToken")?.as_str()?;
-    let refresh_token = object.get("refreshToken")?.as_str()?;
-    let expires_at = object.get("expiresAt")?.as_i64()?;
-    if type_name != "oauth" {
-        return None;
-    }
-    let account_id = object
-        .get("accountId")
-        .and_then(Value::as_str)
-        .map(str::to_owned);
-    Some(CodexOAuthCredential {
-        access_token: access_token.to_owned(),
-        refresh_token: refresh_token.to_owned(),
-        expires_at,
-        account_id,
-    })
-}
-
 fn decode_provider_credential(
     provider_id: ProviderId,
     value: &Value,
 ) -> Option<ProviderCredential> {
-    match provider_id {
-        ProviderId::CodexOauth => decode_codex_oauth_credential(value).map(Into::into),
-        ProviderId::Openai | ProviderId::Google | ProviderId::Anthropic => {
-            decode_api_key_credential(value).map(Into::into)
-        }
+    let credential = serde_json::from_value::<ProviderCredential>(value.clone()).ok()?;
+
+    match (provider_id, &credential) {
+        (
+            ProviderId::Openai | ProviderId::Google | ProviderId::Anthropic,
+            ProviderCredential::ApiKey { .. },
+        )
+        | (ProviderId::CodexOauth, ProviderCredential::Oauth { .. }) => Some(credential),
+        _ => None,
     }
 }
 
@@ -478,6 +449,26 @@ mod tests {
                 api_key: "sk-openai".to_owned(),
             })
         );
+    }
+
+    #[test]
+    fn decode_skips_provider_entries_with_wrong_credential_type() {
+        let store = decode_credential_store(
+            r#"{
+                "version": 1,
+                "providers": {
+                    "openai": {
+                        "type": "oauth",
+                        "accessToken": "access",
+                        "refreshToken": "refresh",
+                        "expiresAt": 123456
+                    },
+                    "codex_oauth": { "type": "api_key", "apiKey": "sk-codex" }
+                }
+            }"#,
+        );
+
+        assert!(store.providers.is_empty());
     }
 
     #[test]
