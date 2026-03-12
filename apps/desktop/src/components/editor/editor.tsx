@@ -60,7 +60,7 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 		)
 
 	return (
-		<div className="relative max-w-full w-full overflow-x-auto flex flex-col bg-background shadow">
+		<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
 			<Header />
 			<EditorContent
 				key={tab.id}
@@ -220,7 +220,7 @@ function EditorContent({
 	return (
 		<div
 			ref={editorContainerRef}
-			className={`h-full ${isExternalDropOver ? "bg-accent/20" : ""}`}
+			className={`overflow-auto ${isExternalDropOver ? "bg-accent/20" : ""}`}
 		>
 			<EditorSurface
 				editor={editor}
