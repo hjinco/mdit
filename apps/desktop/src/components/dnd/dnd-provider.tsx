@@ -1,7 +1,7 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
 import { useEditorRef } from "platejs/react"
 import type React from "react"
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useLayoutEffect, useRef } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useStore } from "@/store"
 import { isDndDragEndEvent, isEditorDragData } from "./dnd-types"
@@ -54,7 +54,7 @@ function buildEditorOverlayClone(sourceElement: Element): HTMLElement | null {
 function EditorBlockDragOverlay({ sourceElement }: { sourceElement: Element }) {
 	const containerRef = useRef<HTMLDivElement | null>(null)
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const container = containerRef.current
 		if (!container) return
 
