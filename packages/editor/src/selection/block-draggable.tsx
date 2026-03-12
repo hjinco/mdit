@@ -43,7 +43,7 @@ export function DragHandle({
 	type: string
 	isFirstChild: boolean
 	isFocusMode: boolean
-	setNodeRef: (node: HTMLDivElement) => void
+	setNodeRef: (node: HTMLDivElement | null) => void
 	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
 }) {
 	const topClass = getTopClass(type, isFirstChild)
@@ -119,7 +119,11 @@ export function Draggable(
 	const isFirstChild = props.path.length === 1 && props.path[0] === 0
 	const { isFocusMode } = props
 
-	const { ref: draggableRef, isDragging } = useDraggable({
+	const {
+		ref: draggableRef,
+		handleRef: dragHandleRef,
+		isDragging: isDraggingBlock,
+	} = useDraggable({
 		id: `editor-${elementId}`,
 		data: { kind: "editor", id: elementId },
 	})
@@ -129,19 +133,20 @@ export function Draggable(
 		| undefined
 
 	const isBlockSelected = !!selectedIds && selectedIds.has(elementId)
+	const isDropZoneDisabled = isDraggingBlock || isBlockSelected
 
 	// Top drop zone - always call hooks, but only use when valid
 	const { ref: topDropRef, isDropTarget: isOverTop } = useDroppable({
 		id: `editor-${elementId}-top`,
 		data: { kind: "editor", id: elementId, position: "top" },
-		disabled: isDragging || isBlockSelected,
+		disabled: isDropZoneDisabled,
 	})
 
 	// Bottom drop zone - always call hooks, but only use when valid
 	const { ref: bottomDropRef, isDropTarget: isOverBottom } = useDroppable({
 		id: `editor-${elementId}-bottom`,
 		data: { kind: "editor", id: elementId, position: "bottom" },
-		disabled: isDragging || isBlockSelected,
+		disabled: isDropZoneDisabled,
 	})
 
 	// If not the outermost node, render only children
@@ -166,10 +171,9 @@ export function Draggable(
 
 	return (
 		<div
-			className={cn(
-				"group relative transition-opacity flow-root",
-				isDragging && !isBlockSelected && "opacity-30",
-			)}
+			ref={draggableRef}
+			className="group relative transition-opacity flow-root"
+			data-editor-draggable-root
 		>
 			<InsertHandle
 				type={props.element.type}
@@ -190,7 +194,7 @@ export function Draggable(
 				type={props.element.type}
 				isFirstChild={isFirstChild}
 				isFocusMode={isFocusMode}
-				setNodeRef={draggableRef}
+				setNodeRef={dragHandleRef}
 				onMouseDown={(e) => {
 					e.preventDefault()
 					e.stopPropagation()
@@ -203,6 +207,7 @@ export function Draggable(
 				className="absolute inset-x-0 top-0 h-1/2 z-10"
 				style={{ pointerEvents: "none" }}
 				contentEditable={false}
+				data-editor-drop-zone
 			/>
 			{/* Bottom drop zone */}
 			<div
@@ -210,6 +215,7 @@ export function Draggable(
 				className="absolute inset-x-0 bottom-0 h-1/2 z-10"
 				style={{ pointerEvents: "none" }}
 				contentEditable={false}
+				data-editor-drop-zone
 			/>
 			{props.children}
 			{/* Top drop line */}
@@ -221,6 +227,7 @@ export function Draggable(
 					isOverTop && "opacity-100",
 				)}
 				contentEditable={false}
+				data-editor-drop-line
 			/>
 			{/* Bottom drop line */}
 			<div
@@ -231,6 +238,7 @@ export function Draggable(
 					isOverBottom && "opacity-100",
 				)}
 				contentEditable={false}
+				data-editor-drop-line
 			/>
 		</div>
 	)
