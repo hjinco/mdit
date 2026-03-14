@@ -22,11 +22,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 						</DndProvider>
 					</DropProvider>
 				</PlateController>
+				<WindowMenu />
+				<Hotkeys />
+				<Toaster />
+				<Updater />
 			</ThemeProvider>
-			<WindowMenu />
-			<Hotkeys />
-			<Toaster />
 		</ErrorBoundary>
-		<Updater />
 	</React.StrictMode>,
 )

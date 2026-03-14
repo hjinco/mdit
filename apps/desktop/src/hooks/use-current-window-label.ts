@@ -19,8 +19,13 @@ export function useCurrentWindowLabel(): string | null {
 	const [windowLabel, setWindowLabel] = useState<string | null>(null)
 
 	useEffect(() => {
-		const currentWindow = getCurrentWindow()
-		setWindowLabel(currentWindow.label)
+		try {
+			const currentWindow = getCurrentWindow()
+			setWindowLabel(currentWindow.label)
+		} catch (error) {
+			console.error("Failed to resolve window label:", error)
+			setWindowLabel(null)
+		}
 	}, [])
 
 	return windowLabel

@@ -60,7 +60,7 @@ export function Updater() {
 			const update = await check()
 
 			if (update) {
-				downloadAndInstall(update)
+				await downloadAndInstall(update)
 			}
 		} catch (err) {
 			console.error("Failed to check for updates:", err)
@@ -78,12 +78,20 @@ export function Updater() {
 			return
 		}
 
+		const runCheckForUpdates = async () => {
+			try {
+				await checkForUpdates()
+			} catch (err) {
+				console.error("Unexpected updater failure:", err)
+			}
+		}
+
 		// Check immediately on mount
-		checkForUpdates()
+		void runCheckForUpdates()
 
 		// Then check every 5 minutes
 		const intervalId = setInterval(() => {
-			checkForUpdates()
+			void runCheckForUpdates()
 		}, 5 * 60_000)
 
 		// Cleanup interval on unmount
