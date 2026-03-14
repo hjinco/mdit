@@ -2,6 +2,7 @@ import { Button } from "@mdit/ui/components/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -87,16 +88,18 @@ export function GitSyncStatus() {
 				)}
 			</Tooltip>
 			<DropdownMenuContent align="end">
-				<DropdownMenuLabel className="flex items-center gap-3 pl-3 cursor-default">
-					<span
-						className={cn(
-							"size-1.5 rounded-full",
-							getDotColor(),
-							shouldPulse && "animate-pulse",
-						)}
-					/>
-					{getStatusLabel()}
-				</DropdownMenuLabel>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="flex items-center gap-3 pl-3 cursor-default">
+						<span
+							className={cn(
+								"size-1.5 rounded-full",
+								getDotColor(),
+								shouldPulse && "animate-pulse",
+							)}
+						/>
+						{getStatusLabel()}
+					</DropdownMenuLabel>
+				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem onClick={performSync} disabled={status === "syncing"}>
 					<RefreshCw className="size-3.5" />
