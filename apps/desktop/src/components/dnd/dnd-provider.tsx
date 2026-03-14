@@ -287,7 +287,7 @@ function EditorDropLine({ indicator }: { indicator: EditorDropIndicator }) {
 	return (
 		<div
 			aria-hidden
-			className="pointer-events-none fixed z-[60] h-0.5 bg-blue-400 dark:bg-blue-600/80"
+			className="pointer-events-none fixed z-60 h-0.5 bg-blue-400 dark:bg-blue-600/80"
 			style={{
 				left: indicator.lineStyle.left,
 				top: indicator.lineStyle.top,
@@ -309,14 +309,12 @@ export function DndProvider({ children }: DndProviderProps) {
 	)
 	const [editorDropIndicator, setEditorDropIndicator] =
 		useState<EditorDropIndicator | null>(null)
-	const syntheticTargetRef = useRef<EditorDropTargetData | null>(null)
 	const lastPointerRef = useRef<Point | null>(null)
 	const isDraggingRef = useRef(false)
 	const frameRef = useRef<number | null>(null)
 
 	const applyEditorDropIndicator = useCallback((point: Point | null) => {
 		const nextIndicator = point ? computeEditorDropIndicator(point) : null
-		syntheticTargetRef.current = nextIndicator?.targetData ?? null
 		setEditorDropIndicator((current) => {
 			return areEditorDropIndicatorsEqual(current, nextIndicator)
 				? current
@@ -350,7 +348,6 @@ export function DndProvider({ children }: DndProviderProps) {
 	const resetEditorDropIndicator = useCallback(() => {
 		cancelScheduledIndicatorUpdate()
 		lastPointerRef.current = null
-		syntheticTargetRef.current = null
 		setEditorDropIndicator(null)
 	}, [cancelScheduledIndicatorUpdate])
 
