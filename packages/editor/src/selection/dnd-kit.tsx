@@ -10,19 +10,19 @@ const isDraggableEnabled = (props: Parameters<RenderNodeWrapper>[0]) => {
 	return path.length === 1 && !isType(editor, element, UNDRAGGABLE_KEYS)
 }
 
-export const createBlockDraggable = (
-	isFocusMode: boolean,
-): RenderNodeWrapper => {
-	return (props) => {
-		if (!isDraggableEnabled(props)) return
-		return (draggableProps) => (
-			<Draggable {...draggableProps} isFocusMode={isFocusMode} />
-		)
-	}
+const blockDraggable: RenderNodeWrapper = (props) => {
+	if (!isDraggableEnabled(props)) return
+	return (draggableProps) => <Draggable {...draggableProps} />
 }
 
-export const DndPlugin = createPlatePlugin({
+const DndPlugin = createPlatePlugin({
 	key: "dnd",
 })
 
-export const DndKit = [DndPlugin]
+export const DndKit = [
+	DndPlugin.configure({
+		render: {
+			aboveNodes: blockDraggable,
+		},
+	}),
+]

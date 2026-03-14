@@ -102,6 +102,7 @@ function EditorContent({
 		})),
 	)
 	const resetFocusMode = useStore((s) => s.resetFocusMode)
+	const isFocusMode = useStore((s) => s.isFocusMode)
 	const workspacePath = useStore((s) => s.workspacePath)
 	const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -224,6 +225,11 @@ function EditorContent({
 		>
 			<EditorSurface
 				editor={editor}
+				contentClassName={
+					isFocusMode
+						? "[&_.editor-block-handle]:!opacity-0 [&_.editor-block-handle]:!pointer-events-none"
+						: undefined
+				}
 				onValueChange={() => {
 					if (isInitializing.current) {
 						isInitializing.current = false

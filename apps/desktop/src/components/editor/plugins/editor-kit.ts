@@ -20,9 +20,8 @@ import { MathKit } from "@mdit/editor/math"
 import { createFilePasteKit, createMediaKit } from "@mdit/editor/media"
 import {
 	CursorOverlayKit,
-	createBlockDraggable,
 	createBlockSelectionKit,
-	DndPlugin,
+	DndKit,
 	FloatingToolbarKit,
 } from "@mdit/editor/selection"
 import { createSlashKit } from "@mdit/editor/slash"
@@ -30,8 +29,6 @@ import { SuggestionKit } from "@mdit/editor/suggestion"
 import { TableKit } from "@mdit/editor/table"
 import { createTagKit } from "@mdit/editor/tag"
 import { TocKit } from "@mdit/editor/toc"
-import type { RenderNodeWrapper } from "platejs/react"
-import { useStore } from "@/store"
 import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
@@ -41,19 +38,6 @@ import { desktopMediaHost } from "../hosts/media-host"
 import { desktopSlashHost } from "../hosts/slash-host"
 import { createDesktopTagHost } from "../hosts/tag-host"
 import { TabMetadataKit } from "./tab-metadata-kit"
-
-const AppBlockDraggable: RenderNodeWrapper = (props) => {
-	const isFocusMode = useStore((s) => s.isFocusMode)
-	return createBlockDraggable(isFocusMode)(props)
-}
-
-const DndKit = [
-	DndPlugin.configure({
-		render: {
-			aboveNodes: AppBlockDraggable,
-		},
-	}),
-]
 
 const desktopTagHost = createDesktopTagHost()
 const desktopFrontmatterHost = createDesktopFrontmatterHost({

@@ -35,14 +35,12 @@ const getTopClass = (type: string, isFirstChild: boolean) => {
 export function DragHandle({
 	type,
 	isFirstChild,
-	isFocusMode,
 	setNodeRef,
 	onMouseDown,
 	...props
 }: {
 	type: string
 	isFirstChild: boolean
-	isFocusMode: boolean
 	setNodeRef: (node: HTMLDivElement | null) => void
 	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
 }) {
@@ -52,11 +50,10 @@ export function DragHandle({
 		<div
 			ref={setNodeRef}
 			className={cn(
-				"absolute -left-7 flex py-0.75 rounded",
+				"editor-block-handle absolute -left-7 flex py-0.75 rounded",
 				"opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]",
 				"cursor-grab active:cursor-grabbing",
 				"text-muted-foreground/80 hover:bg-accent/50 z-50",
-				isFocusMode && "opacity-0 group-hover:opacity-0",
 				"top-1.25",
 				topClass,
 			)}
@@ -76,14 +73,12 @@ export function DragHandle({
 export function InsertHandle({
 	type,
 	isFirstChild,
-	isFocusMode,
 	onMouseDown,
 	onClick,
 	...props
 }: {
 	type: string
 	isFirstChild: boolean
-	isFocusMode: boolean
 	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
 	onClick: (e: MouseEvent<HTMLDivElement>) => void
 }) {
@@ -92,11 +87,10 @@ export function InsertHandle({
 	return (
 		<div
 			className={cn(
-				"absolute -left-13 flex p-0.75 rounded",
+				"editor-block-handle absolute -left-13 flex p-0.75 rounded",
 				"opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]",
 				"cursor-pointer",
 				"text-muted-foreground/80 hover:bg-accent/50 z-50",
-				isFocusMode && "opacity-0 group-hover:opacity-0",
 				"top-1.25",
 				topClass,
 			)}
@@ -110,11 +104,7 @@ export function InsertHandle({
 	)
 }
 
-export function Draggable(
-	props: PlateElementProps & {
-		isFocusMode: boolean
-	},
-) {
+export function Draggable(props: PlateElementProps) {
 	const elementId = props.element.id as string
 
 	// If not the outermost node, render only children
@@ -132,10 +122,9 @@ export function Draggable(
 function DraggableBlock(
 	props: PlateElementProps & {
 		elementId: string
-		isFocusMode: boolean
 	},
 ) {
-	const { elementId, isFocusMode } = props
+	const { elementId } = props
 	const isFirstChild = props.path.length === 1 && props.path[0] === 0
 
 	const {
@@ -182,7 +171,6 @@ function DraggableBlock(
 			<InsertHandle
 				type={props.element.type}
 				isFirstChild={isFirstChild}
-				isFocusMode={isFocusMode}
 				onMouseDown={(e) => {
 					e.preventDefault()
 					e.stopPropagation()
@@ -197,7 +185,6 @@ function DraggableBlock(
 			<DragHandle
 				type={props.element.type}
 				isFirstChild={isFirstChild}
-				isFocusMode={isFocusMode}
 				setNodeRef={dragHandleRef}
 				onMouseDown={(e) => {
 					e.preventDefault()

@@ -16,7 +16,7 @@ export {
 } from "./block-selection-linked-notes"
 export { CursorOverlay } from "./cursor-overlay"
 export { CursorOverlayKit } from "./cursor-overlay-kit"
-export { createBlockDraggable, DndKit, DndPlugin } from "./dnd-kit"
+export { DndKit } from "./dnd-kit"
 export { FloatingToolbar } from "./floating-toolbar"
 export {
 	FloatingToolbarButtons,
