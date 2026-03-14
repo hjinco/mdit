@@ -12,7 +12,6 @@ export function Updater() {
 	const isDev = import.meta.env.DEV
 	const label = useCurrentWindowLabel()
 	const isMainWindow = label === "main"
-	const isMainRoute = window.location.pathname === "/"
 	const {
 		isUpdateReady,
 		isUpdateDownloading,
@@ -53,7 +52,7 @@ export function Updater() {
 
 	const checkForUpdates = useCallback(async () => {
 		if (isDev) return
-		if (!isMainWindow || !isMainRoute) return
+		if (!isMainWindow) return
 		if (isUpdateReady || isUpdateDownloading) return
 
 		try {
@@ -65,13 +64,7 @@ export function Updater() {
 		} catch (err) {
 			console.error("Failed to check for updates:", err)
 		}
-	}, [
-		downloadAndInstall,
-		isMainRoute,
-		isMainWindow,
-		isUpdateDownloading,
-		isUpdateReady,
-	])
+	}, [downloadAndInstall, isMainWindow, isUpdateDownloading, isUpdateReady])
 
 	useEffect(() => {
 		if (label === null) {
