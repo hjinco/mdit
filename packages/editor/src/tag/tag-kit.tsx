@@ -5,18 +5,23 @@ import { createTagLeaf, type TagHostDeps } from "./node-tag"
 import { createTagDecoratedRanges } from "./tag-utils"
 
 export const TAG_KEY = "tag"
+const blockedAncestorTypesByEditor = new WeakMap<object, Set<string>>()
 
 type CreateTagKitOptions = {
 	host?: TagHostDeps
 }
 
 function hasBlockedAncestor(editor: any, path: number[]) {
-	const blockedTypes = new Set([
-		editor.getType(KEYS.codeBlock),
-		editor.getType(KEYS.link),
-		editor.getType(KEYS.img),
-		FRONTMATTER_KEY,
-	])
+	let blockedTypes = blockedAncestorTypesByEditor.get(editor)
+	if (!blockedTypes) {
+		blockedTypes = new Set([
+			editor.getType(KEYS.codeBlock),
+			editor.getType(KEYS.link),
+			editor.getType(KEYS.img),
+			FRONTMATTER_KEY,
+		])
+		blockedAncestorTypesByEditor.set(editor, blockedTypes)
+	}
 
 	return Boolean(
 		editor.api.above({
@@ -48,16 +53,16 @@ export function createTagPlugin({ host }: CreateTagKitOptions = {}) {
 				return
 			}
 
-			if (hasBlockedAncestor(editor, path)) {
-				return
-			}
-
 			const text = (node as { text: string }).text
 			if (!text.includes("#")) {
 				return
 			}
 
-			return createTagDecoratedRanges(text, [...path])
+			if (hasBlockedAncestor(editor, path)) {
+				return
+			}
+
+			return createTagDecoratedRanges(text, path)
 		},
 	}).withComponent(createTagLeaf(host))
 }
