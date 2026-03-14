@@ -1,3 +1,5 @@
+import { isRecord } from "./dnd-utils"
+
 export type EditorDropPosition = "top" | "bottom"
 
 export type EditorDropTargetData = {
@@ -27,10 +29,6 @@ export type DndDragEndEvent = {
 		target?: DndOperationEndpoint | null
 	}
 	canceled: boolean
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null
 }
 
 export function isDndOperationEndpoint(
