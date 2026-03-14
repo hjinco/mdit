@@ -1,9 +1,9 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
-import { BlockSelectionPlugin } from "@platejs/selection/react"
+import { useBlockSelected } from "@platejs/selection/react"
 import { GripVertical, Plus } from "lucide-react"
 import { KEYS, type TElement } from "platejs"
-import { type PlateElementProps, usePluginOption } from "platejs/react"
+import type { PlateElementProps } from "platejs/react"
 import type { MouseEvent } from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
 import { insertSlashMenuBelow } from "../slash/insert-slash-menu"
@@ -128,11 +128,7 @@ export function Draggable(
 		data: { kind: "editor", id: elementId },
 	})
 
-	const selectedIds = usePluginOption(BlockSelectionPlugin, "selectedIds") as
-		| Set<string>
-		| undefined
-
-	const isBlockSelected = !!selectedIds && selectedIds.has(elementId)
+	const isBlockSelected = useBlockSelected(elementId)
 	const isDropZoneDisabled = isDraggingBlock || isBlockSelected
 
 	// Top drop zone - always call hooks, but only use when valid
