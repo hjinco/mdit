@@ -1,13 +1,10 @@
 import { useLayoutEffect, useRef } from "react"
 import { isEditorDragData } from "./dnd-types"
+import { isRecord } from "./dnd-utils"
 
 const EDITOR_OVERLAY_CLEANUP_SELECTOR =
 	"[data-editor-drop-zone], [data-editor-drop-line]"
 const EDITOR_BLOCK_SELECTOR = "[data-editor-block-id]"
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null
-}
 
 export function isEditorSourceData(data: unknown): data is {
 	kind: "editor"

@@ -1,4 +1,5 @@
 import type { EditorDropPosition, EditorDropTargetData } from "./dnd-types"
+import { isRecord } from "./dnd-utils"
 
 const EDITOR_BLOCK_SELECTOR = "[data-editor-block-id]"
 const EDITOR_SCROLL_ROOT_SELECTOR = "[data-editor-scroll-root]"
@@ -25,10 +26,6 @@ export type EditorDropIndicator = {
 		top: number
 		width: number
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null
 }
 
 export function isPoint(value: unknown): value is Point {
