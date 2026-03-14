@@ -28,6 +28,7 @@ type HandleEditorDropParams = {
 	event: DndDragEndEvent
 	editor: PlateEditor
 	selectedEntryPaths: Set<string>
+	overrideTargetData?: EditorDropTargetData | null
 }
 
 type HandleFileDropToEditorParams = {
@@ -347,8 +348,9 @@ export async function handleEditorDrop({
 	event,
 	editor,
 	selectedEntryPaths,
+	overrideTargetData,
 }: HandleEditorDropParams): Promise<boolean> {
-	const overData = event.operation.target?.data
+	const overData = overrideTargetData ?? event.operation.target?.data
 	if (!isEditorDropTarget(overData)) {
 		return false
 	}
