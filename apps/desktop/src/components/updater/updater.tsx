@@ -5,10 +5,14 @@ import {
 } from "@tauri-apps/plugin-updater"
 import { useCallback, useEffect } from "react"
 import { useShallow } from "zustand/react/shallow"
+import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
 import { useStore } from "@/store"
 
 export function Updater() {
 	const isDev = import.meta.env.DEV
+	const label = useCurrentWindowLabel()
+	const isMainWindow = label === "main"
+	const isMainRoute = window.location.pathname === "/"
 	const {
 		isUpdateReady,
 		isUpdateDownloading,
@@ -49,6 +53,7 @@ export function Updater() {
 
 	const checkForUpdates = useCallback(async () => {
 		if (isDev) return
+		if (!isMainWindow || !isMainRoute) return
 		if (isUpdateReady || isUpdateDownloading) return
 
 		try {
@@ -60,9 +65,19 @@ export function Updater() {
 		} catch (err) {
 			console.error("Failed to check for updates:", err)
 		}
-	}, [downloadAndInstall, isUpdateDownloading, isUpdateReady])
+	}, [
+		downloadAndInstall,
+		isMainRoute,
+		isMainWindow,
+		isUpdateDownloading,
+		isUpdateReady,
+	])
 
 	useEffect(() => {
+		if (label === null) {
+			return
+		}
+
 		// Check immediately on mount
 		checkForUpdates()
 
@@ -75,7 +90,7 @@ export function Updater() {
 		return () => {
 			clearInterval(intervalId)
 		}
-	}, [checkForUpdates])
+	}, [checkForUpdates, label])
 
 	return null
 }

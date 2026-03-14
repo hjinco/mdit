@@ -11,7 +11,6 @@ import { App } from "@/app"
 import { EditNote } from "./components/quick-note/edit-note"
 import { QuickNote } from "./components/quick-note/quick-note"
 import { SystemTray } from "./components/system-tray/system-tray"
-import { Updater } from "./components/updater/updater"
 import { useCurrentWindowLabel } from "./hooks/use-current-window-label"
 
 function EditRoute() {
@@ -46,7 +45,6 @@ function AppRouter() {
 			<Route path="/">
 				<App />
 				<SystemTray />
-				<Updater />
 			</Route>
 			<Route>Not Found</Route>
 		</Switch>
