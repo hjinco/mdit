@@ -388,12 +388,7 @@ export function DndProvider({ children }: DndProviderProps) {
 
 	const handleDragMove = useCallback(
 		(event: DragMoveEvent) => {
-			const point = isPoint(event.to)
-				? event.to
-				: isPoint(event.operation.position.current)
-					? event.operation.position.current
-					: null
-			scheduleEditorDropIndicator(point)
+			scheduleEditorDropIndicator(isPoint(event.to) ? event.to : null)
 		},
 		[scheduleEditorDropIndicator],
 	)
