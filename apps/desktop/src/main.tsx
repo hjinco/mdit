@@ -25,8 +25,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 				<WindowMenu />
 				<Hotkeys />
 				<Toaster />
-				<Updater />
 			</ThemeProvider>
 		</ErrorBoundary>
+		<Updater />
 	</React.StrictMode>,
 )

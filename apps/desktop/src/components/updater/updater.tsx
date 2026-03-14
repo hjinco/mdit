@@ -1,8 +1,4 @@
-import {
-	check,
-	type DownloadEvent,
-	type Update,
-} from "@tauri-apps/plugin-updater"
+import { check, type Update } from "@tauri-apps/plugin-updater"
 import { useCallback, useEffect } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
@@ -30,16 +26,7 @@ export function Updater() {
 		async (update: Update) => {
 			try {
 				setUpdateDownloading(true)
-				await update.downloadAndInstall((event: DownloadEvent) => {
-					switch (event.event) {
-						case "Started":
-						case "Progress":
-						case "Finished":
-							break
-						default:
-							break
-					}
-				})
+				await update.downloadAndInstall()
 				setUpdateReady(true)
 			} catch (err) {
 				console.error("Failed to download and install update:", err)
@@ -71,20 +58,12 @@ export function Updater() {
 			return
 		}
 
-		const runCheckForUpdates = async () => {
-			try {
-				await checkForUpdates()
-			} catch (err) {
-				console.error("Unexpected updater failure:", err)
-			}
-		}
-
 		// Check immediately on mount
-		void runCheckForUpdates()
+		void checkForUpdates()
 
 		// Then check every 5 minutes
 		const intervalId = setInterval(() => {
-			void runCheckForUpdates()
+			void checkForUpdates()
 		}, 5 * 60_000)
 
 		// Cleanup interval on unmount
