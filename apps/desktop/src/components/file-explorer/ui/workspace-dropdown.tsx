@@ -67,7 +67,7 @@ export function WorkspaceDropdown({
 					<ChevronDown className="ml-auto shrink-0" />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-64 bg-popover/90">
+			<DropdownMenuContent align="start" className="w-64">
 				{visibleWorkspacePaths.length > 0 ? (
 					<>
 						{visibleWorkspacePaths.map((path) => (
