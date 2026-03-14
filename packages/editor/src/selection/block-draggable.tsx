@@ -1,6 +1,5 @@
-import { useDraggable, useDroppable } from "@dnd-kit/react"
+import { useDraggable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
-import { useBlockSelected } from "@platejs/selection/react"
 import { GripVertical, Plus } from "lucide-react"
 import { KEYS, type TElement } from "platejs"
 import type { PlateElementProps } from "platejs/react"
@@ -127,28 +126,9 @@ function DraggableBlock(
 	const { elementId } = props
 	const isFirstChild = props.path.length === 1 && props.path[0] === 0
 
-	const {
-		ref: draggableRef,
-		handleRef: dragHandleRef,
-		isDragging: isDraggingBlock,
-	} = useDraggable({
+	const { ref: draggableRef, handleRef: dragHandleRef } = useDraggable({
 		id: `editor-${elementId}`,
 		data: { kind: "editor", id: elementId },
-	})
-
-	const isBlockSelected = useBlockSelected(elementId)
-	const isDropZoneDisabled = isDraggingBlock || isBlockSelected
-
-	const { ref: topDropRef, isDropTarget: isOverTop } = useDroppable({
-		id: `editor-${elementId}-top`,
-		data: { kind: "editor", id: elementId, position: "top" },
-		disabled: isDropZoneDisabled,
-	})
-
-	const { ref: bottomDropRef, isDropTarget: isOverBottom } = useDroppable({
-		id: `editor-${elementId}-bottom`,
-		data: { kind: "editor", id: elementId, position: "bottom" },
-		disabled: isDropZoneDisabled,
 	})
 
 	const handleInsertBelow = () => {
@@ -167,6 +147,7 @@ function DraggableBlock(
 			ref={draggableRef}
 			className="group relative transition-opacity flow-root"
 			data-editor-draggable-root
+			data-editor-block-id={elementId}
 		>
 			<InsertHandle
 				type={props.element.type}
@@ -192,45 +173,7 @@ function DraggableBlock(
 				}}
 				data-plate-prevent-deselect
 			/>
-			{/* Top drop zone */}
-			<div
-				ref={topDropRef}
-				className="absolute inset-x-0 top-0 h-1/2 z-10"
-				style={{ pointerEvents: "none" }}
-				contentEditable={false}
-				data-editor-drop-zone
-			/>
-			{/* Bottom drop zone */}
-			<div
-				ref={bottomDropRef}
-				className="absolute inset-x-0 bottom-0 h-1/2 z-10"
-				style={{ pointerEvents: "none" }}
-				contentEditable={false}
-				data-editor-drop-zone
-			/>
 			{props.children}
-			{/* Top drop line */}
-			<div
-				className={cn(
-					"pointer-events-none absolute inset-x-0 -top-px h-0.5",
-					"bg-blue-400 dark:bg-blue-600/80",
-					"opacity-0",
-					isOverTop && "opacity-100",
-				)}
-				contentEditable={false}
-				data-editor-drop-line
-			/>
-			{/* Bottom drop line */}
-			<div
-				className={cn(
-					"pointer-events-none absolute inset-x-0 -bottom-px h-0.5",
-					"bg-blue-400 dark:bg-blue-600/80",
-					"opacity-0",
-					isOverBottom && "opacity-100",
-				)}
-				contentEditable={false}
-				data-editor-drop-line
-			/>
 		</div>
 	)
 }

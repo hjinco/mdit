@@ -222,6 +222,7 @@ function EditorContent({
 		<div
 			ref={editorContainerRef}
 			className={`overflow-auto ${isExternalDropOver ? "bg-accent/20" : ""}`}
+			data-editor-scroll-root
 		>
 			<EditorSurface
 				editor={editor}
