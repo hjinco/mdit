@@ -1,6 +1,8 @@
 const TAG_SEGMENT_REGEX = /^[\p{L}\p{N}_-]+$/u
 const TAG_BODY_CHAR_REGEX = /[\p{L}\p{N}_/-]/u
 const INLINE_TAG_REGEX = /#[\p{L}\p{N}_-]+(?:\/[\p{L}\p{N}_-]+)*/gu
+const MAX_TAG_MATCH_CACHE_SIZE = 500
+const inlineTagMatchCache = new Map<string, InlineTagMatch[]>()
 
 export type InlineTagMatch = {
 	value: string
@@ -55,6 +57,11 @@ export function findInlineTagMatches(text: string): InlineTagMatch[] {
 		return []
 	}
 
+	const cachedMatches = inlineTagMatchCache.get(text)
+	if (cachedMatches) {
+		return cachedMatches
+	}
+
 	const matches: InlineTagMatch[] = []
 	for (const candidate of text.matchAll(INLINE_TAG_REGEX)) {
 		const value = candidate[0]
@@ -86,6 +93,11 @@ export function findInlineTagMatches(text: string): InlineTagMatch[] {
 			end,
 		})
 	}
+
+	if (inlineTagMatchCache.size >= MAX_TAG_MATCH_CACHE_SIZE) {
+		inlineTagMatchCache.clear()
+	}
+	inlineTagMatchCache.set(text, matches)
 
 	return matches
 }
