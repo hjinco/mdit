@@ -7,21 +7,7 @@ const UNDRAGGABLE_KEYS = [KEYS.tr, KEYS.td]
 const isDraggableEnabled = (props: Parameters<RenderNodeWrapper>[0]) => {
 	const { editor, element, path } = props
 	if (editor.dom.readOnly) return false
-	if (path.length === 1 && !isType(editor, element, UNDRAGGABLE_KEYS)) {
-		return true
-	}
-	if (path.length === 4 && !isType(editor, element, UNDRAGGABLE_KEYS)) {
-		const block = editor.api.some({
-			at: path,
-			match: {
-				type: editor.getType(KEYS.table),
-			},
-		})
-		if (block) {
-			return true
-		}
-	}
-	return false
+	return path.length === 1 && !isType(editor, element, UNDRAGGABLE_KEYS)
 }
 
 export const createBlockDraggable = (

@@ -116,8 +116,27 @@ export function Draggable(
 	},
 ) {
 	const elementId = props.element.id as string
+
+	// If not the outermost node, render only children
+	if (
+		!elementId ||
+		props.path.length > 1 ||
+		props.element.type === FRONTMATTER_KEY
+	) {
+		return <>{props.children}</>
+	}
+
+	return <DraggableBlock {...props} elementId={elementId} />
+}
+
+function DraggableBlock(
+	props: PlateElementProps & {
+		elementId: string
+		isFocusMode: boolean
+	},
+) {
+	const { elementId, isFocusMode } = props
 	const isFirstChild = props.path.length === 1 && props.path[0] === 0
-	const { isFocusMode } = props
 
 	const {
 		ref: draggableRef,
@@ -131,28 +150,17 @@ export function Draggable(
 	const isBlockSelected = useBlockSelected(elementId)
 	const isDropZoneDisabled = isDraggingBlock || isBlockSelected
 
-	// Top drop zone - always call hooks, but only use when valid
 	const { ref: topDropRef, isDropTarget: isOverTop } = useDroppable({
 		id: `editor-${elementId}-top`,
 		data: { kind: "editor", id: elementId, position: "top" },
 		disabled: isDropZoneDisabled,
 	})
 
-	// Bottom drop zone - always call hooks, but only use when valid
 	const { ref: bottomDropRef, isDropTarget: isOverBottom } = useDroppable({
 		id: `editor-${elementId}-bottom`,
 		data: { kind: "editor", id: elementId, position: "bottom" },
 		disabled: isDropZoneDisabled,
 	})
-
-	// If not the outermost node, render only children
-	if (
-		!elementId ||
-		props.path.length > 1 ||
-		props.element.type === FRONTMATTER_KEY
-	) {
-		return <>{props.children}</>
-	}
 
 	const handleInsertBelow = () => {
 		const entry = props.editor.api.node<TElement>({
