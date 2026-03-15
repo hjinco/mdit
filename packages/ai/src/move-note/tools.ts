@@ -1,6 +1,10 @@
 import { jsonSchema, type ToolSet, tool } from "ai"
 import { dirname } from "pathe"
 import { MAX_MOVE_NOTE_CONTEXT_LENGTH } from "./constants"
+import {
+	collectMoveDirectoryCatalogEntries,
+	normalizeMoveDirectoryPath,
+} from "./directories"
 import { type InternalOperationState, toPublicOperation } from "./operations"
 import type {
 	MoveNoteWithAIEntry,
@@ -11,20 +15,27 @@ export type MoveNoteTools = ToolSet
 
 export function createMoveNoteTools(params: {
 	fileSystem: MoveNoteWithAIFileSystemPorts
+	workspacePath: string
 	entriesToProcess: MoveNoteWithAIEntry[]
 	candidateDirectories: string[]
 	entryPathSet: Set<string>
-	candidateDirectorySet: Set<string>
 	operationByPath: Map<string, InternalOperationState>
 }): MoveNoteTools {
 	const {
 		fileSystem,
+		workspacePath,
 		entriesToProcess,
 		candidateDirectories,
 		entryPathSet,
-		candidateDirectorySet,
 		operationByPath,
 	} = params
+	const directoryCatalog = collectMoveDirectoryCatalogEntries({
+		workspacePath,
+		candidateDirectories,
+	})
+	const absolutePathByDisplayPath = new Map(
+		directoryCatalog.map((entry) => [entry.displayPath, entry.absolutePath]),
+	)
 
 	return {
 		list_targets: tool({
@@ -43,14 +54,15 @@ export function createMoveNoteTools(params: {
 			}),
 		}),
 		list_directories: tool({
-			description: "List available destination directories in workspace.",
+			description:
+				"List available workspace-relative destination directories for verification or re-checking.",
 			inputSchema: jsonSchema({
 				type: "object",
 				properties: {},
 				additionalProperties: false,
 			}),
 			execute: async () => ({
-				directories: candidateDirectories,
+				directories: directoryCatalog.map((entry) => entry.displayPath),
 			}),
 		}),
 		read_note: tool({
@@ -80,10 +92,11 @@ export function createMoveNoteTools(params: {
 			},
 		}),
 		move_note: tool({
-			description: "Move a target note to one existing destination directory.",
+			description:
+				"Move a target note to one existing destination directory using a workspace-relative destination folder.",
 			inputSchema: jsonSchema<{
 				sourcePath: string
-				destinationDirPath: string
+				destinationDir: string
 			}>({
 				type: "object",
 				properties: {
@@ -91,28 +104,35 @@ export function createMoveNoteTools(params: {
 						type: "string",
 						description: "Absolute path of a target markdown note.",
 					},
-					destinationDirPath: {
+					destinationDir: {
 						type: "string",
-						description: "Absolute path of an existing destination directory.",
+						description:
+							"Workspace-relative path of an existing destination directory. Use '.' for the workspace root.",
 					},
 				},
-				required: ["sourcePath", "destinationDirPath"],
+				required: ["sourcePath", "destinationDir"],
 				additionalProperties: false,
 			}),
 			execute: async ({
 				sourcePath,
-				destinationDirPath,
+				destinationDir,
 			}: {
 				sourcePath: string
-				destinationDirPath: string
+				destinationDir: string
 			}) => {
 				if (!entryPathSet.has(sourcePath)) {
 					throw new Error("move_note sourcePath is not in target list.")
 				}
 
-				if (!candidateDirectorySet.has(destinationDirPath)) {
+				const normalizedDestinationDir =
+					normalizeMoveDirectoryPath(destinationDir)
+				const destinationDirPath = absolutePathByDisplayPath.get(
+					normalizedDestinationDir,
+				)
+
+				if (!destinationDirPath) {
 					throw new Error(
-						"move_note destinationDirPath is not in candidate directories.",
+						"move_note destinationDir is not in candidate directories.",
 					)
 				}
 

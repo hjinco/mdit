@@ -17,6 +17,7 @@ function setupTools(params?: {
 			onMoved?: (newPath: string) => void
 		},
 	) => Promise<boolean>
+	workspacePath?: string
 	entriesToProcess?: MoveNoteWithAIEntry[]
 	candidateDirectories?: string[]
 }) {
@@ -34,7 +35,6 @@ function setupTools(params?: {
 		"/ws/inbox",
 	]
 	const entryPathSet = new Set(entriesToProcess.map((entry) => entry.path))
-	const candidateDirectorySet = new Set(candidateDirectories)
 	const operationByPath = createOperationByPath(entriesToProcess)
 
 	return createMoveNoteTools({
@@ -44,10 +44,10 @@ function setupTools(params?: {
 				vi.fn().mockResolvedValue("# Test note content"),
 			moveEntry: params?.moveEntry ?? vi.fn().mockResolvedValue(true),
 		},
+		workspacePath: params?.workspacePath ?? "/ws",
 		entriesToProcess,
 		candidateDirectories,
 		entryPathSet,
-		candidateDirectorySet,
 		operationByPath,
 	})
 }
@@ -79,7 +79,7 @@ describe("createMoveNoteTools", () => {
 			tools.move_note.execute?.(
 				{
 					sourcePath: "/ws/unknown.md",
-					destinationDirPath: "/ws/inbox",
+					destinationDir: "inbox",
 				},
 				toolExecutionOptions,
 			),
@@ -93,12 +93,12 @@ describe("createMoveNoteTools", () => {
 			tools.move_note.execute?.(
 				{
 					sourcePath: "/ws/inbox/todo.md",
-					destinationDirPath: "/ws/forbidden",
+					destinationDir: "forbidden",
 				},
 				toolExecutionOptions,
 			),
 		).rejects.toThrow(
-			"move_note destinationDirPath is not in candidate directories.",
+			"move_note destinationDir is not in candidate directories.",
 		)
 	})
 
@@ -111,7 +111,7 @@ describe("createMoveNoteTools", () => {
 		const result = await tools.move_note.execute?.(
 			{
 				sourcePath: "/ws/inbox/todo.md",
-				destinationDirPath: "/ws/projects",
+				destinationDir: "projects",
 			},
 			toolExecutionOptions,
 		)
@@ -146,7 +146,7 @@ describe("createMoveNoteTools", () => {
 		const result = await tools.move_note.execute?.(
 			{
 				sourcePath: "/ws/inbox/todo.md",
-				destinationDirPath: "/ws/projects",
+				destinationDir: "projects",
 			},
 			toolExecutionOptions,
 		)
@@ -156,6 +156,106 @@ describe("createMoveNoteTools", () => {
 			status: "moved",
 			destinationDirPath: "/ws/projects",
 			newPath: "/ws/projects/todo (1).md",
+		})
+	})
+
+	it("resolves '.' to the workspace root for unchanged moves", async () => {
+		const tools = setupTools({
+			entriesToProcess: [
+				{
+					path: "/ws/todo.md",
+					name: "todo.md",
+					isDirectory: false,
+				},
+			],
+			candidateDirectories: ["/ws", "/ws/projects"],
+		})
+
+		const result = await tools.move_note.execute?.(
+			{
+				sourcePath: "/ws/todo.md",
+				destinationDir: ".",
+			},
+			toolExecutionOptions,
+		)
+
+		expect(result).toEqual({
+			path: "/ws/todo.md",
+			status: "unchanged",
+			destinationDirPath: "/ws",
+		})
+	})
+
+	it("lists workspace-relative directory forms for fallback verification", async () => {
+		const tools = setupTools({
+			candidateDirectories: ["/ws", "/ws/inbox", "/ws/projects"],
+		})
+
+		const result = await tools.list_directories.execute?.(
+			{},
+			toolExecutionOptions,
+		)
+
+		expect(result).toEqual({
+			directories: [".", "inbox", "projects"],
+		})
+	})
+
+	it("maps relative destinations back to the original Windows candidate path", async () => {
+		const moveEntry = vi.fn().mockResolvedValue(true)
+		const tools = setupTools({
+			workspacePath: "C:\\ws",
+			entriesToProcess: [
+				{
+					path: "C:/ws/inbox/todo.md",
+					name: "todo.md",
+					isDirectory: false,
+				},
+			],
+			candidateDirectories: ["C:\\ws", "C:\\ws\\projects"],
+			moveEntry,
+		})
+
+		const result = await tools.move_note.execute?.(
+			{
+				sourcePath: "C:/ws/inbox/todo.md",
+				destinationDir: "projects",
+			},
+			toolExecutionOptions,
+		)
+
+		expect(result).toEqual({
+			path: "C:/ws/inbox/todo.md",
+			status: "moved",
+			destinationDirPath: "C:\\ws\\projects",
+		})
+		expect(moveEntry).toHaveBeenCalledWith(
+			"C:/ws/inbox/todo.md",
+			"C:\\ws\\projects",
+			expect.objectContaining({
+				onConflict: "auto-rename",
+				allowLockedSourcePath: true,
+			}),
+		)
+	})
+
+	it("accepts current-directory-prefixed relative destinations", async () => {
+		const tools = setupTools({
+			candidateDirectories: ["/ws", "/ws/inbox", "/ws/projects"],
+		})
+
+		const result = await tools.move_note.execute?.(
+			{
+				sourcePath: "/ws/inbox/todo.md",
+				destinationDir: "./projects",
+			},
+			toolExecutionOptions,
+		)
+
+		expect(result).toEqual({
+			path: "/ws/inbox/todo.md",
+			status: "moved",
+			destinationDirPath: "/ws/projects",
 		})
 	})
 })

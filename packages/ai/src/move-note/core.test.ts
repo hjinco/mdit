@@ -21,7 +21,6 @@ describe("createMoveNoteWithAICore", () => {
 			createModel: vi.fn().mockReturnValue("mock-model"),
 			runAgent: async ({ tools }) => {
 				await tools.list_targets.execute?.({}, toolExecutionOptions)
-				await tools.list_directories.execute?.({}, toolExecutionOptions)
 				await tools.read_note.execute?.(
 					{
 						path: "/ws/inbox/plan.md",
@@ -31,7 +30,7 @@ describe("createMoveNoteWithAICore", () => {
 				await tools.move_note.execute?.(
 					{
 						sourcePath: "/ws/inbox/plan.md",
-						destinationDirPath: "/ws/projects",
+						destinationDir: "projects",
 					},
 					toolExecutionOptions,
 				)
@@ -44,7 +43,7 @@ describe("createMoveNoteWithAICore", () => {
 				await tools.move_note.execute?.(
 					{
 						sourcePath: "/ws/inbox/todo.md",
-						destinationDirPath: "/ws/inbox",
+						destinationDir: "inbox",
 					},
 					toolExecutionOptions,
 				)
@@ -127,7 +126,7 @@ describe("createMoveNoteWithAICore", () => {
 				await tools.move_note.execute?.(
 					{
 						sourcePath: "/ws/inbox/todo.md",
-						destinationDirPath: "/ws/forbidden",
+						destinationDir: "forbidden",
 					},
 					toolExecutionOptions,
 				)
@@ -206,7 +205,7 @@ describe("createMoveNoteWithAICore", () => {
 				await tools.move_note.execute?.(
 					{
 						sourcePath: "/ws/inbox/todo.md",
-						destinationDirPath: "/ws/projects",
+						destinationDir: "projects",
 					},
 					toolExecutionOptions,
 				)
@@ -256,5 +255,79 @@ describe("createMoveNoteWithAICore", () => {
 			],
 		})
 		expect(moveEntry).toHaveBeenCalledTimes(1)
+	})
+
+	it("still supports re-checking directories before moving", async () => {
+		const readTextFile = vi.fn().mockResolvedValue("# Project plan")
+		const moveEntry = vi.fn().mockResolvedValue(true)
+
+		const core = createMoveNoteWithAICore({
+			fileSystem: { readTextFile, moveEntry },
+			createModel: vi.fn().mockReturnValue("mock-model"),
+			runAgent: async ({ tools }) => {
+				await tools.list_targets.execute?.({}, toolExecutionOptions)
+				const directories = await tools.list_directories.execute?.(
+					{},
+					toolExecutionOptions,
+				)
+				expect(directories).toEqual({
+					directories: [".", "inbox", "projects"],
+				})
+				await tools.read_note.execute?.(
+					{ path: "/ws/inbox/plan.md" },
+					toolExecutionOptions,
+				)
+				await tools.move_note.execute?.(
+					{
+						sourcePath: "/ws/inbox/plan.md",
+						destinationDir: "projects",
+					},
+					toolExecutionOptions,
+				)
+				const finishOutput = await tools.finish_organization.execute?.(
+					{},
+					toolExecutionOptions,
+				)
+
+				return {
+					steps: [
+						{
+							toolResults: [
+								{
+									toolName: "finish_organization",
+									output: finishOutput,
+								},
+							],
+						},
+					],
+				}
+			},
+		})
+
+		const result = await core.organizeNotes({
+			entries: [
+				{
+					path: "/ws/inbox/plan.md",
+					name: "plan.md",
+					isDirectory: false,
+				},
+			],
+			workspacePath: "/ws",
+			candidateDirectories: ["/ws", "/ws/inbox", "/ws/projects"],
+			chatConfig,
+		})
+
+		expect(result).toEqual({
+			movedCount: 1,
+			unchangedCount: 0,
+			failedCount: 0,
+			operations: [
+				{
+					path: "/ws/inbox/plan.md",
+					status: "moved",
+					destinationDirPath: "/ws/projects",
+				},
+			],
+		})
 	})
 })
