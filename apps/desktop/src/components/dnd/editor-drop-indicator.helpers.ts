@@ -28,6 +28,32 @@ export type EditorDropIndicator = {
 	}
 }
 
+export type EditorDropState = {
+	indicator: EditorDropIndicator | null
+	isPointerInEditor: boolean
+}
+
+export const EMPTY_EDITOR_DROP_STATE: EditorDropState = {
+	indicator: null,
+	isPointerInEditor: false,
+}
+
+function createEditorDropState(
+	indicator: EditorDropIndicator | null,
+	isPointerInEditor: boolean,
+): EditorDropState {
+	return {
+		indicator,
+		isPointerInEditor,
+	}
+}
+
+function createInEditorDropState(
+	indicator: EditorDropIndicator | null,
+): EditorDropState {
+	return createEditorDropState(indicator, true)
+}
+
 export function isPoint(value: unknown): value is Point {
 	return (
 		isRecord(value) &&
@@ -134,10 +160,10 @@ export function buildEditorDropIndicator(
 	}
 }
 
-export function computeEditorDropIndicator(
+export function computeEditorDropState(
 	point: Point,
 	lookup: ElementLookup = {},
-): EditorDropIndicator | null {
+): EditorDropState {
 	const elementsFromPoint =
 		lookup.elementsFromPoint ??
 		((x: number, y: number) => document.elementsFromPoint(x, y))
@@ -148,7 +174,9 @@ export function computeEditorDropIndicator(
 	const hoveredBlock = findEditorBlockAtPoint(elements)
 
 	if (hoveredBlock) {
-		return buildEditorDropIndicator(hoveredBlock, point)
+		return createInEditorDropState(
+			buildEditorDropIndicator(hoveredBlock, point),
+		)
 	}
 
 	const scrollRoot = findEditorScrollRootAtPoint(
@@ -157,15 +185,15 @@ export function computeEditorDropIndicator(
 		queryScrollRoots,
 	)
 	if (!scrollRoot) {
-		return null
+		return EMPTY_EDITOR_DROP_STATE
 	}
 
 	const nearestBlock = getNearestEditorBlock(scrollRoot, point)
 	if (!nearestBlock) {
-		return null
+		return createInEditorDropState(null)
 	}
 
-	return buildEditorDropIndicator(nearestBlock, point)
+	return createInEditorDropState(buildEditorDropIndicator(nearestBlock, point))
 }
 
 export function areEditorDropIndicatorsEqual(
@@ -186,5 +214,15 @@ export function areEditorDropIndicatorsEqual(
 		a.lineStyle.left === b.lineStyle.left &&
 		a.lineStyle.top === b.lineStyle.top &&
 		a.lineStyle.width === b.lineStyle.width
+	)
+}
+
+export function areEditorDropStatesEqual(
+	a: EditorDropState,
+	b: EditorDropState,
+) {
+	return (
+		a.isPointerInEditor === b.isPointerInEditor &&
+		areEditorDropIndicatorsEqual(a.indicator, b.indicator)
 	)
 }

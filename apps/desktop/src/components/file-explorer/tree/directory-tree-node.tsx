@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
 import { useCallback } from "react"
+import { useEditorDropOwnership } from "@/components/dnd/editor-drop-ownership"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
@@ -29,6 +30,7 @@ export function DirectoryTreeNode({
 	const { entry } = node
 	const hasChildren = node.hasChildren
 	const isExpanded = node.isExpanded
+	const isPointerInEditor = useEditorDropOwnership()
 	const {
 		isRenaming,
 		isLocked,
@@ -59,7 +61,8 @@ export function DirectoryTreeNode({
 		depth: node.depth,
 	})
 
-	const isOver = isDropTarget || isOverExternal
+	const isInternalDropTarget = isDropTarget && !isPointerInEditor
+	const isOver = isInternalDropTarget || isOverExternal
 
 	const handleExpand = useCallback(() => {
 		onDirectoryClick(entry.path)

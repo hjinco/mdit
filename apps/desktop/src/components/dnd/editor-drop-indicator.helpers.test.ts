@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
 	areEditorDropIndicatorsEqual,
+	areEditorDropStatesEqual,
 	buildEditorDropIndicator,
-	computeEditorDropIndicator,
+	computeEditorDropState,
+	EMPTY_EDITOR_DROP_STATE,
 	getNearestEditorBlock,
 	type Point,
 } from "./editor-drop-indicator.helpers"
@@ -103,22 +105,69 @@ describe("editor-drop-indicator.helpers", () => {
 
 		expect(getNearestEditorBlock(root, point)).toBe(blockB)
 		expect(
-			computeEditorDropIndicator(point, {
+			computeEditorDropState(point, {
 				elementsFromPoint: () => [root],
 				queryScrollRoots: () => [root],
 			}),
 		).toEqual({
-			targetData: {
-				kind: "editor",
-				id: "b",
-				position: "top",
+			indicator: {
+				targetData: {
+					kind: "editor",
+					id: "b",
+					position: "top",
+				},
+				lineStyle: {
+					left: 0,
+					top: 200,
+					width: 100,
+				},
 			},
-			lineStyle: {
-				left: 0,
-				top: 200,
-				width: 100,
-			},
+			isPointerInEditor: true,
 		})
+	})
+
+	it("marks the pointer as in-editor when directly over a block", () => {
+		const block = createBlock("block-1", {
+			left: 10,
+			right: 210,
+			top: 100,
+			bottom: 160,
+			width: 200,
+			height: 60,
+		})
+		const point: Point = { x: 30, y: 110 }
+
+		expect(
+			computeEditorDropState(point, {
+				elementsFromPoint: () => [block],
+				queryScrollRoots: () => [],
+			}),
+		).toEqual({
+			indicator: {
+				targetData: {
+					kind: "editor",
+					id: "block-1",
+					position: "top",
+				},
+				lineStyle: {
+					left: 10,
+					top: 100,
+					width: 200,
+				},
+			},
+			isPointerInEditor: true,
+		})
+	})
+
+	it("returns no indicator and no editor ownership outside the editor", () => {
+		const point: Point = { x: 999, y: 999 }
+
+		expect(
+			computeEditorDropState(point, {
+				elementsFromPoint: () => [],
+				queryScrollRoots: () => [],
+			}),
+		).toEqual(EMPTY_EDITOR_DROP_STATE)
 	})
 
 	it("compares indicators by target and line geometry", () => {
@@ -143,6 +192,32 @@ describe("editor-drop-indicator.helpers", () => {
 					...base.lineStyle,
 					top: 161,
 				},
+			}),
+		).toBe(false)
+	})
+
+	it("compares drop states by ownership and indicator", () => {
+		const base = {
+			indicator: {
+				targetData: {
+					kind: "editor" as const,
+					id: "block-1",
+					position: "bottom" as const,
+				},
+				lineStyle: {
+					left: 10,
+					top: 160,
+					width: 200,
+				},
+			},
+			isPointerInEditor: true,
+		}
+
+		expect(areEditorDropStatesEqual(base, { ...base })).toBe(true)
+		expect(
+			areEditorDropStatesEqual(base, {
+				...base,
+				isPointerInEditor: false,
 			}),
 		).toBe(false)
 	})
