@@ -14,7 +14,7 @@ import { EditorDropLine } from "./editor-drop-indicator"
 import { isPoint } from "./editor-drop-indicator.helpers"
 import { EditorDropOwnershipProvider } from "./editor-drop-ownership"
 import { handleExplorerDrop } from "./explorer-drop-handler"
-import { useEditorDropIndicator } from "./use-editor-drop-indicator"
+import { useEditorDropState } from "./use-editor-drop-state"
 
 type DndProviderProps = {
 	children: React.ReactNode
@@ -55,7 +55,7 @@ export function DndProvider({ children }: DndProviderProps) {
 		startDragging,
 		updateDragging,
 		completeDragging,
-	} = useEditorDropIndicator()
+	} = useEditorDropState()
 
 	const handleDragStart = useCallback(
 		(event: DragStartEvent) => {

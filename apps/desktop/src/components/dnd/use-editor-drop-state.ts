@@ -7,7 +7,7 @@ import {
 	type Point,
 } from "./editor-drop-indicator.helpers"
 
-export function useEditorDropIndicator() {
+export function useEditorDropState() {
 	const [editorDropState, setEditorDropState] = useState<EditorDropState>(
 		EMPTY_EDITOR_DROP_STATE,
 	)
