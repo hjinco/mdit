@@ -87,9 +87,39 @@ export const verification = sqliteTable(
 	(table) => [index("verification_identifier_idx").on(table.identifier)],
 )
 
+export const deviceCode = sqliteTable(
+	"device_code",
+	{
+		id: text("id").primaryKey(),
+		deviceCode: text("device_code").notNull().unique(),
+		userCode: text("user_code").notNull().unique(),
+		userId: text("user_id").references(() => user.id, {
+			onDelete: "set null",
+		}),
+		clientId: text("client_id"),
+		scope: text("scope"),
+		pollingInterval: integer("polling_interval"),
+		status: text("status").notNull(),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		lastPolledAt: integer("last_polled_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+			.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("device_code_user_code_idx").on(table.userCode),
+		index("device_code_status_idx").on(table.status),
+	],
+)
+
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	accounts: many(account),
+	deviceCodes: many(deviceCode),
 }))
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -102,6 +132,13 @@ export const sessionRelations = relations(session, ({ one }) => ({
 export const accountRelations = relations(account, ({ one }) => ({
 	user: one(user, {
 		fields: [account.userId],
+		references: [user.id],
+	}),
+}))
+
+export const deviceCodeRelations = relations(deviceCode, ({ one }) => ({
+	user: one(user, {
+		fields: [deviceCode.userId],
 		references: [user.id],
 	}),
 }))

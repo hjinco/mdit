@@ -3,13 +3,17 @@ import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { createAuthMiddleware } from "better-auth/api"
 import { bearer } from "better-auth/plugins/bearer"
+import { deviceAuthorization } from "better-auth/plugins/device-authorization"
 import { drizzle } from "drizzle-orm/d1"
 import * as schema from "../db/schema"
 import { resend } from "./email"
 import { verifyAuthSessionFromAuthorization } from "./session"
 import { SIGN_UP_EMAIL_PATH, withDefaultSignupName } from "./signup"
 
+export const SYNC_CLI_CLIENT_ID = "mdit-sync-cli"
+
 export const auth = betterAuth({
+	basePath: "/api",
 	baseURL: env.BETTER_AUTH_URL,
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(drizzle(env.DB), {
@@ -32,7 +36,13 @@ export const auth = betterAuth({
 	emailAndPassword: {
 		enabled: true,
 	},
-	plugins: [bearer()],
+	plugins: [
+		bearer(),
+		deviceAuthorization({
+			verificationUri: "/device",
+			validateClient: (clientId) => clientId === SYNC_CLI_CLIENT_ID,
+		}),
+	],
 	emailVerification: {
 		sendOnSignUp: true,
 		sendVerificationEmail: async ({ user, url }) => {
