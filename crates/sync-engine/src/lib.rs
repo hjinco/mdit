@@ -22,7 +22,7 @@ pub use store::{
 pub use types::{
     ApplyRemoteSyncFileInput, ApplyRemoteWorkspaceInput, ApplyRemoteWorkspaceResult,
     DecryptFileBlobInput, DecryptManifestBlobInput, DecryptedFileBlob, FinalizePushInput,
-    FinalizePushResult, LocalSyncManifest, LocalSyncManifestEntry, PreparedSyncBlob,
-    PreparedSyncWorkspaceResult, ScanOptions, ScanWorkspaceResult, SyncEntryRecord,
-    SyncExclusionEventRecord, SyncVaultState,
+    FinalizePushResult, LocalDeltaSummary, LocalSyncEntryState, LocalSyncManifest,
+    LocalSyncManifestEntry, PreparedSyncBlob, PreparedSyncWorkspaceResult, ScanOptions,
+    ScanWorkspaceResult, SyncEntryRecord, SyncExclusionEventRecord, SyncVaultState,
 };

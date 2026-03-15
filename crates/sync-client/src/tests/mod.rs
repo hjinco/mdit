@@ -7,14 +7,14 @@ use std::sync::{Arc, Mutex};
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
-use sync_engine::{scan_workspace, LocalSyncManifestEntry, ScanOptions};
+use sync_engine::{scan_workspace, LocalSyncManifestEntry, ScanOptions, SyncWorkspaceStore};
 
 use crate::{
     pull_workspace, push_workspace, CreateRemoteCommitInput, CreateRemoteCommitResult,
     CreateRemoteVaultResult, PullWorkspaceInput, PullWorkspaceOutcome, PushWorkspaceInput,
-    RemoteBlobEnvelope, RemoteCommitRecord, RemoteContext, SyncClientError, SyncDirection,
-    SyncPhase, SyncProgressEvent, SyncProgressSink, SyncRemoteClient, SyncRemoteHead,
-    UploadRemoteBlobInput, UploadRemoteBlobResult,
+    PushWorkspaceOutcome, RemoteBlobEnvelope, RemoteCommitRecord, RemoteContext, SyncClientError,
+    SyncDirection, SyncPhase, SyncProgressEvent, SyncProgressSink, SyncRemoteClient,
+    SyncRemoteHead, UploadRemoteBlobInput, UploadRemoteBlobResult,
 };
 
 use self::harness::Harness;
@@ -42,6 +42,7 @@ struct MockRemote {
     create_vault_result: CreateRemoteVaultResult,
     head: SyncRemoteHead,
     commit_result: Result<CreateRemoteCommitResult, SyncClientError>,
+    commit_results: Arc<Mutex<Vec<Result<CreateRemoteCommitResult, SyncClientError>>>>,
     commit_record: RemoteCommitRecord,
     manifest_blob: RemoteBlobEnvelope,
     file_blob: RemoteBlobEnvelope,
@@ -73,6 +74,7 @@ impl Default for MockRemote {
                 current_head_commit_id: "commit-1".to_string(),
                 current_key_version: 1,
             }),
+            commit_results: Arc::new(Mutex::new(Vec::new())),
             commit_record: RemoteCommitRecord {
                 vault_id: "vault-1".to_string(),
                 commit_id: "commit-1".to_string(),
@@ -114,6 +116,10 @@ impl Default for MockRemote {
 impl MockRemote {
     fn blob_requests(&self) -> Vec<String> {
         self.blob_requests.lock().expect("blob requests").clone()
+    }
+
+    fn upload_calls(&self) -> Vec<UploadRemoteBlobInput> {
+        self.upload_calls.lock().expect("upload calls").clone()
     }
 }
 
@@ -182,6 +188,10 @@ impl SyncRemoteClient for MockRemote {
         _vault_id: &str,
         _input: CreateRemoteCommitInput,
     ) -> Result<CreateRemoteCommitResult, SyncClientError> {
+        let mut queued = self.commit_results.lock().expect("commit results");
+        if !queued.is_empty() {
+            return queued.remove(0);
+        }
         self.commit_result.clone()
     }
 
@@ -231,7 +241,15 @@ async fn push_workspace_uploads_blobs_creates_commit_and_updates_state() {
     .await
     .expect("push should succeed");
 
-    assert_eq!(result.commit.current_head_commit_id, "commit-1");
+    assert_eq!(result.outcome, PushWorkspaceOutcome::Applied);
+    assert_eq!(
+        result
+            .commit
+            .as_ref()
+            .expect("applied push should include commit")
+            .current_head_commit_id,
+        "commit-1"
+    );
     assert_eq!(result.uploaded_blob_count, 2);
     assert_eq!(
         result.sync_vault_state.last_synced_commit_id.as_deref(),
@@ -278,6 +296,116 @@ async fn push_workspace_uploads_blobs_creates_commit_and_updates_state() {
 }
 
 #[tokio::test]
+async fn push_workspace_retries_failed_create_without_new_local_edits() {
+    let harness = Harness::new("sync-client-push-retry-create");
+    harness.write_file("note.md", "hello");
+
+    let remote = MockRemote {
+        commit_results: Arc::new(Mutex::new(vec![
+            Err(SyncClientError::remote("INTERNAL_ERROR", "temporary")),
+            Ok(CreateRemoteCommitResult {
+                vault_id: "vault-1".to_string(),
+                commit_id: "commit-1".to_string(),
+                current_head_commit_id: "commit-1".to_string(),
+                current_key_version: 1,
+            }),
+        ])),
+        ..MockRemote::default()
+    };
+
+    let first_error = push_workspace(
+        PushWorkspaceInput {
+            session_id: 11,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &remote,
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect_err("first push should fail");
+    assert_eq!(
+        first_error,
+        SyncClientError::remote("INTERNAL_ERROR", "temporary")
+    );
+    assert!(harness
+        .store()
+        .list_sync_entries()
+        .expect("entries should load after failed push")
+        .is_empty());
+
+    let retried = push_workspace(
+        PushWorkspaceInput {
+            session_id: 12,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &remote,
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect("retry push should succeed");
+
+    assert_eq!(retried.outcome, PushWorkspaceOutcome::Applied);
+    assert_eq!(remote.upload_calls().len(), 4);
+    assert_eq!(
+        retried.sync_vault_state.last_synced_commit_id.as_deref(),
+        Some("commit-1")
+    );
+}
+
+#[tokio::test]
+async fn push_workspace_bootstraps_empty_remote_for_empty_workspace() {
+    let harness = Harness::new("sync-client-push-empty-bootstrap");
+    let remote = MockRemote::default();
+
+    let result = push_workspace(
+        PushWorkspaceInput {
+            session_id: 13,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &remote,
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect("empty workspace push should succeed");
+
+    assert_eq!(result.outcome, PushWorkspaceOutcome::Applied);
+    assert_eq!(result.uploaded_blob_count, 1);
+    assert!(result.manifest.entries.is_empty());
+    assert_eq!(remote.upload_calls().len(), 1);
+    assert_eq!(
+        result.sync_vault_state.last_synced_commit_id.as_deref(),
+        Some("commit-1")
+    );
+}
+
+#[tokio::test]
 async fn push_workspace_returns_head_conflict_on_preflight_mismatch() {
     let harness = Harness::new("sync-client-push-head");
     harness.write_file("note.md", "hello");
@@ -316,6 +444,111 @@ async fn push_workspace_returns_head_conflict_on_preflight_mismatch() {
             current_head_commit_id: Some("commit-9".to_string()),
         }
     );
+}
+
+#[tokio::test]
+async fn push_workspace_retries_delete_only_changes_after_failed_commit() {
+    let harness = Harness::new("sync-client-push-delete-retry");
+    harness.write_file("note.md", "hello");
+
+    push_workspace(
+        PushWorkspaceInput {
+            session_id: 14,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &MockRemote::default(),
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect("initial push should succeed");
+
+    fs::remove_file(harness.workspace.join("note.md")).expect("failed to remove note");
+    let remote = MockRemote {
+        head: SyncRemoteHead {
+            current_head_commit_id: Some("commit-1".to_string()),
+            ..MockRemote::default().head
+        },
+        commit_results: Arc::new(Mutex::new(vec![
+            Err(SyncClientError::remote("INTERNAL_ERROR", "temporary")),
+            Ok(CreateRemoteCommitResult {
+                vault_id: "vault-1".to_string(),
+                commit_id: "commit-2".to_string(),
+                current_head_commit_id: "commit-2".to_string(),
+                current_key_version: 1,
+            }),
+        ])),
+        ..MockRemote::default()
+    };
+
+    let first_error = push_workspace(
+        PushWorkspaceInput {
+            session_id: 15,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &remote,
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect_err("first delete push should fail");
+    assert_eq!(
+        first_error,
+        SyncClientError::remote("INTERNAL_ERROR", "temporary")
+    );
+    assert_eq!(
+        harness
+            .store()
+            .list_sync_entries()
+            .expect("entries should load after failed delete push")
+            .len(),
+        1
+    );
+
+    let retried = push_workspace(
+        PushWorkspaceInput {
+            session_id: 16,
+            workspace_root: harness.workspace.clone(),
+            db_path: harness.db_path.clone(),
+            server_url: "https://sync.mdit.app".to_string(),
+            vault_id: "vault-1".to_string(),
+            auth_token: "token".to_string(),
+            user_id: "user-1".to_string(),
+            device_id: "device-1".to_string(),
+            vault_key_hex: harness.vault_key_hex(),
+            max_file_size_bytes: None,
+        },
+        harness.store(),
+        &remote,
+        &MockProgressSink::default(),
+    )
+    .await
+    .expect("retry delete push should succeed");
+
+    assert_eq!(retried.outcome, PushWorkspaceOutcome::Applied);
+    assert!(retried.entries.is_empty());
+    assert!(harness
+        .store()
+        .list_sync_entries()
+        .expect("entries should load after delete finalize")
+        .is_empty());
+    assert_eq!(remote.upload_calls().len(), 2);
 }
 
 #[tokio::test]
@@ -393,11 +626,11 @@ async fn pull_workspace_fetches_base_payloads_for_markdown_only() {
     let remote_source = Harness::new("sync-client-pull-base-source");
     remote_source.write_file("note.md", "alpha\nshared\nomega\n");
     remote_source.write_file("data.txt", "base-data");
-    let base_prepared = remote_source.prepare_encrypted();
+    let base_prepared = remote_source.prepare_committed("commit-1");
 
     remote_source.write_file("note.md", "alpha\nshared\nomega remote\n");
     remote_source.write_file("data.txt", "remote-data");
-    let current_prepared = remote_source.prepare_encrypted();
+    let current_prepared = remote_source.prepare_committed("commit-2");
 
     let target = Harness::new("sync-client-pull-base-target");
     target.write_file("note.md", "alpha\nshared\nomega\n");

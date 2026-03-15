@@ -172,10 +172,12 @@ impl SyncWorkspaceStore for AppStorageSyncStore {
                 replace_exclusion_events: input.replace_exclusion_events.as_ref().map(|events| {
                     events
                         .iter()
-                        .map(|value| app_storage::sync_state::RecordSyncExclusionEventInput {
-                            local_path: value.local_path.clone(),
-                            reason: value.reason.clone(),
-                        })
+                        .map(
+                            |value| app_storage::sync_state::RecordSyncExclusionEventInput {
+                                local_path: value.local_path.clone(),
+                                reason: value.reason.clone(),
+                            },
+                        )
                         .collect()
                 }),
                 exclusion_events_limit: input.exclusion_events_limit,

@@ -8,11 +8,11 @@ use base64::Engine;
 use crate::{
     constants::{BLOB_KIND_FILE, BLOB_KIND_MANIFEST},
     manifest::finalize_manifest_blob_ids,
-    scan::scan_workspace,
+    scan::build_local_workspace_snapshot,
     store::SyncWorkspaceStore,
     types::{
         DecryptFileBlobInput, DecryptManifestBlobInput, DecryptedFileBlob, LocalSyncManifest,
-        PreparedSyncWorkspaceResult, ScanOptions, ScanWorkspaceResult,
+        LocalWorkspaceSnapshot, PreparedSyncWorkspaceResult, ScanOptions,
     },
     util::workspace_absolute_path,
 };
@@ -25,9 +25,9 @@ pub fn prepare_encrypted_workspace(
     vault_key_hex: &str,
     options: ScanOptions,
 ) -> Result<PreparedSyncWorkspaceResult> {
-    let scan_result = scan_workspace(workspace_root, store, options)?;
+    let snapshot = build_local_workspace_snapshot(workspace_root, store, options)?;
     let vault_key = decode_vault_key(vault_key_hex)?;
-    build_encrypted_workspace_result(workspace_root, &scan_result, &vault_key)
+    build_encrypted_workspace_result(workspace_root, &snapshot, &vault_key)
 }
 
 pub fn decrypt_manifest_blob(input: DecryptManifestBlobInput) -> Result<LocalSyncManifest> {
@@ -72,13 +72,13 @@ pub fn decrypt_file_blob(input: DecryptFileBlobInput) -> Result<DecryptedFileBlo
 
 fn build_encrypted_workspace_result(
     workspace_root: &Path,
-    scan_result: &ScanWorkspaceResult,
+    snapshot: &LocalWorkspaceSnapshot,
     vault_key: &[u8; codec::LOCAL_SYNC_VAULT_KEY_LEN],
 ) -> Result<PreparedSyncWorkspaceResult> {
     let mut file_blobs = Vec::new();
     let mut blob_ids_by_entry_id = HashMap::new();
 
-    for entry in &scan_result.entries {
+    for entry in &snapshot.entries {
         if entry.kind != BLOB_KIND_FILE {
             continue;
         }
@@ -91,7 +91,7 @@ fn build_encrypted_workspace_result(
             )
         })?;
         let prepared_blob = encrypt_blob(
-            scan_result.sync_vault_state.vault_id,
+            snapshot.sync_vault_state.vault_id,
             BLOB_KIND_FILE,
             vault_key,
             &plaintext,
@@ -109,11 +109,11 @@ fn build_encrypted_workspace_result(
             .cmp(right.entry_id.as_deref().unwrap_or(""))
     });
 
-    let final_manifest = finalize_manifest_blob_ids(&scan_result.manifest, &blob_ids_by_entry_id);
+    let final_manifest = finalize_manifest_blob_ids(&snapshot.manifest, &blob_ids_by_entry_id);
     let manifest_plaintext =
         serde_json::to_vec(&final_manifest).context("Failed to serialize local sync manifest")?;
     let manifest_blob = encrypt_blob(
-        scan_result.sync_vault_state.vault_id,
+        snapshot.sync_vault_state.vault_id,
         BLOB_KIND_MANIFEST,
         vault_key,
         &manifest_plaintext,
@@ -122,14 +122,16 @@ fn build_encrypted_workspace_result(
     )?;
 
     Ok(PreparedSyncWorkspaceResult {
-        sync_vault_state: scan_result.sync_vault_state.clone(),
-        entries: scan_result.entries.clone(),
-        exclusion_events: scan_result.exclusion_events.clone(),
+        sync_vault_state: snapshot.sync_vault_state.clone(),
+        entries: snapshot.entries.clone(),
+        exclusion_events: snapshot.exclusion_events.clone(),
         manifest: final_manifest,
+        delta: snapshot.delta.clone(),
         file_blobs,
         manifest_blob,
-        files_scanned: scan_result.files_scanned,
-        directories_scanned: scan_result.directories_scanned,
-        entries_deleted: scan_result.entries_deleted,
+        deleted_entry_ids: snapshot.deleted_entry_ids.clone(),
+        files_scanned: snapshot.files_scanned,
+        directories_scanned: snapshot.directories_scanned,
+        entries_deleted: snapshot.entries_deleted,
     })
 }

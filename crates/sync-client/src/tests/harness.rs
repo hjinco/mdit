@@ -6,10 +6,10 @@ use std::{
 };
 
 use sync_engine::{
-    prepare_encrypted_workspace, PersistSyncStateInput, PersistSyncStateResult,
-    PreparedSyncWorkspaceResult, RecordSyncConflictInput, RecordSyncExclusionEventInput,
-    SaveSyncVaultStateInput, ScanOptions, SyncEntryRecord, SyncExclusionEventRecord,
-    SyncVaultState, SyncWorkspaceStore, UpsertSyncEntryInput,
+    finalize_push_workspace, prepare_encrypted_workspace, FinalizePushInput, PersistSyncStateInput,
+    PersistSyncStateResult, PreparedSyncWorkspaceResult, RecordSyncConflictInput,
+    RecordSyncExclusionEventInput, SaveSyncVaultStateInput, ScanOptions, SyncEntryRecord,
+    SyncExclusionEventRecord, SyncVaultState, SyncWorkspaceStore, UpsertSyncEntryInput,
 };
 
 pub(super) struct Harness {
@@ -67,6 +67,21 @@ impl Harness {
             ScanOptions::default(),
         )
         .expect("prepare encrypted workspace")
+    }
+
+    pub(super) fn prepare_committed(&self, commit_id: &str) -> PreparedSyncWorkspaceResult {
+        let prepared = self.prepare_encrypted();
+        finalize_push_workspace(
+            &self.store(),
+            &prepared,
+            &FinalizePushInput {
+                remote_vault_id: "vault-1".to_string(),
+                last_synced_commit_id: commit_id.to_string(),
+                current_key_version: 1,
+            },
+        )
+        .expect("finalize prepared workspace");
+        prepared
     }
 
     pub(super) fn delete_sync_entry(&self, entry_id: &str) {

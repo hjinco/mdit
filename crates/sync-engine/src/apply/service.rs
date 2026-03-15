@@ -5,6 +5,7 @@ use anyhow::Result;
 use crate::{
     store::SyncWorkspaceStore,
     types::{ApplyRemoteWorkspaceInput, ApplyRemoteWorkspaceResult},
+    util::relative_workspace_path,
 };
 
 use super::{
@@ -22,7 +23,7 @@ pub fn apply_remote_workspace(
     let plan = validate_apply_input(input)?;
 
     let decisions = plan_apply_decisions(workspace_root, &existing_entries, &plan)?;
-    materialize_workspace(workspace_root, &plan, &decisions)?;
+    let materialized = materialize_workspace(workspace_root, &plan, &decisions)?;
 
     let prepared = prepare_applied_state(
         workspace_root,
@@ -32,15 +33,21 @@ pub fn apply_remote_workspace(
         &decisions,
     )?;
     let persisted = store.persist_sync_state(&prepared.persist_input)?;
-    let sync_vault_state = persisted.sync_vault_state.ok_or_else(|| {
-        anyhow::anyhow!("Expected sync vault state after apply persistence")
-    })?;
+    let sync_vault_state = persisted
+        .sync_vault_state
+        .ok_or_else(|| anyhow::anyhow!("Expected sync vault state after apply persistence"))?;
+    let mutated_rel_paths = materialized
+        .mutated_paths
+        .into_iter()
+        .map(|path| relative_workspace_path(workspace_root, &path))
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(ApplyRemoteWorkspaceResult {
         sync_vault_state,
         entries: persisted.entries,
         exclusion_events: persisted.exclusion_events,
         manifest: plan.manifest,
+        mutated_rel_paths,
         files_applied: plan.provided_files_count,
         entries_deleted: prepared.entries_deleted,
     })

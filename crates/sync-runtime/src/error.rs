@@ -5,6 +5,7 @@ use sync_client::SyncClientError;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncRuntimeError {
     MissingDeviceId,
+    SessionClosed,
     SyncClient(SyncClientError),
 }
 
@@ -14,6 +15,7 @@ impl Display for SyncRuntimeError {
             Self::MissingDeviceId => {
                 write!(f, "push configuration requires a device_id")
             }
+            Self::SessionClosed => write!(f, "continuous sync session is closed"),
             Self::SyncClient(error) => write!(f, "{error}"),
         }
     }

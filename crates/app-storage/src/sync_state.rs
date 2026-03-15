@@ -249,7 +249,10 @@ fn save_sync_vault_state_with_conn(
     .context("Failed to reload sync_vault state after save")
 }
 
-fn list_sync_entries_with_conn(conn: &Connection, workspace_root: &Path) -> Result<Vec<SyncEntryRecord>> {
+fn list_sync_entries_with_conn(
+    conn: &Connection,
+    workspace_root: &Path,
+) -> Result<Vec<SyncEntryRecord>> {
     let vault_id = ensure_sync_vault_row(conn, workspace_root)?;
     let mut stmt = conn
         .prepare(
@@ -336,7 +339,11 @@ fn upsert_sync_entry_with_conn(
     .context("Failed to reload sync entry after upsert")
 }
 
-fn delete_sync_entry_with_conn(conn: &Connection, workspace_root: &Path, entry_id: &str) -> Result<()> {
+fn delete_sync_entry_with_conn(
+    conn: &Connection,
+    workspace_root: &Path,
+    entry_id: &str,
+) -> Result<()> {
     let vault_id = ensure_sync_vault_row(conn, workspace_root)?;
 
     conn.execute(

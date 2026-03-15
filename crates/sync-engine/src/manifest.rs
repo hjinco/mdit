@@ -6,7 +6,10 @@ use std::{
 use anyhow::Result;
 
 use crate::{
-    types::{LocalSyncManifest, LocalSyncManifestEntry, SyncEntryRecord, SyncVaultState},
+    types::{
+        LocalSyncEntryState, LocalSyncManifest, LocalSyncManifestEntry, SyncEntryRecord,
+        SyncVaultState,
+    },
     util::now_iso_string,
 };
 
@@ -14,43 +17,22 @@ pub(crate) fn build_manifest(
     sync_vault_state: &SyncVaultState,
     entries: &[SyncEntryRecord],
 ) -> LocalSyncManifest {
-    let mut manifest_entries = entries
+    let manifest_entries = entries
         .iter()
-        .map(|entry| {
-            if entry.kind == "dir" {
-                LocalSyncManifestEntry::Dir {
-                    entry_id: entry.entry_id.clone(),
-                    parent_entry_id: entry.parent_entry_id.clone(),
-                    name: entry.name.clone(),
-                }
-            } else {
-                LocalSyncManifestEntry::File {
-                    entry_id: entry.entry_id.clone(),
-                    parent_entry_id: entry.parent_entry_id.clone(),
-                    name: entry.name.clone(),
-                    blob_id: entry
-                        .last_synced_blob_id
-                        .clone()
-                        .or_else(|| entry.last_known_content_hash.clone())
-                        .unwrap_or_default(),
-                    content_hash: entry.last_known_content_hash.clone().unwrap_or_default(),
-                    size: entry.last_known_size.unwrap_or_default() as u64,
-                    modified_at: entry.last_known_mtime_ns.unwrap_or_default(),
-                }
-            }
-        })
+        .map(manifest_entry_from_record)
         .collect::<Vec<_>>();
+    finalize_manifest(sync_vault_state, manifest_entries)
+}
 
-    manifest_entries
-        .sort_by(|left, right| manifest_entry_sort_key(left).cmp(&manifest_entry_sort_key(right)));
-
-    LocalSyncManifest {
-        manifest_version: 1,
-        vault_id: sync_vault_state.vault_id,
-        base_commit_id: sync_vault_state.last_synced_commit_id.clone(),
-        generated_at: now_iso_string(),
-        entries: manifest_entries,
-    }
+pub(crate) fn build_local_manifest(
+    sync_vault_state: &SyncVaultState,
+    entries: &[LocalSyncEntryState],
+) -> LocalSyncManifest {
+    let manifest_entries = entries
+        .iter()
+        .map(manifest_entry_from_local)
+        .collect::<Vec<_>>();
+    finalize_manifest(sync_vault_state, manifest_entries)
 }
 
 pub(crate) fn finalize_manifest_blob_ids(
@@ -97,6 +79,82 @@ pub(crate) fn build_manifest_paths(
     }
 
     Ok(resolved)
+}
+
+fn finalize_manifest(
+    sync_vault_state: &SyncVaultState,
+    mut manifest_entries: Vec<LocalSyncManifestEntry>,
+) -> LocalSyncManifest {
+    manifest_entries
+        .sort_by(|left, right| manifest_entry_sort_key(left).cmp(&manifest_entry_sort_key(right)));
+
+    LocalSyncManifest {
+        manifest_version: 1,
+        vault_id: sync_vault_state.vault_id,
+        base_commit_id: sync_vault_state.last_synced_commit_id.clone(),
+        generated_at: now_iso_string(),
+        entries: manifest_entries,
+    }
+}
+
+fn manifest_entry_from_record(entry: &SyncEntryRecord) -> LocalSyncManifestEntry {
+    manifest_entry_from_parts(
+        &entry.entry_id,
+        entry.parent_entry_id.as_deref(),
+        &entry.name,
+        &entry.kind,
+        entry.last_synced_blob_id.as_deref(),
+        entry.last_known_content_hash.as_deref(),
+        entry.last_known_size,
+        entry.last_known_mtime_ns,
+    )
+}
+
+fn manifest_entry_from_local(entry: &LocalSyncEntryState) -> LocalSyncManifestEntry {
+    manifest_entry_from_parts(
+        &entry.entry_id,
+        entry.parent_entry_id.as_deref(),
+        &entry.name,
+        &entry.kind,
+        entry.last_synced_blob_id.as_deref(),
+        entry.last_known_content_hash.as_deref(),
+        entry.last_known_size,
+        entry.last_known_mtime_ns,
+    )
+}
+
+fn manifest_entry_from_parts(
+    entry_id: &str,
+    parent_entry_id: Option<&str>,
+    name: &str,
+    kind: &str,
+    last_synced_blob_id: Option<&str>,
+    last_known_content_hash: Option<&str>,
+    last_known_size: Option<i64>,
+    last_known_mtime_ns: Option<i64>,
+) -> LocalSyncManifestEntry {
+    if kind == "dir" {
+        LocalSyncManifestEntry::Dir {
+            entry_id: entry_id.to_string(),
+            parent_entry_id: parent_entry_id.map(str::to_string),
+            name: name.to_string(),
+        }
+    } else {
+        LocalSyncManifestEntry::File {
+            entry_id: entry_id.to_string(),
+            parent_entry_id: parent_entry_id.map(str::to_string),
+            name: name.to_string(),
+            blob_id: last_synced_blob_id
+                .map(str::to_string)
+                .or_else(|| last_known_content_hash.map(str::to_string))
+                .unwrap_or_default(),
+            content_hash: last_known_content_hash
+                .map(str::to_string)
+                .unwrap_or_default(),
+            size: last_known_size.unwrap_or_default() as u64,
+            modified_at: last_known_mtime_ns.unwrap_or_default(),
+        }
+    }
 }
 
 fn manifest_entry_sort_key(entry: &LocalSyncManifestEntry) -> (&str, &str) {

@@ -5632,9 +5632,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "app-storage",
+ "async-trait",
  "serde_json",
  "sync-client",
  "sync-engine",
+ "tokio",
 ]
 
 [[package]]

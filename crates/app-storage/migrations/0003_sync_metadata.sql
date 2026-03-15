@@ -16,14 +16,14 @@ CREATE TABLE `sync_entry` (
 	`entry_id` text NOT NULL,
 	`parent_entry_id` text,
 	`name` text NOT NULL,
-	`kind` text NOT NULL CHECK (`kind` IN ('file', 'dir')),
+	`kind` text NOT NULL,
 	`local_path` text NOT NULL,
 	`last_known_size` integer,
 	`last_known_mtime_ns` integer,
 	`last_known_content_hash` text,
 	`last_synced_blob_id` text,
 	`last_synced_content_hash` text,
-	`sync_state` text NOT NULL CHECK (`sync_state` IN ('synced', 'pending', 'conflicted', 'excluded')),
+	`sync_state` text NOT NULL DEFAULT 'pending',
 	`created_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 	`updated_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 	FOREIGN KEY (`vault_id`) REFERENCES `sync_vault`(`vault_id`) ON UPDATE no action ON DELETE cascade
@@ -43,7 +43,7 @@ CREATE TABLE `sync_conflict` (
 	`conflict_path` text NOT NULL,
 	`base_commit_id` text,
 	`remote_commit_id` text NOT NULL,
-	`status` text NOT NULL DEFAULT 'open' CHECK (`status` IN ('open', 'resolved')),
+	`status` text NOT NULL DEFAULT 'open',
 	`created_at` text NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 	FOREIGN KEY (`vault_id`) REFERENCES `sync_vault`(`vault_id`) ON UPDATE no action ON DELETE cascade
 );
@@ -61,26 +61,31 @@ CREATE TABLE `sync_exclusion_event` (
 --> statement-breakpoint
 CREATE INDEX `idx_sync_exclusion_vault_created` ON `sync_exclusion_event` (`vault_id`, `created_at` DESC);
 --> statement-breakpoint
-UPDATE sync_entry
-SET local_path = substr(
-	local_path,
-	length((SELECT workspace_root FROM vault WHERE id = sync_entry.vault_id)) + 2
-)
+CREATE VIEW `sync_entry_abs_path` AS
+SELECT
+	id,
+	vault_id,
+	entry_id,
+	substr(
+		(SELECT workspace_root FROM vault WHERE id = sync_entry.vault_id) || '/' || local_path,
+		length((SELECT workspace_root FROM vault WHERE id = sync_entry.vault_id)) + 2
+	) AS `rel_path`
+FROM `sync_entry`
 WHERE EXISTS (
-	SELECT 1
-	FROM vault
+	SELECT 1 FROM vault
 	WHERE id = sync_entry.vault_id
-	  AND sync_entry.local_path LIKE vault.workspace_root || '/%'
 );
 --> statement-breakpoint
-UPDATE sync_exclusion_event
-SET local_path = substr(
-	local_path,
-	length((SELECT workspace_root FROM vault WHERE id = sync_exclusion_event.vault_id)) + 2
-)
+CREATE VIEW `sync_exclusion_event_abs_path` AS
+SELECT
+	id,
+	vault_id,
+	substr(
+		(SELECT workspace_root FROM vault WHERE id = sync_exclusion_event.vault_id) || '/' || local_path,
+		length((SELECT workspace_root FROM vault WHERE id = sync_exclusion_event.vault_id)) + 2
+	) AS `rel_path`
+FROM `sync_exclusion_event`
 WHERE EXISTS (
-	SELECT 1
-	FROM vault
+	SELECT 1 FROM vault
 	WHERE id = sync_exclusion_event.vault_id
-	  AND sync_exclusion_event.local_path LIKE vault.workspace_root || '/%'
 );
