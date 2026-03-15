@@ -1,4 +1,5 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 use crate::types::{SyncEntryRecord, SyncExclusionEventRecord, SyncVaultState};
 
@@ -35,7 +36,7 @@ pub struct RecordSyncConflictInput {
     pub remote_commit_id: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RecordSyncExclusionEventInput {
     pub local_path: String,
     pub reason: String,

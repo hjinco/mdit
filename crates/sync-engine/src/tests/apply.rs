@@ -105,6 +105,14 @@ fn apply_remote_workspace_writes_files_and_updates_sync_state() {
     assert_eq!(applied.files_applied, 1);
     assert_eq!(applied.entries_deleted, 0);
     assert_eq!(
+        applied.mutated_rel_paths,
+        vec![
+            "notes".to_string(),
+            "notes/note.md".to_string(),
+            "stale.md".to_string(),
+        ]
+    );
+    assert_eq!(
         applied.sync_vault_state.remote_vault_id.as_deref(),
         Some("remote-vault-1")
     );

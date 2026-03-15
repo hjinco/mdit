@@ -146,8 +146,7 @@ mod tests {
     use base64::Engine;
 
     use super::{
-        ensure_decrypted_file_matches_content_hash, ensure_remote_blob_envelope,
-        RemoteBlobEnvelope,
+        ensure_decrypted_file_matches_content_hash, ensure_remote_blob_envelope, RemoteBlobEnvelope,
     };
     use crate::SyncClientError;
 

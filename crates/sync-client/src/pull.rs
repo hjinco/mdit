@@ -75,6 +75,7 @@ where
             exclusion_events: None,
             manifest: None,
             head_commit_id: None,
+            mutated_rel_paths: None,
             files_applied: None,
             entries_deleted: None,
         });
@@ -97,6 +98,7 @@ where
             exclusion_events: None,
             manifest: None,
             head_commit_id: head.current_head_commit_id,
+            mutated_rel_paths: None,
             files_applied: Some(0),
             entries_deleted: Some(0),
         });
@@ -244,6 +246,7 @@ where
         exclusion_events: Some(applied.exclusion_events),
         manifest: Some(applied.manifest),
         head_commit_id: Some(head_commit_id),
+        mutated_rel_paths: Some(applied.mutated_rel_paths),
         files_applied: Some(applied.files_applied),
         entries_deleted: Some(applied.entries_deleted),
     })

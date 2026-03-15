@@ -1,4 +1,5 @@
 mod config;
+mod continuous;
 mod db;
 mod error;
 mod progress;
@@ -7,6 +8,11 @@ mod store;
 mod sync;
 
 pub use config::{SyncIdentityConfig, SyncPathsConfig, SyncRuntimeConfig, SyncServerConfig};
+pub use continuous::{
+    start_continuous_sync_session, ContinuousSyncConfig, ContinuousSyncHandle,
+    ContinuousSyncPauseReason, ContinuousSyncStatus, ContinuousSyncStatusEvent,
+    ContinuousSyncStatusSink, ContinuousSyncTrigger,
+};
 pub use db::bootstrap_db;
 pub use error::SyncRuntimeError;
 pub use progress::{JsonLineProgressSink, StderrProgressSink};

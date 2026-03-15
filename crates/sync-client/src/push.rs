@@ -10,8 +10,8 @@ use crate::{
     helpers::{build_remote_context, emit_progress, now_unix_ms},
     traits::{SyncProgressSink, SyncRemoteClient},
     types::{
-        CreateRemoteCommitInput, PushWorkspaceInput, PushWorkspaceResult, SyncDirection, SyncPhase,
-        UploadRemoteBlobInput,
+        CreateRemoteCommitInput, PushWorkspaceInput, PushWorkspaceOutcome, PushWorkspaceResult,
+        SyncDirection, SyncPhase, UploadRemoteBlobInput,
     },
 };
 
@@ -65,6 +65,38 @@ where
     })
     .await
     .map_err(|error| SyncClientError::local(error.to_string()))??;
+
+    if !prepared.delta.has_changes && prepared.sync_vault_state.last_synced_commit_id.is_some() {
+        let store_for_no_changes = store.clone();
+        let (entries, exclusion_events) = task::spawn_blocking(move || {
+            Ok::<_, anyhow::Error>((
+                store_for_no_changes.list_sync_entries()?,
+                store_for_no_changes.list_sync_exclusion_events(1_000)?,
+            ))
+        })
+        .await
+        .map_err(|error| SyncClientError::local(error.to_string()))??;
+
+        emit_progress(
+            progress_sink,
+            input.session_id,
+            &input.workspace_root,
+            SyncDirection::Push,
+            SyncPhase::Finished,
+            Some(0),
+            Some(0),
+        )?;
+
+        return Ok(PushWorkspaceResult {
+            outcome: PushWorkspaceOutcome::NoChanges,
+            sync_vault_state: prepared.sync_vault_state,
+            entries,
+            exclusion_events,
+            manifest: prepared.manifest,
+            commit: None,
+            uploaded_blob_count: 0,
+        });
+    }
 
     remote
         .create_vault(
@@ -196,11 +228,12 @@ where
     )?;
 
     Ok(PushWorkspaceResult {
+        outcome: PushWorkspaceOutcome::Applied,
         sync_vault_state,
         entries,
         exclusion_events,
         manifest: prepared.manifest,
-        commit,
+        commit: Some(commit),
         uploaded_blob_count: total_uploads,
     })
 }

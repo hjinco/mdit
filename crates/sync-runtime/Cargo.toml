@@ -9,3 +9,8 @@ app-storage = { path = "../app-storage" }
 serde_json = "1"
 sync-client = { path = "../sync-client" }
 sync-engine = { path = "../sync-engine" }
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+
+[dev-dependencies]
+async-trait = "0.1"
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "sync", "time", "test-util"] }

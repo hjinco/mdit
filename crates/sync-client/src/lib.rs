@@ -14,7 +14,7 @@ pub use push::push_workspace;
 pub use traits::{NoopProgressSink, SyncProgressSink, SyncRemoteClient};
 pub use types::{
     CreateRemoteCommitInput, CreateRemoteCommitResult, CreateRemoteVaultResult, PullWorkspaceInput,
-    PullWorkspaceOutcome, PullWorkspaceResult, PushWorkspaceInput, PushWorkspaceResult,
-    RemoteBlobEnvelope, RemoteCommitRecord, RemoteContext, SyncDirection, SyncPhase,
-    SyncProgressEvent, SyncRemoteHead, UploadRemoteBlobInput, UploadRemoteBlobResult,
+    PullWorkspaceOutcome, PullWorkspaceResult, PushWorkspaceInput, PushWorkspaceOutcome,
+    PushWorkspaceResult, RemoteBlobEnvelope, RemoteCommitRecord, RemoteContext, SyncDirection,
+    SyncPhase, SyncProgressEvent, SyncRemoteHead, UploadRemoteBlobInput, UploadRemoteBlobResult,
 };

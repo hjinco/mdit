@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{BTreeSet, HashSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -14,11 +14,16 @@ use super::{
     validator::ApplyPlan,
 };
 
+#[derive(Debug, Default)]
+pub(crate) struct MaterializeWorkspaceResult {
+    pub(crate) mutated_paths: BTreeSet<PathBuf>,
+}
+
 pub(crate) fn materialize_workspace(
     workspace_root: &Path,
     plan: &ApplyPlan,
     decisions: &ApplyDecisions,
-) -> Result<()> {
+) -> Result<MaterializeWorkspaceResult> {
     let mut target_paths = plan
         .manifest_paths
         .values()
@@ -29,12 +34,13 @@ pub(crate) fn materialize_workspace(
         target_paths.insert(retained.path.clone());
     }
     protect_ancestor_directories(workspace_root, &mut target_paths);
-    delete_stale_workspace_entries(workspace_root, &target_paths)?;
+    let mut mutated_paths = BTreeSet::new();
+    delete_stale_workspace_entries(workspace_root, &target_paths, &mut mutated_paths)?;
 
     for entry in &plan.manifest.entries {
         if let LocalSyncManifestEntry::Dir { entry_id, .. } = entry {
             let absolute_path = plan.absolute_path(workspace_root, entry_id, ENTRY_KIND_DIR)?;
-            ensure_directory_path(&absolute_path)?;
+            ensure_directory_path(&absolute_path, &mut mutated_paths)?;
         }
     }
 
@@ -53,14 +59,16 @@ pub(crate) fn materialize_workspace(
                 let plaintext = base64::engine::general_purpose::STANDARD
                     .decode(&payload.plaintext_base64)
                     .context("Failed to decode decrypted file payload")?;
-                write_file_bytes(&outcome.path, &plaintext)?;
+                write_file_bytes(&outcome.path, &plaintext, &mut mutated_paths)?;
             }
-            FileApplyAction::WriteBytes(bytes) => write_file_bytes(&outcome.path, bytes)?,
+            FileApplyAction::WriteBytes(bytes) => {
+                write_file_bytes(&outcome.path, bytes, &mut mutated_paths)?
+            }
             FileApplyAction::KeepLocal => {}
         }
     }
 
-    Ok(())
+    Ok(MaterializeWorkspaceResult { mutated_paths })
 }
 
 fn protect_ancestor_directories(workspace_root: &Path, target_paths: &mut HashSet<PathBuf>) {
@@ -81,6 +89,7 @@ fn protect_ancestor_directories(workspace_root: &Path, target_paths: &mut HashSe
 fn delete_stale_workspace_entries(
     workspace_root: &Path,
     target_paths: &HashSet<PathBuf>,
+    mutated_paths: &mut BTreeSet<PathBuf>,
 ) -> Result<()> {
     let mut existing_paths = collect_workspace_sync_paths(workspace_root)?;
     existing_paths.sort_by(|left, right| {
@@ -113,10 +122,12 @@ fn delete_stale_workspace_entries(
                     path.display()
                 )
             })?;
+            mutated_paths.insert(path.clone());
         } else {
             fs::remove_file(&path).with_context(|| {
                 format!("Failed to remove stale workspace file {}", path.display())
             })?;
+            mutated_paths.insert(path.clone());
         }
     }
 
@@ -147,7 +158,8 @@ fn collect_workspace_sync_paths(current: &Path) -> Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
-fn ensure_directory_path(path: &Path) -> Result<()> {
+fn ensure_directory_path(path: &Path, mutated_paths: &mut BTreeSet<PathBuf>) -> Result<()> {
+    let mut did_mutate = false;
     if let Ok(metadata) = fs::symlink_metadata(path) {
         if metadata.file_type().is_symlink() {
             return Err(anyhow::anyhow!(
@@ -159,17 +171,30 @@ fn ensure_directory_path(path: &Path) -> Result<()> {
             fs::remove_file(path).with_context(|| {
                 format!("Failed to replace file with directory {}", path.display())
             })?;
+            did_mutate = true;
         }
+    } else {
+        did_mutate = true;
     }
 
     fs::create_dir_all(path)
-        .with_context(|| format!("Failed to create synced directory {}", path.display()))
+        .with_context(|| format!("Failed to create synced directory {}", path.display()))?;
+    if did_mutate {
+        mutated_paths.insert(path.to_path_buf());
+    }
+    Ok(())
 }
 
-fn write_file_bytes(path: &Path, bytes: &[u8]) -> Result<()> {
+fn write_file_bytes(
+    path: &Path,
+    bytes: &[u8],
+    mutated_paths: &mut BTreeSet<PathBuf>,
+) -> Result<()> {
     if let Some(parent) = path.parent() {
+        let created_parents = collect_missing_parent_directories(parent);
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create parent directory for {}", path.display()))?;
+        mutated_paths.extend(created_parents);
     }
 
     if let Ok(metadata) = fs::symlink_metadata(path) {
@@ -187,5 +212,23 @@ fn write_file_bytes(path: &Path, bytes: &[u8]) -> Result<()> {
     }
 
     fs::write(path, bytes)
-        .with_context(|| format!("Failed to write synced file {}", path.display()))
+        .with_context(|| format!("Failed to write synced file {}", path.display()))?;
+    mutated_paths.insert(path.to_path_buf());
+    Ok(())
+}
+
+fn collect_missing_parent_directories(path: &Path) -> Vec<PathBuf> {
+    let mut created = Vec::new();
+    let mut current = Some(path);
+
+    while let Some(candidate) = current {
+        if candidate.exists() {
+            break;
+        }
+        created.push(candidate.to_path_buf());
+        current = candidate.parent();
+    }
+
+    created.reverse();
+    created
 }

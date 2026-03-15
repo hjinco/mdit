@@ -161,12 +161,20 @@ pub enum SyncPhase {
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PushWorkspaceResult {
+    pub outcome: PushWorkspaceOutcome,
     pub sync_vault_state: SyncVaultState,
     pub entries: Vec<SyncEntryRecord>,
     pub exclusion_events: Vec<SyncExclusionEventRecord>,
     pub manifest: LocalSyncManifest,
-    pub commit: CreateRemoteCommitResult,
+    pub commit: Option<CreateRemoteCommitResult>,
     pub uploaded_blob_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum PushWorkspaceOutcome {
+    Applied,
+    NoChanges,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -178,6 +186,7 @@ pub struct PullWorkspaceResult {
     pub exclusion_events: Option<Vec<SyncExclusionEventRecord>>,
     pub manifest: Option<LocalSyncManifest>,
     pub head_commit_id: Option<String>,
+    pub mutated_rel_paths: Option<Vec<String>>,
     pub files_applied: Option<usize>,
     pub entries_deleted: Option<usize>,
 }

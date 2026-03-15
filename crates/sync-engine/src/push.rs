@@ -79,9 +79,9 @@ pub fn finalize_push_workspace(
             last_scan_at: prepared.sync_vault_state.last_scan_at.clone(),
         }),
         upsert_entries,
-        deleted_entry_ids: Vec::new(),
+        deleted_entry_ids: prepared.deleted_entry_ids.clone(),
         conflicts: Vec::new(),
-        replace_exclusion_events: None,
+        replace_exclusion_events: Some(prepared.exclusion_events.clone()),
         exclusion_events_limit: 100,
     })?;
     let sync_vault_state = persisted.sync_vault_state.ok_or_else(|| {
