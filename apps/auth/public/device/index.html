@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Mdit Device Authorization</title>
+		<style>
+			:root {
+				color-scheme: light;
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background: #fff;
+				color: #111;
+				font-family: "Times New Roman", Times, serif;
+			}
+
+			main {
+				width: min(100%, 32rem);
+				margin: 0 auto;
+				padding: 4rem 1.5rem;
+			}
+
+			section {
+				border: 1px solid #111;
+				padding: 1.5rem;
+				background: #fff;
+			}
+
+			h1 {
+				margin: 0 0 0.5rem;
+				font-size: 1.5rem;
+				font-weight: 400;
+			}
+
+			p {
+				margin: 0;
+				line-height: 1.6;
+			}
+
+			form {
+				margin-top: 1.5rem;
+			}
+
+			label {
+				display: block;
+				margin-top: 1rem;
+				font-size: 0.95rem;
+			}
+
+			input {
+				width: 100%;
+				margin-top: 0.35rem;
+				padding: 0.75rem;
+				border: 1px solid #111;
+				border-radius: 0;
+				background: #fff;
+				color: #111;
+				font: inherit;
+			}
+
+			button {
+				margin-top: 1.25rem;
+				padding: 0.75rem 1rem;
+				border: 1px solid #111;
+				border-radius: 0;
+				background: #fff;
+				color: #111;
+				font: inherit;
+				cursor: pointer;
+			}
+
+			button[disabled] {
+				cursor: default;
+			}
+
+			.actions {
+				display: flex;
+				gap: 0.75rem;
+				flex-wrap: wrap;
+			}
+
+			.status {
+				margin-top: 1rem;
+				min-height: 1.5rem;
+				white-space: pre-wrap;
+			}
+
+			.muted {
+				margin-top: 1rem;
+				font-size: 0.9rem;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<section>
+				<h1>Authorize Headless Sync</h1>
+				<p>
+					Enter the code shown in your terminal. If you are not signed in yet, you can
+					sign in here with your Mdit account first.
+				</p>
+				<form>
+					<label>
+						Device code
+						<input name="userCode" autocomplete="one-time-code" placeholder="ABCD-EFGH" required />
+					</label>
+					<label>
+						Email
+						<input name="email" type="email" autocomplete="email" placeholder="you@example.com" />
+					</label>
+					<label>
+						Password
+						<input
+							name="password"
+							type="password"
+							autocomplete="current-password"
+							placeholder="Password"
+						/>
+					</label>
+					<div class="actions">
+						<button type="submit" data-approve>Approve CLI Access</button>
+						<button type="button" data-deny>Decline</button>
+					</div>
+				</form>
+				<p class="muted">
+					Leave email and password blank if this browser already has an active session.
+				</p>
+				<div class="status" data-status>Waiting for approval.</div>
+			</section>
+		</main>
+
+		<script>
+			const form = document.querySelector("form")
+			const status = document.querySelector("[data-status]")
+			const approveButton = form.querySelector("[data-approve]")
+			const denyButton = form.querySelector("[data-deny]")
+			const codeInput = form.querySelector('input[name="userCode"]')
+			const emailInput = form.querySelector('input[name="email"]')
+			const passwordInput = form.querySelector('input[name="password"]')
+
+			const codeFromQuery = new URLSearchParams(window.location.search).get("user_code")
+			if (codeFromQuery && !codeInput.value) {
+				codeInput.value = codeFromQuery
+			}
+
+			function setStatus(message, isError = false) {
+				status.textContent = message
+				status.style.background = isError
+					? "rgba(180, 45, 69, 0.12)"
+					: "rgba(25, 100, 126, 0.08)"
+			}
+
+			async function readError(response) {
+				const data = await response.json().catch(() => null)
+				if (data && typeof data.error_description === "string") {
+					return data.error_description
+				}
+				if (data && typeof data.error === "string") {
+					return data.error
+				}
+				if (data && typeof data.code === "string") {
+					return data.code
+				}
+				return "REQUEST_FAILED"
+			}
+
+			async function ensureSignedIn() {
+				if (!(emailInput.value || passwordInput.value)) {
+					return
+				}
+
+				if (!emailInput.value || !passwordInput.value) {
+					throw new Error("EMAIL_AND_PASSWORD_REQUIRED")
+				}
+
+				const signInResponse = await fetch("/api/sign-in/email", {
+					method: "POST",
+					credentials: "include",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						email: emailInput.value,
+						password: passwordInput.value,
+					}),
+				})
+
+				if (!signInResponse.ok) {
+					throw new Error(await readError(signInResponse))
+				}
+			}
+
+			async function submitDecision(path, progressMessage, successMessage) {
+				approveButton.disabled = true
+				denyButton.disabled = true
+				setStatus(progressMessage)
+
+				try {
+					await ensureSignedIn()
+
+					const decisionResponse = await fetch(path, {
+						method: "POST",
+						credentials: "include",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({
+							userCode: codeInput.value,
+						}),
+					})
+
+					if (!decisionResponse.ok) {
+						throw new Error(await readError(decisionResponse))
+					}
+
+					setStatus(successMessage)
+					passwordInput.value = ""
+				} catch (error) {
+					setStatus(
+						error instanceof Error
+							? error.message
+							: "Failed to authorize this device code.",
+						true,
+					)
+				} finally {
+					approveButton.disabled = false
+					denyButton.disabled = false
+				}
+			}
+
+			form.addEventListener("submit", async (event) => {
+				event.preventDefault()
+				await submitDecision(
+					"/api/device/approve",
+					"Authorizing this CLI request...",
+					"CLI authorization approved. You can return to the terminal.",
+				)
+			})
+
+			denyButton.addEventListener("click", async () => {
+				await submitDecision(
+					"/api/device/deny",
+					"Denying this CLI request...",
+					"CLI authorization denied.",
+				)
+			})
+		</script>
+	</body>
+</html>

@@ -10,7 +10,7 @@ type SessionLookupResult = {
 	}
 } | null
 
-type AuthSessionReader = {
+export type AuthSessionReader = {
 	api: {
 		getSession(input: {
 			headers: Headers

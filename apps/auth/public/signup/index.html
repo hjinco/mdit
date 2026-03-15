@@ -234,7 +234,7 @@
 				submitButton.textContent = "Creating..."
 
 				try {
-					const response = await fetch("/api/auth/sign-up/email", {
+					const response = await fetch("/api/sign-up/email", {
 						method: "POST",
 						headers: {
 							"content-type": "application/json",
@@ -280,7 +280,7 @@
 				setVerificationStatus("")
 
 				try {
-					const response = await fetch("/api/auth/send-verification-email", {
+					const response = await fetch("/api/send-verification-email", {
 						method: "POST",
 						headers: {
 							"content-type": "application/json",

@@ -8,4 +8,9 @@ name = "mdit-sync"
 path = "src/main.rs"
 
 [dependencies]
-mdit-sync-runtime = { package = "sync-runtime", path = "../../crates/sync-runtime" }
+dirs = "6"
+keyring = "3.6.3"
+reqwest = { version = "0.13.2", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.9.8"
