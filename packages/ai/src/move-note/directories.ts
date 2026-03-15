@@ -70,19 +70,3 @@ export function collectMoveDirectoryCatalogEntries(params: {
 			return left.displayPath.localeCompare(right.displayPath)
 		})
 }
-
-export function resolveMoveDirectoryPath(params: {
-	workspacePath: string
-	candidateDirectories: string[]
-	destinationDir: string
-}) {
-	const normalizedDestinationDir = normalizeMoveDirectoryPath(
-		params.destinationDir,
-	)
-
-	return collectMoveDirectoryCatalogEntries({
-		workspacePath: params.workspacePath,
-		candidateDirectories: params.candidateDirectories,
-	}).find((entry) => entry.displayPath === normalizedDestinationDir)
-		?.absolutePath
-}

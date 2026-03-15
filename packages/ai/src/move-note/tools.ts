@@ -3,7 +3,7 @@ import { dirname } from "pathe"
 import { MAX_MOVE_NOTE_CONTEXT_LENGTH } from "./constants"
 import {
 	collectMoveDirectoryCatalogEntries,
-	resolveMoveDirectoryPath,
+	normalizeMoveDirectoryPath,
 } from "./directories"
 import { type InternalOperationState, toPublicOperation } from "./operations"
 import type {
@@ -29,6 +29,13 @@ export function createMoveNoteTools(params: {
 		entryPathSet,
 		operationByPath,
 	} = params
+	const directoryCatalog = collectMoveDirectoryCatalogEntries({
+		workspacePath,
+		candidateDirectories,
+	})
+	const absolutePathByDisplayPath = new Map(
+		directoryCatalog.map((entry) => [entry.displayPath, entry.absolutePath]),
+	)
 
 	return {
 		list_targets: tool({
@@ -55,10 +62,7 @@ export function createMoveNoteTools(params: {
 				additionalProperties: false,
 			}),
 			execute: async () => ({
-				directories: collectMoveDirectoryCatalogEntries({
-					workspacePath,
-					candidateDirectories,
-				}).map((entry) => entry.displayPath),
+				directories: directoryCatalog.map((entry) => entry.displayPath),
 			}),
 		}),
 		read_note: tool({
@@ -120,11 +124,11 @@ export function createMoveNoteTools(params: {
 					throw new Error("move_note sourcePath is not in target list.")
 				}
 
-				const destinationDirPath = resolveMoveDirectoryPath({
-					workspacePath,
-					candidateDirectories,
-					destinationDir,
-				})
+				const normalizedDestinationDir =
+					normalizeMoveDirectoryPath(destinationDir)
+				const destinationDirPath = absolutePathByDisplayPath.get(
+					normalizedDestinationDir,
+				)
 
 				if (!destinationDirPath) {
 					throw new Error(

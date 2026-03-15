@@ -1,37 +1,27 @@
 import { describe, expect, it } from "vitest"
 import {
+	collectMoveDirectoryCatalogEntries,
 	formatMoveDirectoryPath,
-	resolveMoveDirectoryPath,
+	normalizeMoveDirectoryPath,
 } from "./directories"
 
 describe("move-note directories", () => {
-	it("preserves Windows drive roots when formatting and resolving paths", () => {
+	it("preserves Windows drive roots when formatting catalog entries", () => {
 		expect(formatMoveDirectoryPath("C:\\", "C:\\projects")).toBe("projects")
 
 		expect(
-			resolveMoveDirectoryPath({
+			collectMoveDirectoryCatalogEntries({
 				workspacePath: "C:\\",
 				candidateDirectories: ["C:\\", "C:\\projects"],
-				destinationDir: "projects",
 			}),
-		).toBe("C:\\projects")
+		).toEqual([
+			{ displayPath: ".", absolutePath: "C:\\" },
+			{ displayPath: "projects", absolutePath: "C:\\projects" },
+		])
 	})
 
 	it("normalizes current-directory prefixes in relative destination inputs", () => {
-		expect(
-			resolveMoveDirectoryPath({
-				workspacePath: "/ws",
-				candidateDirectories: ["/ws", "/ws/projects"],
-				destinationDir: "./projects",
-			}),
-		).toBe("/ws/projects")
-
-		expect(
-			resolveMoveDirectoryPath({
-				workspacePath: "/ws",
-				candidateDirectories: ["/ws", "/ws/projects"],
-				destinationDir: "./",
-			}),
-		).toBe("/ws")
+		expect(normalizeMoveDirectoryPath("./projects")).toBe("projects")
+		expect(normalizeMoveDirectoryPath("./")).toBe(".")
 	})
 })
