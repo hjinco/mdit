@@ -5,6 +5,12 @@ import { sanitizeFilename } from "@/utils/path-utils"
 
 const firstBlockTextByEditor = new WeakMap<object, string | null>()
 
+type TabNameSyncStoreState = {
+	workspacePath: string | null
+	tab: { path: string } | null
+	linkedTab: { path: string; name: string } | null
+}
+
 /**
  * Extract text content from a Slate node by traversing its children
  */
@@ -73,11 +79,7 @@ export function shouldSyncLinkedTabName(editor: any): string | null {
 
 export function getNextLinkedTabName(
 	editor: any,
-	storeState: {
-		workspacePath: string | null
-		tab: { path: string } | null
-		linkedTab: { path: string; name: string } | null
-	},
+	storeState: TabNameSyncStoreState,
 ) {
 	if (!storeState.workspacePath) {
 		return null
@@ -100,10 +102,7 @@ export function getNextLinkedTabName(
 
 export function syncLinkedTabName(
 	editor: any,
-	storeState: {
-		workspacePath: string | null
-		tab: { path: string } | null
-		linkedTab: { path: string; name: string } | null
+	storeState: TabNameSyncStoreState & {
 		updateLinkedName: (name: string) => void
 	},
 ) {
