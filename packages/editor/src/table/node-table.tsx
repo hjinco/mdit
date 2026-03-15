@@ -86,7 +86,7 @@ export const TableElement = withHOC(
 					</table>
 
 					{isSelectingTable && (
-						<div className={blockSelectionVariants()} contentEditable={false} />
+						<div className={blockSelectionVariants} contentEditable={false} />
 					)}
 				</div>
 			</PlateElement>
@@ -380,7 +380,7 @@ export function TableCellElement({
 			)}
 
 			{isSelectingRow && (
-				<div className={blockSelectionVariants()} contentEditable={false} />
+				<div className={blockSelectionVariants} contentEditable={false} />
 			)}
 		</PlateElement>
 	)
