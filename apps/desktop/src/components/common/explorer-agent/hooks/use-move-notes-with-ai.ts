@@ -57,7 +57,9 @@ function collectCandidateDirectories(
 	}
 
 	traverse(entries)
-	return Array.from(directoryMap.values())
+	return Array.from(directoryMap.values()).sort((left, right) =>
+		normalizePathSeparators(left).localeCompare(normalizePathSeparators(right)),
+	)
 }
 
 function isMarkdownEntry(entry: WorkspaceEntry) {

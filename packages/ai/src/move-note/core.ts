@@ -70,14 +70,13 @@ export const createMoveNoteWithAICore = ({
 			}
 
 			const entryPathSet = new Set(entriesToProcess.map((entry) => entry.path))
-			const candidateDirectorySet = new Set(candidateDirectories)
 			const operationByPath = createOperationByPath(entriesToProcess)
 			const tools = createMoveNoteTools({
 				fileSystem,
+				workspacePath,
 				entriesToProcess,
 				candidateDirectories,
 				entryPathSet,
-				candidateDirectorySet,
 				operationByPath,
 			})
 
