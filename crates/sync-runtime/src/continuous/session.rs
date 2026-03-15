@@ -374,7 +374,8 @@ where
 }
 
 fn normalize_rel_path(path: String) -> String {
-    path.replace('\\', "/")
+    path.trim()
+        .replace('\\', "/")
         .trim_start_matches("./")
         .trim_end_matches('/')
         .to_string()

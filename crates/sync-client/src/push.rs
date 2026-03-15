@@ -15,6 +15,8 @@ use crate::{
     },
 };
 
+const NO_CHANGES_EXCLUSION_EVENTS_LIMIT: usize = 1_000;
+
 pub async fn push_workspace<S>(
     input: PushWorkspaceInput,
     store: S,
@@ -71,7 +73,8 @@ where
         let (entries, exclusion_events) = task::spawn_blocking(move || {
             Ok::<_, anyhow::Error>((
                 store_for_no_changes.list_sync_entries()?,
-                store_for_no_changes.list_sync_exclusion_events(1_000)?,
+                store_for_no_changes
+                    .list_sync_exclusion_events(NO_CHANGES_EXCLUSION_EVENTS_LIMIT)?,
             ))
         })
         .await

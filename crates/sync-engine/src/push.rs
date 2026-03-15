@@ -12,6 +12,8 @@ use crate::types::{
     FinalizePushInput, FinalizePushResult, PreparedSyncWorkspaceResult, ScanOptions,
 };
 
+const FINALIZE_PUSH_EXCLUSION_EVENTS_LIMIT: usize = 100;
+
 pub fn prepare_push_workspace(
     workspace_root: &Path,
     store: &impl SyncWorkspaceStore,
@@ -82,7 +84,7 @@ pub fn finalize_push_workspace(
         deleted_entry_ids: prepared.deleted_entry_ids.clone(),
         conflicts: Vec::new(),
         replace_exclusion_events: Some(prepared.exclusion_events.clone()),
-        exclusion_events_limit: 100,
+        exclusion_events_limit: FINALIZE_PUSH_EXCLUSION_EVENTS_LIMIT,
     })?;
     let sync_vault_state = persisted.sync_vault_state.ok_or_else(|| {
         anyhow::anyhow!("Expected sync vault state after finalizing push persistence")

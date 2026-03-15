@@ -20,6 +20,8 @@ use super::{
     walker::{walk_workspace, WalkOutput},
 };
 
+const PERSIST_SNAPSHOT_EXCLUSION_EVENTS_LIMIT: usize = 1_000;
+
 pub fn scan_workspace(
     workspace_root: &Path,
     store: &impl SyncWorkspaceStore,
@@ -119,7 +121,7 @@ fn persist_local_workspace_snapshot(
         deleted_entry_ids: snapshot.deleted_entry_ids.clone(),
         conflicts: Vec::new(),
         replace_exclusion_events: Some(snapshot.exclusion_events),
-        exclusion_events_limit: 1_000,
+        exclusion_events_limit: PERSIST_SNAPSHOT_EXCLUSION_EVENTS_LIMIT,
     })?;
     let sync_vault_state = persisted
         .sync_vault_state
