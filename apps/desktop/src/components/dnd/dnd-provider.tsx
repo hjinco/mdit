@@ -12,8 +12,9 @@ import {
 import { handleEditorDrop } from "./editor-drop-handler"
 import { EditorDropLine } from "./editor-drop-indicator"
 import { isPoint } from "./editor-drop-indicator.helpers"
+import { EditorDropOwnershipProvider } from "./editor-drop-ownership"
 import { handleExplorerDrop } from "./explorer-drop-handler"
-import { useEditorDropIndicator } from "./use-editor-drop-indicator"
+import { useEditorDropState } from "./use-editor-drop-state"
 
 type DndProviderProps = {
 	children: React.ReactNode
@@ -50,10 +51,11 @@ export function DndProvider({ children }: DndProviderProps) {
 	)
 	const {
 		editorDropIndicator,
+		isPointerInEditor,
 		startDragging,
 		updateDragging,
 		completeDragging,
-	} = useEditorDropIndicator()
+	} = useEditorDropState()
 
 	const handleDragStart = useCallback(
 		(event: DragStartEvent) => {
@@ -77,7 +79,8 @@ export function DndProvider({ children }: DndProviderProps) {
 			const finalPoint = isPoint(rawEvent.operation.position.current)
 				? rawEvent.operation.position.current
 				: null
-			const syntheticTarget = completeDragging(finalPoint)
+			const { syntheticTarget, isPointerInEditor: wasPointerInEditor } =
+				completeDragging(finalPoint)
 
 			if (!isDndDragEndEvent(rawEvent)) {
 				return
@@ -98,6 +101,10 @@ export function DndProvider({ children }: DndProviderProps) {
 				return
 			}
 
+			if (wasPointerInEditor) {
+				return
+			}
+
 			await handleExplorerDrop({
 				event,
 				moveEntry,
@@ -115,19 +122,25 @@ export function DndProvider({ children }: DndProviderProps) {
 			onDragMove={handleDragMove}
 			onDragEnd={handleDragEnd}
 		>
-			{children}
-			{editorDropIndicator ? (
-				<EditorDropLine indicator={editorDropIndicator} />
-			) : null}
-			<DragOverlay>
-				{(source) => {
-					if (!source || !isEditorSourceData(source.data) || !source.element) {
-						return null
-					}
+			<EditorDropOwnershipProvider isPointerInEditor={isPointerInEditor}>
+				{children}
+				{editorDropIndicator ? (
+					<EditorDropLine indicator={editorDropIndicator} />
+				) : null}
+				<DragOverlay>
+					{(source) => {
+						if (
+							!source ||
+							!isEditorSourceData(source.data) ||
+							!source.element
+						) {
+							return null
+						}
 
-					return <EditorBlockDragOverlay sourceElement={source.element} />
-				}}
-			</DragOverlay>
+						return <EditorBlockDragOverlay sourceElement={source.element} />
+					}}
+				</DragOverlay>
+			</EditorDropOwnershipProvider>
 		</DragDropProvider>
 	)
 }

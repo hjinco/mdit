@@ -1,24 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
-	areEditorDropIndicatorsEqual,
-	computeEditorDropIndicator,
-	type EditorDropIndicator,
+	areEditorDropStatesEqual,
+	computeEditorDropState,
+	type EditorDropState,
+	EMPTY_EDITOR_DROP_STATE,
 	type Point,
 } from "./editor-drop-indicator.helpers"
 
-export function useEditorDropIndicator() {
-	const [editorDropIndicator, setEditorDropIndicator] =
-		useState<EditorDropIndicator | null>(null)
+export function useEditorDropState() {
+	const [editorDropState, setEditorDropState] = useState<EditorDropState>(
+		EMPTY_EDITOR_DROP_STATE,
+	)
 	const lastPointerRef = useRef<Point | null>(null)
 	const isDraggingRef = useRef(false)
 	const frameRef = useRef<number | null>(null)
 
-	const applyEditorDropIndicator = useCallback((point: Point | null) => {
-		const nextIndicator = point ? computeEditorDropIndicator(point) : null
-		setEditorDropIndicator((current) => {
-			return areEditorDropIndicatorsEqual(current, nextIndicator)
-				? current
-				: nextIndicator
+	const applyEditorDropState = useCallback((point: Point | null) => {
+		const nextState = point
+			? computeEditorDropState(point)
+			: EMPTY_EDITOR_DROP_STATE
+		setEditorDropState((current) => {
+			return areEditorDropStatesEqual(current, nextState) ? current : nextState
 		})
 	}, [])
 
@@ -29,7 +31,7 @@ export function useEditorDropIndicator() {
 		}
 	}, [])
 
-	const scheduleEditorDropIndicator = useCallback(
+	const scheduleEditorDropState = useCallback(
 		(point: Point | null) => {
 			lastPointerRef.current = point
 
@@ -39,16 +41,16 @@ export function useEditorDropIndicator() {
 
 			frameRef.current = window.requestAnimationFrame(() => {
 				frameRef.current = null
-				applyEditorDropIndicator(lastPointerRef.current)
+				applyEditorDropState(lastPointerRef.current)
 			})
 		},
-		[applyEditorDropIndicator],
+		[applyEditorDropState],
 	)
 
-	const resetEditorDropIndicator = useCallback(() => {
+	const resetEditorDropState = useCallback(() => {
 		cancelScheduledIndicatorUpdate()
 		lastPointerRef.current = null
-		setEditorDropIndicator(null)
+		setEditorDropState(EMPTY_EDITOR_DROP_STATE)
 	}, [cancelScheduledIndicatorUpdate])
 
 	useEffect(() => {
@@ -63,46 +65,51 @@ export function useEditorDropIndicator() {
 				return
 			}
 
-			scheduleEditorDropIndicator(lastPointerRef.current)
+			scheduleEditorDropState(lastPointerRef.current)
 		}
 
 		window.addEventListener("scroll", handleScroll, true)
 		return () => {
 			window.removeEventListener("scroll", handleScroll, true)
 		}
-	}, [scheduleEditorDropIndicator])
+	}, [scheduleEditorDropState])
 
 	const startDragging = useCallback(
 		(point: Point | null) => {
 			isDraggingRef.current = true
-			scheduleEditorDropIndicator(point)
+			scheduleEditorDropState(point)
 		},
-		[scheduleEditorDropIndicator],
+		[scheduleEditorDropState],
 	)
 
 	const updateDragging = useCallback(
 		(point: Point | null) => {
-			scheduleEditorDropIndicator(point)
+			scheduleEditorDropState(point)
 		},
-		[scheduleEditorDropIndicator],
+		[scheduleEditorDropState],
 	)
 
 	const completeDragging = useCallback(
 		(point: Point | null) => {
 			const finalPoint = point ?? lastPointerRef.current
 			cancelScheduledIndicatorUpdate()
-			const syntheticTarget = finalPoint
-				? (computeEditorDropIndicator(finalPoint)?.targetData ?? null)
-				: null
+			const finalState = finalPoint
+				? computeEditorDropState(finalPoint)
+				: EMPTY_EDITOR_DROP_STATE
+			const syntheticTarget = finalState.indicator?.targetData ?? null
 			isDraggingRef.current = false
-			resetEditorDropIndicator()
-			return syntheticTarget
+			resetEditorDropState()
+			return {
+				syntheticTarget,
+				isPointerInEditor: finalState.isPointerInEditor,
+			}
 		},
-		[cancelScheduledIndicatorUpdate, resetEditorDropIndicator],
+		[cancelScheduledIndicatorUpdate, resetEditorDropState],
 	)
 
 	return {
-		editorDropIndicator,
+		editorDropIndicator: editorDropState.indicator,
+		isPointerInEditor: editorDropState.isPointerInEditor,
 		startDragging,
 		updateDragging,
 		completeDragging,
