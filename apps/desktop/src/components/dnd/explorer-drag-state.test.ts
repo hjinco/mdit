@@ -8,7 +8,7 @@ describe("getDraggedExplorerPaths", () => {
 			new Set(["/notes/one.md"]),
 		)
 
-		expect(Array.from(draggedPaths)).toEqual(["/notes/two.md"])
+		expect(draggedPaths).toEqual(new Set(["/notes/two.md"]))
 	})
 
 	it("returns only the source path when dragging a singly selected entry", () => {
@@ -17,7 +17,7 @@ describe("getDraggedExplorerPaths", () => {
 			new Set(["/notes/one.md"]),
 		)
 
-		expect(Array.from(draggedPaths)).toEqual(["/notes/one.md"])
+		expect(draggedPaths).toEqual(new Set(["/notes/one.md"]))
 	})
 
 	it("returns the full selected set when dragging one item from a multi-selection", () => {
@@ -26,7 +26,7 @@ describe("getDraggedExplorerPaths", () => {
 			new Set(["/notes/one.md", "/notes/two.md"]),
 		)
 
-		expect(Array.from(draggedPaths)).toEqual(["/notes/one.md", "/notes/two.md"])
+		expect(draggedPaths).toEqual(new Set(["/notes/one.md", "/notes/two.md"]))
 	})
 
 	it("returns an empty set for non-file drag sources", () => {
@@ -35,6 +35,6 @@ describe("getDraggedExplorerPaths", () => {
 			new Set(["/notes/one.md", "/notes/two.md"]),
 		)
 
-		expect(Array.from(draggedPaths)).toEqual([])
+		expect(draggedPaths).toEqual(new Set())
 	})
 })
