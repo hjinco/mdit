@@ -1,10 +1,10 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
 import { useEditorRef } from "platejs/react"
 import type React from "react"
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useStore } from "@/store"
-import { isDndDragEndEvent } from "./dnd-types"
+import { isDndDragEndEvent, isFileEntryDragData } from "./dnd-types"
 import {
 	EditorBlockDragOverlay,
 	isEditorSourceData,
@@ -13,6 +13,12 @@ import { handleEditorDrop } from "./editor-drop-handler"
 import { EditorDropLine } from "./editor-drop-indicator"
 import { isPoint } from "./editor-drop-indicator.helpers"
 import { EditorDropOwnershipProvider } from "./editor-drop-ownership"
+import { ExplorerDragOverlay } from "./explorer-drag-overlay"
+import {
+	EMPTY_DRAGGED_EXPLORER_PATHS,
+	ExplorerDragPathsProvider,
+	getDraggedExplorerPaths,
+} from "./explorer-drag-state"
 import { handleExplorerDrop } from "./explorer-drop-handler"
 import { useEditorDropState } from "./use-editor-drop-state"
 
@@ -32,6 +38,11 @@ type DragEndEvent = Parameters<
 	NonNullable<React.ComponentProps<typeof DragDropProvider>["onDragEnd"]>
 >[0]
 
+type DragOverlaySource = {
+	data?: unknown
+	element?: Element | null
+} | null
+
 const DND_SENSORS = [
 	PointerSensor.configure({
 		activationConstraints: {
@@ -40,8 +51,32 @@ const DND_SENSORS = [
 	}),
 ]
 
+function renderDragOverlay(source: DragOverlaySource) {
+	if (!source) {
+		return null
+	}
+
+	if (isFileEntryDragData(source.data) && source.data.name) {
+		return (
+			<ExplorerDragOverlay
+				name={source.data.name}
+				isDirectory={Boolean(source.data.isDirectory)}
+			/>
+		)
+	}
+
+	if (isEditorSourceData(source.data) && source.element) {
+		return <EditorBlockDragOverlay sourceElement={source.element} />
+	}
+
+	return null
+}
+
 export function DndProvider({ children }: DndProviderProps) {
 	const editor = useEditorRef()
+	const [draggedExplorerPaths, setDraggedExplorerPaths] = useState<
+		ReadonlySet<string>
+	>(EMPTY_DRAGGED_EXPLORER_PATHS)
 	const { moveEntry, selectedEntryPaths, resetSelection } = useStore(
 		useShallow((state) => ({
 			moveEntry: state.moveEntry,
@@ -59,12 +94,19 @@ export function DndProvider({ children }: DndProviderProps) {
 
 	const handleDragStart = useCallback(
 		(event: DragStartEvent) => {
+			setDraggedExplorerPaths(
+				getDraggedExplorerPaths(
+					event.operation.source?.data,
+					selectedEntryPaths,
+				),
+			)
+
 			const point = isPoint(event.operation.position.current)
 				? event.operation.position.current
 				: null
 			startDragging(point)
 		},
-		[startDragging],
+		[selectedEntryPaths, startDragging],
 	)
 
 	const handleDragMove = useCallback(
@@ -76,6 +118,8 @@ export function DndProvider({ children }: DndProviderProps) {
 
 	const handleDragEnd = useCallback(
 		async (rawEvent: DragEndEvent) => {
+			setDraggedExplorerPaths(EMPTY_DRAGGED_EXPLORER_PATHS)
+
 			const finalPoint = isPoint(rawEvent.operation.position.current)
 				? rawEvent.operation.position.current
 				: null
@@ -123,23 +167,13 @@ export function DndProvider({ children }: DndProviderProps) {
 			onDragEnd={handleDragEnd}
 		>
 			<EditorDropOwnershipProvider isPointerInEditor={isPointerInEditor}>
-				{children}
-				{editorDropIndicator ? (
-					<EditorDropLine indicator={editorDropIndicator} />
-				) : null}
-				<DragOverlay>
-					{(source) => {
-						if (
-							!source ||
-							!isEditorSourceData(source.data) ||
-							!source.element
-						) {
-							return null
-						}
-
-						return <EditorBlockDragOverlay sourceElement={source.element} />
-					}}
-				</DragOverlay>
+				<ExplorerDragPathsProvider draggedExplorerPaths={draggedExplorerPaths}>
+					{children}
+					{editorDropIndicator ? (
+						<EditorDropLine indicator={editorDropIndicator} />
+					) : null}
+					<DragOverlay>{renderDragOverlay}</DragOverlay>
+				</ExplorerDragPathsProvider>
 			</EditorDropOwnershipProvider>
 		</DragDropProvider>
 	)

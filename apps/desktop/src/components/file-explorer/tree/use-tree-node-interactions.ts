@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/react"
 import type { FileTreeRenderNode } from "@mdit/file-tree"
 import { useCallback } from "react"
+import { useDraggedExplorerPaths } from "@/components/dnd/explorer-drag-state"
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 type UseTreeNodeInteractionsParams = {
@@ -22,8 +23,9 @@ export function useTreeNodeInteractions({
 	const isLocked = node.isLocked
 	const isBusy = isRenaming || isLocked
 	const isSelected = node.isSelected
+	const draggedExplorerPaths = useDraggedExplorerPaths()
 
-	const { ref: draggableRef, isDragging } = useDraggable({
+	const { ref: draggableRef, isDragging: isSourceDragging } = useDraggable({
 		id: entry.path,
 		data: {
 			path: entry.path,
@@ -32,6 +34,7 @@ export function useTreeNodeInteractions({
 		},
 		disabled: isBusy,
 	})
+	const isDragging = isSourceDragging || draggedExplorerPaths.has(entry.path)
 
 	const setDraggableRef = useCallback(
 		(node: HTMLButtonElement | null) => {
