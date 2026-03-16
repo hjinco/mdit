@@ -52,4 +52,14 @@ describe("getEntryButtonClassName", () => {
 
 		expect(className).not.toContain("animate-pulse")
 	})
+
+	it("makes dragged rows nearly transparent while dragging", () => {
+		const className = getEntryButtonClassName({
+			isDragging: true,
+		})
+
+		expect(className).toContain("opacity-10")
+		expect(className).toContain("cursor-grabbing")
+		expect(className).not.toContain("opacity-50")
+	})
 })
