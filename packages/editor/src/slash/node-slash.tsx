@@ -436,7 +436,7 @@ export const createSlashInputElement = (
 					}}
 				>
 					<InlineComboboxInput
-						containerClassName="inline-flex items-center rounded-md bg-muted px-1 py-0.5 -ml-1 -mt-0.5"
+						containerClassName="inline-flex items-center rounded-md bg-muted px-1 -ml-1 -mt-0.5"
 						className="placeholder:text-muted-foreground"
 						placeholder="Type to search"
 					/>
