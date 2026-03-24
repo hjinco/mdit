@@ -15,6 +15,7 @@
 		"./markdown": "./src/markdown/index.ts",
 		"./math": "./src/math/index.ts",
 		"./media": "./src/media/index.ts",
+		"./plate": "./src/plate/index.ts",
 		"./selection": "./src/selection/index.ts",
 		"./shared": "./src/shared/index.ts",
 		"./slash": "./src/slash/index.ts",

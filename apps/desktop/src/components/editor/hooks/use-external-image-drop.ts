@@ -1,6 +1,6 @@
 import { insertResolvedImage, resolveEditorImageLink } from "@mdit/editor/media"
+import type { PlateEditor } from "@mdit/editor/plate"
 import { extname } from "pathe"
-import type { PlateEditor } from "platejs/react"
 import { type RefObject, useCallback } from "react"
 import { desktopImageImportHost } from "@/components/editor/hosts/image-import-runtime"
 import { type DropEvent, useDropZone } from "@/contexts/drop-context"

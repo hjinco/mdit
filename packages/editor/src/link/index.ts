@@ -1,3 +1,4 @@
+export { LinkPlugin } from "@platejs/link/react"
 export { exitLinkForwardAtSelection } from "./link-exit"
 export { createLinkKit } from "./link-kit"
 export type {

@@ -1,4 +1,4 @@
-import type { PlateEditor } from "platejs/react"
+import type { PlateEditor } from "@mdit/editor/plate"
 import { useEffect, useRef } from "react"
 import { useStore } from "@/store"
 

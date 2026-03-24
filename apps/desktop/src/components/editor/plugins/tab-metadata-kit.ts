@@ -1,5 +1,4 @@
-import { KEYS } from "platejs"
-import { createPlatePlugin } from "platejs/react"
+import { createPlatePlugin, KEYS } from "@mdit/editor/plate"
 import { useStore } from "@/store"
 import { sanitizeFilename } from "@/utils/path-utils"
 

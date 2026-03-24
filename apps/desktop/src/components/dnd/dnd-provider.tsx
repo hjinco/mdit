@@ -1,5 +1,5 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
-import { useEditorRef } from "platejs/react"
+import { useEditorRef } from "@mdit/editor/plate"
 import type React from "react"
 import { useCallback, useState } from "react"
 import { useShallow } from "zustand/react/shallow"

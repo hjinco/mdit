@@ -1,8 +1,7 @@
 import { insertResolvedImage, resolveEditorImageLink } from "@mdit/editor/media"
-import { BlockSelectionPlugin } from "@platejs/selection/react"
+import { KEYS, type Path, PathApi, type PlateEditor } from "@mdit/editor/plate"
+import { BlockSelectionPlugin } from "@mdit/editor/selection"
 import { extname } from "pathe"
-import { KEYS, type Path, PathApi } from "platejs"
-import type { PlateEditor } from "platejs/react"
 import { desktopImageImportHost } from "@/components/editor/hosts/image-import-runtime"
 import { isImageFile } from "@/utils/file-icon"
 import {

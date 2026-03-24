@@ -1,5 +1,5 @@
+import { PlateController } from "@mdit/editor/plate"
 import { Toaster } from "@mdit/ui/components/sonner"
-import { PlateController } from "platejs/react"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { DndProvider } from "./components/dnd/dnd-provider"

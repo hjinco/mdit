@@ -1,8 +1,7 @@
 import { createMarkdownDeserializerWithFallback } from "@mdit/editor/markdown"
+import { usePlateEditor, type Value } from "@mdit/editor/plate"
 import { EditorSurface } from "@mdit/editor/shared"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import type { Value } from "platejs"
-import { usePlateEditor } from "platejs/react"
 import {
 	type KeyboardEvent,
 	useCallback,
