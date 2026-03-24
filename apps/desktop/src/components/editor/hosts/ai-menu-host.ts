@@ -5,8 +5,8 @@ import type {
 	AIMenuStorage,
 } from "@mdit/editor/ai"
 import { useEditorChat } from "@mdit/editor/ai"
+import { createSlateEditor } from "@mdit/editor/plate"
 import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
-import { createSlateEditor } from "platejs"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"

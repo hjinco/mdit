@@ -4,8 +4,10 @@ import type {
 } from "@mdit/editor/link"
 import {
 	exitLinkForwardAtSelection,
+	LinkPlugin,
 	normalizeWikiTargetForDisplay,
 } from "@mdit/editor/link"
+import { KEYS, useEditorPlugin, useEditorRef } from "@mdit/editor/plate"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Popover,
@@ -13,12 +15,9 @@ import {
 	PopoverTrigger,
 } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
-import { LinkPlugin } from "@platejs/link/react"
 import { invoke } from "@tauri-apps/api/core"
 import { ArrowRight, InfoIcon, Link2 } from "lucide-react"
 import { resolve } from "pathe"
-import { KEYS } from "platejs"
-import { useEditorPlugin, useEditorRef } from "platejs/react"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"

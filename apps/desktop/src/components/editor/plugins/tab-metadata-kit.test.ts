@@ -1,4 +1,4 @@
-import { KEYS } from "platejs"
+import { KEYS } from "@mdit/editor/plate"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 let storeState = {

@@ -1,4 +1,4 @@
-import type { PlateEditor } from "platejs/react"
+import type { PlateEditor } from "@mdit/editor/plate"
 import type { RefObject } from "react"
 import type { DropEvent } from "@/contexts/drop-context"
 import { focusEditorAtDefaultSelection } from "../utils/history-restore-utils"

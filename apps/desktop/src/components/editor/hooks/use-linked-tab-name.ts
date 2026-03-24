@@ -1,4 +1,4 @@
-import { KEYS, type Value } from "platejs"
+import { KEYS, type Value } from "@mdit/editor/plate"
 import { useEffect, useRef } from "react"
 import { useStore } from "@/store"
 import {
