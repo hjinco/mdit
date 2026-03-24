@@ -1,13 +1,21 @@
 import remarkWikiLink from "@flowershow/remark-wiki-link"
 import {
 	convertNodesSerialize,
+	type DeserializeMdOptions,
 	MarkdownPlugin,
+	type MdRootContent,
 	remarkMdx,
 	remarkMention,
+	type SerializeMdOptions,
 } from "@platejs/markdown"
 import remarkCallout from "@r4ai/remark-callout"
 import { phrasing } from "mdast-util-phrasing"
-import { getPluginType, KEYS, type TEquationElement } from "platejs"
+import {
+	type Descendant,
+	getPluginType,
+	KEYS,
+	type TEquationElement,
+} from "platejs"
 import remarkFrontmatter from "remark-frontmatter"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -43,10 +51,16 @@ type MdastNode = {
 	children?: MdastNode[]
 	value?: string
 	data?: {
+		alias?: string
 		hName?: string
 		hProperties?: Record<string, unknown>
 		path?: string
 	}
+}
+
+type SlateNodeWithChildren = {
+	children: Descendant[]
+	[key: string]: unknown
 }
 
 function createRowId() {
@@ -243,7 +257,7 @@ export const createMarkdownKit = ({
 				},
 				rules: {
 					[FRONTMATTER_KEY]: {
-						serialize: (node) => {
+						serialize: (node: { data?: KVRow[] | Record<string, unknown> }) => {
 							const record = rowsToRecord(node?.data as any)
 							const yaml = YAML.stringify(record)
 							const value = `---\n${yaml === "{}\n" ? "" : yaml}---`
@@ -282,16 +296,31 @@ export const createMarkdownKit = ({
 						},
 					},
 					yaml: {
-						deserialize: (mdastNode) => {
+						deserialize: (
+							mdastNode: MdRootContent,
+							_deco: unknown,
+							_options: DeserializeMdOptions,
+						) => {
 							return {
 								type: FRONTMATTER_KEY,
-								data: parseFrontmatterYaml(mdastNode.value),
+								data: parseFrontmatterYaml(
+									"value" in mdastNode && typeof mdastNode.value === "string"
+										? mdastNode.value
+										: "",
+								),
 								children: [{ text: "" }],
 							}
 						},
 					},
 					[KEYS.link]: {
-						serialize: (node: any, options): any => {
+						serialize: (
+							node: SlateNodeWithChildren & {
+								url?: string
+								wiki?: boolean
+								wikiTarget?: string
+							},
+							options: SerializeMdOptions,
+						): any => {
 							const rawUrl = node.url ?? ""
 							const shouldSerializeWiki = Boolean(node.wiki || node.wikiTarget)
 
@@ -382,7 +411,11 @@ export const createMarkdownKit = ({
 						},
 					},
 					embed: {
-						deserialize: (mdastNode, _deco, options) => {
+						deserialize: (
+							mdastNode: MdastNode,
+							_deco: unknown,
+							options: DeserializeMdOptions,
+						) => {
 							const target = mdastNode.value || ""
 							const hName = mdastNode.data?.hName
 							const hProperties = mdastNode.data?.hProperties ?? {}
@@ -415,7 +448,12 @@ export const createMarkdownKit = ({
 					},
 					callout: calloutMarkdownRule,
 					wikiLink: {
-						serialize: (node) => {
+						serialize: (
+							node: SlateNodeWithChildren & {
+								url?: string
+								wikiTarget?: string
+							},
+						) => {
 							const target = node.wikiTarget || node.url || ""
 							const text = getPlainText(node.children).trim()
 							if (text && text !== target) {
@@ -433,7 +471,11 @@ export const createMarkdownKit = ({
 								data: {},
 							}
 						},
-						deserialize: (mdastNode) => {
+						deserialize: (
+							mdastNode: MdastNode,
+							_deco: unknown,
+							_options: DeserializeMdOptions,
+						) => {
 							const target = mdastNode.value || ""
 							const alias = mdastNode.data?.alias
 							if (!isWikiEmbedTargetSafe(target)) {
