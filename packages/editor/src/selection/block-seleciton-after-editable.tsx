@@ -6,7 +6,13 @@ import {
 	selectInsertedBlocks,
 	useSelectionArea,
 } from "@platejs/selection/react"
-import { isHotkey, KEYS, PathApi } from "platejs"
+import {
+	isHotkey,
+	KEYS,
+	type NodeEntry,
+	PathApi,
+	type TIdElement,
+} from "platejs"
 import {
 	type EditableSiblingComponent,
 	useEditorPlugin,
@@ -324,10 +330,12 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 				const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
 
 				if (selectedBlocks.length > 0) {
-					const nodes = selectedBlocks.map(([node]) => node)
+					const nodes = selectedBlocks.map(
+						([node]: NodeEntry<TIdElement>) => node,
+					)
 					const markdown = editor
 						.getApi(MarkdownPlugin)
-						.markdown.serialize({ value: nodes as any })
+						.markdown.serialize({ value: nodes })
 
 					const decoded = decodeHtmlEntities(markdown)
 					navigator.clipboard.writeText(decoded)
@@ -346,10 +354,12 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 				const selectedBlocks = blockSelectionApi.blockSelection.getNodes()
 
 				if (selectedBlocks.length > 0) {
-					const nodes = selectedBlocks.map(([node]) => node)
+					const nodes = selectedBlocks.map(
+						([node]: NodeEntry<TIdElement>) => node,
+					)
 					const markdown = editor
 						.getApi(MarkdownPlugin)
-						.markdown.serialize({ value: nodes as any })
+						.markdown.serialize({ value: nodes })
 
 					const decoded = decodeHtmlEntities(markdown)
 					navigator.clipboard.writeText(decoded)
