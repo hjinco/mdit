@@ -335,7 +335,7 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 					)
 					const markdown = editor
 						.getApi(MarkdownPlugin)
-						.markdown.serialize({ value: nodes as any })
+						.markdown.serialize({ value: nodes })
 
 					const decoded = decodeHtmlEntities(markdown)
 					navigator.clipboard.writeText(decoded)
@@ -359,7 +359,7 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 					)
 					const markdown = editor
 						.getApi(MarkdownPlugin)
-						.markdown.serialize({ value: nodes as any })
+						.markdown.serialize({ value: nodes })
 
 					const decoded = decodeHtmlEntities(markdown)
 					navigator.clipboard.writeText(decoded)

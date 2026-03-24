@@ -258,7 +258,7 @@ export const createMarkdownKit = ({
 				rules: {
 					[FRONTMATTER_KEY]: {
 						serialize: (node: { data?: KVRow[] | Record<string, unknown> }) => {
-							const record = rowsToRecord(node?.data as any)
+							const record = rowsToRecord(node?.data)
 							const yaml = YAML.stringify(record)
 							const value = `---\n${yaml === "{}\n" ? "" : yaml}---`
 							return { type: "html", value }

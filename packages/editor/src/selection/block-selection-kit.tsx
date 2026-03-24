@@ -1,6 +1,6 @@
 import { BlockMenuPlugin, BlockSelectionPlugin } from "@platejs/selection/react"
 import { getPluginTypes, KEYS, type Path, type TElement } from "platejs"
-import type { PlateElementProps } from "platejs/react"
+import type { PlateEditor, PlateElementProps } from "platejs/react"
 import type React from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
 import { BlockContextMenu } from "../selection/block-context-menu"
@@ -19,7 +19,7 @@ export type BlockSelectionKitOptions = {
 export const createBlockSelectionKit = (
 	options: BlockSelectionKitOptions = {},
 ) => [
-	BlockSelectionPlugin.configure(({ editor }: { editor: any }) => {
+	BlockSelectionPlugin.configure(({ editor }: { editor: PlateEditor }) => {
 		return {
 			options: {
 				enableContextMenu: true,
