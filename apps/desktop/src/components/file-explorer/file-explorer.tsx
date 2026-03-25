@@ -360,36 +360,38 @@ export function FileExplorer() {
 							workspaceDropRef(node)
 							workspaceExternalDropRef(node)
 						}}
-						className="flex-1 overflow-y-auto px-2 pb-1 pt-0.5 mask-fade-bottom"
+						className="flex flex-1 min-h-0 flex-col pt-0.5"
 						onPointerDownCapture={handleExplorerPointerDownCapture}
 						onContextMenu={handleRootContextMenu}
 						onClick={resetSelection}
 					>
 						<PinnedList lookupEntryByPath={lookupEntryByPath} />
-						<ul className="space-y-0.5 pb-4">
-							{pendingNewFolderPath === workspacePath && workspacePath && (
-								<RootNewFolderInput
-									onSubmit={handleNewFolderSubmit}
-									onCancel={cancelNewFolder}
-									workspacePath={workspacePath}
-								/>
-							)}
-							{tree.map((node) => (
-								<TreeNode
-									key={node.path}
-									node={node}
-									isFileExplorerOpen={isFileExplorerOpen}
-									onDirectoryClick={toggleExpanded}
-									onEntryPrimaryAction={handleEntryPrimaryAction}
-									onEntryContextMenu={handleEntryContextMenu}
-									onRenameSubmit={handleRenameSubmit}
-									onRenameCancel={cancelRenaming}
-									onNewFolderSubmit={handleNewFolderSubmit}
-									onNewFolderCancel={cancelNewFolder}
-									onCollectionViewOpen={handleCollectionViewOpen}
-								/>
-							))}
-						</ul>
+						<div className="min-h-0 flex-1 px-2 pb-4 overflow-y-auto mask-fade-bottom">
+							<ul className="space-y-0.5">
+								{pendingNewFolderPath === workspacePath && workspacePath && (
+									<RootNewFolderInput
+										onSubmit={handleNewFolderSubmit}
+										onCancel={cancelNewFolder}
+										workspacePath={workspacePath}
+									/>
+								)}
+								{tree.map((node) => (
+									<TreeNode
+										key={node.path}
+										node={node}
+										isFileExplorerOpen={isFileExplorerOpen}
+										onDirectoryClick={toggleExpanded}
+										onEntryPrimaryAction={handleEntryPrimaryAction}
+										onEntryContextMenu={handleEntryContextMenu}
+										onRenameSubmit={handleRenameSubmit}
+										onRenameCancel={cancelRenaming}
+										onNewFolderSubmit={handleNewFolderSubmit}
+										onNewFolderCancel={cancelNewFolder}
+										onCollectionViewOpen={handleCollectionViewOpen}
+									/>
+								))}
+							</ul>
+						</div>
 					</div>
 					<footer className="px-2 pb-2 flex flex-col">
 						<UpdateButton />

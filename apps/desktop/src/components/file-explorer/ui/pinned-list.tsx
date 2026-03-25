@@ -124,7 +124,7 @@ export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
 	}
 
 	return (
-		<div className="pb-0.5">
+		<div className="px-2 pb-0.5">
 			<ul className="space-y-0.5">
 				{pinnedItems.map((item) => {
 					const isActive = currentCollectionPath === item.path
@@ -149,11 +149,11 @@ export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
 											handleUnpinClick(item.path, e)
 										}
 									}}
-									className="shrink-0 mx-1.75 outline-none focus-visible:ring-1 focus-visible:ring-ring/50 group"
+									className="shrink-0 pl-1.5 pr-0.5 translate-y-0.25 outline-none focus-visible:ring-1 focus-visible:ring-ring/50 group"
 									aria-label="Unpin folder"
 								>
-									<PinIcon className="size-3.5 group-hover:hidden" />
-									<PinOffIcon className="size-3.5 hidden group-hover:block" />
+									<PinIcon className="size-3.25 group-hover:hidden" />
+									<PinOffIcon className="size-3.25 hidden group-hover:block" />
 								</div>
 								<div className="relative flex-1 min-w-0 truncate">
 									<span className="text-sm">{item.name}</span>
