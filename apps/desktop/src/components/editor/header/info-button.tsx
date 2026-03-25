@@ -105,13 +105,13 @@ export function InfoButton() {
 		}
 	}, [isNoteInfoOpen, workspacePath, tab?.path])
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: off
 	useEffect(() => {
-		if (
-			!isNoteInfoOpen ||
-			!workspacePath ||
-			!tab?.path ||
-			!hasEmbeddingConfig
-		) {
+		setRelatedNotes([])
+	}, [tab?.path])
+
+	useEffect(() => {
+		if (!workspacePath || !tab?.path || !hasEmbeddingConfig) {
 			setRelatedNotes([])
 			return
 		}
@@ -133,7 +133,7 @@ export function InfoButton() {
 		return () => {
 			cancelled = true
 		}
-	}, [isNoteInfoOpen, workspacePath, tab?.path, hasEmbeddingConfig])
+	}, [workspacePath, tab?.path, hasEmbeddingConfig])
 
 	const handleNoteClick = (relPath: string) => {
 		if (!workspacePath) return
