@@ -1,5 +1,5 @@
 import { createMarkdownDeserializerWithFallback } from "@mdit/editor/markdown"
-import { usePlateEditor, type Value } from "@mdit/editor/plate"
+import { NodeApi, usePlateEditor, type Value } from "@mdit/editor/plate"
 import { EditorSurface } from "@mdit/editor/shared"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
@@ -106,6 +106,11 @@ function EditorContent({
 	const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
 	const editor = usePlateEditor({
+		chunking: {
+			chunkSize: 100,
+			contentVisibilityAuto: true,
+			query: NodeApi.isEditor,
+		},
 		plugins: EditorKit,
 		value,
 	})
