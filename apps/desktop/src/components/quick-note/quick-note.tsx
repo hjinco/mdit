@@ -1,4 +1,4 @@
-import { usePlateEditor } from "@mdit/editor/plate"
+import { NodeApi, usePlateEditor } from "@mdit/editor/plate"
 import { EditorSurface } from "@mdit/editor/shared"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { save } from "@tauri-apps/plugin-dialog"
@@ -12,7 +12,14 @@ import { WindowPinButton } from "./window-pin-button"
 
 export function QuickNote() {
 	const [, navigate] = useLocation()
-	const editor = usePlateEditor({ plugins: EditorKit })
+	const editor = usePlateEditor({
+		chunking: {
+			chunkSize: 100,
+			contentVisibilityAuto: true,
+			query: NodeApi.isEditor,
+		},
+		plugins: EditorKit,
+	})
 
 	useEffect(() => {
 		editor.tf.focus()
