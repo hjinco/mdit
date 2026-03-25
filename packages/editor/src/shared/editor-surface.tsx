@@ -31,7 +31,7 @@ export function EditorSurface({
 		<Plate editor={editor} onValueChange={onValueChange}>
 			<PlateContainer
 				className={cn(
-					"ignore-click-outside/toolbar relative w-full overflow-y-auto caret-primary select-text selection:bg-brand/14 focus-visible:outline-none",
+					"ignore-click-outside/toolbar relative w-full h-full overflow-y-auto overscroll-none caret-primary select-text selection:bg-brand/14 focus-visible:outline-none",
 					"[&_.slate-selection-area]:z-50 [&_.slate-selection-area]:border [&_.slate-selection-area]:border-brand/25 [&_.slate-selection-area]:bg-brand/14",
 					containerClassName,
 				)}
