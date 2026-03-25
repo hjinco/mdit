@@ -1,13 +1,4 @@
-import type {
-	ResolveWikiLinkParams,
-	ResolveWikiLinkResult,
-} from "@mdit/editor/link"
-import {
-	exitLinkForwardAtSelection,
-	LinkPlugin,
-	normalizeWikiTargetForDisplay,
-} from "@mdit/editor/link"
-import { KEYS, useEditorPlugin, useEditorRef } from "@mdit/editor/plate"
+import { useEditorRef } from "@mdit/editor/plate"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Popover,
@@ -16,19 +7,13 @@ import {
 } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
 import { invoke } from "@tauri-apps/api/core"
-import { ArrowRight, InfoIcon, Link2 } from "lucide-react"
+import { ArrowRight, InfoIcon } from "lucide-react"
 import { resolve } from "pathe"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { calculateReadingMinutes } from "../utils/reading-time"
-
-async function resolveWikiLinkViaInvoke(
-	params: ResolveWikiLinkParams,
-): Promise<ResolveWikiLinkResult> {
-	return invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", params)
-}
 
 const WORD_SPLIT_REGEX = /\s+/
 
@@ -46,7 +31,6 @@ const RELATED_NOTES_LIMIT = 5
 
 export function InfoButton() {
 	const editor = useEditorRef()
-	const { api } = useEditorPlugin(LinkPlugin)
 	const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
 	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
@@ -142,67 +126,6 @@ export function InfoButton() {
 		setNoteInfoOpen(false)
 	}
 
-	const handleInsertWikiLink = async (relPath: string, fileName: string) => {
-		if (!workspacePath) {
-			return
-		}
-
-		const fallbackTarget = normalizeWikiTargetForDisplay(relPath)
-		let wikiTarget = fallbackTarget
-
-		try {
-			const resolved = await resolveWikiLinkViaInvoke({
-				workspacePath,
-				currentNotePath: tab?.path ?? null,
-				rawTarget: relPath,
-			})
-			const canonicalTarget = normalizeWikiTargetForDisplay(
-				resolved.canonicalTarget,
-			)
-			wikiTarget = canonicalTarget || fallbackTarget
-		} catch (error) {
-			console.warn(
-				"Failed to resolve related note wiki link; using fallback:",
-				error,
-			)
-		}
-
-		if (!wikiTarget) {
-			return
-		}
-
-		const linkText = normalizeWikiTargetForDisplay(fileName) || wikiTarget
-		editor.tf.insertNodes(
-			{
-				type: KEYS.link,
-				url: wikiTarget,
-				wiki: true,
-				wikiTarget,
-				children: [{ text: linkText }],
-			},
-			{ select: true },
-		)
-
-		const hideFloatingLinkAndFocusEditor = () => {
-			api.floatingLink.hide()
-			editor.tf.focus()
-		}
-
-		const moveSelectionOutsideInsertedLink = () => {
-			exitLinkForwardAtSelection(editor, {
-				allowFromInsideLink: true,
-				focusEditor: false,
-				markArrowRightExit: true,
-			})
-		}
-
-		// Defer selection handling: other UI updates can overwrite selection immediately after insert.
-		setTimeout(() => {
-			moveSelectionOutsideInsertedLink()
-			hideFloatingLinkAndFocusEditor()
-		}, 0)
-	}
-
 	return (
 		<Popover open={isNoteInfoOpen} onOpenChange={setNoteInfoOpen}>
 			<PopoverTrigger asChild>
@@ -216,7 +139,7 @@ export function InfoButton() {
 					<InfoIcon />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-64 z-101 p-3" align="end">
+			<PopoverContent className="z-101 w-56 p-3" align="end">
 				<div className="space-y-1 text-xs">
 					<div className="flex justify-between items-center">
 						<span className="text-muted-foreground">Characters</span>
@@ -276,20 +199,6 @@ export function InfoButton() {
 											className="flex-1 text-left text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded hover:bg-muted transition-colors truncate"
 										>
 											<span className="truncate">{entry.fileName}</span>
-										</button>
-										<button
-											type="button"
-											onClick={() => {
-												void handleInsertWikiLink(entry.relPath, entry.fileName)
-											}}
-											onMouseDown={(event) => {
-												event.preventDefault()
-											}}
-											className="inline-flex shrink-0 h-7 px-1.75 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-											aria-label={`Link ${entry.fileName} to current note`}
-											title="Link to current note"
-										>
-											<Link2 className="size-3.5" />
 										</button>
 									</div>
 								))}
