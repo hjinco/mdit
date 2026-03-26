@@ -82,6 +82,7 @@ export function createActionTestContext() {
 			openTab: vi.fn().mockResolvedValue(undefined),
 			closeTab: vi.fn(),
 			renameTab: vi.fn().mockResolvedValue(undefined),
+			refreshTabFromExternalContent: vi.fn(),
 			updateHistoryPath: vi.fn(),
 			removePathsFromHistory: vi.fn(),
 			clearHistory: vi.fn(),

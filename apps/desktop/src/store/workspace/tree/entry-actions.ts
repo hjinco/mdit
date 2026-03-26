@@ -97,11 +97,6 @@ export const createTreeEntryActions = (
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
 			ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
-		const activeTabPath = ctx.ports.tab.getActiveTabPath()
-
-		if (activeTabPath && paths.includes(activeTabPath)) {
-			ctx.ports.tab.closeTab(activeTabPath)
-		}
 
 		ctx.ports.tab.removePathsFromHistory(paths)
 

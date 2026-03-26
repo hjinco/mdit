@@ -20,7 +20,7 @@ describe("tree/entry-actions", () => {
 
 		await actions.entriesDeleted({ paths: ["/ws/a.md", "/ws/folder"] })
 
-		expect(ports.tab.closeTab).toHaveBeenCalledWith("/ws/a.md")
+		expect(ports.tab.closeTab).not.toHaveBeenCalled()
 		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledTimes(1)
 		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledWith([
 			"/ws/a.md",
@@ -29,6 +29,29 @@ describe("tree/entry-actions", () => {
 		expect(ports.collection.onEntriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/a.md", "/ws/folder"],
 		})
+	})
+
+	it("entriesDeleted delegates descendant tab cleanup to history removal", async () => {
+		const { context, ports, setState } = createActionTestContext()
+		setState({
+			workspacePath: "/ws",
+			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
+			tab: {
+				id: 1,
+				path: "/ws/folder/note.md",
+				name: "note",
+				content: "",
+			},
+		})
+
+		const actions = createTreeEntryActions(context)
+
+		await actions.entriesDeleted({ paths: ["/ws/folder"] })
+
+		expect(ports.tab.closeTab).not.toHaveBeenCalled()
+		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledWith([
+			"/ws/folder",
+		])
 	})
 
 	it("entryRenamed updates tab/history via ports and notifies collection", async () => {

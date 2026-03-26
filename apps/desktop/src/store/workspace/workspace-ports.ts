@@ -10,6 +10,7 @@ export type WorkspacePorts = {
 		| "openTab"
 		| "closeTab"
 		| "renameTab"
+		| "refreshTabFromExternalContent"
 		| "updateHistoryPath"
 		| "removePathsFromHistory"
 		| "clearHistory"
@@ -43,6 +44,8 @@ export const createWorkspacePorts = (
 		openTab: (...args) => get().openTab(...args),
 		closeTab: (...args) => get().closeTab(...args),
 		renameTab: (...args) => get().renameTab(...args),
+		refreshTabFromExternalContent: (...args) =>
+			get().refreshTabFromExternalContent(...args),
 		updateHistoryPath: (...args) => get().updateHistoryPath(...args),
 		removePathsFromHistory: (...args) => get().removePathsFromHistory(...args),
 		clearHistory: (...args) => get().clearHistory(...args),

@@ -63,6 +63,7 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 			<Header />
 			<EditorContent
 				key={tab.id}
+				tabId={tab.id}
 				path={tab.path}
 				value={value}
 				onTypingProgress={handleTypingProgress}
@@ -73,11 +74,13 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 }
 
 function EditorContent({
+	tabId,
 	path,
 	value,
 	onTypingProgress,
 	destroyOnClose,
 }: {
+	tabId: number
 	path: string
 	value: Value
 	onTypingProgress: () => void
@@ -91,6 +94,7 @@ function EditorContent({
 		saveNoteContent,
 		setHistorySelectionProvider,
 		consumePendingHistorySelectionRestore,
+		consumePendingExternalReloadSaveSkip,
 	} = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
@@ -98,6 +102,8 @@ function EditorContent({
 			setHistorySelectionProvider: s.setHistorySelectionProvider,
 			consumePendingHistorySelectionRestore:
 				s.consumePendingHistorySelectionRestore,
+			consumePendingExternalReloadSaveSkip:
+				s.consumePendingExternalReloadSaveSkip,
 		})),
 	)
 	const resetFocusMode = useStore((s) => s.resetFocusMode)
@@ -149,9 +155,11 @@ function EditorContent({
 		return () => {
 			closeListener.then((unlisten) => unlisten())
 			clearInterval(interval)
-			handleSave()
+			if (!consumePendingExternalReloadSaveSkip(tabId)) {
+				void handleSave()
+			}
 		}
-	}, [handleSave, destroyOnClose])
+	}, [consumePendingExternalReloadSaveSkip, destroyOnClose, handleSave, tabId])
 
 	useEffect(() => {
 		setHistorySelectionProvider(() => toTabHistorySelection(editor.selection))

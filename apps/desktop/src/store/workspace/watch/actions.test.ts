@@ -115,7 +115,7 @@ describe("watch/actions", () => {
 	})
 
 	it("ignores non-rescan local-only batches", async () => {
-		const { context, setState, getState, originJournal, deps } =
+		const { context, setState, getState, originJournal, deps, ports } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
@@ -147,6 +147,7 @@ describe("watch/actions", () => {
 			workspacePath: "/ws",
 			relPaths: ["docs/local.md"],
 		})
+		expect(ports.tab.refreshTabFromExternalContent).not.toHaveBeenCalled()
 		expect(deps.fileSystemRepository.readDir).not.toHaveBeenCalled()
 		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
 	})
@@ -523,12 +524,18 @@ describe("watch/actions", () => {
 		})
 	})
 
-	it("updates modified file metadata incrementally", async () => {
-		const { context, setState, originJournal, getState } =
+	it("reloads the active markdown tab and updates metadata for external file changes", async () => {
+		const { context, setState, originJournal, getState, deps, ports } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
+			tab: {
+				id: 1,
+				path: "/ws/docs/a.md",
+				name: "a",
+				content: "stale-content",
+			},
 			entries: [
 				{
 					path: "/ws/docs",
@@ -550,6 +557,9 @@ describe("watch/actions", () => {
 			externalRelPaths: ["docs/a.md"],
 			localRelPaths: [],
 		})
+		deps.fileSystemRepository.readTextFile.mockResolvedValueOnce(
+			"fresh-content",
+		)
 
 		await actions.watchWorkspace()
 		const listener = listenMock.mock.calls[0]?.[1] as (event: any) => void
@@ -568,6 +578,11 @@ describe("watch/actions", () => {
 		})
 		await flushQueue()
 
+		expect(ports.tab.refreshTabFromExternalContent).toHaveBeenCalledWith(
+			"/ws/docs/a.md",
+			"fresh-content",
+			{ preserveSelection: true },
+		)
 		expect(getState().updateEntryModifiedDate).toHaveBeenCalledWith(
 			"/ws/docs/a.md",
 		)
