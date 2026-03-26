@@ -379,6 +379,22 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
+		const activeTabPath = ctx.ports.tab.getActiveTabPath()
+		if (activeTabPath === absolutePath && absolutePath.endsWith(".md")) {
+			try {
+				const content =
+					await ctx.deps.fileSystemRepository.readTextFile(absolutePath)
+				ctx.ports.tab.refreshTabFromExternalContent(absolutePath, content, {
+					preserveSelection: true,
+				})
+			} catch (error) {
+				console.warn(
+					"Failed to refresh active tab from external file change:",
+					error,
+				)
+			}
+		}
+
 		try {
 			await ctx.get().updateEntryModifiedDate(absolutePath)
 		} catch {

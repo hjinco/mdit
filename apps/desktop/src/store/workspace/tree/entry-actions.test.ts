@@ -31,6 +31,29 @@ describe("tree/entry-actions", () => {
 		})
 	})
 
+	it("entriesDeleted closes the active tab when its parent directory is deleted", async () => {
+		const { context, ports, setState } = createActionTestContext()
+		setState({
+			workspacePath: "/ws",
+			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
+			tab: {
+				id: 1,
+				path: "/ws/folder/note.md",
+				name: "note",
+				content: "",
+			},
+		})
+
+		const actions = createTreeEntryActions(context)
+
+		await actions.entriesDeleted({ paths: ["/ws/folder"] })
+
+		expect(ports.tab.closeTab).toHaveBeenCalledWith("/ws/folder/note.md")
+		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledWith([
+			"/ws/folder",
+		])
+	})
+
 	it("entryRenamed updates tab/history via ports and notifies collection", async () => {
 		const { context, ports, setState } = createActionTestContext()
 		setState({

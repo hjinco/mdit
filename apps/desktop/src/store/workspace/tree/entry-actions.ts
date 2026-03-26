@@ -1,3 +1,4 @@
+import { isPathEqualOrDescendant } from "@/utils/path-utils"
 import {
 	addExpandedDirectories,
 	removeExpandedDirectories,
@@ -99,7 +100,10 @@ export const createTreeEntryActions = (
 		if (!workspacePath) throw new Error("Workspace path is not set")
 		const activeTabPath = ctx.ports.tab.getActiveTabPath()
 
-		if (activeTabPath && paths.includes(activeTabPath)) {
+		if (
+			activeTabPath &&
+			paths.some((path) => isPathEqualOrDescendant(activeTabPath, path))
+		) {
 			ctx.ports.tab.closeTab(activeTabPath)
 		}
 

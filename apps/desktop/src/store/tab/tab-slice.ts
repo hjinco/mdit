@@ -74,6 +74,10 @@ type OpenTabOptions = {
 	skipSelectionCapture?: boolean
 }
 
+type RefreshTabFromExternalContentOptions = {
+	preserveSelection?: boolean
+}
+
 type LinkedTab = {
 	path: string
 	name: string
@@ -91,6 +95,12 @@ export type TabSlice = {
 	consumePendingHistorySelectionRestore: (
 		path: string,
 	) => PendingHistorySelectionRestoreResult
+	refreshTabFromExternalContent: (
+		path: string,
+		content: string,
+		options?: RefreshTabFromExternalContentOptions,
+	) => void
+	consumePendingExternalReloadSaveSkip: (tabId: number) => boolean
 	hydrateFromOpenedFiles: (paths: string[]) => Promise<boolean>
 	openTab: (
 		path: string,
@@ -136,19 +146,21 @@ export const prepareTabSlice =
 			path: string
 			selection: TabHistorySelection
 		} | null = null
+		const pendingExternalReloadSaveSkipTabIds = new Set<number>()
 
-		const commitCurrentHistorySelection = () => {
+		const readCurrentHistorySelection = (): TabHistorySelection => {
 			if (!historySelectionProvider) {
-				return
+				return null
 			}
 
-			let selection: TabHistorySelection
 			try {
-				selection = cloneHistorySelection(historySelectionProvider())
+				return cloneHistorySelection(historySelectionProvider())
 			} catch {
-				return
+				return null
 			}
+		}
 
+		const updateCurrentHistorySelection = (selection: TabHistorySelection) => {
 			set((state) => {
 				if (
 					state.historyIndex < 0 ||
@@ -173,10 +185,17 @@ export const prepareTabSlice =
 			})
 		}
 
-		const queuePendingHistorySelectionRestore = (entry: TabHistoryEntry) => {
+		const commitCurrentHistorySelection = () => {
+			updateCurrentHistorySelection(readCurrentHistorySelection())
+		}
+
+		const queuePendingHistorySelectionRestore = (
+			path: string,
+			selection: TabHistorySelection,
+		) => {
 			pendingHistorySelectionRestore = {
-				path: entry.path,
-				selection: cloneHistorySelection(entry.selection),
+				path,
+				selection: cloneHistorySelection(selection),
 			}
 		}
 
@@ -237,7 +256,10 @@ export const prepareTabSlice =
 			}
 
 			commitCurrentHistorySelection()
-			queuePendingHistorySelectionRestore(navigationTarget.targetEntry)
+			queuePendingHistorySelectionRestore(
+				navigationTarget.targetEntry.path,
+				navigationTarget.targetEntry.selection,
+			)
 
 			set({ historyIndex: navigationTarget.historyIndex })
 
@@ -275,6 +297,58 @@ export const prepareTabSlice =
 				)
 				clearPendingHistorySelectionRestore()
 				return { found: true, selection }
+			},
+			refreshTabFromExternalContent: (path, content, options) => {
+				const activeTab = get().tab
+				if (
+					!activeTab ||
+					activeTab.path !== path ||
+					activeTab.content === content
+				) {
+					return
+				}
+
+				const nextSelection = options?.preserveSelection
+					? readCurrentHistorySelection()
+					: null
+				let didRefresh = false
+
+				set((state) => {
+					const currentTab = state.tab
+					if (
+						!currentTab ||
+						currentTab.path !== path ||
+						currentTab.id !== activeTab.id
+					) {
+						return {}
+					}
+
+					didRefresh = true
+					pendingExternalReloadSaveSkipTabIds.add(currentTab.id)
+
+					return {
+						tab: {
+							...currentTab,
+							id: ++tabIdCounter,
+							content,
+						},
+						isSaved: true,
+					}
+				})
+
+				if (!didRefresh || !options?.preserveSelection) {
+					return
+				}
+
+				updateCurrentHistorySelection(nextSelection)
+				queuePendingHistorySelectionRestore(path, nextSelection)
+			},
+			consumePendingExternalReloadSaveSkip: (tabId) => {
+				const shouldSkip = pendingExternalReloadSaveSkipTabIds.has(tabId)
+				if (shouldSkip) {
+					pendingExternalReloadSaveSkipTabIds.delete(tabId)
+				}
+				return shouldSkip
 			},
 			hydrateFromOpenedFiles: async (paths: string[]) => {
 				const validPaths = paths.filter((path) => path.endsWith(".md"))
