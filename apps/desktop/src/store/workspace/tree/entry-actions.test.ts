@@ -20,7 +20,7 @@ describe("tree/entry-actions", () => {
 
 		await actions.entriesDeleted({ paths: ["/ws/a.md", "/ws/folder"] })
 
-		expect(ports.tab.closeTab).toHaveBeenCalledWith("/ws/a.md")
+		expect(ports.tab.closeTab).not.toHaveBeenCalled()
 		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledTimes(1)
 		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledWith([
 			"/ws/a.md",
@@ -31,7 +31,7 @@ describe("tree/entry-actions", () => {
 		})
 	})
 
-	it("entriesDeleted closes the active tab when its parent directory is deleted", async () => {
+	it("entriesDeleted delegates descendant tab cleanup to history removal", async () => {
 		const { context, ports, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
@@ -48,7 +48,7 @@ describe("tree/entry-actions", () => {
 
 		await actions.entriesDeleted({ paths: ["/ws/folder"] })
 
-		expect(ports.tab.closeTab).toHaveBeenCalledWith("/ws/folder/note.md")
+		expect(ports.tab.closeTab).not.toHaveBeenCalled()
 		expect(ports.tab.removePathsFromHistory).toHaveBeenCalledWith([
 			"/ws/folder",
 		])
