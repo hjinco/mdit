@@ -360,13 +360,13 @@ export function FileExplorer() {
 							workspaceDropRef(node)
 							workspaceExternalDropRef(node)
 						}}
-						className="flex flex-1 min-h-0 flex-col pt-0.5"
+						className="flex flex-1 min-h-0 flex-col"
 						onPointerDownCapture={handleExplorerPointerDownCapture}
 						onContextMenu={handleRootContextMenu}
 						onClick={resetSelection}
 					>
 						<PinnedList lookupEntryByPath={lookupEntryByPath} />
-						<div className="min-h-0 flex-1 px-2 pb-4 overflow-y-auto mask-fade-bottom">
+						<div className="min-h-0 flex-1 px-2 pb-4 pt-0.5 overflow-y-auto overscroll-none mask-fade-bottom">
 							<ul className="space-y-0.5">
 								{pendingNewFolderPath === workspacePath && workspacePath && (
 									<RootNewFolderInput

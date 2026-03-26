@@ -124,7 +124,7 @@ export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
 	}
 
 	return (
-		<div className="px-2 pb-0.5">
+		<div className="px-2">
 			<ul className="space-y-0.5">
 				{pinnedItems.map((item) => {
 					const isActive = currentCollectionPath === item.path
