@@ -1,3 +1,4 @@
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -7,6 +8,13 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@mdit/ui/components/select"
 import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
 import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
@@ -15,24 +23,14 @@ import { calculateIndexingProgress } from "@/store/indexing/helpers/indexing-uti
 import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { useIndexingMetaPolling } from "../hooks/use-indexing-meta-polling"
 import { useIndexingModelChange } from "../hooks/use-indexing-model-change"
-import { useOllamaModelRefresh } from "../hooks/use-ollama-model-refresh"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 import { INDEXING_MODEL_CONTROL_STATE } from "./indexing-ui-state"
-import { SettingsButton } from "./settings-button"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectValue,
-	SettingsSelectTrigger,
-} from "./settings-select"
 
 export function IndexingTab() {
 	const {
 		workspacePath,
 		entries,
 		ollamaEmbeddingModels,
-		fetchOllamaModels,
 		indexVaultDocuments,
 		isIndexing,
 		config,
@@ -52,8 +50,6 @@ export function IndexingTab() {
 		})),
 	)
 
-	const { isRefreshingModels, refreshOllamaModels } =
-		useOllamaModelRefresh(fetchOllamaModels)
 	const currentConfig = config
 	useIndexingMetaPolling(workspacePath, isIndexing)
 	const {
@@ -128,44 +124,30 @@ export function IndexingTab() {
 									{modelControlState.description}
 								</FieldDescription>
 							</FieldContent>
-							<div className="flex items-center gap-2">
-								<Select
-									value={selectedEmbeddingModel ?? undefined}
-									onValueChange={requestModelChange}
-									disabled={modelControlState.disabled}
-								>
-									<SettingsSelectTrigger className="w-[240px]">
-										<SelectValue placeholder={modelControlState.placeholder} />
-									</SettingsSelectTrigger>
-									<SelectContent align="end">
-										{ollamaEmbeddingModels.length > 0 ? (
-											ollamaEmbeddingModels.map((model) => {
-												return (
-													<SelectItem key={model} value={`ollama|${model}`}>
-														{model}
-													</SelectItem>
-												)
-											})
-										) : (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												No models available
-											</div>
-										)}
-									</SelectContent>
-								</Select>
-								<SettingsButton
-									variant="outline"
-									disabled={isRefreshingModels}
-									onClick={() => void refreshOllamaModels()}
-								>
-									{isRefreshingModels ? (
-										<Loader2Icon className="size-4 animate-spin" />
+							<Select
+								value={selectedEmbeddingModel ?? undefined}
+								onValueChange={requestModelChange}
+								disabled={modelControlState.disabled}
+							>
+								<SelectTrigger className="w-[200px]">
+									<SelectValue placeholder={modelControlState.placeholder} />
+								</SelectTrigger>
+								<SelectContent align="end">
+									{ollamaEmbeddingModels.length > 0 ? (
+										ollamaEmbeddingModels.map((model) => {
+											return (
+												<SelectItem key={model} value={`ollama|${model}`}>
+													{model}
+												</SelectItem>
+											)
+										})
 									) : (
-										<RefreshCcwIcon className="size-4" />
+										<div className="px-1 py-0.5 text-sm text-muted-foreground">
+											No models available
+										</div>
 									)}
-									Refresh
-								</SettingsButton>
-							</div>
+								</SelectContent>
+							</Select>
 						</Field>
 
 						<Field>
@@ -196,7 +178,7 @@ export function IndexingTab() {
 								</p>
 							</div>
 							<div className="flex flex-wrap items-center justify-end gap-2 mt-4">
-								<SettingsButton
+								<Button
 									onClick={() => runIndex(false)}
 									variant="outline"
 									disabled={isIndexButtonDisabled}
@@ -205,15 +187,15 @@ export function IndexingTab() {
 										<Loader2Icon className="size-4 animate-spin" />
 									)}
 									{isIndexing ? "Indexing..." : "Manually Index"}
-								</SettingsButton>
-								<SettingsButton
+								</Button>
+								<Button
 									onClick={() => runIndex(true)}
 									variant="destructive"
 									disabled={isIndexing}
 								>
 									<RefreshCcwIcon className="size-4" />
 									Force Rebuild
-								</SettingsButton>
+								</Button>
 							</div>
 						</Field>
 					</FieldGroup>

@@ -7,12 +7,12 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
 import { Switch } from "@mdit/ui/components/switch"
 import { Textarea } from "@mdit/ui/components/textarea"
 import { useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
-import { SettingsInput } from "./settings-input"
 
 export function SyncTab() {
 	const {
@@ -112,7 +112,7 @@ export function SyncTab() {
 								use the current branch.
 							</FieldDescription>
 						</FieldContent>
-						<SettingsInput
+						<Input
 							value={branchName}
 							onChange={(e) => handleBranchNameChange(e.target.value)}
 							placeholder="Leave empty to use current branch"
@@ -132,7 +132,7 @@ export function SyncTab() {
 							onChange={(e) => handleCommitMessageChange(e.target.value)}
 							placeholder="Leave empty to use default message"
 							rows={4}
-							className="rounded px-2 py-1.5 text-xs"
+							className="px-2 py-1.5"
 						/>
 					</Field>
 				</FieldGroup>

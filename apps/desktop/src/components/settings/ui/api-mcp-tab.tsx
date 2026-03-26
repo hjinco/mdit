@@ -1,3 +1,4 @@
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -7,6 +8,7 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
 import { Switch } from "@mdit/ui/components/switch"
 import { Check, Copy } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -19,8 +21,6 @@ import {
 } from "@/lib/local-api-auth"
 import { useStore } from "@/store"
 import { getLocalApiToggleState } from "./api-mcp-state"
-import { SettingsButton } from "./settings-button"
-import { SettingsInput } from "./settings-input"
 
 const REST_APIS = [
 	{
@@ -205,14 +205,14 @@ export function ApiMcpTab() {
 					All local API endpoints require this token except{" "}
 					<code>/healthz</code>.
 				</FieldDescription>
-				<FieldGroup className="gap-4">
+				<FieldGroup>
 					<Field orientation="vertical">
 						<FieldContent>
 							<FieldLabel>Token</FieldLabel>
 						</FieldContent>
 						<div className="flex items-center gap-2 mt-2">
 							<div className="relative flex-1">
-								<SettingsInput
+								<Input
 									readOnly
 									type="text"
 									value={token}
@@ -220,9 +220,9 @@ export function ApiMcpTab() {
 									className="font-mono pr-10"
 								/>
 								<div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-									<SettingsButton
+									<Button
 										variant="ghost"
-										mode="icon"
+										size="icon"
 										className="text-muted-foreground hover:text-foreground"
 										onClick={handleCopyToken}
 										disabled={!token}
@@ -233,16 +233,16 @@ export function ApiMcpTab() {
 										) : (
 											<Copy className="size-4" />
 										)}
-									</SettingsButton>
+									</Button>
 								</div>
 							</div>
-							<SettingsButton
+							<Button
 								variant="secondary"
 								className="shrink-0"
 								onClick={handleRotateToken}
 							>
 								Regenerate
-							</SettingsButton>
+							</Button>
 						</div>
 					</Field>
 				</FieldGroup>
@@ -254,7 +254,7 @@ export function ApiMcpTab() {
 					Requests must include an{" "}
 					<code>Authorization: Bearer &lt;token&gt;</code> header.
 				</FieldDescription>
-				<FieldGroup className="gap-2">
+				<FieldGroup>
 					{REST_APIS.map((api) => (
 						<Field key={api.path} className="rounded-md border px-3 py-2">
 							<FieldContent>
@@ -274,7 +274,7 @@ export function ApiMcpTab() {
 					Exposed through MCP endpoint <code>/mcp</code> using{" "}
 					<code>?token=&lt;token&gt;</code> in the URL.
 				</FieldDescription>
-				<FieldGroup className="gap-2">
+				<FieldGroup>
 					{MCP_TOOLS.map((tool) => (
 						<Field key={tool.name} className="rounded-md border px-3 py-2">
 							<FieldContent>
@@ -293,7 +293,7 @@ export function ApiMcpTab() {
 				<FieldDescription>
 					Field names may vary by client version.
 				</FieldDescription>
-				<FieldGroup className="gap-4">
+				<FieldGroup>
 					{CLIENT_GUIDES.map((client) => (
 						<Field key={client.name} orientation="vertical">
 							<FieldContent>
@@ -306,9 +306,9 @@ export function ApiMcpTab() {
 										? client.snippet.replace(/<TOKEN>/g, token)
 										: client.snippet}
 								</pre>
-								<SettingsButton
+								<Button
 									variant="ghost"
-									mode="icon"
+									size="icon"
 									className="absolute right-2 top-2 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/snippet:opacity-100"
 									onClick={() =>
 										copyToClipboard(
@@ -322,7 +322,7 @@ export function ApiMcpTab() {
 									title="Copy Snippet"
 								>
 									<Copy className="size-3" />
-								</SettingsButton>
+								</Button>
 							</div>
 						</Field>
 					))}

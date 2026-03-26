@@ -50,7 +50,7 @@ export function SettingsDialog() {
 
 	return (
 		<Dialog open={isSettingsDialogOpen} onOpenChange={handleOpenChange}>
-			<DialogContent className="md:max-w-4xl max-h-[min(660px,calc(100vh-6rem))] w-full h-full p-0 overflow-hidden flex">
+			<DialogContent className="md:max-w-5xl max-h-[min(800px,calc(100vh-6rem))] w-full h-full p-0 overflow-hidden flex">
 				<SettingsNavigation
 					activeTab={activeTab}
 					onTabChange={setActiveTab}

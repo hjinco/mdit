@@ -1,3 +1,4 @@
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -23,7 +24,6 @@ import {
 	type AppHotkeyCategory,
 } from "@/lib/hotkeys"
 import { useStore } from "@/store"
-import { SettingsButton } from "./settings-button"
 
 const HOTKEY_LABEL_BY_ID: Record<AppHotkeyActionId, string> =
 	APP_HOTKEY_DEFINITIONS.reduce(
@@ -135,17 +135,14 @@ export function HotkeysTab() {
 			<FieldSet className="gap-4">
 				<div className="flex items-start justify-between gap-3 px-2">
 					<div>
-						<FieldLegend className="mb-1 text-sm">Hotkeys</FieldLegend>
-						<FieldDescription className="text-xs">
+						<FieldLegend>Hotkeys</FieldLegend>
+						<FieldDescription>
 							Customize keyboard shortcuts used throughout the app
 						</FieldDescription>
 					</div>
-					<SettingsButton
-						variant="ghost"
-						onClick={() => void resetAllBindings()}
-					>
+					<Button variant="ghost" onClick={() => void resetAllBindings()}>
 						Reset to defaults
-					</SettingsButton>
+					</Button>
 				</div>
 
 				{groupedDefinitions.map((group) => (
@@ -179,9 +176,9 @@ export function HotkeysTab() {
 										</FieldContent>
 										<div className="flex flex-wrap items-center justify-end gap-1.5">
 											{!isDefaultBinding && (
-												<SettingsButton
+												<Button
 													variant="ghost"
-													mode="icon"
+													size="icon"
 													onClick={() =>
 														void restoreDefaultBinding(
 															definition.id,
@@ -191,7 +188,7 @@ export function HotkeysTab() {
 													title="Restore default shortcut"
 												>
 													<IconRefresh className="size-3.5" />
-												</SettingsButton>
+												</Button>
 											)}
 											{hasBinding ? (
 												<HotkeyKbd binding={binding} />
@@ -200,9 +197,9 @@ export function HotkeysTab() {
 													Unassigned
 												</span>
 											)}
-											<SettingsButton
+											<Button
 												variant="secondary"
-												mode="icon"
+												size="icon"
 												onClick={() => {
 													if (isRecording) {
 														cancelRecording()
@@ -219,7 +216,7 @@ export function HotkeysTab() {
 												) : (
 													<IconCircleFilled className="size-3 text-red-500/90" />
 												)}
-											</SettingsButton>
+											</Button>
 										</div>
 									</Field>
 								)

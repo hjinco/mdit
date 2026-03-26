@@ -5,6 +5,7 @@ import {
 	CREDENTIAL_PROVIDER_IDS,
 	type ProviderId,
 } from "@mdit/ai"
+import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
 	FieldContent,
@@ -14,6 +15,13 @@ import {
 	FieldLegend,
 	FieldSet,
 } from "@mdit/ui/components/field"
+import { Input } from "@mdit/ui/components/input"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+} from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ExternalLink, Loader2Icon, RefreshCcwIcon } from "lucide-react"
@@ -26,14 +34,6 @@ import {
 	handleChatModelSelectChange,
 	resolveSelectedChatModelSelectValue,
 } from "./ai-tab-chat-model"
-import { SettingsButton } from "./settings-button"
-import { SettingsInput } from "./settings-input"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SettingsSelectTrigger,
-} from "./settings-select"
 
 export function AITab() {
 	const {
@@ -144,7 +144,7 @@ export function AITab() {
 								}}
 								disabled={enabledChatModels.length === 0}
 							>
-								<SettingsSelectTrigger className="w-[240px]">
+								<SelectTrigger className="w-[240px]">
 									{selectedChatModelLabel ?? (
 										<span className="text-muted-foreground">
 											{enabledChatModels.length === 0
@@ -152,7 +152,7 @@ export function AITab() {
 												: "Select model"}
 										</span>
 									)}
-								</SettingsSelectTrigger>
+								</SelectTrigger>
 								<SelectContent align="end">
 									{chatModelSelectOptions.map(({ model, value }) => (
 										<SelectItem key={value} value={value}>
@@ -173,39 +173,31 @@ export function AITab() {
 							return (
 								<Field key={provider}>
 									<FieldGroup className="gap-0">
-										{models.length === 0 && provider === "ollama" ? (
-											<div className="py-2 text-sm text-muted-foreground">
-												No Ollama models available. Make sure Ollama is
-												installed and running.
-											</div>
-										) : (
-											models.map((model) => (
-												<Field
-													key={`${provider}-${model}`}
-													orientation="horizontal"
-													className="py-2"
-												>
-													<FieldContent className="group flex-row justify-between">
-														<FieldLabel
-															htmlFor={`${provider}-${model}`}
-															className="text-xs"
-														>
-															{model}
-														</FieldLabel>
-													</FieldContent>
-													<Switch
-														id={`${provider}-${model}`}
-														checked={enabledChatModels.some(
-															(m) =>
-																m.provider === provider && m.model === model,
-														)}
-														onCheckedChange={(checked) =>
-															toggleModelEnabled(provider, model, checked)
-														}
-													/>
-												</Field>
-											))
-										)}
+										{models.map((model) => (
+											<Field
+												key={`${provider}-${model}`}
+												orientation="horizontal"
+												className="py-2"
+											>
+												<FieldContent className="group flex-row justify-between">
+													<FieldLabel
+														htmlFor={`${provider}-${model}`}
+														className="text-xs"
+													>
+														{model}
+													</FieldLabel>
+												</FieldContent>
+												<Switch
+													id={`${provider}-${model}`}
+													checked={enabledChatModels.some(
+														(m) => m.provider === provider && m.model === model,
+													)}
+													onCheckedChange={(checked) =>
+														toggleModelEnabled(provider, model, checked)
+													}
+												/>
+											</Field>
+										))}
 									</FieldGroup>
 								</Field>
 							)
@@ -224,7 +216,7 @@ export function AITab() {
 				<FieldDescription>
 					Connect to AI providers to enable their models
 				</FieldDescription>
-				<FieldGroup className="gap-2">
+				<FieldGroup>
 					{credentialProviderDefinitions.map((definition) => {
 						const isConnected = connectedProviders.includes(definition.id)
 						const isBusy = Boolean(providerBusy[definition.id])
@@ -252,7 +244,7 @@ export function AITab() {
 
 								{definition.authKind === "oauth" ? (
 									<div className="flex items-center gap-2">
-										<SettingsButton
+										<Button
 											variant="outline"
 											disabled={isBusy}
 											onClick={() => {
@@ -272,7 +264,7 @@ export function AITab() {
 												: isConnected
 													? "Disconnect"
 													: "Connect"}
-										</SettingsButton>
+										</Button>
 									</div>
 								) : (
 									<ConnectProvider
@@ -302,7 +294,7 @@ export function AITab() {
 								Fetch models from your local Ollama instance when needed
 							</FieldDescription>
 						</FieldContent>
-						<SettingsButton
+						<Button
 							variant="outline"
 							disabled={isRefreshingModels}
 							onClick={() => void refreshOllamaModels()}
@@ -313,7 +305,7 @@ export function AITab() {
 								<RefreshCcwIcon className="size-4" />
 							)}
 							Refresh
-						</SettingsButton>
+						</Button>
 					</Field>
 				</FieldGroup>
 			</FieldSet>
@@ -357,7 +349,7 @@ function ConnectProvider({
 
 	return (
 		<div className="flex items-center gap-2">
-			<SettingsInput
+			<Input
 				ref={inputRef}
 				defaultValue={isConnected ? "****************" : undefined}
 				type="password"
@@ -366,13 +358,13 @@ function ConnectProvider({
 				spellCheck="false"
 				disabled={isBusy}
 			/>
-			<SettingsButton
+			<Button
 				variant="outline"
 				onClick={() => void handleConnect()}
 				disabled={isBusy}
 			>
 				{isBusy ? "Processing..." : isConnected ? "Disconnect" : "Connect"}
-			</SettingsButton>
+			</Button>
 		</div>
 	)
 }
