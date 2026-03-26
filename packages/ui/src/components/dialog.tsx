@@ -40,20 +40,19 @@ function DialogOverlay({
 	...props
 }: DialogPrimitive.Backdrop.Props) {
 	return (
-		<>
-			<DialogPrimitive.Backdrop
-				data-slot="dialog-overlay"
-				className={cn(
-					"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs duration-200",
-					className,
-				)}
-				{...props}
-			/>
+		<DialogPrimitive.Backdrop
+			data-slot="dialog-overlay"
+			className={cn(
+				"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 fixed inset-0 z-9999 bg-black/50 backdrop-blur-xs duration-200",
+				className,
+			)}
+			{...props}
+		>
 			<div
 				data-tauri-drag-region=""
-				className="fixed top-0 left-0 right-0 h-12 z-9999"
+				className="absolute top-0 left-0 right-0 h-12"
 			/>
-		</>
+		</DialogPrimitive.Backdrop>
 	)
 }
 
