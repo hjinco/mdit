@@ -1,7 +1,7 @@
 import { BlockMenuPlugin, BlockSelectionPlugin } from "@platejs/selection/react"
 import { getPluginTypes, KEYS, type Path, type TElement } from "platejs"
 import type { PlateEditor, PlateElementProps } from "platejs/react"
-import type React from "react"
+import type { ReactNode } from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
 import { BlockContextMenu } from "../selection/block-context-menu"
 import { BlockSelectionAfterEditable } from "../selection/block-seleciton-after-editable"
@@ -32,9 +32,7 @@ export const createBlockSelectionKit = (
 				},
 			},
 			render: {
-				belowRootNodes: (
-					props: React.ComponentProps<"div"> & Partial<PlateElementProps>,
-				) => {
+				belowRootNodes: (props) => {
 					if (!props.attributes?.className?.includes("slate-selectable"))
 						return null
 
@@ -46,7 +44,7 @@ export const createBlockSelectionKit = (
 	}),
 	BlockMenuPlugin.configure({
 		render: {
-			aboveEditable: (props: { children?: React.ReactNode }) => (
+			aboveEditable: (props: { children?: ReactNode }) => (
 				<BlockContextMenu
 					onCreateLinkedNotesFromListItems={
 						options.host?.createLinkedNotesFromListItems
