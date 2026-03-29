@@ -89,10 +89,11 @@ function ContextMenuSubTrigger({
 type ContextMenuPopupProps = ContextMenuPrimitive.Popup.Props &
 	Pick<
 		ContextMenuPrimitive.Positioner.Props,
-		"align" | "alignOffset" | "side" | "sideOffset"
+		"align" | "alignOffset" | "anchor" | "side" | "sideOffset"
 	>
 
 function ContextMenuContent({
+	anchor,
 	className,
 	align = "start",
 	alignOffset = 0,
@@ -106,6 +107,7 @@ function ContextMenuContent({
 				data-slot="context-menu-positioner"
 				align={align}
 				alignOffset={alignOffset}
+				anchor={anchor}
 				side={side}
 				sideOffset={sideOffset}
 				className="z-50"
@@ -127,6 +129,7 @@ function ContextMenuContent({
 }
 
 function ContextMenuSubContent({
+	anchor,
 	className,
 	align = "start",
 	alignOffset = -3,
@@ -140,6 +143,7 @@ function ContextMenuSubContent({
 				data-slot="context-menu-positioner"
 				align={align}
 				alignOffset={alignOffset}
+				anchor={anchor}
 				side={side}
 				sideOffset={sideOffset}
 				className="z-50"

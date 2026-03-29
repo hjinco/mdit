@@ -32,6 +32,7 @@ import { KEYS, type Path } from "platejs"
 import { useEditorPlugin, usePlateState, usePluginOption } from "platejs/react"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { exitLinkForwardAtSelection } from "../link/link-exit"
+import { isBlockDragHandleContextMenuId } from "../selection/block-menu-ids"
 import {
 	type BlockSelectionNodeEntry,
 	buildLinkedNoteNode,
@@ -55,7 +56,23 @@ export function BlockContextMenu({
 	const skipNextCloseAutoFocusRef = useRef(false)
 	const isTouch = useIsTouchDevice()
 	const [readOnly] = usePlateState("readOnly")
+	const openId = usePluginOption(BlockMenuPlugin, "openId")
+	const position = usePluginOption(BlockMenuPlugin, "position")
 	const selectedIds = usePluginOption(BlockSelectionPlugin, "selectedIds")
+	const isHandleContextMenu = isBlockDragHandleContextMenuId(openId)
+	const isOpen = openId === BLOCK_CONTEXT_MENU_ID || isHandleContextMenu
+
+	const anchor = useMemo(() => {
+		return {
+			getBoundingClientRect: () =>
+				DOMRect.fromRect({
+					width: 0,
+					height: 0,
+					x: position.x,
+					y: position.y,
+				}),
+		}
+	}, [position.x, position.y])
 
 	const handleTurnInto = useCallback(
 		(type: string) => {
@@ -228,13 +245,14 @@ export function BlockContextMenu({
 
 	return (
 		<ContextMenu
+			open={isOpen}
 			onOpenChange={(open) => {
-				if (!open) {
-					// prevent unselect the block selection
-					setTimeout(() => {
-						api.blockMenu.hide()
-					}, 0)
-				}
+				if (open) return
+
+				// prevent unselect the block selection
+				setTimeout(() => {
+					api.blockMenu.hide()
+				}, 0)
 			}}
 		>
 			<ContextMenuTrigger
@@ -269,7 +287,10 @@ export function BlockContextMenu({
 				<div>{children}</div>
 			</ContextMenuTrigger>
 			<ContextMenuContent
+				anchor={anchor}
+				align={isHandleContextMenu ? "center" : "start"}
 				className="w-64"
+				side={isHandleContextMenu ? "left" : "bottom"}
 				finalFocus={() => {
 					if (skipNextCloseAutoFocusRef.current) {
 						skipNextCloseAutoFocusRef.current = false

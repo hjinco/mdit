@@ -1,11 +1,19 @@
 import { useDraggable } from "@dnd-kit/react"
 import { cn } from "@mdit/ui/lib/utils"
+import { BlockMenuPlugin, BlockSelectionPlugin } from "@platejs/selection/react"
 import { GripVertical, Plus } from "lucide-react"
 import { KEYS, type TElement } from "platejs"
-import type { PlateElementProps } from "platejs/react"
-import type { MouseEvent } from "react"
+import {
+	type PlateElementProps,
+	useEditorPlugin,
+	usePlateState,
+	usePluginOption,
+} from "platejs/react"
+import { type MouseEvent, type PointerEvent, useCallback, useRef } from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
+import { useIsTouchDevice } from "../shared/use-is-touch-device"
 import { insertSlashMenuBelow } from "../slash/insert-slash-menu"
+import { getBlockDragHandleContextMenuId } from "./block-menu-ids"
 
 const headingTopMap: Record<string, string> = {
 	[KEYS.h1]: "top-13",
@@ -34,14 +42,24 @@ const getTopClass = (type: string, isFirstChild: boolean) => {
 export function DragHandle({
 	type,
 	isFirstChild,
+	isVisible,
 	setNodeRef,
 	onMouseDown,
+	onPointerCancel,
+	onPointerDown,
+	onPointerMove,
+	onPointerUp,
 	...props
 }: {
 	type: string
 	isFirstChild: boolean
+	isVisible?: boolean
 	setNodeRef: (node: HTMLDivElement | null) => void
 	onMouseDown: (e: MouseEvent<HTMLDivElement>) => void
+	onPointerCancel: (e: PointerEvent<HTMLDivElement>) => void
+	onPointerDown: (e: PointerEvent<HTMLDivElement>) => void
+	onPointerMove: (e: PointerEvent<HTMLDivElement>) => void
+	onPointerUp: (e: PointerEvent<HTMLDivElement>) => void
 }) {
 	const topClass = getTopClass(type, isFirstChild)
 
@@ -51,17 +69,18 @@ export function DragHandle({
 			className={cn(
 				"editor-block-handle absolute -left-7 flex py-0.75 rounded",
 				"opacity-0 transition-opacity group-hover:opacity-100 will-change-[opacity]",
+				isVisible && "opacity-100 bg-accent/50",
 				"cursor-grab active:cursor-grabbing",
 				"text-muted-foreground/80 hover:bg-accent/50 z-50",
 				"top-1.25",
 				topClass,
 			)}
 			contentEditable={false}
-			onClick={(e) => {
-				e.preventDefault()
-				e.stopPropagation()
-			}}
 			onMouseDown={onMouseDown}
+			onPointerCancel={onPointerCancel}
+			onPointerDown={onPointerDown}
+			onPointerMove={onPointerMove}
+			onPointerUp={onPointerUp}
 			{...props}
 		>
 			<GripVertical className="size-4.5 stroke-[1.4]!" />
@@ -125,11 +144,61 @@ function DraggableBlock(
 ) {
 	const { elementId } = props
 	const isFirstChild = props.path.length === 1 && props.path[0] === 0
+	const { api, editor } = useEditorPlugin(BlockMenuPlugin)
+	const openId = usePluginOption(BlockMenuPlugin, "openId")
+	const [readOnly] = usePlateState("readOnly")
+	const selectedIds = usePluginOption(BlockSelectionPlugin, "selectedIds")
+	const isTouch = useIsTouchDevice()
+	const dragHandleElementRef = useRef<HTMLDivElement | null>(null)
+	const clickCandidateRef = useRef<{
+		pointerId: number
+		x: number
+		y: number
+		moved: boolean
+	} | null>(null)
 
 	const { ref: draggableRef, handleRef: dragHandleRef } = useDraggable({
 		id: `editor-${elementId}`,
 		data: { kind: "editor", id: elementId },
 	})
+	const handleMenuId = getBlockDragHandleContextMenuId(elementId)
+	const isHandleMenuOpen = openId === handleMenuId
+
+	const resetClickCandidate = useCallback(() => {
+		clickCandidateRef.current = null
+	}, [])
+
+	const setDragHandleNodeRef = useCallback(
+		(node: HTMLDivElement | null) => {
+			dragHandleElementRef.current = node
+			dragHandleRef(node)
+		},
+		[dragHandleRef],
+	)
+
+	const showBlockContextMenu = useCallback(() => {
+		if (readOnly || isTouch) return
+
+		const dragHandleElement = dragHandleElementRef.current
+		if (!dragHandleElement) return
+
+		const rect = dragHandleElement.getBoundingClientRect()
+		if (!selectedIds?.has(elementId)) {
+			editor.getApi(BlockSelectionPlugin).blockSelection.set(elementId)
+		}
+		api.blockMenu.show(handleMenuId, {
+			x: rect.left,
+			y: rect.top + rect.height / 2,
+		})
+	}, [
+		api.blockMenu,
+		editor,
+		elementId,
+		handleMenuId,
+		isTouch,
+		readOnly,
+		selectedIds,
+	])
 
 	const handleInsertBelow = () => {
 		const entry = props.editor.api.node<TElement>({
@@ -166,10 +235,57 @@ function DraggableBlock(
 			<DragHandle
 				type={props.element.type}
 				isFirstChild={isFirstChild}
-				setNodeRef={dragHandleRef}
+				isVisible={isHandleMenuOpen}
+				setNodeRef={setDragHandleNodeRef}
 				onMouseDown={(e) => {
 					e.preventDefault()
 					e.stopPropagation()
+				}}
+				onPointerCancel={(e) => {
+					if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+						e.currentTarget.releasePointerCapture(e.pointerId)
+					}
+					resetClickCandidate()
+				}}
+				onPointerDown={(e) => {
+					if (!isTouch && e.pointerType === "mouse" && e.button === 0) {
+						e.currentTarget.setPointerCapture(e.pointerId)
+						clickCandidateRef.current = {
+							pointerId: e.pointerId,
+							x: e.clientX,
+							y: e.clientY,
+							moved: false,
+						}
+					}
+				}}
+				onPointerMove={(e) => {
+					const clickCandidate = clickCandidateRef.current
+					if (!clickCandidate || clickCandidate.pointerId !== e.pointerId)
+						return
+
+					if (
+						Math.abs(e.clientX - clickCandidate.x) > 4 ||
+						Math.abs(e.clientY - clickCandidate.y) > 4
+					) {
+						clickCandidate.moved = true
+					}
+				}}
+				onPointerUp={(e) => {
+					const clickCandidate = clickCandidateRef.current
+					if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+						e.currentTarget.releasePointerCapture(e.pointerId)
+					}
+					resetClickCandidate()
+
+					if (
+						clickCandidate &&
+						clickCandidate.pointerId === e.pointerId &&
+						!clickCandidate.moved
+					) {
+						e.preventDefault()
+						e.stopPropagation()
+						showBlockContextMenu()
+					}
 				}}
 				data-plate-prevent-deselect
 			/>
