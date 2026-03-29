@@ -56,7 +56,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 						</Button>
 					)}
 
-					<CodeBlockCombobox onSelect={() => editor.tf.focus()} />
+					<CodeBlockCombobox />
 
 					<CopyButton
 						size="icon"
@@ -77,11 +77,7 @@ export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 	)
 }
 
-function CodeBlockCombobox({
-	onSelect,
-}: {
-	onSelect: (value: string) => void
-}) {
+function CodeBlockCombobox() {
 	const [open, setOpen] = useState(false)
 	const readOnly = useReadOnly()
 	const editor = useEditorRef()
@@ -121,6 +117,11 @@ function CodeBlockCombobox({
 					setSearchValue("")
 					return true
 				}}
+				// The popover is portaled, so key events still bubble through the
+				// React tree to Plate unless we stop them here.
+				onKeyDown={(e) => {
+					e.stopPropagation()
+				}}
 			>
 				<Command shouldFilter={false}>
 					<CommandInput
@@ -145,7 +146,6 @@ function CodeBlockCombobox({
 										)
 										setSearchValue(value)
 										setOpen(false)
-										onSelect(value)
 									}}
 								>
 									<Check
