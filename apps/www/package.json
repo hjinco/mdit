@@ -31,18 +31,18 @@
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.13.7",
+		"@cloudflare/vite-plugin": "^1.30.2",
 		"@content-collections/vite": "^0.2.9",
-		"@tailwindcss/vite": "^4.1.12",
+		"@tailwindcss/vite": "^4.2.2",
 		"@types/node": "^24.10.13",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
 		"@typescript/native-preview": "catalog:",
-		"@vitejs/plugin-react": "^5.1.0",
+		"@vitejs/plugin-react": "^6.0.1",
 		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.3",
-		"vite": "^7.2.0",
+		"vite": "catalog:",
 		"vite-tsconfig-paths": "^5.1.4",
-		"wrangler": "^4.70.0"
+		"wrangler": "catalog:"
 	}
 }

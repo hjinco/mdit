@@ -17,6 +17,6 @@
 		"@mdit/tsconfig": "workspace:*",
 		"@typescript/native-preview": "catalog:",
 		"@types/react": "^19.2.14",
-		"vitest": "^4.0.9"
+		"vitest": "catalog:"
 	}
 }

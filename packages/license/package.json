@@ -10,7 +10,7 @@
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",
 		"@typescript/native-preview": "catalog:",
-		"vitest": "^4.0.9"
+		"vitest": "catalog:"
 	},
 	"exports": {
 		".": "./src/index.ts"
