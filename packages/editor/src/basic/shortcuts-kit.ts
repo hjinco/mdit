@@ -118,6 +118,10 @@ export function copySelection(editor: PlateEditor) {
 	copyOrCutSelection(editor, "copy")
 }
 
+export function insertSoftLineBreak(editor: PlateEditor) {
+	editor.tf.insertSoftBreak()
+}
+
 export function moveBlockUp(editor: PlateEditor) {
 	// Use the logic for current selection
 	const sel = editor.selection
@@ -300,6 +304,13 @@ export function moveBlockDown(editor: PlateEditor) {
 export const ShortcutsPlugin = createPlatePlugin({
 	key: "shortcuts",
 	shortcuts: {
+		softBreak: {
+			keys: "shift+enter",
+			handler: ({ editor }) => {
+				insertSoftLineBreak(editor)
+				return true
+			},
+		},
 		selectAll: {
 			keys: "mod+a",
 			handler: ({ editor }) => {
