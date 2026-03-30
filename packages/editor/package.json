@@ -25,7 +25,8 @@
 		"./toc": "./src/toc/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run"
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit"
 	},
 	"dependencies": {
 		"@ai-sdk/react": "^3.0.0",
@@ -89,6 +90,7 @@
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
+		"@typescript/native-preview": "catalog:",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
 		"vitest": "^4.0.9"

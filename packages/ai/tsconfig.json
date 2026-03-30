@@ -1,0 +1,3 @@
+{
+	"extends": "@mdit/tsconfig/node"
+}
