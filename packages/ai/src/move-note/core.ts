@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai"
 import { createModelFromChatConfig } from "../model/create-model"
 import { buildProviderRequestOptions } from "../runtime/provider-request-options"
 import { type RunAgentFn, runAgentWithDefaults } from "./agent-runner"
@@ -20,12 +21,12 @@ import type {
 	MoveNoteWithAIFileSystemPorts,
 } from "./types"
 
-type CreateModelFn = (config: MoveNoteWithAIChatConfig) => unknown
+type CreateModelFn = (config: MoveNoteWithAIChatConfig) => LanguageModel
 
 export function createModelFromMoveConfig(
 	config: MoveNoteWithAIChatConfig,
 	options?: MoveNoteWithAICodexOptions,
-) {
+): LanguageModel {
 	return createModelFromChatConfig(config, { codex: options })
 }
 

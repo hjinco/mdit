@@ -4,7 +4,8 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"test": "vitest run"
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit"
 	},
 	"exports": {
 		".": "./src/index.ts"
@@ -14,6 +15,8 @@
 		"@tauri-apps/plugin-opener": "~2.5.3"
 	},
 	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
+		"@typescript/native-preview": "catalog:",
 		"vitest": "^4.0.9"
 	}
 }

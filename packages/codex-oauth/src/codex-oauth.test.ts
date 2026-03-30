@@ -29,7 +29,10 @@ import {
 } from "./codex-oauth"
 
 function createJwt(payload: Record<string, unknown>): string {
-	const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url")
+	const encoded = btoa(JSON.stringify(payload))
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_")
+		.replace(/=+$/, "")
 	return `header.${encoded}.signature`
 }
 

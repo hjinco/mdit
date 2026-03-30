@@ -4,7 +4,8 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"test": "vitest run"
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit"
 	},
 	"exports": {
 		".": "./src/index.ts"
@@ -16,6 +17,7 @@
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",
+		"@typescript/native-preview": "catalog:",
 		"@types/d3-force": "^3.0.10",
 		"@types/react": "^19.2.14",
 		"vitest": "^4.0.9"

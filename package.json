@@ -21,6 +21,7 @@
 		"ts:check:desktop": "turbo run ts:check --filter=@mdit/desktop",
 		"ts:check:www": "turbo run ts:check --filter=@mdit/www",
 		"ts:check:sync": "turbo run ts:check --filter=@mdit/sync",
+		"ts:check:packages": "turbo run ts:check --filter='./packages/*'",
 		"ts:check:all": "turbo run ts:check",
 		"lint": "biome check .",
 		"lint:fix": "biome check . --write",

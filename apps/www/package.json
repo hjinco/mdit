@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"ts:check": "tsc --noEmit",
+		"ts:check": "tsgo --noEmit",
 		"preview": "vite preview",
 		"deploy": "pnpm build && wrangler deploy",
 		"cf-typegen": "wrangler types"
@@ -37,6 +37,7 @@
 		"@types/node": "^24.10.13",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
+		"@typescript/native-preview": "catalog:",
 		"@vitejs/plugin-react": "^5.1.0",
 		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.3",

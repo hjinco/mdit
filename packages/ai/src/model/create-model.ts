@@ -1,6 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic"
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { createOpenAI } from "@ai-sdk/openai"
+import type { LanguageModel } from "ai"
 import { ollama } from "ollama-ai-provider-v2"
 import type { AIChatConfig, AICodexModelOptions } from "../shared/chat-config"
 import { buildCodexHeaders } from "./codex-headers"
@@ -8,7 +9,7 @@ import { buildCodexHeaders } from "./codex-headers"
 export function createModelFromChatConfig(
 	config: AIChatConfig,
 	options?: { codex?: AICodexModelOptions },
-) {
+): LanguageModel {
 	switch (config.provider) {
 		case "anthropic":
 			return createAnthropic({

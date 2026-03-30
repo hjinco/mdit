@@ -1,3 +1,4 @@
+import type { LanguageModel } from "ai"
 import { dirname } from "pathe"
 import { createModelFromChatConfig } from "../model/create-model"
 import { buildProviderRequestOptions } from "../runtime/provider-request-options"
@@ -29,7 +30,7 @@ import type {
 	RenameNoteWithAIFileSystemPorts,
 } from "./types"
 
-type CreateModelFn = (config: RenameNoteWithAIChatConfig) => unknown
+type CreateModelFn = (config: RenameNoteWithAIChatConfig) => LanguageModel
 type CreateToolsFn = (params: CreateRenameNoteToolsParams) => RenameNoteTools
 
 function buildFailedBatchResult({
@@ -57,7 +58,7 @@ function buildFailedBatchResult({
 export function createModelFromRenameConfig(
 	config: RenameNoteWithAIChatConfig,
 	options?: RenameNoteWithAICodexOptions,
-) {
+): LanguageModel {
 	return createModelFromChatConfig(config, { codex: options })
 }
 

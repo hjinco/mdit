@@ -30,7 +30,7 @@ export function useIsFullscreen(debounceMs = 600) {
 		}
 
 		const currentWindow = getCurrentWindow()
-		let debounceTimer: NodeJS.Timeout | null = null
+		let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 		/**
 		 * Checks the current fullscreen status from Tauri window API
