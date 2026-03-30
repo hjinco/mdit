@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Then PR"
+  short_description: "Run triad review, then open a PR only when findings are empty"
+  default_prompt: "Use $review-then-pr to review the current change with $code-review-triad and open a draft PR only if the review returns no findings."
