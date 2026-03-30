@@ -1,15 +1,20 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { insertSoftLineBreak, ShortcutsPlugin } from "./shortcuts-kit"
 
 describe("shortcuts-kit", () => {
-	it("maps Shift+Enter to a soft line break", () => {
-		const insertSoftBreak = vi.fn()
-		const editor = {
+	let insertSoftBreak: ReturnType<typeof vi.fn>
+	let editor: any
+
+	beforeEach(() => {
+		insertSoftBreak = vi.fn()
+		editor = {
 			tf: {
 				insertSoftBreak,
 			},
 		} as any
+	})
 
+	it("maps Shift+Enter to a soft line break", () => {
 		const shortcut = (ShortcutsPlugin as any).shortcuts.softBreak
 
 		expect(shortcut.keys).toBe("shift+enter")
@@ -18,13 +23,6 @@ describe("shortcuts-kit", () => {
 	})
 
 	it("inserts a soft line break through the editor transform", () => {
-		const insertSoftBreak = vi.fn()
-		const editor = {
-			tf: {
-				insertSoftBreak,
-			},
-		} as any
-
 		insertSoftLineBreak(editor)
 
 		expect(insertSoftBreak).toHaveBeenCalledTimes(1)
