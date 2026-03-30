@@ -493,6 +493,9 @@ importers:
       '@mdit/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
     devDependencies:
       '@types/react':
         specifier: ^19.2.14
@@ -898,9 +901,15 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
       react-day-picker:
         specifier: ^9.13.2
         version: 9.13.2(react@19.2.4)
+      react-dom:
+        specifier: ^19.2.4
+        version: 19.2.4(react@19.2.4)
       react-hook-form:
         specifier: ^7.71.1
         version: 7.71.1(react@19.2.4)
