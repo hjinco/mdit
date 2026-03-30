@@ -50,13 +50,15 @@ function getSelectedCodeLines(editor: PlateEditor) {
 	const selection = editor.selection
 	if (!selection) return null
 
-	return [
+	const codeLines = [
 		...editor.api.nodes({
 			at: selection,
 			match: { type: editor.getType(KEYS.codeLine) },
 			mode: "lowest",
 		}),
 	] as [any, number[]][]
+
+	return codeLines.length > 0 ? codeLines : null
 }
 
 // Helper function to calculate indentation info from line text

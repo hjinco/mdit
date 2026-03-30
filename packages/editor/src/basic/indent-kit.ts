@@ -103,79 +103,33 @@ export const IndentKit = [
 					return false
 				},
 			},
-			tab: {
-				keys: "tab",
-				handler: ({ editor, event }) => {
-					// Get current block node
-					const entry = editor.api.above({
-						match: editor.api.isBlock,
-						mode: "highest",
-					})
+		},
+	}).overrideEditor(({ editor, tf: { tab } }) => ({
+		transforms: {
+			tab: (options) => {
+				const entry = editor.api.above({
+					match: editor.api.isBlock,
+					mode: "highest",
+				})
 
-					if (!entry) {
-						return
-					}
+				if (!entry) {
+					return tab(options)
+				}
 
-					const [node, path] = entry
+				const [node, path] = entry
 
-					// Allow default behavior in codeblock
-					if (node.type === editor.getType(KEYS.codeBlock)) {
-						return
-					}
+				if (node.type === editor.getType(KEYS.codeBlock)) {
+					return tab(options)
+				}
 
-					// Check current block's indent value (0 if missing)
-					const currentIndent = (node as { indent?: number }).indent ?? 0
-
-					// Find previous block node
-					const previousEntry = editor.api.previous({
-						at: path,
-						match: editor.api.isBlock,
-						mode: "highest",
-					})
-
-					// Check previous block's indent value (0 if missing)
-					const previousIndent =
-						previousEntry && (previousEntry[0] as { indent?: number }).indent
-							? (previousEntry[0] as { indent?: number }).indent!
-							: 0
-
-					// If current indent is smaller than previous, increment current indent by 1
-					// Otherwise, set to previous indent + 1
-					const newIndent =
-						currentIndent < previousIndent
-							? currentIndent + 1
-							: previousIndent + 1
-
-					editor.tf.setNodes({ indent: newIndent }, { at: path })
-
-					event.preventDefault()
-				},
-			},
-			shiftTab: {
-				keys: "shift+tab",
-				handler: ({ editor, event }) => {
-					const entry = editor.api.above({
-						match: editor.api.isBlock,
-						mode: "highest",
-					})
-
-					if (!entry) {
-						return
-					}
-
-					const [node, path] = entry
-
-					if (node.type === editor.getType(KEYS.codeBlock)) {
-						return
-					}
-
+				if (options?.reverse) {
 					const currentIndent = (node as { indent?: number }).indent ?? 0
 
 					if (currentIndent <= 1) {
-						return
+						return true
 					}
 
-					// Collect all child blocks that need to be outdented
+					// Collect all child blocks that need to be outdented with the parent.
 					const childBlocks: Array<{ path: typeof path; newIndent: number }> =
 						[]
 					let currentPath = path
@@ -194,36 +148,44 @@ export const IndentKit = [
 						const [nextNode, nextPath] = nextEntry
 						const nextIndent = (nextNode as { indent?: number }).indent ?? 0
 
-						// If next block's indent is less than or equal to current block's indent,
-						// it's not a child, so stop
 						if (nextIndent <= currentIndent) {
 							break
 						}
 
-						// This is a child block, collect it for outdenting
-						const childNewIndent = nextIndent - 1
-						childBlocks.push({ path: nextPath, newIndent: childNewIndent })
-
+						childBlocks.push({ path: nextPath, newIndent: nextIndent - 1 })
 						currentPath = nextPath
 					}
 
-					// Perform all updates in a single normalization
 					editor.tf.withoutNormalizing(() => {
-						// Outdent current block
 						editor.tf.setNodes({ indent: currentIndent - 1 }, { at: path })
 
-						// Outdent all child blocks
-						for (const {
-							path: childPath,
-							newIndent: childNewIndent,
-						} of childBlocks) {
-							editor.tf.setNodes({ indent: childNewIndent }, { at: childPath })
+						for (const { path: childPath, newIndent } of childBlocks) {
+							editor.tf.setNodes({ indent: newIndent }, { at: childPath })
 						}
 					})
 
-					event.preventDefault()
-				},
+					return true
+				}
+
+				const currentIndent = (node as { indent?: number }).indent ?? 0
+				const previousEntry = editor.api.previous({
+					at: path,
+					match: editor.api.isBlock,
+					mode: "highest",
+				})
+				const previousIndent =
+					previousEntry && (previousEntry[0] as { indent?: number }).indent
+						? (previousEntry[0] as { indent?: number }).indent!
+						: 0
+				const newIndent =
+					currentIndent < previousIndent
+						? currentIndent + 1
+						: previousIndent + 1
+
+				editor.tf.setNodes({ indent: newIndent }, { at: path })
+
+				return true
 			},
 		},
-	}),
+	})),
 ]
