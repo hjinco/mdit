@@ -18,6 +18,10 @@
 			"outputs": []
 		},
 		"test": {
+			"dependsOn": ["test:storybook"],
+			"outputs": []
+		},
+		"test:storybook": {
 			"outputs": []
 		},
 		"check:rust": {

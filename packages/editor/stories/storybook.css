@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@mdit/ui/styles/theme.css";
+
+@source "../../ui/src/**/*.{ts,tsx}";
+@source "../src/**/*.{ts,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+		scrollbar-width: thin;
+	}
+
+	html {
+		font-size: 16px;
+		font-weight: 500;
+	}
+
+	body {
+		@apply bg-background text-foreground antialiased;
+		margin: 0;
+		min-width: 320px;
+	}
+
+	button,
+	input,
+	textarea {
+		font: inherit;
+	}
+}
+
+.slate-p {
+	@apply my-px px-0 py-1;
+}
+
+.lucide,
+.tabler-icon {
+	stroke-width: 1.6;
+}
