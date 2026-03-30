@@ -148,7 +148,7 @@ describe("ai-settings-slice credential store", () => {
 })
 
 describe("ai-settings-slice persistence", () => {
-	it("stores chat config in localStorage without apiKey", async () => {
+	it("stores gpt-5.4 chat config in localStorage without apiKey", async () => {
 		const { store } = createAISettingsTestStore({
 			initialCredentials: {
 				openai: { type: "api_key", apiKey: "openai-secret" },
@@ -156,16 +156,16 @@ describe("ai-settings-slice persistence", () => {
 		})
 
 		await store.getState().initializeAISettings()
-		await store.getState().selectModel("openai", "gpt-5.2")
+		await store.getState().selectModel("openai", "gpt-5.4")
 
 		expect(JSON.parse(localStorage.getItem("chat-config") || "{}")).toEqual({
 			provider: "openai",
-			model: "gpt-5.2",
+			model: "gpt-5.4",
 		})
 
 		expect(store.getState().chatConfig).toEqual({
 			provider: "openai",
-			model: "gpt-5.2",
+			model: "gpt-5.4",
 			apiKey: "openai-secret",
 		})
 	})
@@ -173,33 +173,53 @@ describe("ai-settings-slice persistence", () => {
 	it("hydrates from credential store and clears stale persisted values", async () => {
 		localStorage.setItem(
 			"chat-config",
-			JSON.stringify({ provider: "openai", model: "gpt-5.2" }),
+			JSON.stringify({ provider: "openai", model: "gpt-5.4" }),
 		)
 		localStorage.setItem(
 			"chat-enabled-models",
 			JSON.stringify([
-				{ provider: "openai", model: "gpt-5.2" },
+				{ provider: "openai", model: "gpt-5.4" },
+				{ provider: "codex_oauth", model: "gpt-5.4" },
 				{ provider: "anthropic", model: "claude-sonnet-4-5" },
 				{ provider: "ollama", model: "llama3.2" },
+				{ provider: "openai", model: "stale-model" },
 			]),
 		)
 
 		const { store } = createAISettingsTestStore({
 			initialCredentials: {
 				openai: { type: "api_key", apiKey: "openai-secret" },
+				codex_oauth: {
+					type: "oauth",
+					accessToken: "codex-access",
+					refreshToken: "codex-refresh",
+					expiresAt: Date.now() + 1000 * 60 * 60,
+					accountId: "org-codex",
+				},
 			},
 		})
 
 		await store.getState().initializeAISettings()
 
-		expect(store.getState().connectedProviders).toEqual(["openai"])
+		expect(store.getState().connectedProviders).toEqual([
+			"openai",
+			"codex_oauth",
+		])
 		expect(store.getState().chatConfig).toEqual({
 			provider: "openai",
-			model: "gpt-5.2",
+			model: "gpt-5.4",
 			apiKey: "openai-secret",
 		})
 		expect(store.getState().enabledChatModels).toEqual([
-			{ provider: "openai", model: "gpt-5.2" },
+			{ provider: "openai", model: "gpt-5.4" },
+			{ provider: "codex_oauth", model: "gpt-5.4" },
+			{ provider: "ollama", model: "llama3.2" },
+		])
+		expect(
+			JSON.parse(localStorage.getItem("chat-enabled-models") || "[]"),
+		).toEqual([
+			{ provider: "openai", model: "gpt-5.4" },
+			{ provider: "codex_oauth", model: "gpt-5.4" },
 			{ provider: "ollama", model: "llama3.2" },
 		])
 	})
