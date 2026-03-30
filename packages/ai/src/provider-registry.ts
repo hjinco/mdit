@@ -76,9 +76,16 @@ export const API_MODELS_MAP: Record<ProviderId, string[]> = {
 		"gemini-2.5-flash",
 		"gemini-2.5-flash-lite",
 	],
-	openai: ["gpt-5.2", "gpt-5.1", "gpt-5", "gpt-5-mini", "gpt-5-nano"],
+	openai: [
+		"gpt-5.4",
+		"gpt-5.2",
+		"gpt-5.1",
+		"gpt-5",
+		"gpt-5-mini",
+		"gpt-5-nano",
+	],
 	anthropic: ["claude-sonnet-4-5", "claude-haiku-4-5"],
-	codex_oauth: ["gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.2"],
+	codex_oauth: ["gpt-5.4", "gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.2"],
 }
 
 export const CREDENTIAL_PROVIDER_IDS = Object.keys(
