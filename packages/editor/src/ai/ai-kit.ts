@@ -1,11 +1,13 @@
-import { withAIBatch } from "@platejs/ai"
+import { BaseAIPlugin, withAIBatch } from "@platejs/ai"
 import {
 	AIChatPlugin,
 	AIPlugin,
+	getInsertPreviewStart,
 	streamInsertChunk,
 	useChatChunk,
 } from "@platejs/ai/react"
-import { getPluginType, KEYS, PathApi } from "platejs"
+import { cloneDeep } from "es-toolkit"
+import { ElementApi, getPluginType, KEYS, PathApi } from "platejs"
 import { usePluginOption } from "platejs/react"
 import { AILoadingBar } from "../ai/ai-loading-bar"
 import { createAIMenu } from "../ai/ai-menu"
@@ -38,11 +40,21 @@ export const createAIKit = ({ host }: { host: AIMenuHostDeps }) => {
 				const toolName = usePluginOption(AIChatPlugin, "toolName")
 
 				useChatChunk({
-					onChunk: ({ chunk, isFirst, text }) => {
-						if (mode === "insert") {
-							if (isFirst) {
-								editor.setOption(AIChatPlugin, "streaming", true)
+					onChunk: ({ chunk, isFirst, nodes, text }) => {
+						if (isFirst && mode === "insert") {
+							const { startBlock, startInEmptyParagraph } =
+								getInsertPreviewStart(editor)
 
+							editor.getTransforms(BaseAIPlugin).ai.beginPreview({
+								originalBlocks:
+									startInEmptyParagraph &&
+									startBlock &&
+									ElementApi.isElement(startBlock)
+										? [cloneDeep(startBlock)]
+										: [],
+							})
+
+							editor.tf.withoutSaving(() => {
 								editor.tf.insertNodes(
 									{
 										children: [{ text: "" }],
@@ -52,21 +64,22 @@ export const createAIKit = ({ host }: { host: AIMenuHostDeps }) => {
 										at: PathApi.next(editor.selection!.focus.path.slice(0, 1)),
 									},
 								)
-							}
+							})
+							editor.setOption(AIChatPlugin, "streaming", true)
+						}
 
-							if (!getOption("streaming")) return
+						if (mode === "insert" && nodes.length > 0) {
+							editor.tf.withoutSaving(() => {
+								if (!getOption("streaming")) return
 
-							withAIBatch(
-								editor,
-								() => {
+								editor.tf.withScrolling(() => {
 									streamInsertChunk(editor, chunk, {
 										textProps: {
 											[getPluginType(editor, KEYS.ai)]: true,
 										},
 									})
-								},
-								{ split: isFirst },
-							)
+								})
+							})
 						}
 
 						if (toolName === "edit" && mode === "chat") {
