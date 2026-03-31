@@ -50,25 +50,32 @@ export function useWorkspaceLifecycle() {
 			return
 		}
 
-		hasBootstrappedRef.current = true
 		let isCancelled = false
 
-		void (async () => {
-			if (isCancelled) {
-				return
-			}
-
-			await bootstrapWorkspaceLifecycle(
-				{
-					syncRecentWorkspacePaths,
-					loadWorkspace,
-				},
-				() => isCancelled,
-			)
-		})().catch((error) => {
-			console.error("Failed to bootstrap workspace lifecycle:", error)
-			void loadWorkspace(null)
-		})
+		void bootstrapWorkspaceLifecycle(
+			{
+				syncRecentWorkspacePaths,
+				loadWorkspace,
+			},
+			() => isCancelled,
+		)
+			.catch(async (error) => {
+				console.error("Failed to bootstrap workspace lifecycle:", error)
+				if (isCancelled) {
+					return
+				}
+				await loadWorkspace(null).catch((fallbackError) => {
+					console.error(
+						"Failed to recover workspace lifecycle bootstrap:",
+						fallbackError,
+					)
+				})
+			})
+			.finally(() => {
+				if (!isCancelled) {
+					hasBootstrappedRef.current = true
+				}
+			})
 
 		return () => {
 			isCancelled = true
