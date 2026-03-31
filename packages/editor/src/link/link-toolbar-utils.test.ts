@@ -114,13 +114,19 @@ describe("link-toolbar-utils", () => {
 		).toBeNull()
 	})
 
-	it("preserves protocol slashes for web markdown links", () => {
+	it("preserves protocol slashes for uri markdown links", () => {
 		expect(normalizeMarkdownPathForDisplay("http://example.com/")).toBe(
 			"http://example.com/",
 		)
 		expect(normalizeMarkdownPathForDisplay("https://example.com/a/b/")).toBe(
 			"https://example.com/a/b/",
 		)
+		expect(normalizeMarkdownPathForDisplay("obsidian://open?vault=docs")).toBe(
+			"obsidian://open?vault=docs",
+		)
+		expect(
+			normalizeMarkdownPathForDisplay("file:///Users/test/docs/note.md"),
+		).toBe("file:///Users/test/docs/note.md")
 	})
 
 	it("checks whether an absolute path is inside workspace root", () => {

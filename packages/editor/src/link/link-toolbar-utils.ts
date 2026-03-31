@@ -9,7 +9,7 @@ import type {
 	LinkWorkspaceEntry,
 	WorkspaceFileOption,
 } from "../link/link-kit-types"
-import { startsWithHttpProtocol } from "./link-utils"
+import { startsWithUriProtocolWithSlashes } from "./link-utils"
 
 export type {
 	LinkWorkspaceEntry,
@@ -166,7 +166,7 @@ export function normalizeMarkdownPathForDisplay(value: string): string {
 		return ""
 	}
 
-	if (startsWithHttpProtocol(decoded)) {
+	if (startsWithUriProtocolWithSlashes(decoded)) {
 		return decoded
 	}
 

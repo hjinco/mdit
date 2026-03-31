@@ -8,7 +8,7 @@ import {
 	stripLeadingSlashes,
 } from "../link/link-toolbar-utils"
 import type { LinkOpenServices } from "./link-ports"
-import { startsWithHttpProtocol } from "./link-utils"
+import { startsWithUriProtocolWithSlashes } from "./link-utils"
 
 export type OpenEditorLinkOptions = {
 	href: string
@@ -24,7 +24,7 @@ export async function openEditorLink(options: OpenEditorLinkOptions) {
 		return
 	}
 
-	const isWebLink = startsWithHttpProtocol(targetUrl)
+	const isWebLink = startsWithUriProtocolWithSlashes(targetUrl)
 	if (isWebLink) {
 		try {
 			await options.services.navigation.openExternal(targetUrl)
