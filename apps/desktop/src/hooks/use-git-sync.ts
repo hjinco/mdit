@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useEffectEvent } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
@@ -24,12 +24,21 @@ export function useGitSync(workspacePath: string | null) {
 		})),
 	)
 
-	// Use a ref for status to avoid stale closures in intervals
-	const statusRef = useRef(status)
+	const checkAndRefresh = useEffectEvent(() => {
+		if (document.hasFocus()) {
+			void refreshGitStatus()
+		}
+	})
 
-	useEffect(() => {
-		statusRef.current = status
-	}, [status])
+	const handleWindowFocus = useEffectEvent(() => {
+		void refreshGitStatus()
+	})
+
+	const autoSyncIfNeeded = useEffectEvent(() => {
+		if (document.hasFocus() && status === "unsynced") {
+			void performSync()
+		}
+	})
 
 	useEffect(() => {
 		void loadGitSyncState(workspacePath)
@@ -41,24 +50,24 @@ export function useGitSync(workspacePath: string | null) {
 			return
 		}
 
-		const checkAndRefresh = () => {
-			if (document.hasFocus()) {
-				refreshGitStatus()
-			}
-		}
-
 		// Initial refresh
 		checkAndRefresh()
 
-		const pollIntervalId = setInterval(checkAndRefresh, POLL_INTERVAL_MS)
+		const pollIntervalId = window.setInterval(() => {
+			checkAndRefresh()
+		}, POLL_INTERVAL_MS)
 
-		window.addEventListener("focus", refreshGitStatus)
+		const onFocus = () => {
+			handleWindowFocus()
+		}
+
+		window.addEventListener("focus", onFocus)
 
 		return () => {
-			clearInterval(pollIntervalId)
-			window.removeEventListener("focus", refreshGitStatus)
+			window.clearInterval(pollIntervalId)
+			window.removeEventListener("focus", onFocus)
 		}
-	}, [workspacePath, isGitRepo, refreshGitStatus])
+	}, [workspacePath, isGitRepo])
 
 	// Auto Sync
 	useEffect(() => {
@@ -66,14 +75,12 @@ export function useGitSync(workspacePath: string | null) {
 			return
 		}
 
-		const autoSyncIntervalId = setInterval(() => {
-			if (document.hasFocus() && statusRef.current === "unsynced") {
-				performSync()
-			}
+		const autoSyncIntervalId = window.setInterval(() => {
+			autoSyncIfNeeded()
 		}, AUTO_SYNC_INTERVAL_MS)
 
 		return () => {
-			clearInterval(autoSyncIntervalId)
+			window.clearInterval(autoSyncIntervalId)
 		}
-	}, [workspacePath, isGitRepo, autoSyncEnabled, performSync])
+	}, [workspacePath, isGitRepo, autoSyncEnabled])
 }
