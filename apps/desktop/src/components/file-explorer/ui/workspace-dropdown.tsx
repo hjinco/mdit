@@ -11,10 +11,10 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@mdit/ui/components/tooltip"
+import { getFolderNameFromPath } from "@mdit/utils/path-utils"
 import { ChevronDown, InboxIcon, MinusIcon } from "lucide-react"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useStore } from "@/store"
-import { getFolderNameFromPath } from "@/utils/path-utils"
 
 const REMOVE_WORKSPACE_SELECTOR = '[data-remove-workspace="true"]'
 

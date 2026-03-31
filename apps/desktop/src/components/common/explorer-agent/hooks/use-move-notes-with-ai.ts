@@ -4,6 +4,7 @@ import {
 	isMarkdownPath,
 	type MoveNoteWithAIBatchResult,
 } from "@mdit/ai"
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { readTextFile } from "@tauri-apps/plugin-fs"
 import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import { basename, dirname, join } from "pathe"
@@ -13,9 +14,8 @@ import {
 	AIBatchResultsToast,
 	type AIBatchResultToastItem,
 } from "@/components/common/explorer-agent/ai-batch-results-toast"
+import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import { normalizePathSeparators } from "@/utils/path-utils"
 
 const moveNoteWithAICore = createMoveNoteWithAICore({
 	fileSystem: {

@@ -1,4 +1,8 @@
 import { cn } from "@mdit/ui/lib/utils"
+import {
+	getFolderNameFromPath,
+	hasPathConflictWithLockedPaths,
+} from "@mdit/utils/path-utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { FolderIcon } from "lucide-react"
 import { type MouseEvent, useCallback, useMemo, useRef } from "react"
@@ -6,10 +10,6 @@ import { useShallow } from "zustand/shallow"
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
 import { useStore } from "@/store"
-import {
-	getFolderNameFromPath,
-	hasPathConflictWithLockedPaths,
-} from "@/utils/path-utils"
 import { isMac } from "@/utils/platform"
 import { useCollectionContextMenu } from "./hooks/use-collection-context-menu"
 import { useCollectionRename } from "./hooks/use-collection-rename"

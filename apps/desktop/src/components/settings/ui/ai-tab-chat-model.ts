@@ -1,5 +1,5 @@
 import { AI_PROVIDER_DEFINITIONS, type ChatProviderId } from "@mdit/ai"
-import type { ChatConfig } from "@/store/ai-settings/ai-settings-slice"
+import type { ChatConfig } from "@/store"
 
 type ChatModelOption = { provider: ChatProviderId; model: string }
 type ChatModelSelectOption = ChatModelOption & { value: string }

@@ -1,6 +1,6 @@
 import type { FileTreeRenderNode } from "@mdit/file-tree"
 import type { ReactNode } from "react"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import type { WorkspaceEntry } from "@/store"
 
 export type TreeNodeProps = {
 	node: FileTreeRenderNode<WorkspaceEntry>

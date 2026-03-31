@@ -1,5 +1,5 @@
+import { hotkeyToDisplayTokens } from "@mdit/store/hotkeys"
 import { Kbd, KbdGroup } from "@mdit/ui/components/kbd"
-import { hotkeyToDisplayTokens } from "@/lib/hotkeys"
 
 type HotkeyKbdProps = {
 	binding: string

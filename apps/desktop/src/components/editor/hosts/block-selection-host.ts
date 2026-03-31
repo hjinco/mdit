@@ -2,9 +2,9 @@ import type {
 	BlockSelectionHostDeps,
 	CreateLinkedNotesFromListItemsResult,
 } from "@mdit/editor/selection"
+import { stripMarkdownExtension } from "@mdit/utils/path-utils"
 import { basename, dirname } from "pathe"
 import { useStore } from "@/store"
-import { stripMarkdownExtension } from "@/utils/path-utils"
 import { toWikiTargetFromAbsolutePath } from "@/utils/wiki-link-utils"
 
 type CreateNoteFn = (

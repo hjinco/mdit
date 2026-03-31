@@ -1,14 +1,13 @@
+import {
+	getFolderNameFromPath,
+	normalizePathSeparators,
+} from "@mdit/utils/path-utils"
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { PinIcon, PinOffIcon } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-
+import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import {
-	getFolderNameFromPath,
-	normalizePathSeparators,
-} from "@/utils/path-utils"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 
 type PinnedListProps = {

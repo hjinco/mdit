@@ -1,4 +1,8 @@
 import { cn } from "@mdit/ui/lib/utils"
+import {
+	getFileNameFromPath,
+	getFileNameWithoutExtension,
+} from "@mdit/utils/path-utils"
 import { SquarePenIcon } from "lucide-react"
 import {
 	type ChangeEvent,
@@ -11,12 +15,8 @@ import {
 } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
+import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
-import {
-	getFileNameFromPath,
-	getFileNameWithoutExtension,
-} from "@/utils/path-utils"
 
 export function Tab() {
 	const { tab, linkedTab, clearLinkedTab, renameEntry } = useStore(

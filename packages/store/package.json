@@ -1,0 +1,30 @@
+{
+	"name": "@mdit/store",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./core": "./src/core.ts",
+		"./hotkeys": "./src/hotkeys.ts"
+	},
+	"dependencies": {
+		"@mdit/ai": "workspace:*",
+		"@mdit/git-sync": "workspace:*",
+		"@mdit/local-fs-origin": "workspace:*",
+		"@mdit/utils": "workspace:*",
+		"@tanstack/react-hotkeys": "^0.3.0",
+		"pathe": "^2.0.3",
+		"yaml": "^2.8.1",
+		"zustand": "^5.0.8"
+	},
+	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
+		"@typescript/native-preview": "catalog:",
+		"vitest": "catalog:"
+	}
+}

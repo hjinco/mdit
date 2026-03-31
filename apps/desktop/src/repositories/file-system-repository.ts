@@ -9,8 +9,6 @@ import {
 	writeTextFile,
 } from "@tauri-apps/plugin-fs"
 
-export type { DirEntry, FileInfo } from "@tauri-apps/plugin-fs"
-
 export class FileSystemRepository {
 	exists(path: string): Promise<boolean> {
 		return exists(path)

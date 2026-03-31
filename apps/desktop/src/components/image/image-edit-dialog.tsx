@@ -16,6 +16,10 @@ import {
 	SelectValue,
 } from "@mdit/ui/components/select"
 import { Separator } from "@mdit/ui/components/separator"
+import {
+	getBasePathAndExtension,
+	replaceFileExtension,
+} from "@mdit/utils/path-utils"
 import { invoke } from "@tauri-apps/api/core"
 import { stat } from "@tauri-apps/plugin-fs"
 import { basename } from "pathe"
@@ -24,10 +28,6 @@ import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { formatFileSize } from "@/utils/format-utils"
-import {
-	getBasePathAndExtension,
-	replaceFileExtension,
-} from "@/utils/path-utils"
 import {
 	editImage,
 	getImageProperties,

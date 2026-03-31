@@ -1,0 +1,25 @@
+{
+	"name": "@mdit/utils",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"test": "vitest run",
+		"ts:check": "tsgo --noEmit"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./array-utils": "./src/array-utils.ts",
+		"./keyboard-shortcut": "./src/keyboard-shortcut.ts",
+		"./path-utils": "./src/path-utils.ts",
+		"./platform": "./src/platform.ts"
+	},
+	"dependencies": {
+		"pathe": "^2.0.3"
+	},
+	"devDependencies": {
+		"@mdit/tsconfig": "workspace:*",
+		"@typescript/native-preview": "catalog:",
+		"vitest": "catalog:"
+	}
+}

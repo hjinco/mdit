@@ -1,10 +1,10 @@
 import { KEYS, type Value } from "@mdit/editor/plate"
-import { useEffect, useRef } from "react"
-import { useStore } from "@/store"
 import {
 	getFileNameWithoutExtension,
 	sanitizeFilename,
-} from "@/utils/path-utils"
+} from "@mdit/utils/path-utils"
+import { useEffect, useRef } from "react"
+import { useStore } from "@/store"
 
 const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 

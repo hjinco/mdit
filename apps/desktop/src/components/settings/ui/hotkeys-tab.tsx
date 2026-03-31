@@ -1,3 +1,9 @@
+import {
+	APP_HOTKEY_CATEGORY_LABELS,
+	APP_HOTKEY_DEFINITIONS,
+	type AppHotkeyActionId,
+	type AppHotkeyCategory,
+} from "@mdit/store/hotkeys"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
@@ -17,12 +23,6 @@ import { useHotkeyRecorder } from "@tanstack/react-hotkeys"
 import { useCallback, useMemo, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import {
-	APP_HOTKEY_CATEGORY_LABELS,
-	APP_HOTKEY_DEFINITIONS,
-	type AppHotkeyActionId,
-	type AppHotkeyCategory,
-} from "@/lib/hotkeys"
 import { useStore } from "@/store"
 
 const HOTKEY_LABEL_BY_ID: Record<AppHotkeyActionId, string> =

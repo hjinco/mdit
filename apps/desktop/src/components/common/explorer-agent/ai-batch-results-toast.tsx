@@ -1,5 +1,6 @@
 import { Button } from "@base-ui/react/button"
 import { cn } from "@mdit/ui/lib/utils"
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import {
 	IconAlertCircle,
 	IconArrowRight,
@@ -8,7 +9,6 @@ import {
 	IconRotate,
 } from "@tabler/icons-react"
 import { useState } from "react"
-import { normalizePathSeparators } from "@/utils/path-utils"
 
 export type AIBatchResultToastItem = {
 	id: string

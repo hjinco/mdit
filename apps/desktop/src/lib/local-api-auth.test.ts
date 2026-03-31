@@ -5,7 +5,7 @@ const { getAppSecretMock, setAppSecretMock } = vi.hoisted(() => ({
 	setAppSecretMock: vi.fn(),
 }))
 
-vi.mock("./credentials", () => ({
+vi.mock("@/lib/credentials", () => ({
 	getAppSecret: getAppSecretMock,
 	setAppSecret: setAppSecretMock,
 }))

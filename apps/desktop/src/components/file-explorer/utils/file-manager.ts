@@ -1,5 +1,5 @@
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { Command } from "@tauri-apps/plugin-shell"
-import { normalizePathSeparators } from "@/utils/path-utils"
 import { getPlatform } from "@/utils/platform"
 
 const PLATFORM = getPlatform()

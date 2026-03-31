@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useEffect } from "react"
 import { useShallow } from "zustand/shallow"
+import { useStore } from "@/store"
 import { CollectionView } from "./components/collection-view/collection-view"
 import { CommandMenu } from "./components/command-menu/command-menu"
 import { Editor } from "./components/editor/editor"
@@ -16,7 +17,6 @@ import { useFontScale } from "./hooks/use-font-scale"
 import { useGitSync } from "./hooks/use-git-sync"
 import { startLocalApiServer, stopLocalApiServer } from "./lib/local-api"
 import { shouldRunLocalApiServer } from "./lib/local-api-runtime"
-import { useStore } from "./store"
 import { isLinux, isWindows10 } from "./utils/platform"
 
 export function App() {

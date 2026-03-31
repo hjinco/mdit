@@ -3,9 +3,9 @@ import {
 	isAbsoluteLike,
 	normalizePathSeparators,
 } from "@mdit/editor/link"
+import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { relative } from "pathe"
 import { useStore } from "@/store"
-import { isPathEqualOrDescendant } from "@/utils/path-utils"
 
 export type ImageLinkData = {
 	url: string

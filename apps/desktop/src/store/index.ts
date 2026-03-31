@@ -1,53 +1,138 @@
-import { create } from "zustand"
 import {
-	type AISettingsSlice,
-	createAISettingsSlice,
-} from "./ai-settings/ai-settings-slice"
+	isCodexCredentialExpiringSoon,
+	refreshCodexAccessToken,
+	startCodexBrowserOAuth,
+} from "@mdit/codex-oauth"
+import { createMditStore } from "@mdit/store"
+import type {
+	BacklinkEntry,
+	FrontmatterUtils,
+	ResolveWikiLinkResult,
+} from "@mdit/store/core"
+import { invoke } from "@tauri-apps/api/core"
+import { open } from "@tauri-apps/plugin-dialog"
+import { readTextFile, rename as renameFile } from "@tauri-apps/plugin-fs"
+import { toast } from "sonner"
 import {
-	type CollectionSlice,
-	createCollectionSlice,
-} from "./collection/collection-slice"
-import { createEditorSlice, type EditorSlice } from "./editor/editor-slice"
+	deleteCredential,
+	getCredential,
+	listCredentialProviders,
+	setApiKeyCredential,
+	setCodexCredential,
+} from "@/lib/credentials"
 import {
-	createGitSyncSlice,
-	type GitSyncSlice,
-} from "./git-sync/git-sync-slice"
-import { createHotkeysSlice, type HotkeysSlice } from "./hotkeys/hotkeys-slice"
-import {
-	createImageEditSlice,
-	type ImageEditSlice,
-} from "./image-edit/image-edit-slice"
-import {
-	createIndexingSlice,
-	type IndexingSlice,
-} from "./indexing/indexing-slice"
-import { createTabSlice, type TabSlice } from "./tab/tab-slice"
-import { createUISlice, type UISlice } from "./ui/ui-slice"
-import {
-	createWorkspaceSlice,
-	type WorkspaceSlice,
-} from "./workspace/workspace-slice"
+	removeFileFrontmatterProperty,
+	renameFileFrontmatterProperty,
+	updateFileFrontmatter,
+} from "@/lib/frontmatter"
+import { createDesktopGitSyncCore } from "@/lib/git-sync"
+import { createAppDataHotkeyStorage } from "@/lib/hotkeys-storage"
+import { createTauriIndexingPort } from "@/lib/indexing"
+import { fetchOllamaModels } from "@/lib/ollama"
+import { loadSettings, saveSettings } from "@/lib/workspace-settings"
+import { createTauriWorkspaceWatcher } from "@/lib/workspace-watch"
+import { FileSystemRepository } from "@/repositories/file-system-repository"
+import { UserSettingsRepository } from "@/repositories/user-settings-repository"
+import { WorkspaceHistoryRepository } from "@/repositories/workspace-history-repository"
+import { WorkspaceSettingsRepository } from "@/repositories/workspace-settings-repository"
 
-export type StoreState = WorkspaceSlice &
-	TabSlice &
-	CollectionSlice &
-	AISettingsSlice &
-	EditorSlice &
-	GitSyncSlice &
-	ImageEditSlice &
-	IndexingSlice &
-	HotkeysSlice &
-	UISlice
+export * from "@mdit/store/core"
 
-export const useStore = create<StoreState>()((...a) => ({
-	...createCollectionSlice(...a),
-	...createTabSlice(...a),
-	...createWorkspaceSlice(...a),
-	...createAISettingsSlice(...a),
-	...createEditorSlice(...a),
-	...createGitSyncSlice(...a),
-	...createImageEditSlice(...a),
-	...createIndexingSlice(...a),
-	...createHotkeysSlice(...a),
-	...createUISlice(...a),
-}))
+const browserStorage =
+	typeof globalThis.localStorage === "undefined"
+		? {
+				getItem: () => null,
+				setItem: () => undefined,
+				removeItem: () => undefined,
+			}
+		: globalThis.localStorage
+
+const frontmatterUtils: FrontmatterUtils = {
+	updateFileFrontmatter,
+	renameFileFrontmatterProperty,
+	removeFileFrontmatterProperty,
+}
+
+export const useStore = createMditStore({
+	aiSettings: {
+		storage: browserStorage,
+		fetchOllamaModelCatalog: fetchOllamaModels,
+		listCredentialProviders,
+		getCredential,
+		setApiKeyCredential,
+		setCodexCredential,
+		deleteCredential,
+		startCodexBrowserOAuth,
+		refreshCodexAccessToken,
+		isCodexCredentialExpiringSoon,
+	},
+	gitSync: {
+		loadSettings,
+		saveSettings,
+		createGitSyncCore: createDesktopGitSyncCore,
+	},
+	hotkeys: {
+		storage: createAppDataHotkeyStorage(),
+	},
+	indexing: {
+		createIndexingPort: createTauriIndexingPort,
+	},
+	tab: {
+		readTextFile,
+		renameFile,
+		saveSettings,
+	},
+	ui: {
+		preferences: new UserSettingsRepository(),
+	},
+	workspace: {
+		fileSystemRepository: new FileSystemRepository(),
+		settingsRepository: new WorkspaceSettingsRepository(),
+		historyRepository: new WorkspaceHistoryRepository(),
+		openDialog: async (options) => {
+			const result = await open(options)
+			return typeof result === "string" ? result : null
+		},
+		applyWorkspaceMigrations: (workspacePath: string) =>
+			invoke<void>("apply_appdata_migrations", { workspacePath }),
+		frontmatterUtils,
+		toast,
+		linkIndexing: {
+			getBacklinks: (workspacePath: string, filePath: string) =>
+				invoke<BacklinkEntry[]>("get_backlinks_command", {
+					workspacePath,
+					filePath,
+				}),
+			resolveWikiLink: ({
+				workspacePath,
+				currentNotePath,
+				rawTarget,
+			}: {
+				workspacePath: string
+				currentNotePath?: string | null
+				rawTarget: string
+			}) =>
+				invoke<ResolveWikiLinkResult>("resolve_wiki_link_command", {
+					workspacePath,
+					currentNotePath,
+					rawTarget,
+				}),
+			renameIndexedNote: (
+				workspacePath: string,
+				oldNotePath: string,
+				newNotePath: string,
+			) =>
+				invoke<boolean>("rename_indexed_note_command", {
+					workspacePath,
+					oldNotePath,
+					newNotePath,
+				}),
+			deleteIndexedNote: (workspacePath: string, notePath: string) =>
+				invoke<boolean>("delete_indexed_note_command", {
+					workspacePath,
+					notePath,
+				}),
+		},
+		watcher: createTauriWorkspaceWatcher(),
+	},
+})

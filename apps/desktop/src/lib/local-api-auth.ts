@@ -1,4 +1,4 @@
-import { getAppSecret, setAppSecret } from "./credentials"
+import { getAppSecret, setAppSecret } from "@/lib/credentials"
 
 const LOCAL_API_TOKEN_BYTE_LENGTH = 32
 const LOCAL_API_TOKEN_MIN_LENGTH = 32

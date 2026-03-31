@@ -1,10 +1,9 @@
-import { describe, expect, it } from "vitest"
-
 import {
 	isMarkdownNotePath,
 	normalizeSlashes,
 	stripMarkdownExtension,
-} from "@/utils/path-utils"
+} from "@mdit/utils/path-utils"
+import { describe, expect, it } from "vitest"
 import {
 	doesWikiTargetReferToRelPath,
 	isExternalWikiTarget,

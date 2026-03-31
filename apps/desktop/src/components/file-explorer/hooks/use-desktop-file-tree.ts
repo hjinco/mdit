@@ -3,12 +3,9 @@ import {
 	type FileTreeState,
 	useFileTree,
 } from "@mdit/file-tree"
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { useCallback, useMemo } from "react"
-import type {
-	WorkspaceEntry,
-	WorkspaceEntrySelection,
-} from "@/store/workspace/workspace-slice"
-import { normalizePathSeparators } from "@/utils/path-utils"
+import type { WorkspaceEntry, WorkspaceEntrySelection } from "@/store"
 
 export const workspaceEntryFileTreeAdapter: FileTreeAdapter<WorkspaceEntry> = {
 	getId: (entry) => entry.path,

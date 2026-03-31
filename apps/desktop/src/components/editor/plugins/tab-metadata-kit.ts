@@ -1,6 +1,6 @@
 import { createPlatePlugin, KEYS } from "@mdit/editor/plate"
+import { sanitizeFilename } from "@mdit/utils/path-utils"
 import { useStore } from "@/store"
-import { sanitizeFilename } from "@/utils/path-utils"
 
 const firstBlockTextByEditor = new WeakMap<object, string | null>()
 

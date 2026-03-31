@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import type { IndexingConfig } from "@/store"
 import {
 	isModelChanging,
 	parseEmbeddingModelValue,
 	shouldShowModelChangeWarning,
-} from "@/store/indexing/helpers/indexing-utils"
-import type { IndexingConfig } from "@/store/indexing/indexing-types"
+	useStore,
+} from "@/store"
 
 type PendingModelChange = {
 	provider: string

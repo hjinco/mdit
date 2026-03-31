@@ -1,7 +1,10 @@
+import {
+	APP_HOTKEY_DEFINITIONS,
+	type AppHotkeyActionId,
+} from "@mdit/store/hotkeys"
 import { useHotkey } from "@tanstack/react-hotkeys"
 import { useEffect, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import { APP_HOTKEY_DEFINITIONS, type AppHotkeyActionId } from "@/lib/hotkeys"
 import { useStore } from "@/store"
 
 const HOTKEY_OPTIONS = { preventDefault: true } as const

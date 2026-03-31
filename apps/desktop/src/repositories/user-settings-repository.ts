@@ -1,3 +1,6 @@
+import type { UIPreferences } from "@mdit/store/core"
+
+export const FILE_EXPLORER_STORAGE_KEY = "isFileExplorerOpen"
 export const FONT_SCALE_STORAGE_KEY = "font-scale"
 export const DEFAULT_FONT_SCALE = 1
 export const LOCAL_API_ENABLED_STORAGE_KEY = "local-api-enabled"
@@ -10,6 +13,20 @@ const clampFontScale = (value: number) =>
 		MAX_FONT_SCALE,
 		Math.max(MIN_FONT_SCALE, Math.round(value * 100) / 100),
 	)
+
+const readStorageBoolean = (key: string, defaultValue: boolean): boolean => {
+	if (typeof window === "undefined") return defaultValue
+
+	const stored = localStorage.getItem(key)
+	return stored === null ? defaultValue : stored === "true"
+}
+
+const saveStorageBoolean = (key: string, value: boolean): boolean => {
+	if (typeof window !== "undefined") {
+		localStorage.setItem(key, String(value))
+	}
+	return value
+}
 
 const readFontScale = (): number => {
 	if (typeof window === "undefined") return DEFAULT_FONT_SCALE
@@ -26,56 +43,48 @@ const readFontScale = (): number => {
 	return clampFontScale(parsed)
 }
 
-const saveFontScale = (value: number): void => {
-	if (typeof window === "undefined") return
-	localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(value))
+const saveFontScale = (value: number): number => {
+	const clampedValue = clampFontScale(value)
+	if (typeof window !== "undefined") {
+		localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(clampedValue))
+	}
+	return clampedValue
 }
 
-const readLocalApiEnabled = (): boolean => {
-	if (typeof window === "undefined") return false
+export class UserSettingsRepository implements UIPreferences {
+	getFileExplorerOpen(): boolean {
+		return readStorageBoolean(FILE_EXPLORER_STORAGE_KEY, true)
+	}
 
-	return localStorage.getItem(LOCAL_API_ENABLED_STORAGE_KEY) === "true"
-}
+	setFileExplorerOpen(isOpen: boolean): boolean {
+		return saveStorageBoolean(FILE_EXPLORER_STORAGE_KEY, isOpen)
+	}
 
-const saveLocalApiEnabled = (enabled: boolean): void => {
-	if (typeof window === "undefined") return
-	localStorage.setItem(LOCAL_API_ENABLED_STORAGE_KEY, String(enabled))
-}
-
-export class UserSettingsRepository {
 	getFontScale(): number {
 		return readFontScale()
 	}
 
 	setFontScale(value: number): number {
-		const clampedValue = clampFontScale(value)
-		saveFontScale(clampedValue)
-		return clampedValue
+		return saveFontScale(value)
 	}
 
 	increaseFontScale(currentValue: number): number {
-		const newValue = clampFontScale(currentValue + FONT_SCALE_STEP)
-		saveFontScale(newValue)
-		return newValue
+		return saveFontScale(currentValue + FONT_SCALE_STEP)
 	}
 
 	decreaseFontScale(currentValue: number): number {
-		const newValue = clampFontScale(currentValue - FONT_SCALE_STEP)
-		saveFontScale(newValue)
-		return newValue
+		return saveFontScale(currentValue - FONT_SCALE_STEP)
 	}
 
 	resetFontScale(): number {
-		saveFontScale(DEFAULT_FONT_SCALE)
-		return DEFAULT_FONT_SCALE
+		return saveFontScale(DEFAULT_FONT_SCALE)
 	}
 
 	getLocalApiEnabled(): boolean {
-		return readLocalApiEnabled()
+		return readStorageBoolean(LOCAL_API_ENABLED_STORAGE_KEY, false)
 	}
 
 	setLocalApiEnabled(enabled: boolean): boolean {
-		saveLocalApiEnabled(enabled)
-		return enabled
+		return saveStorageBoolean(LOCAL_API_ENABLED_STORAGE_KEY, enabled)
 	}
 }
