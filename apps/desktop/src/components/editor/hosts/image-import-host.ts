@@ -1,5 +1,5 @@
+import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { useStore } from "@/store"
-import { isPathEqualOrDescendant } from "@/utils/path-utils"
 import { buildImageLinkData, type ImageLinkData } from "../utils/image-link"
 
 export type PreparedEditorImageLink = ImageLinkData & {

@@ -1,5 +1,5 @@
+import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@mdit/store/hotkeys"
 import { MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
-import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@/lib/hotkeys"
 
 export async function createFileMenu({
 	createNote,

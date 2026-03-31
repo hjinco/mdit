@@ -1,6 +1,6 @@
 import { isMarkdownPath } from "@mdit/ai"
 import { dirname } from "pathe"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import type { WorkspaceEntry } from "@/store"
 
 export function collectAIRenameTargets(
 	targetPaths: string[],

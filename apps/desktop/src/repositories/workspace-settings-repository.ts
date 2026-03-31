@@ -1,9 +1,9 @@
-import type { WorkspaceSettings } from "@/lib/settings-utils"
-import { loadSettings, saveSettings } from "@/lib/settings-utils"
+import type { WorkspaceSettings } from "@mdit/store/core"
 import {
 	isPathEqualOrDescendant,
 	normalizePathSeparators,
-} from "@/utils/path-utils"
+} from "@mdit/utils/path-utils"
+import { loadSettings, saveSettings } from "@/lib/workspace-settings"
 
 const DRIVE_LETTER_REGEX = /^[a-zA-Z]:\//
 const isAbsolutePath = (path: string) =>
@@ -63,95 +63,6 @@ const toAbsolutePath = (workspacePath: string, path: string): string | null => {
 	return normalizePathSeparators(`${normalizedWorkspace}/${withoutDotPrefix}`)
 }
 
-const getPinnedDirectoriesFromSettings = (
-	workspacePath: string | null,
-	settings: WorkspaceSettings | null | undefined,
-): string[] => {
-	if (!workspacePath) {
-		return []
-	}
-
-	const rawPins = settings?.pinnedDirectories ?? []
-	const normalizedPins = normalizeDirectoryList(rawPins)
-	const absolutePins: string[] = []
-
-	for (const pin of normalizedPins) {
-		const absolutePath = toAbsolutePath(workspacePath, pin)
-		if (absolutePath) {
-			absolutePins.push(absolutePath)
-		}
-	}
-
-	return Array.from(new Set(absolutePins))
-}
-
-const getExpandedDirectoriesFromSettings = (
-	workspacePath: string | null,
-	settings: WorkspaceSettings | null | undefined,
-): string[] => {
-	if (!workspacePath) {
-		return []
-	}
-
-	const normalizedWorkspace = normalizePathSeparators(workspacePath)
-	const storedExpanded = normalizeDirectoryList(
-		settings?.expandedDirectories ?? [],
-	)
-
-	const absoluteExpanded = storedExpanded
-		.map((directory) => toAbsolutePath(normalizedWorkspace, directory))
-		.filter(
-			(absolutePath): absolutePath is string =>
-				absolutePath !== null &&
-				isPathEqualOrDescendant(absolutePath, normalizedWorkspace),
-		)
-
-	return Array.from(new Set(absoluteExpanded))
-}
-
-const persistPinnedDirectories = async (
-	workspacePath: string | null,
-	pinnedDirectories: string[],
-): Promise<void> => {
-	if (!workspacePath) {
-		return
-	}
-
-	try {
-		const normalizedPins = normalizeDirectoryList(pinnedDirectories)
-		const relativePins = normalizeDirectoryList(
-			normalizedPins.map((path) => toRelativePath(workspacePath, path)),
-		)
-		await saveSettings(workspacePath, { pinnedDirectories: relativePins })
-	} catch (error) {
-		console.error("Failed to save pinned directories:", error)
-	}
-}
-
-const persistExpandedDirectories = async (
-	workspacePath: string | null,
-	expandedDirectories: string[],
-): Promise<void> => {
-	if (!workspacePath) {
-		return
-	}
-
-	try {
-		const normalizedWorkspace = normalizePathSeparators(workspacePath)
-		const relativeExpanded = normalizeDirectoryList(
-			expandedDirectories
-				.filter((path) => isPathEqualOrDescendant(path, normalizedWorkspace))
-				.map((path) => toRelativePath(normalizedWorkspace, path)),
-		)
-
-		await saveSettings(workspacePath, {
-			expandedDirectories: relativeExpanded,
-		})
-	} catch (error) {
-		console.error("Failed to save expanded directories:", error)
-	}
-}
-
 export class WorkspaceSettingsRepository {
 	loadSettings(workspacePath: string): Promise<WorkspaceSettings> {
 		return loadSettings(workspacePath)
@@ -161,27 +72,88 @@ export class WorkspaceSettingsRepository {
 		workspacePath: string | null,
 		settings: WorkspaceSettings | null | undefined,
 	): string[] {
-		return getPinnedDirectoriesFromSettings(workspacePath, settings)
+		if (!workspacePath) {
+			return []
+		}
+
+		const rawPins = settings?.pinnedDirectories ?? []
+		const normalizedPins = normalizeDirectoryList(rawPins)
+		const absolutePins: string[] = []
+
+		for (const pin of normalizedPins) {
+			const absolutePath = toAbsolutePath(workspacePath, pin)
+			if (absolutePath) {
+				absolutePins.push(absolutePath)
+			}
+		}
+
+		return Array.from(new Set(absolutePins))
 	}
 
 	getExpandedDirectoriesFromSettings(
 		workspacePath: string | null,
 		settings: WorkspaceSettings | null | undefined,
 	): string[] {
-		return getExpandedDirectoriesFromSettings(workspacePath, settings)
+		if (!workspacePath) {
+			return []
+		}
+
+		const normalizedWorkspace = normalizePathSeparators(workspacePath)
+		const storedExpanded = normalizeDirectoryList(
+			settings?.expandedDirectories ?? [],
+		)
+
+		const absoluteExpanded = storedExpanded
+			.map((directory) => toAbsolutePath(normalizedWorkspace, directory))
+			.filter(
+				(absolutePath): absolutePath is string =>
+					absolutePath !== null &&
+					isPathEqualOrDescendant(absolutePath, normalizedWorkspace),
+			)
+
+		return Array.from(new Set(absoluteExpanded))
 	}
 
-	persistPinnedDirectories(
+	async persistPinnedDirectories(
 		workspacePath: string | null,
 		pinnedDirectories: string[],
 	): Promise<void> {
-		return persistPinnedDirectories(workspacePath, pinnedDirectories)
+		if (!workspacePath) {
+			return
+		}
+
+		try {
+			const normalizedPins = normalizeDirectoryList(pinnedDirectories)
+			const relativePins = normalizeDirectoryList(
+				normalizedPins.map((path) => toRelativePath(workspacePath, path)),
+			)
+			await saveSettings(workspacePath, { pinnedDirectories: relativePins })
+		} catch (error) {
+			console.error("Failed to save pinned directories:", error)
+		}
 	}
 
-	persistExpandedDirectories(
+	async persistExpandedDirectories(
 		workspacePath: string | null,
 		expandedDirectories: string[],
 	): Promise<void> {
-		return persistExpandedDirectories(workspacePath, expandedDirectories)
+		if (!workspacePath) {
+			return
+		}
+
+		try {
+			const normalizedWorkspace = normalizePathSeparators(workspacePath)
+			const relativeExpanded = normalizeDirectoryList(
+				expandedDirectories
+					.filter((path) => isPathEqualOrDescendant(path, normalizedWorkspace))
+					.map((path) => toRelativePath(normalizedWorkspace, path)),
+			)
+
+			await saveSettings(workspacePath, {
+				expandedDirectories: relativeExpanded,
+			})
+		} catch (error) {
+			console.error("Failed to save expanded directories:", error)
+		}
 	}
 }

@@ -1,3 +1,4 @@
+import { getFileNameFromPath } from "@mdit/utils/path-utils"
 import {
 	exists,
 	mkdir,
@@ -6,7 +7,6 @@ import {
 	writeTextFile,
 } from "@tauri-apps/plugin-fs"
 import { join } from "pathe"
-import { getFileNameFromPath } from "@/utils/path-utils"
 
 const TEMPLATES_DIR = "templates"
 const MD_EXTENSION_REGEX = /\.md$/i

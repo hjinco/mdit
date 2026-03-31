@@ -1,4 +1,4 @@
-import type { TabHistorySelection } from "@/store/tab/tab-slice"
+import type { TabHistorySelection } from "@/store"
 
 type SelectionPoint = {
 	path: number[]

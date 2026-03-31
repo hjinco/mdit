@@ -1,5 +1,8 @@
+import {
+	normalizeSlashes,
+	stripMarkdownExtension,
+} from "@mdit/utils/path-utils"
 import { relative, resolve } from "pathe"
-import { normalizeSlashes, stripMarkdownExtension } from "@/utils/path-utils"
 
 const ABSOLUTE_PROTOCOL_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 

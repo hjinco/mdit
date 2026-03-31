@@ -12,8 +12,8 @@ import {
 	AIBatchResultsToast,
 	type AIBatchResultToastItem,
 } from "@/components/common/explorer-agent/ai-batch-results-toast"
+import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 
 const renameNoteWithAICore = createRenameNoteWithAICore({
 	fileSystem: {

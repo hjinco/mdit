@@ -10,14 +10,7 @@ import {
 	IconSearch,
 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
-
-export type SettingsTab =
-	| "preferences"
-	| "ai"
-	| "api-mcp"
-	| "sync"
-	| "indexing"
-	| "hotkeys"
+import type { SettingsTab } from "@/store"
 
 interface SettingsNavigationProps {
 	activeTab: SettingsTab

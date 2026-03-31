@@ -1,8 +1,8 @@
+import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { useCallback, useRef } from "react"
 import { useShallow } from "zustand/shallow"
 import { useDropZone } from "@/contexts/drop-context"
 import { useStore } from "@/store"
-import { isPathEqualOrDescendant } from "@/utils/path-utils"
 
 export function useFolderDropZone({
 	folderPath,

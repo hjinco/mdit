@@ -2,7 +2,7 @@ import { useDraggable } from "@dnd-kit/react"
 import type { FileTreeRenderNode } from "@mdit/file-tree"
 import { useCallback } from "react"
 import { useDraggedExplorerPaths } from "@/components/dnd/explorer-drag-state"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import type { WorkspaceEntry } from "@/store"
 
 type UseTreeNodeInteractionsParams = {
 	node: FileTreeRenderNode<WorkspaceEntry>

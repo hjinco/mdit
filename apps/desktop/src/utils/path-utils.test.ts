@@ -1,5 +1,5 @@
+import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { describe, expect, it } from "vitest"
-import { isPathEqualOrDescendant } from "@/utils/path-utils"
 
 describe("path-utils", () => {
 	it("treats normalized descendants as inside their parent path", () => {

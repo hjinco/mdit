@@ -1,5 +1,5 @@
-import type { WorkspaceSlice } from "@/store/workspace/workspace-slice"
-import { isPathEqualOrDescendant } from "@/utils/path-utils"
+import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
+import type { WorkspaceSlice } from "@/store"
 import { type DndDragEndEvent, isFileEntryDragData } from "./dnd-types"
 
 type HandleExplorerDropParams = {

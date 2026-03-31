@@ -1,5 +1,5 @@
+import type { AppHotkeyMap } from "@mdit/store/hotkeys"
 import { Menu } from "@tauri-apps/api/menu"
-import type { AppHotkeyMap } from "@/lib/hotkeys"
 import { createEditMenu } from "./edit-menu"
 import { createFileMenu } from "./file-menu"
 import { createHelpMenu } from "./help-menu"

@@ -1,7 +1,7 @@
 import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { useCallback } from "react"
 import { collectAIRenameTargets } from "@/components/common/explorer-agent/ai-rename-targets"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
+import type { WorkspaceEntry } from "@/store"
 
 type UseCollectionContextMenuProps = {
 	canRenameNoteWithAI: boolean

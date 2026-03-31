@@ -1,6 +1,6 @@
+import { getFileNameWithoutExtension } from "@mdit/utils/path-utils"
 import { useCallback } from "react"
 import { useStore } from "@/store"
-import { getFileNameWithoutExtension } from "@/utils/path-utils"
 
 /**
  * Hook to handle auto-renaming files based on first heading after save

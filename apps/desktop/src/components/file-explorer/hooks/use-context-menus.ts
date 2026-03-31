@@ -1,3 +1,4 @@
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import {
 	Menu,
 	MenuItem,
@@ -18,10 +19,9 @@ import {
 	getTemplateFiles,
 	saveNoteAsTemplate,
 } from "@/components/file-explorer/utils/template-utils"
+import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
-import type { WorkspaceEntry } from "@/store/workspace/workspace-slice"
 import { isImageFile } from "@/utils/file-icon"
-import { normalizePathSeparators } from "@/utils/path-utils"
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()
 const REVEAL_ACCELERATOR = "CmdOrCtrl+Alt+R"
