@@ -9,6 +9,7 @@ import type {
 	LinkWorkspaceEntry,
 	WorkspaceFileOption,
 } from "../link/link-kit-types"
+import { startsWithHttpProtocol } from "./link-utils"
 
 export type {
 	LinkWorkspaceEntry,
@@ -163,6 +164,10 @@ export function normalizeMarkdownPathForDisplay(value: string): string {
 	const decoded = safelyDecodeUrl(value.trim())
 	if (!decoded) {
 		return ""
+	}
+
+	if (startsWithHttpProtocol(decoded)) {
+		return decoded
 	}
 
 	const [pathPart, hashPart] = decoded.split("#", 2)

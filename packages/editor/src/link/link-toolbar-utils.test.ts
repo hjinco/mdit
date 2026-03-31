@@ -4,6 +4,7 @@ import {
 	getLinkedNoteDisplayName,
 	isPathInsideWorkspaceRoot,
 	type LinkWorkspaceEntry,
+	normalizeMarkdownPathForDisplay,
 	stripFileExtensionForDisplay,
 } from "./link-toolbar-utils"
 
@@ -111,6 +112,15 @@ describe("link-toolbar-utils", () => {
 				isWebLink: true,
 			}),
 		).toBeNull()
+	})
+
+	it("preserves protocol slashes for web markdown links", () => {
+		expect(normalizeMarkdownPathForDisplay("http://example.com/")).toBe(
+			"http://example.com/",
+		)
+		expect(normalizeMarkdownPathForDisplay("https://example.com/a/b/")).toBe(
+			"https://example.com/a/b/",
+		)
 	})
 
 	it("checks whether an absolute path is inside workspace root", () => {
