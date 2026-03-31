@@ -100,7 +100,7 @@ const hasValidChatSelection = (
 }
 
 export const applyChatSelectionSuggestions = (
-	editor: any,
+	editor: PlateEditor,
 	content: string,
 	getOption: any,
 ) => {
