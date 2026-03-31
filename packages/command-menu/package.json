@@ -13,16 +13,16 @@
 	"dependencies": {
 		"@mdit/ui": "workspace:*",
 		"motion": "^12.23.24",
-		"react": "^19.2.4",
+		"react": "catalog:",
 		"react-use-measure": "^2.1.7"
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",
 		"@typescript/native-preview": "catalog:",
-		"@types/react": "^19.2.14",
-		"@types/react-dom": "^19.2.3",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
 		"jsdom": "^26.1.0",
-		"react-dom": "^19.2.4",
+		"react-dom": "catalog:",
 		"vitest": "catalog:"
 	}
 }

@@ -11,10 +11,10 @@
 	},
 	"dependencies": {
 		"@mdit/tsconfig": "workspace:*",
-		"react": "^19.2.4"
+		"react": "catalog:"
 	},
 	"devDependencies": {
-		"@types/react": "^19.2.14",
+		"@types/react": "catalog:",
 		"@typescript/native-preview": "catalog:"
 	}
 }

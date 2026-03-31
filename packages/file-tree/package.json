@@ -11,12 +11,12 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"react": "^19.2.4"
+		"react": "catalog:"
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",
 		"@typescript/native-preview": "catalog:",
-		"@types/react": "^19.2.14",
+		"@types/react": "catalog:",
 		"vitest": "catalog:"
 	}
 }

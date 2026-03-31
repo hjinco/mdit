@@ -6,9 +6,21 @@ settings:
 
 catalogs:
   default:
+    '@types/react':
+      specifier: 19.2.14
+      version: 19.2.14
+    '@types/react-dom':
+      specifier: 19.2.3
+      version: 19.2.3
     '@typescript/native-preview':
       specifier: 7.0.0-dev.20260330.1
       version: 7.0.0-dev.20260330.1
+    react:
+      specifier: 19.2.4
+      version: 19.2.4
+    react-dom:
+      specifier: 19.2.4
+      version: 19.2.4
     vite:
       specifier: 8.0.3
       version: 8.0.3
@@ -220,13 +232,13 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       react:
-        specifier: ^19.1.0
+        specifier: 'catalog:'
         version: 19.2.4
       react-day-picker:
         specifier: ^9.9.0
         version: 9.13.2(react@19.2.4)
       react-dom:
-        specifier: ^19.1.0
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       react-hook-form:
         specifier: ^7.64.0
@@ -302,10 +314,10 @@ importers:
         specifier: ^24.3.0
         version: 24.10.13
       '@types/react':
-        specifier: ^19.1.8
+        specifier: 'catalog:'
         version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.1.6
+        specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -387,10 +399,10 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
       react-dom:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       rehype-autolink-headings:
         specifier: ^7.1.0
@@ -436,10 +448,10 @@ importers:
         specifier: ^24.10.13
         version: 24.10.13
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.2.3
+        specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -500,11 +512,11 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
     devDependencies:
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -538,7 +550,7 @@ importers:
         specifier: ^12.23.24
         version: 12.34.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
       react-use-measure:
         specifier: ^2.1.7
@@ -548,10 +560,10 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.2.3
+        specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -560,7 +572,7 @@ importers:
         specifier: ^26.1.0
         version: 26.1.0
       react-dom:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       vitest:
         specifier: 'catalog:'
@@ -722,10 +734,10 @@ importers:
         specifier: ^52.3.16
         version: 52.3.16(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4))
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
       react-dom:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       react-hook-form:
         specifier: ^7.71.1
@@ -765,10 +777,10 @@ importers:
         specifier: ^24.10.13
         version: 24.10.13
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@types/react-dom':
-        specifier: ^19.2.3
+        specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -801,14 +813,14 @@ importers:
   packages/file-tree:
     dependencies:
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
     devDependencies:
       '@mdit/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -838,7 +850,7 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
     devDependencies:
       '@mdit/tsconfig':
@@ -848,7 +860,7 @@ importers:
         specifier: ^3.0.10
         version: 3.0.10
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@typescript/native-preview':
         specifier: 'catalog:'
@@ -948,13 +960,13 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4
       react-day-picker:
         specifier: ^9.13.2
         version: 9.13.2(react@19.2.4)
       react-dom:
-        specifier: ^19.2.4
+        specifier: 'catalog:'
         version: 19.2.4(react@19.2.4)
       react-hook-form:
         specifier: ^7.71.1
@@ -967,7 +979,7 @@ importers:
         version: 3.5.0
     devDependencies:
       '@types/react':
-        specifier: ^19.2.14
+        specifier: 'catalog:'
         version: 19.2.14
       '@typescript/native-preview':
         specifier: 'catalog:'

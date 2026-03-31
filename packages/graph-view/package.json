@@ -13,13 +13,13 @@
 	"dependencies": {
 		"@mdit/ui": "workspace:*",
 		"d3-force": "^3.0.0",
-		"react": "^19.2.4"
+		"react": "catalog:"
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",
 		"@typescript/native-preview": "catalog:",
 		"@types/d3-force": "^3.0.10",
-		"@types/react": "^19.2.14",
+		"@types/react": "catalog:",
 		"vitest": "catalog:"
 	}
 }
