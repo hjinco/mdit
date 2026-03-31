@@ -149,10 +149,10 @@ describe("createMditStore", () => {
 		expect(store.getState().isFileExplorerOpen).toBe(true)
 		expect(store.getState().fontScale).toBe(1)
 
-		await store.getState().initializeHotkeys()
+		await store.getState().loadHotkeys()
 		expect(store.getState().isHotkeysLoaded).toBe(true)
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		expect(store.getState().connectedProviders).toEqual([])
 	})
 })

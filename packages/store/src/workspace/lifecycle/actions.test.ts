@@ -3,6 +3,16 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createLifecycleActions } from "./actions"
 
 describe("lifecycle-actions", () => {
+	const bootstrapWorkspace = async (
+		actions: ReturnType<typeof createLifecycleActions>,
+	) => {
+		const recentWorkspacePaths = await actions.syncRecentWorkspacePaths()
+		await actions.loadWorkspace(recentWorkspacePaths[0] ?? null, {
+			recentWorkspacePaths,
+			restoreLastOpenedFiles: true,
+		})
+	}
+
 	it("openFolderPicker delegates selected path to setWorkspace", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		deps.openDialog.mockResolvedValue("/ws")
@@ -81,7 +91,7 @@ describe("lifecycle-actions", () => {
 		expect(getState().unwatchFn).toBeNull()
 	})
 
-	it("initializeWorkspace unwatches existing watcher when workspace path changes", async () => {
+	it("bootstrapWorkspace unwatches existing watcher when workspace path changes", async () => {
 		const { context, deps, ports, setState, getState } =
 			createActionTestContext()
 		const actions = createLifecycleActions(context)
@@ -93,7 +103,7 @@ describe("lifecycle-actions", () => {
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/new"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
@@ -102,7 +112,7 @@ describe("lifecycle-actions", () => {
 		expect(getState().unwatchFn).toBeNull()
 	})
 
-	it("initializeWorkspace does not fail when indexing preload fails", async () => {
+	it("bootstrapWorkspace does not fail when indexing preload fails", async () => {
 		const { context, deps, ports, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const preloadError = new Error("preload failed")
@@ -113,7 +123,7 @@ describe("lifecycle-actions", () => {
 
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(getState().workspacePath).toBe("/ws")
 		expect(getState().isTreeLoading).toBe(false)
@@ -126,7 +136,7 @@ describe("lifecycle-actions", () => {
 		errorSpy.mockRestore()
 	})
 
-	it("initializeWorkspace preserves watcher when workspace path is unchanged", async () => {
+	it("bootstrapWorkspace preserves watcher when workspace path is unchanged", async () => {
 		const { context, deps, setState, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
@@ -137,14 +147,14 @@ describe("lifecycle-actions", () => {
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/same"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(unwatch).not.toHaveBeenCalled()
 		expect(getState().workspacePath).toBe("/same")
 		expect(getState().unwatchFn).toBe(unwatch)
 	})
 
-	it("initializeWorkspace removes missing workspace paths from vault history", async () => {
+	it("bootstrapWorkspace removes missing workspace paths from vault history", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
@@ -155,12 +165,59 @@ describe("lifecycle-actions", () => {
 			async (path: string) => path === "/valid",
 		)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
 			"/missing",
 		)
 		expect(getState().recentWorkspacePaths).toEqual(["/valid"])
+	})
+
+	it("syncRecentWorkspacePaths updates state and returns valid paths", async () => {
+		const { context, deps, getState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
+			"/valid",
+			"/missing",
+		])
+		deps.fileSystemRepository.isExistingDirectory.mockImplementation(
+			async (path: string) => path === "/valid",
+		)
+
+		const paths = await actions.syncRecentWorkspacePaths()
+
+		expect(paths).toEqual(["/valid"])
+		expect(getState().recentWorkspacePaths).toEqual(["/valid"])
+		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith(
+			"/missing",
+		)
+	})
+
+	it("loadWorkspace uses provided recent paths and restores tabs when requested", async () => {
+		const { context, deps, ports, getState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+
+		deps.fileSystemRepository.readDir.mockImplementation(
+			async (path: string) => {
+				if (path === "/ws") {
+					return [{ name: "a.md", isDirectory: false }]
+				}
+				return []
+			},
+		)
+		deps.settingsRepository.loadSettings.mockResolvedValue({
+			lastOpenedFilePaths: ["a.md"],
+		})
+		deps.fileSystemRepository.exists.mockResolvedValue(true)
+
+		await actions.loadWorkspace("/ws", {
+			recentWorkspacePaths: ["/ws", "/other"],
+			restoreLastOpenedFiles: true,
+		})
+
+		expect(getState().workspacePath).toBe("/ws")
+		expect(getState().recentWorkspacePaths).toEqual(["/ws", "/other"])
+		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
 	})
 
 	it("setWorkspace removes missing path and refreshes workspace list", async () => {
@@ -216,7 +273,7 @@ describe("lifecycle-actions", () => {
 		expect(ports.tab.clearHistory).not.toHaveBeenCalled()
 	})
 
-	it("initializeWorkspace sanitizes invalid expanded/pinned directories from settings", async () => {
+	it("bootstrapWorkspace sanitizes invalid expanded/pinned directories from settings", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
@@ -243,7 +300,7 @@ describe("lifecycle-actions", () => {
 			"/ws/missing",
 		])
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(getState().pinnedDirectories).toEqual(["/ws/docs"])
 		expect(getState().expandedDirectories).toEqual(["/ws/docs"])
@@ -255,7 +312,7 @@ describe("lifecycle-actions", () => {
 		).toHaveBeenCalledWith("/ws", ["/ws/docs"])
 	})
 
-	it("initializeWorkspace restores opened file history in order", async () => {
+	it("bootstrapWorkspace restores opened file history in order", async () => {
 		const { context, deps, ports } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
@@ -268,7 +325,7 @@ describe("lifecycle-actions", () => {
 			["/ws/a.md", "/ws/b.md", "/ws/c.md"].includes(path),
 		)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
@@ -279,7 +336,7 @@ describe("lifecycle-actions", () => {
 		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 
-	it("initializeWorkspace restores only valid opened file paths", async () => {
+	it("bootstrapWorkspace restores only valid opened file paths", async () => {
 		const { context, deps, ports } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
@@ -297,7 +354,7 @@ describe("lifecycle-actions", () => {
 			["/ws/valid-a.md", "/ws/valid-b.md", "/outside.md"].includes(path),
 		)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
@@ -307,7 +364,7 @@ describe("lifecycle-actions", () => {
 		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 
-	it("initializeWorkspace restores at most five opened file paths", async () => {
+	it("bootstrapWorkspace restores at most five opened file paths", async () => {
 		const { context, deps, ports } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
@@ -318,7 +375,7 @@ describe("lifecycle-actions", () => {
 		})
 		deps.fileSystemRepository.exists.mockResolvedValue(true)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
@@ -331,7 +388,7 @@ describe("lifecycle-actions", () => {
 		expect(ports.tab.openTab).not.toHaveBeenCalled()
 	})
 
-	it("initializeWorkspace skips tab restore when hydration fails", async () => {
+	it("bootstrapWorkspace skips tab restore when hydration fails", async () => {
 		const { context, deps, ports } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
@@ -343,7 +400,7 @@ describe("lifecycle-actions", () => {
 		deps.fileSystemRepository.exists.mockResolvedValue(true)
 		ports.tab.hydrateFromOpenedFiles.mockResolvedValue(false)
 
-		await actions.initializeWorkspace()
+		await bootstrapWorkspace(actions)
 
 		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
 		expect(ports.tab.openTab).not.toHaveBeenCalled()

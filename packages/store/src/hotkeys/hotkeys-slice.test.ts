@@ -38,7 +38,7 @@ describe("hotkeys-slice", () => {
 		}
 		const store = createHotkeysStore(storage)
 
-		await store.getState().initializeHotkeys()
+		await store.getState().loadHotkeys()
 
 		expect(store.getState().isHotkeysLoaded).toBe(true)
 		expect(store.getState().hotkeys["open-command-menu"]).toBe("Mod+P")
@@ -49,7 +49,7 @@ describe("hotkeys-slice", () => {
 		storage.load = vi.fn(async () => null)
 		const store = createHotkeysStore(storage)
 
-		await store.getState().initializeHotkeys()
+		await store.getState().loadHotkeys()
 
 		expect(store.getState().isHotkeysLoaded).toBe(true)
 		expect(store.getState().hotkeys).toEqual(createDefaultAppHotkeys())

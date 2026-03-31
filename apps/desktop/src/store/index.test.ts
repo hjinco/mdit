@@ -156,7 +156,8 @@ describe("desktop store bootstrap", () => {
 		const { useStore } = await import("./index")
 
 		expect(useStore.getState().isFileExplorerOpen).toBe(true)
-		expect(typeof useStore.getState().initializeWorkspace).toBe("function")
-		expect(typeof useStore.getState().initializeAISettings).toBe("function")
+		expect(typeof useStore.getState().syncRecentWorkspacePaths).toBe("function")
+		expect(typeof useStore.getState().loadWorkspace).toBe("function")
+		expect(typeof useStore.getState().loadAISettings).toBe("function")
 	})
 })

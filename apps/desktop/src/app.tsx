@@ -15,35 +15,25 @@ import { ScreenCaptureProvider } from "./contexts/screen-capture-context"
 import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
 import { useGitSync } from "./hooks/use-git-sync"
+import { useStoreRuntimeLifecycle } from "./hooks/use-store-runtime-lifecycle"
+import { useWorkspaceLifecycle } from "./hooks/use-workspace-lifecycle"
 import { startLocalApiServer, stopLocalApiServer } from "./lib/local-api"
 import { shouldRunLocalApiServer } from "./lib/local-api-runtime"
 import { isLinux, isWindows10 } from "./utils/platform"
 
 export function App() {
-	const {
-		workspacePath,
-		isLoading,
-		initializeWorkspace,
-		initializeAISettings,
-		fetchOllamaModels,
-		watchWorkspace,
-		unwatchWorkspace,
-		localApiEnabled,
-		setLocalApiError,
-	} = useStore(
-		useShallow((s) => ({
-			workspacePath: s.workspacePath,
-			isLoading: s.isLoading,
-			initializeWorkspace: s.initializeWorkspace,
-			initializeAISettings: s.initializeAISettings,
-			fetchOllamaModels: s.fetchOllamaModels,
-			watchWorkspace: s.watchWorkspace,
-			unwatchWorkspace: s.unwatchWorkspace,
-			localApiEnabled: s.localApiEnabled,
-			setLocalApiError: s.setLocalApiError,
-		})),
-	)
+	const { workspacePath, isLoading, localApiEnabled, setLocalApiError } =
+		useStore(
+			useShallow((s) => ({
+				workspacePath: s.workspacePath,
+				isLoading: s.isLoading,
+				localApiEnabled: s.localApiEnabled,
+				setLocalApiError: s.setLocalApiError,
+			})),
+		)
 	useFontScale()
+	useWorkspaceLifecycle()
+	useStoreRuntimeLifecycle()
 	useAutoIndexing(workspacePath)
 	useGitSync(workspacePath)
 
@@ -67,25 +57,6 @@ export function App() {
 			closeListener.then((unlisten) => unlisten())
 		}
 	}, [])
-
-	useEffect(() => {
-		if (!workspacePath) {
-			unwatchWorkspace()
-			return
-		}
-
-		watchWorkspace()
-
-		return () => {
-			unwatchWorkspace()
-		}
-	}, [watchWorkspace, unwatchWorkspace, workspacePath])
-
-	useEffect(() => {
-		void initializeWorkspace()
-		void initializeAISettings()
-		void fetchOllamaModels()
-	}, [fetchOllamaModels, initializeAISettings, initializeWorkspace])
 
 	useEffect(() => {
 		let isActive = true

@@ -145,7 +145,7 @@ describe("ai-settings-slice persistence", () => {
 			},
 		})
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		await store.getState().selectModel("openai", "gpt-5.4")
 
 		expect(JSON.parse(storage.getItem("chat-config") || "{}")).toEqual({
@@ -187,7 +187,7 @@ describe("ai-settings-slice persistence", () => {
 			},
 		})
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 
 		expect(store.getState().connectedProviders).toEqual([
 			"openai",
@@ -235,7 +235,7 @@ describe("ai-settings-slice persistence", () => {
 			},
 		})
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		await store.getState().fetchOllamaModels()
 
 		expect(store.getState().chatConfig).toBeNull()
@@ -261,7 +261,7 @@ describe("ai-settings-slice persistence", () => {
 				]),
 			},
 		})
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		deps.fetchOllamaModelCatalog.mockRejectedValueOnce(
 			new Error("ollama unavailable"),
 		)
@@ -299,7 +299,7 @@ describe("ai-settings-slice persistence", () => {
 				]),
 			},
 		})
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		deps.fetchOllamaModelCatalog.mockResolvedValueOnce({
 			completionModels: [],
 			embeddingModels: [],
@@ -346,7 +346,7 @@ describe("ai-settings-slice codex refresh", () => {
 			},
 		})
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		await store.getState().refreshCodexOAuthForTarget()
 
 		expect(deps.refreshCodexAccessToken).toHaveBeenCalledWith("old-refresh")
@@ -384,7 +384,7 @@ describe("ai-settings-slice codex refresh", () => {
 			isCodexCredentialExpiringSoon,
 		})
 
-		await store.getState().initializeAISettings()
+		await store.getState().loadAISettings()
 		await store.getState().refreshCodexOAuthForTarget()
 
 		expect(deps.refreshCodexAccessToken).not.toHaveBeenCalled()

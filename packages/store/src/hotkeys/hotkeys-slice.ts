@@ -23,7 +23,7 @@ export type SetHotkeyBindingResult = {
 export type HotkeysSlice = {
 	hotkeys: AppHotkeyMap
 	isHotkeysLoaded: boolean
-	initializeHotkeys: () => Promise<void>
+	loadHotkeys: () => Promise<void>
 	setHotkeyBinding: (
 		actionId: AppHotkeyActionId,
 		combo: string,
@@ -48,7 +48,7 @@ export const prepareHotkeysSlice =
 		hotkeys: createDefaultAppHotkeys(),
 		isHotkeysLoaded: false,
 
-		initializeHotkeys: async () => {
+		loadHotkeys: async () => {
 			try {
 				const loadedHotkeys = await storage.load()
 				set({
@@ -56,7 +56,7 @@ export const prepareHotkeysSlice =
 					isHotkeysLoaded: true,
 				})
 			} catch (error) {
-				console.error("Failed to initialize hotkeys:", error)
+				console.error("Failed to load hotkeys:", error)
 				set({
 					hotkeys: createDefaultAppHotkeys(),
 					isHotkeysLoaded: true,

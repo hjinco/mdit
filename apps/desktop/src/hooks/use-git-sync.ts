@@ -6,16 +6,23 @@ const POLL_INTERVAL_MS = 5000
 const AUTO_SYNC_INTERVAL_MS = 60_000 // 1 minute
 
 export function useGitSync(workspacePath: string | null) {
-	const { refreshGitStatus, performSync, isGitRepo, autoSyncEnabled, status } =
-		useStore(
-			useShallow((state) => ({
-				refreshGitStatus: state.refreshGitStatus,
-				performSync: state.performSync,
-				isGitRepo: state.gitSyncState.isGitRepo,
-				autoSyncEnabled: state.gitSyncState.autoSyncEnabled,
-				status: state.gitSyncState.status,
-			})),
-		)
+	const {
+		loadGitSyncState,
+		refreshGitStatus,
+		performSync,
+		isGitRepo,
+		autoSyncEnabled,
+		status,
+	} = useStore(
+		useShallow((state) => ({
+			loadGitSyncState: state.loadGitSyncState,
+			refreshGitStatus: state.refreshGitStatus,
+			performSync: state.performSync,
+			isGitRepo: state.gitSyncState.isGitRepo,
+			autoSyncEnabled: state.gitSyncState.autoSyncEnabled,
+			status: state.gitSyncState.status,
+		})),
+	)
 
 	// Use a ref for status to avoid stale closures in intervals
 	const statusRef = useRef(status)
@@ -23,6 +30,10 @@ export function useGitSync(workspacePath: string | null) {
 	useEffect(() => {
 		statusRef.current = status
 	}, [status])
+
+	useEffect(() => {
+		void loadGitSyncState(workspacePath)
+	}, [loadGitSyncState, workspacePath])
 
 	// Status Polling
 	useEffect(() => {

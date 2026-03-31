@@ -103,9 +103,6 @@ export function createActionTestContext() {
 			resetCollectionPath: vi.fn(),
 			getCurrentCollectionPath: vi.fn(() => state.currentCollectionPath),
 		},
-		gitSync: {
-			initGitSync: vi.fn().mockResolvedValue(undefined),
-		},
 		indexing: {
 			resetIndexingState: vi.fn(),
 			getIndexingConfig: vi.fn().mockResolvedValue(null),

@@ -19,7 +19,7 @@ export type GitSyncSlice = {
 	gitSyncState: GitSyncState
 
 	// Actions
-	initGitSync: (workspacePath: string) => Promise<void>
+	loadGitSyncState: (workspacePath: string | null) => Promise<void>
 	refreshGitStatus: () => Promise<void>
 	performSync: () => Promise<void>
 	getSyncConfig: (workspacePath: string | null) => Promise<SyncConfig>
@@ -72,7 +72,7 @@ export const prepareGitSyncSlice =
 		return {
 			gitSyncState: buildInitialGitSyncState(),
 
-			initGitSync: async (workspacePath: string) => {
+			loadGitSyncState: async (workspacePath: string | null) => {
 				if (!workspacePath) {
 					set({ gitSyncState: buildInitialGitSyncState() })
 					return
@@ -108,7 +108,7 @@ export const prepareGitSyncSlice =
 						},
 					})
 				} catch (error) {
-					console.error("Failed to initialize git sync:", error)
+					console.error("Failed to load git sync state:", error)
 					const message =
 						error instanceof Error ? error.message : String(error ?? "Unknown")
 					set({
