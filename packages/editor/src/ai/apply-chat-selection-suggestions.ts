@@ -9,7 +9,7 @@ import {
 import { deserializeMd } from "@platejs/markdown"
 import { diffToSuggestions } from "@platejs/suggestion"
 import { SuggestionPlugin } from "@platejs/suggestion/react"
-import { ElementApi, KEYS } from "platejs"
+import { ElementApi, KEYS, RangeApi } from "platejs"
 import type { PlateEditor } from "platejs/react"
 
 const transientSuggestionQuery = {
@@ -88,8 +88,19 @@ const selectTransientSuggestionRange = (editor: any) => {
 	}
 }
 
+const hasValidChatSelection = (
+	editor: PlateEditor,
+	chatSelection: unknown,
+): boolean => {
+	if (!RangeApi.isRange(chatSelection)) {
+		return false
+	}
+
+	return editor.api.hasRange(chatSelection)
+}
+
 export const applyChatSelectionSuggestions = (
-	editor: any,
+	editor: PlateEditor,
 	content: string,
 	getOption: any,
 ) => {
@@ -98,7 +109,7 @@ export const applyChatSelectionSuggestions = (
 		?.cursorOverlay?.removeCursor("selection")
 
 	const chatSelection = getOption("chatSelection")
-	if (!chatSelection) {
+	if (!hasValidChatSelection(editor, chatSelection)) {
 		restoreChatNodeSelection(editor, getOption)
 		applyAISuggestions(editor, content)
 		return
