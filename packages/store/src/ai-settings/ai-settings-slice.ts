@@ -31,7 +31,7 @@ export type AISettingsSlice = {
 	ollamaCompletionModels: string[]
 	ollamaEmbeddingModels: string[]
 	enabledChatModels: EnabledChatModels
-	initializeAISettings: () => Promise<void>
+	loadAISettings: () => Promise<void>
 	connectProvider: (provider: ApiKeyProviderId, apiKey: string) => Promise<void>
 	connectCodexOAuth: () => Promise<void>
 	disconnectProvider: (provider: ProviderId) => Promise<void>
@@ -380,7 +380,7 @@ export const prepareAISettingsSlice =
 			ollamaEmbeddingModels: [],
 			enabledChatModels: readPersistedEnabledChatModels(storage),
 
-			initializeAISettings: async () => {
+			loadAISettings: async () => {
 				const connectedProviders = await listCredentialProviders()
 				const connectedProviderSet = new Set(connectedProviders)
 

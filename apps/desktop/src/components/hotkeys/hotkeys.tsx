@@ -3,7 +3,7 @@ import {
 	type AppHotkeyActionId,
 } from "@mdit/store/hotkeys"
 import { useHotkey } from "@tanstack/react-hotkeys"
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
@@ -26,8 +26,6 @@ function HotkeyBinding({ binding, onTrigger }: HotkeyBindingProps) {
 export function Hotkeys() {
 	const {
 		hotkeys,
-		isHotkeysLoaded,
-		initializeHotkeys,
 		createAndOpenNote,
 		openFolderPicker,
 		workspacePath,
@@ -46,8 +44,6 @@ export function Hotkeys() {
 	} = useStore(
 		useShallow((s) => ({
 			hotkeys: s.hotkeys,
-			isHotkeysLoaded: s.isHotkeysLoaded,
-			initializeHotkeys: s.initializeHotkeys,
 			createAndOpenNote: s.createAndOpenNote,
 			openFolderPicker: s.openFolderPicker,
 			workspacePath: s.workspacePath,
@@ -65,13 +61,6 @@ export function Hotkeys() {
 			resetZoom: s.resetFontScale,
 		})),
 	)
-
-	useEffect(() => {
-		if (isHotkeysLoaded) {
-			return
-		}
-		void initializeHotkeys()
-	}, [initializeHotkeys, isHotkeysLoaded])
 
 	const actionHandlers = useMemo<Record<AppHotkeyActionId, () => void>>(
 		() => ({

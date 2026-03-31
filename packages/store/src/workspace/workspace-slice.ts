@@ -4,7 +4,6 @@ import {
 } from "@mdit/local-fs-origin"
 import type { StateCreator } from "zustand"
 import type { CollectionSlice } from "../collection/collection-slice"
-import type { GitSyncSlice } from "../git-sync/git-sync-slice"
 import type { IndexingSlice } from "../indexing/indexing-slice"
 import type { TabSlice } from "../tab/tab-slice"
 import {
@@ -42,7 +41,6 @@ export type WorkspaceSlice = WorkspaceState & WorkspaceActions
 type WorkspaceSliceStoreState = WorkspaceSlice &
 	TabSlice &
 	CollectionSlice &
-	GitSyncSlice &
 	IndexingSlice
 
 export const prepareWorkspaceSlice =
