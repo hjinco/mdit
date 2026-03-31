@@ -51,7 +51,7 @@ import {
 	loadLinkSuggestions,
 	resolvePreferredTarget,
 } from "./link-use-cases"
-import { startsWithHttpProtocol } from "./link-utils"
+import { startsWithUriProtocolWithSlashes } from "./link-utils"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "./wiki-link-constants"
 
 const modeButtonVariants = cva("h-6 px-2 text-xs")
@@ -146,7 +146,7 @@ export function LinkUrlInput({
 				return ""
 			}
 
-			if (startsWithHttpProtocol(decodedUrl)) {
+			if (startsWithUriProtocolWithSlashes(decodedUrl)) {
 				return decodedUrl
 			}
 
@@ -213,15 +213,15 @@ export function LinkUrlInput({
 		setHighlightedIndex(-1)
 	}, [])
 
-	const isHttpLink = startsWithHttpProtocol(value)
+	const isUriLink = startsWithUriProtocolWithSlashes(value)
 
 	useEffect(() => {
-		if (isHttpLink) {
+		if (isUriLink) {
 			setLinkMode("markdown")
 		}
-	}, [isHttpLink])
+	}, [isUriLink])
 
-	const suggestionsEnabled = !isHttpLink
+	const suggestionsEnabled = !isUriLink
 
 	useEffect(() => {
 		if (
@@ -551,7 +551,7 @@ export function LinkUrlInput({
 			return
 		}
 
-		const isWebLink = startsWithHttpProtocol(trimmedValue)
+		const isWebLink = startsWithUriProtocolWithSlashes(trimmedValue)
 		let nextUrl = trimmedValue
 		let nextWikiTarget: string | null = null
 
@@ -758,7 +758,7 @@ export function LinkUrlInput({
 							linkMode === "wiki" && "bg-accent text-accent-foreground",
 						)}
 						onClick={() => setLinkMode("wiki")}
-						disabled={isHttpLink}
+						disabled={isUriLink}
 					>
 						Wiki
 					</button>
@@ -913,7 +913,7 @@ export function LinkUrlInput({
 function LinkIcon({ value, linkMode }: { value: string; linkMode: LinkMode }) {
 	const trimmed = value.trim()
 
-	if (startsWithHttpProtocol(trimmed)) {
+	if (startsWithUriProtocolWithSlashes(trimmed)) {
 		return <GlobeIcon className="size-4" />
 	}
 

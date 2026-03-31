@@ -44,6 +44,19 @@ describe("openEditorLink", () => {
 		)
 	})
 
+	it("opens non-http uri links through navigation", async () => {
+		const services = createServices()
+
+		await openEditorLink({
+			href: "obsidian://open?vault=workspace",
+			services,
+		})
+
+		expect(services.navigation.openExternal).toHaveBeenCalledWith(
+			"obsidian://open?vault=workspace",
+		)
+	})
+
 	it("opens resolved wiki links through the resolver", async () => {
 		const services = createServices()
 		services.resolver = {
