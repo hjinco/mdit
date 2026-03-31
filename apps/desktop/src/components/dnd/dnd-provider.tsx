@@ -1,7 +1,7 @@
 import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
 import { useEditorRef } from "@mdit/editor/plate"
 import type React from "react"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useStore } from "@/store"
 import { isDndDragEndEvent, isFileEntryDragData } from "./dnd-types"
@@ -158,6 +158,41 @@ export function DndProvider({ children }: DndProviderProps) {
 		},
 		[completeDragging, editor, moveEntry, resetSelection, selectedEntryPaths],
 	)
+
+	useEffect(() => {
+		const finishDropAnimations = (element: Element) => {
+			for (const animation of element.getAnimations()) {
+				animation.finish()
+			}
+		}
+
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				if (mutation.type !== "attributes") {
+					continue
+				}
+
+				const target = mutation.target
+				if (!(target instanceof Element)) {
+					continue
+				}
+
+				if (!target.hasAttribute("data-dnd-dropping")) {
+					continue
+				}
+
+				finishDropAnimations(target)
+			}
+		})
+
+		observer.observe(document.body, {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ["data-dnd-dropping"],
+		})
+
+		return () => observer.disconnect()
+	}, [])
 
 	return (
 		<DragDropProvider
