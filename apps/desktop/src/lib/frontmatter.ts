@@ -46,6 +46,11 @@ function buildMarkdownWithFrontmatter(
 	return `${formatFrontmatterBlock(frontmatter)}${normalizedBody}`
 }
 
+/**
+ * Updates the frontmatter of a markdown file at the given path.
+ * @param path The absolute path to the markdown file.
+ * @param updates A partial object containing frontmatter keys to update or remove (set to undefined to remove).
+ */
 export async function updateFileFrontmatter(
 	path: string,
 	updates: Record<string, unknown>,
@@ -71,6 +76,9 @@ export async function updateFileFrontmatter(
 	return true
 }
 
+/**
+ * Renames a frontmatter property in a markdown file.
+ */
 export async function renameFileFrontmatterProperty(
 	path: string,
 	oldKey: string,
@@ -97,6 +105,9 @@ export async function renameFileFrontmatterProperty(
 	return false
 }
 
+/**
+ * Removes a frontmatter property from a markdown file.
+ */
 export async function removeFileFrontmatterProperty(path: string, key: string) {
 	return updateFileFrontmatter(path, { [key]: undefined })
 }

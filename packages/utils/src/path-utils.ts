@@ -218,10 +218,14 @@ export const replaceFileExtension = (
 	const lastDotIndex = filePath.lastIndexOf(".")
 	const basenameStart = lastSeparator + 1
 
+	// Only treat the dot as an extension delimiter when:
+	// - it appears after the last path separator, and
+	// - it is not the leading character of the basename (so hidden files like ".env" are preserved)
 	if (lastDotIndex > basenameStart) {
 		return `${filePath.slice(0, lastDotIndex)}.${newExtension}`
 	}
 
+	// If no valid extension is found, append the new one.
 	return `${filePath}.${newExtension}`
 }
 

@@ -40,10 +40,12 @@ export const saveSettings = async (
 	try {
 		const stateDir = join(workspacePath, WORKSPACE_STATE_DIR)
 
+		// Ensure the .mdit directory exists before writing.
 		if (!(await exists(stateDir))) {
 			await mkdir(stateDir, { recursive: true })
 		}
 
+		// Load existing config to preserve fields not being updated.
 		const existingConfig = await loadSettings(workspacePath)
 		const mergedConfig: WorkspaceSettings = {
 			...existingConfig,
