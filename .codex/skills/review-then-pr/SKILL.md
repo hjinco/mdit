@@ -52,7 +52,7 @@ Prefer using `yeet` for the publish phase when that skill is available. Otherwis
 - write a focused commit
 - run the most relevant checks for the touched code if they have not been run yet
 - push the branch
-- open a draft PR unless the user explicitly asked for a ready-for-review PR
+- open a ready-for-review PR unless the user explicitly asked for a draft PR
 
 Base the PR body on the reviewed change, not on the whole worktree.
 State clearly that the change passed the review gate with no actionable findings.
