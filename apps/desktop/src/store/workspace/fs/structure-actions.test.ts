@@ -46,6 +46,23 @@ describe("fs-structure-actions", () => {
 		expect(deps.fileSystemRepository.writeTextFile).not.toHaveBeenCalled()
 	})
 
+	it("createAndOpenNote delegates tab opening to createNote", async () => {
+		const { context, getState, ports, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		const createNote = vi.fn().mockResolvedValue("/ws/Untitled.md")
+
+		setState({
+			workspacePath: "/ws",
+			createNote,
+		})
+
+		await actions.createAndOpenNote()
+
+		expect(createNote).toHaveBeenCalledWith("/ws", { openTab: true })
+		expect(ports.tab.openTab).not.toHaveBeenCalled()
+		expect(getState().createNote).toBe(createNote)
+	})
+
 	it("renameEntry sanitizes separators from newName", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)

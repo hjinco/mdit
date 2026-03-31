@@ -13,6 +13,13 @@ export type WorkspaceLifecycleActions = {
 
 const MAX_RESTORED_LAST_OPENED_FILE_PATHS = 5
 
+type ResetWorkspaceStateOptions = {
+	workspacePath?: string | null
+	recentWorkspacePaths?: string[]
+	isTreeLoading?: boolean
+	isMigrationsComplete?: boolean
+}
+
 const resolveUnwatchFnForWorkspaceTransition = (
 	ctx: WorkspaceActionContext,
 	nextWorkspacePath: string | null,
@@ -28,6 +35,40 @@ const resolveUnwatchFnForWorkspaceTransition = (
 
 	unwatchFn()
 	return null
+}
+
+const resetWorkspaceState = (
+	ctx: WorkspaceActionContext,
+	options: ResetWorkspaceStateOptions = {},
+) => {
+	const workspacePath = options.workspacePath ?? null
+
+	ctx.ports.indexing.resetIndexingState()
+	ctx.set(
+		buildWorkspaceState({
+			workspacePath,
+			recentWorkspacePaths: options.recentWorkspacePaths ?? [],
+			isTreeLoading: options.isTreeLoading ?? Boolean(workspacePath),
+			isMigrationsComplete: options.isMigrationsComplete ?? false,
+			unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, workspacePath),
+		}),
+	)
+	ctx.ports.collection.resetCollectionPath()
+}
+
+const closeWorkspaceTabs = (
+	ctx: WorkspaceActionContext,
+	options?: { clearHistoryWhenNoActiveTab?: boolean },
+) => {
+	const activeTabPath = ctx.ports.tab.getActiveTabPath()
+
+	if (activeTabPath) {
+		ctx.ports.tab.closeTab(activeTabPath)
+	}
+
+	if (activeTabPath || options?.clearHistoryWhenNoActiveTab) {
+		ctx.ports.tab.clearHistory()
+	}
 }
 
 const restoreLastOpenedFileHistoryFromSettings = async (
@@ -149,6 +190,26 @@ const bootstrapWorkspace = async (
 	}
 }
 
+const loadWorkspace = async (
+	ctx: WorkspaceActionContext,
+	workspacePath: string | null,
+	recentWorkspacePaths: string[],
+	options?: { restoreLastOpenedFiles?: boolean },
+) => {
+	resetWorkspaceState(ctx, {
+		workspacePath,
+		recentWorkspacePaths,
+	})
+
+	if (!workspacePath) {
+		ctx.set({ isMigrationsComplete: true })
+		return
+	}
+
+	await ctx.ports.gitSync.initGitSync(workspacePath)
+	await bootstrapWorkspace(ctx, workspacePath, options)
+}
+
 export const createLifecycleActions = (
 	ctx: WorkspaceActionContext,
 ): WorkspaceLifecycleActions => ({
@@ -177,39 +238,12 @@ export const createLifecycleActions = (
 			}
 
 			const workspacePath = nextRecentWorkspacePaths[0] ?? null
-			const unwatchFn = resolveUnwatchFnForWorkspaceTransition(
-				ctx,
-				workspacePath,
-			)
-			ctx.ports.indexing.resetIndexingState()
-
-			ctx.set(
-				buildWorkspaceState({
-					workspacePath,
-					recentWorkspacePaths: nextRecentWorkspacePaths,
-					isTreeLoading: Boolean(workspacePath),
-					unwatchFn,
-				}),
-			)
-			ctx.ports.collection.resetCollectionPath()
-
-			if (workspacePath) {
-				await ctx.ports.gitSync.initGitSync(workspacePath)
-				await bootstrapWorkspace(ctx, workspacePath, {
-					restoreLastOpenedFiles: true,
-				})
-			} else {
-				ctx.set({ isMigrationsComplete: true })
-			}
+			await loadWorkspace(ctx, workspacePath, nextRecentWorkspacePaths, {
+				restoreLastOpenedFiles: true,
+			})
 		} catch (error) {
 			console.error("Failed to initialize workspace:", error)
-			ctx.set(
-				buildWorkspaceState({
-					unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, null),
-				}),
-			)
-			ctx.ports.collection.resetCollectionPath()
-			ctx.ports.indexing.resetIndexingState()
+			resetWorkspaceState(ctx)
 		}
 	},
 
@@ -227,32 +261,12 @@ export const createLifecycleActions = (
 				return
 			}
 
-			const activeTabPath = ctx.ports.tab.getActiveTabPath()
-
-			if (activeTabPath) {
-				ctx.ports.tab.closeTab(activeTabPath)
-			}
-
-			ctx.ports.tab.clearHistory()
-			ctx.ports.indexing.resetIndexingState()
+			closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
 
 			await ctx.deps.historyRepository.touchWorkspace(path)
 			const updatedHistory =
 				await ctx.deps.historyRepository.listWorkspacePaths()
-			const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, path)
-
-			ctx.set(
-				buildWorkspaceState({
-					workspacePath: path,
-					recentWorkspacePaths: updatedHistory,
-					isTreeLoading: true,
-					unwatchFn,
-				}),
-			)
-			ctx.ports.collection.resetCollectionPath()
-
-			await ctx.ports.gitSync.initGitSync(path)
-			await bootstrapWorkspace(ctx, path)
+			await loadWorkspace(ctx, path, updatedHistory)
 		} catch (error) {
 			console.error("Failed to set workspace:", error)
 		}
@@ -288,26 +302,14 @@ export const createLifecycleActions = (
 			return
 		}
 
-		ctx.ports.indexing.resetIndexingState()
 		await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
-
-		const activeTabPath = ctx.ports.tab.getActiveTabPath()
-		if (activeTabPath) {
-			ctx.ports.tab.closeTab(activeTabPath)
-			ctx.ports.tab.clearHistory()
-		}
+		closeWorkspaceTabs(ctx)
 
 		await ctx.deps.historyRepository.removeWorkspace(workspacePath)
 		const updatedHistory = await ctx.deps.historyRepository.listWorkspacePaths()
-		const unwatchFn = resolveUnwatchFnForWorkspaceTransition(ctx, null)
-
-		ctx.set(
-			buildWorkspaceState({
-				recentWorkspacePaths: updatedHistory,
-				isMigrationsComplete: true,
-				unwatchFn,
-			}),
-		)
-		ctx.ports.collection.resetCollectionPath()
+		resetWorkspaceState(ctx, {
+			recentWorkspacePaths: updatedHistory,
+			isMigrationsComplete: true,
+		})
 	},
 })

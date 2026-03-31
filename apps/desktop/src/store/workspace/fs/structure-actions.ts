@@ -38,6 +38,30 @@ export type WorkspaceFsStructureActions = {
 	) => Promise<string>
 }
 
+const createSingleEntrySelection = (path: string) => ({
+	selectedIds: new Set([path]),
+	anchorId: path,
+})
+
+const registerExactLocalMutation = (
+	ctx: WorkspaceActionContext,
+	path: string,
+) => {
+	ctx.get().registerLocalMutation([{ path, scope: "exact" }])
+}
+
+const createUniqueEntryPath = (
+	ctx: WorkspaceActionContext,
+	baseName: string,
+	directoryPath: string,
+) =>
+	generateUniqueFileName(
+		baseName,
+		directoryPath,
+		ctx.deps.fileSystemRepository.exists,
+		{ pattern: "space" },
+	)
+
 export const createFsStructureActions = (
 	ctx: WorkspaceActionContext,
 ): WorkspaceFsStructureActions => ({
@@ -49,17 +73,12 @@ export const createFsStructureActions = (
 
 		try {
 			const { fileName: finalFolderName, fullPath: folderPath } =
-				await generateUniqueFileName(
-					trimmedName,
-					directoryPath,
-					ctx.deps.fileSystemRepository.exists,
-					{ pattern: "space" },
-				)
+				await createUniqueEntryPath(ctx, trimmedName, directoryPath)
 
 			await ctx.deps.fileSystemRepository.mkdir(folderPath, {
 				recursive: true,
 			})
-			ctx.get().registerLocalMutation([{ path: folderPath, scope: "exact" }])
+			registerExactLocalMutation(ctx, folderPath)
 
 			await ctx.get().entryCreated({
 				parentPath: directoryPath,
@@ -75,10 +94,7 @@ export const createFsStructureActions = (
 				expandNewDirectory: true,
 			})
 
-			ctx.get().setEntrySelection({
-				selectedIds: new Set([folderPath]),
-				anchorId: folderPath,
-			})
+			ctx.get().setEntrySelection(createSingleEntrySelection(folderPath))
 
 			return folderPath
 		} catch (error) {
@@ -96,18 +112,17 @@ export const createFsStructureActions = (
 		}
 
 		const baseName = `${sanitizedBaseName}.md`
-		const { fileName, fullPath: filePath } = await generateUniqueFileName(
+		const { fileName, fullPath: filePath } = await createUniqueEntryPath(
+			ctx,
 			baseName,
 			directoryPath,
-			ctx.deps.fileSystemRepository.exists,
-			{ pattern: "space" },
 		)
 
 		await ctx.deps.fileSystemRepository.writeTextFile(
 			filePath,
 			options?.initialContent ?? "",
 		)
-		ctx.get().registerLocalMutation([{ path: filePath, scope: "exact" }])
+		registerExactLocalMutation(ctx, filePath)
 
 		const now = new Date()
 
@@ -125,10 +140,7 @@ export const createFsStructureActions = (
 
 		if (options?.openTab) {
 			await ctx.ports.tab.openTab(filePath)
-			ctx.get().setEntrySelection({
-				selectedIds: new Set([filePath]),
-				anchorId: filePath,
-			})
+			ctx.get().setEntrySelection(createSingleEntrySelection(filePath))
 		}
 
 		return filePath
@@ -151,8 +163,7 @@ export const createFsStructureActions = (
 			targetDirectory = dirname(activeTabPath)
 		}
 
-		const newNotePath = await ctx.get().createNote(targetDirectory)
-		await ctx.ports.tab.openTab(newNotePath)
+		await ctx.get().createNote(targetDirectory, { openTab: true })
 	},
 
 	deleteEntries: async (paths: string[]) => {
