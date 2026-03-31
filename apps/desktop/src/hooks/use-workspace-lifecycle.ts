@@ -67,7 +67,7 @@ export function useWorkspaceLifecycle() {
 			)
 		})().catch((error) => {
 			console.error("Failed to bootstrap workspace lifecycle:", error)
-			void loadWorkspace(null, { recentWorkspacePaths: [] })
+			void loadWorkspace(null)
 		})
 
 		return () => {
