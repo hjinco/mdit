@@ -233,6 +233,7 @@ export const createMarkdownKit = ({
 				disallowedNodes: [KEYS.slashCommand],
 				remarkPlugins,
 				remarkStringifyOptions: {
+					bullet: "-",
 					handlers: {
 						...remarkObsidianCalloutStringifyHandlers,
 						root: (
