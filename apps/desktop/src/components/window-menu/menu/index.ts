@@ -13,11 +13,13 @@ export async function installWindowMenu({
 	openWorkspace,
 	toggleFileExplorer,
 	toggleCollectionView,
+	toggleChatPanel,
 	zoomIn,
 	zoomOut,
 	resetZoom,
 	openCommandMenu,
 	openGraphView,
+	chatPanelBetaEnabled,
 	goBack,
 	goForward,
 	toggleSettings,
@@ -27,11 +29,13 @@ export async function installWindowMenu({
 	openWorkspace: () => void | Promise<void>
 	toggleFileExplorer: () => void
 	toggleCollectionView: () => void
+	toggleChatPanel: () => void
 	zoomIn: () => void
 	zoomOut: () => void
 	resetZoom: () => void
 	openCommandMenu: () => void
 	openGraphView: () => void
+	chatPanelBetaEnabled: boolean
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	toggleSettings: () => void
@@ -49,11 +53,13 @@ export async function installWindowMenu({
 			await createViewMenu({
 				toggleFileExplorer,
 				toggleCollectionView,
+				toggleChatPanel,
 				zoomIn,
 				zoomOut,
 				resetZoom,
 				openCommandMenu,
 				openGraphView,
+				chatPanelBetaEnabled,
 				hotkeys,
 			}),
 			await createHistoryMenu({

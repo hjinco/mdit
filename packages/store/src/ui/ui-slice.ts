@@ -20,6 +20,8 @@ export type UIPreferences = {
 	resetFontScale: () => number
 	getLocalApiEnabled: () => boolean
 	setLocalApiEnabled: (enabled: boolean) => boolean
+	getChatPanelBetaEnabled: () => boolean
+	setChatPanelBetaEnabled: (enabled: boolean) => boolean
 }
 
 export type UISlice = {
@@ -62,6 +64,11 @@ export type UISlice = {
 	setLocalApiEnabled: (enabled: boolean) => void
 	localApiError: string | null
 	setLocalApiError: (message: string | null) => void
+	chatPanelBetaEnabled: boolean
+	setChatPanelBetaEnabled: (enabled: boolean) => void
+	isChatPanelOpen: boolean
+	setChatPanelOpen: (isOpen: boolean) => void
+	toggleChatPanelOpen: () => void
 }
 
 export type UISliceDependencies = {
@@ -177,4 +184,29 @@ export const prepareUISlice =
 		},
 		localApiError: null,
 		setLocalApiError: (message) => set({ localApiError: message }),
+		chatPanelBetaEnabled: preferences.getChatPanelBetaEnabled(),
+		setChatPanelBetaEnabled: (enabled) => {
+			const nextEnabled = preferences.setChatPanelBetaEnabled(enabled)
+			set((state) => ({
+				chatPanelBetaEnabled: nextEnabled,
+				isChatPanelOpen: nextEnabled ? state.isChatPanelOpen : false,
+			}))
+		},
+		isChatPanelOpen: false,
+		setChatPanelOpen: (isOpen) =>
+			set((state) => {
+				if (isOpen && !state.chatPanelBetaEnabled) {
+					return state
+				}
+
+				return { isChatPanelOpen: isOpen }
+			}),
+		toggleChatPanelOpen: () =>
+			set((state) => {
+				if (!state.chatPanelBetaEnabled) {
+					return state
+				}
+
+				return { isChatPanelOpen: !state.isChatPanelOpen }
+			}),
 	})

@@ -28,6 +28,7 @@
 		"@mdit/assets": "workspace:*",
 		"@mdit/codex-oauth": "workspace:*",
 		"@mdit/command-menu": "workspace:*",
+		"@mdit/chat": "workspace:*",
 		"@mdit/editor": "workspace:*",
 		"@mdit/file-tree": "workspace:*",
 		"@mdit/graph-view": "workspace:*",

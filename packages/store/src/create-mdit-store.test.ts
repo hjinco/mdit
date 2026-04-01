@@ -87,6 +87,8 @@ describe("createMditStore", () => {
 					resetFontScale: () => 1,
 					getLocalApiEnabled: () => false,
 					setLocalApiEnabled: (enabled) => enabled,
+					getChatPanelBetaEnabled: () => false,
+					setChatPanelBetaEnabled: (enabled) => enabled,
 				},
 			},
 			workspace: {

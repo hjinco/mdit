@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import { useEffect } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
+import { ChatPanel } from "./components/chat/chat-panel"
 import { CollectionView } from "./components/collection-view/collection-view"
 import { CommandMenu } from "./components/command-menu/command-menu"
 import { Editor } from "./components/editor/editor"
@@ -114,6 +115,7 @@ export function App() {
 						<CollectionView />
 					</div>
 					<Editor />
+					<ChatPanel />
 				</div>
 			</div>
 			<SettingsDialog />

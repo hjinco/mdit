@@ -40,6 +40,8 @@ type UseResizablePanelOptions = {
 	defaultWidth?: number
 	minWidth?: number
 	maxWidth?: number
+	/** When true, width follows the pointer in the opposite direction (resize handle on the inner/left edge of a right-docked panel). */
+	invertDrag?: boolean
 	isOpen: boolean
 	setIsOpen: (isOpen: boolean) => void
 }
@@ -50,6 +52,7 @@ export const useResizablePanel = (options: UseResizablePanelOptions) => {
 		defaultWidth = DEFAULT_WIDTH,
 		minWidth = DEFAULT_MIN_WIDTH,
 		maxWidth = DEFAULT_MAX_WIDTH,
+		invertDrag = false,
 		isOpen,
 		setIsOpen,
 	} = options
@@ -79,7 +82,7 @@ export const useResizablePanel = (options: UseResizablePanelOptions) => {
 
 			const handlePointerMove = (pointerEvent: PointerEvent) => {
 				const delta = pointerEvent.clientX - startX
-				const rawWidth = startWidth + delta
+				const rawWidth = invertDrag ? startWidth - delta : startWidth + delta
 				const nextWidth = Math.max(minWidth, Math.min(maxWidth, rawWidth))
 				finalWidth = rawWidth
 				setWidth(nextWidth)
@@ -102,7 +105,7 @@ export const useResizablePanel = (options: UseResizablePanelOptions) => {
 			window.addEventListener("pointerup", handlePointerUp)
 			window.addEventListener("pointercancel", handlePointerUp)
 		},
-		[isOpen, width, minWidth, maxWidth, setIsOpen],
+		[invertDrag, isOpen, width, minWidth, maxWidth, setIsOpen],
 	)
 
 	return {

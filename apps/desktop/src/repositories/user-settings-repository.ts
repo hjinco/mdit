@@ -4,6 +4,7 @@ export const FILE_EXPLORER_STORAGE_KEY = "isFileExplorerOpen"
 export const FONT_SCALE_STORAGE_KEY = "font-scale"
 export const DEFAULT_FONT_SCALE = 1
 export const LOCAL_API_ENABLED_STORAGE_KEY = "local-api-enabled"
+export const CHAT_PANEL_BETA_ENABLED_STORAGE_KEY = "chat-panel-beta-enabled"
 const MIN_FONT_SCALE = 0.8
 const MAX_FONT_SCALE = 1.6
 const FONT_SCALE_STEP = 0.1
@@ -86,5 +87,13 @@ export class UserSettingsRepository implements UIPreferences {
 
 	setLocalApiEnabled(enabled: boolean): boolean {
 		return saveStorageBoolean(LOCAL_API_ENABLED_STORAGE_KEY, enabled)
+	}
+
+	getChatPanelBetaEnabled(): boolean {
+		return readStorageBoolean(CHAT_PANEL_BETA_ENABLED_STORAGE_KEY, false)
+	}
+
+	setChatPanelBetaEnabled(enabled: boolean): boolean {
+		return saveStorageBoolean(CHAT_PANEL_BETA_ENABLED_STORAGE_KEY, enabled)
 	}
 }

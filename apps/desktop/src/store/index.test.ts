@@ -95,6 +95,8 @@ vi.mock("@/repositories/user-settings-repository", () => ({
 				resetFontScale: vi.fn().mockReturnValue(1),
 				getLocalApiEnabled: vi.fn().mockReturnValue(false),
 				setLocalApiEnabled: vi.fn((value: boolean) => value),
+				getChatPanelBetaEnabled: vi.fn().mockReturnValue(false),
+				setChatPanelBetaEnabled: vi.fn((value: boolean) => value),
 			}
 		}),
 }))

@@ -14,11 +14,26 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@mdit/ui/components/select"
+import { Switch } from "@mdit/ui/components/switch"
 import { Monitor, Moon, Sun } from "lucide-react"
+import { useShallow } from "zustand/shallow"
+import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useTheme } from "@/contexts/theme-context"
+import { useStore } from "@/store"
 
 export function PreferencesTab() {
 	const { theme, setTheme } = useTheme()
+	const {
+		chatPanelBetaEnabled,
+		setChatPanelBetaEnabled,
+		toggleChatPanelHotkey,
+	} = useStore(
+		useShallow((state) => ({
+			chatPanelBetaEnabled: state.chatPanelBetaEnabled,
+			setChatPanelBetaEnabled: state.setChatPanelBetaEnabled,
+			toggleChatPanelHotkey: state.hotkeys["toggle-chat-panel"],
+		})),
+	)
 
 	const themeOptions: Array<{
 		value: "light" | "dark" | "system"
@@ -61,6 +76,42 @@ export function PreferencesTab() {
 								))}
 							</SelectContent>
 						</Select>
+					</Field>
+				</FieldGroup>
+			</FieldSet>
+
+			<FieldSet className="mt-8">
+				<FieldLegend>Beta</FieldLegend>
+				<FieldDescription>
+					Experimental features with agent-powered workflows.
+				</FieldDescription>
+				<FieldGroup>
+					<Field orientation="horizontal">
+						<FieldContent>
+							<FieldLabel>Agent Chat Panel</FieldLabel>
+							<FieldDescription>
+								Enable a right-side chat panel that can request editor edit and
+								file explorer access permissions.
+								{toggleChatPanelHotkey.length > 0 ? (
+									<>
+										<span>Show or hide the panel with</span>
+										<HotkeyKbd
+											className="mx-1"
+											binding={toggleChatPanelHotkey}
+										/>
+										<span>Customize under Hotkeys.</span>
+									</>
+								) : (
+									<span>
+										Assign a shortcut under Hotkeys to show or hide the panel.
+									</span>
+								)}
+							</FieldDescription>
+						</FieldContent>
+						<Switch
+							checked={chatPanelBetaEnabled}
+							onCheckedChange={setChatPanelBetaEnabled}
+						/>
 					</Field>
 				</FieldGroup>
 			</FieldSet>
