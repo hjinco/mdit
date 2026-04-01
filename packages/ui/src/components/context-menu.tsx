@@ -74,7 +74,7 @@ function ContextMenuSubTrigger({
 			data-slot="context-menu-sub-trigger"
 			data-inset={inset}
 			className={cn(
-				"text-accent-foreground focus:bg-accent data-open:bg-accent data-popup-open:bg-accent flex items-center rounded-sm px-2 py-1.25 text-sm outline-hidden select-none data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+				"text-accent-foreground focus:bg-accent data-open:bg-accent data-popup-open:bg-accent relative flex items-center gap-2 rounded-sm px-2 py-1.25 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 				"cursor-pointer",
 				className,
 			)}
@@ -280,10 +280,7 @@ function ContextMenuShortcut({
 	return (
 		<span
 			data-slot="context-menu-shortcut"
-			className={cn(
-				"text-muted-foreground ml-auto text-xs tracking-widest",
-				className,
-			)}
+			className={cn("text-muted-foreground ml-auto text-xs", className)}
 			{...props}
 		/>
 	)

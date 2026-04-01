@@ -3,6 +3,8 @@ import {
 	ContextMenuContent,
 	ContextMenuGroup,
 	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuShortcut,
 	ContextMenuSub,
 	ContextMenuSubContent,
 	ContextMenuSubTrigger,
@@ -14,6 +16,7 @@ import {
 	BlockMenuPlugin,
 	BlockSelectionPlugin,
 } from "@platejs/selection/react"
+import { IconTransform } from "@tabler/icons-react"
 import {
 	CopyIcon,
 	Heading1Icon,
@@ -313,6 +316,17 @@ export function BlockContextMenu({
 						}}
 					>
 						<SparklesIcon /> Ask AI
+						<ContextMenuShortcut>⌘J</ContextMenuShortcut>
+					</ContextMenuItem>
+					<ContextMenuItem
+						onClick={() => {
+							editor
+								.getTransforms(BlockSelectionPlugin)
+								.blockSelection.duplicate()
+						}}
+					>
+						<CopyIcon /> Duplicate
+						<ContextMenuShortcut>⌘D</ContextMenuShortcut>
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={() => {
@@ -323,17 +337,9 @@ export function BlockContextMenu({
 						}}
 					>
 						<Trash2Icon /> Delete
+						<ContextMenuShortcut>Del</ContextMenuShortcut>
 					</ContextMenuItem>
-					<ContextMenuItem
-						onClick={() => {
-							editor
-								.getTransforms(BlockSelectionPlugin)
-								.blockSelection.duplicate()
-						}}
-					>
-						<CopyIcon /> Duplicate
-						{/* <ContextMenuShortcut>⌘ + D</ContextMenuShortcut> */}
-					</ContextMenuItem>
+					<ContextMenuSeparator />
 					{canCreateLinkedNotes && (
 						<ContextMenuItem
 							onClick={() => {
@@ -345,7 +351,10 @@ export function BlockContextMenu({
 						</ContextMenuItem>
 					)}
 					<ContextMenuSub>
-						<ContextMenuSubTrigger>Turn into</ContextMenuSubTrigger>
+						<ContextMenuSubTrigger>
+							<IconTransform />
+							Turn into
+						</ContextMenuSubTrigger>
 						<ContextMenuSubContent className="w-48">
 							{turnIntoItems.map(({ key, icon: Icon, label }) => (
 								<ContextMenuItem key={key} onClick={() => handleTurnInto(key)}>
