@@ -14,6 +14,7 @@ export type AppHotkeyActionId =
 	| "go-forward"
 	| "toggle-settings"
 	| "toggle-note-info"
+	| "toggle-chat-panel"
 
 export type AppHotkeyCategory = "file" | "view" | "history" | "app"
 
@@ -104,6 +105,12 @@ export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 		label: "Toggle Note Info",
 		category: "view",
 		defaultBinding: "Mod+Shift+I",
+	},
+	{
+		id: "toggle-chat-panel",
+		label: "Toggle Chat Panel",
+		category: "view",
+		defaultBinding: "Mod+Shift+L",
 	},
 ] as const
 

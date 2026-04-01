@@ -54,6 +54,7 @@ describe("hotkeys-slice", () => {
 		expect(store.getState().isHotkeysLoaded).toBe(true)
 		expect(store.getState().hotkeys).toEqual(createDefaultAppHotkeys())
 		expect(store.getState().hotkeys["toggle-note-info"]).toBe("Mod+Shift+I")
+		expect(store.getState().hotkeys["toggle-chat-panel"]).toBe("Mod+Shift+L")
 	})
 
 	it("updates hotkey binding and persists it", async () => {

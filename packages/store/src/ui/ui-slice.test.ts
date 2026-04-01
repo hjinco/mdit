@@ -7,6 +7,7 @@ function createPreferencesState() {
 		fileExplorerOpen: true,
 		fontScale: 1,
 		localApiEnabled: false,
+		chatPanelBetaEnabled: false,
 	}
 }
 
@@ -37,6 +38,11 @@ const createPreferences = (state: ReturnType<typeof createPreferencesState>) =>
 		getLocalApiEnabled: () => state.localApiEnabled,
 		setLocalApiEnabled: (enabled) => {
 			state.localApiEnabled = enabled
+			return enabled
+		},
+		getChatPanelBetaEnabled: () => state.chatPanelBetaEnabled,
+		setChatPanelBetaEnabled: (enabled) => {
+			state.chatPanelBetaEnabled = enabled
 			return enabled
 		},
 	}) satisfies UIPreferences
@@ -139,5 +145,44 @@ describe("ui-slice command menu seed query", () => {
 
 		expect(store.getState().isCommandMenuOpen).toBe(true)
 		expect(store.getState().commandMenuInitialQuery).toBeNull()
+	})
+})
+
+describe("ui-slice chat panel beta", () => {
+	it("defaults chat panel beta disabled and panel closed", () => {
+		const { store } = createUISliceStore()
+
+		expect(store.getState().chatPanelBetaEnabled).toBe(false)
+		expect(store.getState().isChatPanelOpen).toBe(false)
+	})
+
+	it("persists chat panel beta toggle through preferences", () => {
+		const { store, preferencesState } = createUISliceStore()
+
+		store.getState().setChatPanelBetaEnabled(true)
+
+		expect(store.getState().chatPanelBetaEnabled).toBe(true)
+		expect(preferencesState.chatPanelBetaEnabled).toBe(true)
+	})
+
+	it("prevents opening panel when beta is disabled", () => {
+		const { store } = createUISliceStore()
+
+		store.getState().setChatPanelOpen(true)
+		expect(store.getState().isChatPanelOpen).toBe(false)
+
+		store.getState().toggleChatPanelOpen()
+		expect(store.getState().isChatPanelOpen).toBe(false)
+	})
+
+	it("closes panel immediately when beta is turned off", () => {
+		const { store } = createUISliceStore()
+
+		store.getState().setChatPanelBetaEnabled(true)
+		store.getState().setChatPanelOpen(true)
+		expect(store.getState().isChatPanelOpen).toBe(true)
+
+		store.getState().setChatPanelBetaEnabled(false)
+		expect(store.getState().isChatPanelOpen).toBe(false)
 	})
 })

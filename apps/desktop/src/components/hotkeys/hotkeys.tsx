@@ -38,6 +38,8 @@ export function Hotkeys() {
 		toggleGraphViewDialogOpen,
 		toggleSettingsDialogOpen,
 		toggleNoteInfoOpen,
+		chatPanelBetaEnabled,
+		toggleChatPanelOpen,
 		zoomIn,
 		zoomOut,
 		resetZoom,
@@ -56,6 +58,8 @@ export function Hotkeys() {
 			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
 			toggleNoteInfoOpen: s.toggleNoteInfoOpen,
+			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
+			toggleChatPanelOpen: s.toggleChatPanelOpen,
 			zoomIn: s.increaseFontScale,
 			zoomOut: s.decreaseFontScale,
 			resetZoom: s.resetFontScale,
@@ -106,6 +110,13 @@ export function Hotkeys() {
 			"toggle-note-info": () => {
 				toggleNoteInfoOpen()
 			},
+			"toggle-chat-panel": () => {
+				if (!chatPanelBetaEnabled) {
+					return
+				}
+
+				toggleChatPanelOpen()
+			},
 		}),
 		[
 			createAndOpenNote,
@@ -123,6 +134,8 @@ export function Hotkeys() {
 			goForward,
 			toggleSettingsDialogOpen,
 			toggleNoteInfoOpen,
+			chatPanelBetaEnabled,
+			toggleChatPanelOpen,
 		],
 	)
 
