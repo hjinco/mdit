@@ -1,6 +1,7 @@
 import { dirname, join } from "pathe"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
+import { getPrimaryOpenTabPathForWorkspacePolicy } from "../workspace-tab-policy"
 import { hasLockedPathConflict, resolveLockPathsForSource } from "./guards"
 import { sanitizeWorkspaceEntryName } from "./helpers/fs-entry-name-helpers"
 import { generateUniqueFileName } from "./helpers/unique-filename-helpers"
@@ -154,13 +155,13 @@ export const createFsStructureActions = (
 
 		const currentCollectionPath =
 			ctx.ports.collection.getCurrentCollectionPath()
-		const activeTabPath = ctx.ports.tab.getActiveTabPath()
+		const primaryOpenTabPath = getPrimaryOpenTabPathForWorkspacePolicy(ctx)
 		let targetDirectory = workspacePath
 
 		if (currentCollectionPath) {
 			targetDirectory = currentCollectionPath
-		} else if (activeTabPath) {
-			targetDirectory = dirname(activeTabPath)
+		} else if (primaryOpenTabPath) {
+			targetDirectory = dirname(primaryOpenTabPath)
 		}
 
 		await ctx.get().createNote(targetDirectory, { openTab: true })

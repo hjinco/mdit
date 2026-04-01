@@ -6,8 +6,8 @@ const firstBlockTextByEditor = new WeakMap<object, string | null>()
 
 type TabNameSyncStoreState = {
 	workspacePath: string | null
-	tab: { path: string } | null
 	linkedTab: { path: string; name: string } | null
+	getActiveTab: () => { path: string } | null
 }
 
 /**
@@ -84,7 +84,8 @@ export function getNextLinkedTabName(
 		return null
 	}
 
-	const { tab, linkedTab } = storeState
+	const { linkedTab } = storeState
+	const tab = storeState.getActiveTab()
 	const isLinkedToCurrentTab = tab && linkedTab && linkedTab.path === tab.path
 
 	if (!isLinkedToCurrentTab) {

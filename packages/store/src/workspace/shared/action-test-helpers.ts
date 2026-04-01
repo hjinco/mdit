@@ -80,6 +80,24 @@ export function createActionTestContext() {
 	}
 
 	let state: any
+	const getOpenTabSnapshotsFromState = () => {
+		if (Array.isArray(state.openTabSnapshots)) {
+			return state.openTabSnapshots
+		}
+
+		if (Array.isArray(state.tabs)) {
+			const tabSaveStates =
+				state.tabSaveStates && typeof state.tabSaveStates === "object"
+					? state.tabSaveStates
+					: {}
+			return state.tabs.map((tab: { id: number; path: string }) => ({
+				path: tab.path,
+				isSaved: tabSaveStates[tab.id] ?? true,
+			}))
+		}
+
+		return []
+	}
 
 	const ports = {
 		tab: {
@@ -91,8 +109,7 @@ export function createActionTestContext() {
 			updateHistoryPath: vi.fn(),
 			removePathsFromHistory: vi.fn(),
 			clearHistory: vi.fn(),
-			getActiveTabPath: vi.fn(() => state.tab?.path ?? null),
-			getIsSaved: vi.fn(() => state.isSaved),
+			getOpenTabSnapshots: vi.fn(() => getOpenTabSnapshotsFromState()),
 		},
 		collection: {
 			refreshCollectionEntries: vi.fn(),
@@ -111,8 +128,7 @@ export function createActionTestContext() {
 
 	state = {
 		...buildWorkspaceState(),
-		isSaved: true,
-		tab: null,
+		openTabSnapshots: [],
 		currentCollectionPath: null,
 		chatConfig: null,
 		refreshCodexOAuthForTarget: vi.fn().mockResolvedValue(undefined),

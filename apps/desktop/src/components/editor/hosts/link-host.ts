@@ -28,7 +28,7 @@ const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () =>
 	useStore(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
-			tab: state.tab,
+			tab: state.getActiveTab(),
 			entries: state.entries,
 		})),
 	)
@@ -37,7 +37,7 @@ const getDesktopWorkspaceSnapshot: LinkWorkspacePort["getSnapshot"] = () => {
 	const state = useStore.getState()
 	return {
 		workspacePath: state.workspacePath,
-		tab: state.tab,
+		tab: state.getActiveTab(),
 		entries: state.entries,
 	}
 }

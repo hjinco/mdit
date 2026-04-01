@@ -32,7 +32,7 @@ export function CollectionView() {
 		tab,
 		linkedTab,
 		openTab,
-		isSaved,
+		activeTabSaved,
 		clearLinkedTab,
 		deleteEntries,
 		renameEntry,
@@ -44,10 +44,10 @@ export function CollectionView() {
 			currentCollectionPath: state.currentCollectionPath,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			collectionEntries: state.collectionEntries,
-			tab: state.tab,
+			tab: state.getActiveTab(),
 			linkedTab: state.linkedTab,
 			openTab: state.openTab,
-			isSaved: state.isSaved,
+			activeTabSaved: state.getIsSaved(),
 			clearLinkedTab: state.clearLinkedTab,
 			deleteEntries: state.deleteEntries,
 			renameEntry: state.renameEntry,
@@ -112,7 +112,7 @@ export function CollectionView() {
 	// Update entry metadata (preview and modified date) when the same file is saved (not when switching files)
 	useEntryUpdateOnSave(
 		tab?.path,
-		isSaved,
+		activeTabSaved,
 		invalidatePreview,
 		updateEntryModifiedDate,
 	)

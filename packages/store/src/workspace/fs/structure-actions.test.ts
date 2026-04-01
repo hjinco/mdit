@@ -63,6 +63,23 @@ describe("fs-structure-actions", () => {
 		expect(getState().createNote).toBe(createNote)
 	})
 
+	it("createAndOpenNote uses primary open tab directory when collection path is unset", async () => {
+		const { context, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		const createNote = vi.fn().mockResolvedValue("/ws/folder/Untitled.md")
+
+		setState({
+			workspacePath: "/ws",
+			currentCollectionPath: null,
+			openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: true }],
+			createNote,
+		})
+
+		await actions.createAndOpenNote()
+
+		expect(createNote).toHaveBeenCalledWith("/ws/folder", { openTab: true })
+	})
+
 	it("renameEntry sanitizes separators from newName", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
@@ -219,8 +236,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
-			isSaved: false,
-			tab: { path: "/ws/folder/note.md" },
+			openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: false }],
 		})
 
 		vi.useFakeTimers()
@@ -238,7 +254,9 @@ describe("fs-structure-actions", () => {
 			await vi.advanceTimersByTimeAsync(199)
 			expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
 
-			setState({ isSaved: true })
+			setState({
+				openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: true }],
+			})
 			await vi.advanceTimersByTimeAsync(1)
 
 			const renamedPath = await renamePromise
@@ -294,8 +312,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entriesDeleted = vi.fn().mockResolvedValue(undefined)
 		setState({
-			isSaved: false,
-			tab: { path: "/ws/folder/note.md" },
+			openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: false }],
 		})
 
 		vi.useFakeTimers()
@@ -306,7 +323,9 @@ describe("fs-structure-actions", () => {
 			await vi.advanceTimersByTimeAsync(199)
 			expect(deps.fileSystemRepository.moveToTrash).not.toHaveBeenCalled()
 
-			setState({ isSaved: true })
+			setState({
+				openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: true }],
+			})
 			await vi.advanceTimersByTimeAsync(1)
 
 			await deletePromise

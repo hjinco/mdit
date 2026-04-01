@@ -81,10 +81,18 @@ type LinkedTab = {
 	name: string
 } | null
 
-export type TabSlice = {
-	tab: Tab | null
-	linkedTab: LinkedTab
+export type OpenTabSnapshot = {
+	path: string
 	isSaved: boolean
+}
+
+export type TabSaveStateMap = Record<number, boolean>
+
+export type TabSlice = {
+	tabs: Tab[]
+	activeTabId: number | null
+	tabSaveStates: TabSaveStateMap
+	linkedTab: LinkedTab
 	history: TabHistoryEntry[]
 	historyIndex: number
 	setHistorySelectionProvider: (
@@ -112,7 +120,7 @@ export type TabSlice = {
 		newPath: string,
 		options?: RenameTabOptions,
 	) => Promise<void>
-	setTabSaved: (isSaved: boolean) => void
+	setTabSaved: (tabId: number, isSaved: boolean) => void
 	setLinkedTab: (linkedTab: LinkedTab) => void
 	updateLinkedName: (name: string) => void
 	clearLinkedTab: () => void
@@ -120,12 +128,56 @@ export type TabSlice = {
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
 	canGoForward: () => boolean
+	getActiveTab: () => Tab | null
+	getOpenTabSnapshots: () => OpenTabSnapshot[]
 	getActiveTabPath: () => string | null
 	getIsSaved: () => boolean
 	updateHistoryPath: (oldPath: string, newPath: string) => void
 	removePathsFromHistory: (paths: string[]) => void
 	clearHistory: () => void
 }
+
+type TabStateWithActive = Pick<TabSlice, "tabs" | "activeTabId">
+
+const getTabSavedFromState = (
+	state: Pick<TabSlice, "tabSaveStates">,
+	tabId: number,
+): boolean => state.tabSaveStates[tabId] ?? true
+
+const getActiveTabFromState = (state: TabStateWithActive): Tab | null => {
+	if (state.activeTabId === null) {
+		return null
+	}
+
+	return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+}
+
+const getActiveTabSavedFromState = (
+	state: Pick<TabSlice, "tabs" | "activeTabId" | "tabSaveStates">,
+): boolean => {
+	const activeTab = getActiveTabFromState(state)
+	if (!activeTab) {
+		return true
+	}
+
+	return getTabSavedFromState(state, activeTab.id)
+}
+
+const buildSingleActiveTabState = (
+	tab: Tab | null,
+	isSaved = true,
+): Pick<TabSlice, "tabs" | "activeTabId" | "tabSaveStates"> =>
+	tab
+		? {
+				tabs: [tab],
+				activeTabId: tab.id,
+				tabSaveStates: { [tab.id]: isSaved },
+			}
+		: {
+				tabs: [],
+				activeTabId: null,
+				tabSaveStates: {},
+			}
 
 export const prepareTabSlice =
 	({
@@ -274,9 +326,8 @@ export const prepareTabSlice =
 		}
 
 		return {
-			tab: null,
+			...buildSingleActiveTabState(null),
 			linkedTab: null,
-			isSaved: true,
 			history: [],
 			historyIndex: -1,
 			setHistorySelectionProvider: (provider) => {
@@ -297,7 +348,7 @@ export const prepareTabSlice =
 				return { found: true, selection }
 			},
 			refreshTabFromExternalContent: (path, content, options) => {
-				const activeTab = get().tab
+				const activeTab = getActiveTabFromState(get())
 				if (
 					!activeTab ||
 					activeTab.path !== path ||
@@ -312,7 +363,7 @@ export const prepareTabSlice =
 				let didRefresh = false
 
 				set((state) => {
-					const currentTab = state.tab
+					const currentTab = getActiveTabFromState(state)
 					if (
 						!currentTab ||
 						currentTab.path !== path ||
@@ -323,14 +374,14 @@ export const prepareTabSlice =
 
 					didRefresh = true
 					pendingExternalReloadSaveSkipTabIds.add(currentTab.id)
+					const nextTab = {
+						...currentTab,
+						id: ++tabIdCounter,
+						content,
+					}
 
 					return {
-						tab: {
-							...currentTab,
-							id: ++tabIdCounter,
-							content,
-						},
-						isSaved: true,
+						...buildSingleActiveTabState(nextTab, true),
 					}
 				})
 
@@ -375,11 +426,16 @@ export const prepareTabSlice =
 				try {
 					const content = await readTextFile(activePath)
 					const activeIndex = limitedHistory.length - 1
+					const activeTab = {
+						id: ++tabIdCounter,
+						path: activePath,
+						name,
+						content,
+					}
 
 					set({
-						tab: { id: ++tabIdCounter, path: activePath, name, content },
+						...buildSingleActiveTabState(activeTab, true),
 						linkedTab: null,
-						isSaved: true,
 						history: limitedHistory,
 						historyIndex: activeIndex,
 					})
@@ -405,9 +461,10 @@ export const prepareTabSlice =
 				}
 
 				const state = get()
+				const activeTab = getActiveTabFromState(state)
 
 				// If opening the same tab, don't do anything (unless force is true)
-				if (!force && state.tab?.path === path) {
+				if (!force && activeTab?.path === path) {
 					return
 				}
 
@@ -418,10 +475,15 @@ export const prepareTabSlice =
 				const name = getFileNameWithoutExtension(path)
 
 				if (name) {
+					const nextTab = {
+						id: ++tabIdCounter,
+						path,
+						name,
+						content,
+					}
 					set({
-						tab: { id: ++tabIdCounter, path, name, content },
+						...buildSingleActiveTabState(nextTab, true),
 						linkedTab: null,
-						isSaved: true,
 					})
 
 					if (!skipHistory) {
@@ -431,18 +493,19 @@ export const prepareTabSlice =
 				}
 			},
 			closeTab: (path) => {
-				const tab = get().tab
+				const tab = getActiveTabFromState(get())
 
 				if (!tab || tab.path !== path) {
 					return
 				}
 
-				set({ tab: null })
+				set(buildSingleActiveTabState(null))
 			},
 			renameTab: async (oldPath, newPath, options) => {
 				const refreshContent = options?.refreshContent ?? false
 				const shouldRenameOnFs = options?.renameOnFs ?? false
-				const tab = get().tab
+				const tab = getActiveTabFromState(get())
+				const currentTabSaved = getActiveTabSavedFromState(get())
 
 				if (!tab || tab.path !== oldPath) {
 					return
@@ -453,7 +516,7 @@ export const prepareTabSlice =
 						await renameFile(oldPath, newPath)
 						const nextName = getFileNameWithoutExtension(newPath)
 						const { linkedTab } = get()
-						const tab = get().tab
+						const tab = getActiveTabFromState(get())
 						if (!tab) {
 							return
 						}
@@ -465,7 +528,7 @@ export const prepareTabSlice =
 						const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
 
 						set({
-							tab: nextTab,
+							...buildSingleActiveTabState(nextTab, currentTabSaved),
 							linkedTab: shouldCarryLinked
 								? {
 										...linkedTab,
@@ -483,7 +546,10 @@ export const prepareTabSlice =
 				const name = getFileNameWithoutExtension(newPath)
 
 				if (!name) {
-					set({ tab: null, linkedTab: null })
+					set({
+						...buildSingleActiveTabState(null),
+						linkedTab: null,
+					})
 					return
 				}
 
@@ -517,7 +583,10 @@ export const prepareTabSlice =
 
 				set((state) => ({
 					...state,
-					tab: nextTab,
+					...buildSingleActiveTabState(
+						nextTab,
+						getActiveTabSavedFromState(state),
+					),
 					linkedTab: shouldCarryLinked
 						? {
 								...linkedTab,
@@ -526,16 +595,27 @@ export const prepareTabSlice =
 						: state.linkedTab,
 				}))
 			},
-			setTabSaved: (isSaved) => {
-				set({
-					isSaved,
+			setTabSaved: (tabId, isSaved) => {
+				set((state) => {
+					const hasTab = state.tabs.some((tab) => tab.id === tabId)
+					if (!hasTab) {
+						return {}
+					}
+
+					return {
+						tabSaveStates: {
+							...state.tabSaveStates,
+							[tabId]: isSaved,
+						},
+					}
 				})
 			},
 			setLinkedTab: (linkedTab) => {
 				set({ linkedTab })
 			},
 			updateLinkedName: (name) => {
-				const { tab, linkedTab } = get()
+				const { linkedTab } = get()
+				const tab = getActiveTabFromState(get())
 
 				if (!tab || !linkedTab) {
 					return
@@ -562,8 +642,16 @@ export const prepareTabSlice =
 				const state = get()
 				return state.historyIndex < state.history.length - 1
 			},
-			getActiveTabPath: () => get().tab?.path ?? null,
-			getIsSaved: () => get().isSaved,
+			getActiveTab: () => getActiveTabFromState(get()),
+			getOpenTabSnapshots: () => {
+				const { tabs, tabSaveStates } = get()
+				return tabs.map((tab) => ({
+					path: tab.path,
+					isSaved: getTabSavedFromState({ tabSaveStates }, tab.id),
+				}))
+			},
+			getActiveTabPath: () => getActiveTabFromState(get())?.path ?? null,
+			getIsSaved: () => getActiveTabSavedFromState(get()),
 			updateHistoryPath: (oldPath: string, newPath: string) => {
 				const state = get()
 				set({
@@ -577,7 +665,7 @@ export const prepareTabSlice =
 					state.historyIndex,
 					paths,
 				)
-				const tabPath = state.tab?.path
+				const tabPath = getActiveTabFromState(state)?.path
 				const isCurrentTabDeleted =
 					!!tabPath &&
 					paths.some((path) => isPathEqualOrDescendant(tabPath, path))
@@ -591,7 +679,7 @@ export const prepareTabSlice =
 
 						const targetPath = history[historyIndex]?.path
 						if (!targetPath) {
-							set({ tab: null })
+							set(buildSingleActiveTabState(null))
 							return
 						}
 
@@ -601,11 +689,11 @@ export const prepareTabSlice =
 							})
 							.catch((error) => {
 								console.error("Failed to navigate after deletion:", error)
-								set({ tab: null })
+								set(buildSingleActiveTabState(null))
 							})
 					} else {
 						set({
-							tab: null,
+							...buildSingleActiveTabState(null),
 							history,
 							historyIndex: -1,
 						})

@@ -68,7 +68,7 @@ const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 	openDialog: open,
 	readDirectory: readDir,
 	readMarkdownFile: readTextFile,
-	getTabPath: () => useStore.getState().tab?.path ?? null,
+	getTabPath: () => useStore.getState().getActiveTabPath(),
 	...desktopImageImportHost,
 }
 

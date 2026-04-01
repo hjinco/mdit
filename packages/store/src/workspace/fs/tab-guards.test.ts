@@ -9,19 +9,19 @@ import {
 describe("fs-tab-guards", () => {
 	it("waitForActiveTabPathToSettle polls until tab becomes saved", async () => {
 		const { context, ports, setState } = createActionTestContext()
-		setState({ tab: { path: "/ws/a.md" }, isSaved: false })
+		setState({ openTabSnapshots: [{ path: "/ws/a.md", isSaved: false }] })
 		vi.useFakeTimers()
 
 		try {
 			const settlePromise = waitForActiveTabPathToSettle(context, "/ws/a.md")
 			await vi.advanceTimersByTimeAsync(199)
-			expect(ports.tab.getIsSaved).toHaveBeenCalledTimes(1)
+			expect(ports.tab.getOpenTabSnapshots).toHaveBeenCalledTimes(1)
 
-			setState({ isSaved: true })
+			setState({ openTabSnapshots: [{ path: "/ws/a.md", isSaved: true }] })
 			await vi.advanceTimersByTimeAsync(1)
 			await settlePromise
 
-			expect(ports.tab.getIsSaved).toHaveBeenCalledTimes(2)
+			expect(ports.tab.getOpenTabSnapshots).toHaveBeenCalledTimes(2)
 		} finally {
 			vi.useRealTimers()
 		}
@@ -29,16 +29,20 @@ describe("fs-tab-guards", () => {
 
 	it("waitForActiveTabDescendantToSettle does nothing when active tab is unrelated", async () => {
 		const { context, ports, setState } = createActionTestContext()
-		setState({ tab: { path: "/ws/other/a.md" }, isSaved: false })
+		setState({
+			openTabSnapshots: [{ path: "/ws/other/a.md", isSaved: false }],
+		})
 
 		await waitForActiveTabDescendantToSettle(context, "/ws/source")
 
-		expect(ports.tab.getIsSaved).toHaveBeenCalledTimes(0)
+		expect(ports.tab.getOpenTabSnapshots).toHaveBeenCalledTimes(1)
 	})
 
 	it("waitForActiveTabUnderPathsToSettle waits only when one path matches", async () => {
 		const { context, ports, setState } = createActionTestContext()
-		setState({ tab: { path: "/ws/source/a.md" }, isSaved: false })
+		setState({
+			openTabSnapshots: [{ path: "/ws/source/a.md", isSaved: false }],
+		})
 		vi.useFakeTimers()
 
 		try {
@@ -47,8 +51,10 @@ describe("fs-tab-guards", () => {
 				"/ws/source",
 			])
 			await vi.advanceTimersByTimeAsync(199)
-			expect(ports.tab.getIsSaved).toHaveBeenCalledTimes(1)
-			setState({ isSaved: true })
+			expect(ports.tab.getOpenTabSnapshots).toHaveBeenCalledTimes(2)
+			setState({
+				openTabSnapshots: [{ path: "/ws/source/a.md", isSaved: true }],
+			})
 			await vi.advanceTimersByTimeAsync(1)
 			await settlePromise
 		} finally {

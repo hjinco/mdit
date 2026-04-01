@@ -7,6 +7,7 @@ import { dirname, resolve } from "pathe"
 import { findEntryByPath, findParentDirectory } from "../tree/domain/entry-tree"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
+import { getPrimaryOpenTabPathForWorkspacePolicy } from "../workspace-tab-policy"
 import { collapseDirectoryPaths } from "./tree-patch"
 import type { VaultWatchOp } from "./types"
 
@@ -379,8 +380,8 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
-		const activeTabPath = ctx.ports.tab.getActiveTabPath()
-		if (activeTabPath === absolutePath && absolutePath.endsWith(".md")) {
+		const primaryOpenTabPath = getPrimaryOpenTabPathForWorkspacePolicy(ctx)
+		if (primaryOpenTabPath === absolutePath && absolutePath.endsWith(".md")) {
 			try {
 				const content =
 					await ctx.deps.fileSystemRepository.readTextFile(absolutePath)

@@ -13,8 +13,7 @@ export type WorkspacePorts = {
 		| "updateHistoryPath"
 		| "removePathsFromHistory"
 		| "clearHistory"
-		| "getActiveTabPath"
-		| "getIsSaved"
+		| "getOpenTabSnapshots"
 	>
 	collection: Pick<
 		CollectionSlice,
@@ -44,8 +43,7 @@ export const createWorkspacePorts = (
 		updateHistoryPath: (...args) => get().updateHistoryPath(...args),
 		removePathsFromHistory: (...args) => get().removePathsFromHistory(...args),
 		clearHistory: (...args) => get().clearHistory(...args),
-		getActiveTabPath: () => get().getActiveTabPath(),
-		getIsSaved: () => get().getIsSaved(),
+		getOpenTabSnapshots: () => get().getOpenTabSnapshots(),
 	},
 	collection: {
 		refreshCollectionEntries: (...args) =>

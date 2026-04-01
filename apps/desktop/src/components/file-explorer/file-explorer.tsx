@@ -87,7 +87,7 @@ export function FileExplorer() {
 			deleteEntries: state.deleteEntries,
 			renameEntry: state.renameEntry,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			tab: state.tab,
+			tab: state.getActiveTab(),
 			openTab: state.openTab,
 			clearLinkedTab: state.clearLinkedTab,
 			aiLockedEntryPaths: state.aiLockedEntryPaths,

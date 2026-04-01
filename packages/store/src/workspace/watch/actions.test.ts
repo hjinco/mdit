@@ -484,18 +484,63 @@ describe("watch/actions", () => {
 		})
 	})
 
+	it("does not reload non-primary tabs when policy has multiple open snapshots", async () => {
+		const { context, setState, originJournal, deps, ports } =
+			createActionTestContext()
+		const actions = createWatchActions(context)
+		setState({
+			workspacePath: "/ws",
+			entries: [
+				{
+					path: "/ws/docs",
+					name: "docs",
+					isDirectory: true,
+					children: [
+						{
+							path: "/ws/docs/second.md",
+							name: "second.md",
+							isDirectory: false,
+						},
+					],
+				},
+			],
+		})
+		ports.tab.getOpenTabSnapshots.mockReturnValue([
+			{ path: "/ws/docs/first.md", isSaved: true },
+			{ path: "/ws/docs/second.md", isSaved: true },
+		])
+		originJournal.resolve.mockReturnValue({
+			externalRelPaths: ["docs/second.md"],
+			localRelPaths: [],
+		})
+
+		await actions.watchWorkspace()
+		const listener = deps.watcher.subscribe.mock.calls[0]?.[0] as (
+			payload: any,
+		) => void
+		listener({
+			workspacePath: "/ws",
+			batch: watchBatch(9, [
+				{
+					type: "pathState",
+					relPath: "docs/second.md",
+					before: "file",
+					after: "file",
+				},
+			]),
+		})
+		await flushQueue()
+
+		expect(ports.tab.refreshTabFromExternalContent).not.toHaveBeenCalled()
+	})
+
 	it("reloads the active markdown tab and updates metadata for external file changes", async () => {
 		const { context, setState, originJournal, getState, deps, ports } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({
 			workspacePath: "/ws",
-			tab: {
-				id: 1,
-				path: "/ws/docs/a.md",
-				name: "a",
-				content: "stale-content",
-			},
+			openTabSnapshots: [{ path: "/ws/docs/a.md", isSaved: true }],
 			entries: [
 				{
 					path: "/ws/docs",

@@ -13,7 +13,6 @@ describe("tree/entry-actions", () => {
 			],
 			expandedDirectories: ["/ws/folder"],
 			pinnedDirectories: ["/ws/folder"],
-			tab: { id: 1, path: "/ws/a.md", name: "a", content: "" },
 		})
 
 		const actions = createTreeEntryActions(context)
@@ -36,12 +35,6 @@ describe("tree/entry-actions", () => {
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
-			tab: {
-				id: 1,
-				path: "/ws/folder/note.md",
-				name: "note",
-				content: "",
-			},
 		})
 
 		const actions = createTreeEntryActions(context)

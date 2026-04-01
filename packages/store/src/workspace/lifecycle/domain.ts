@@ -2,6 +2,10 @@ import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { resolve } from "pathe"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { buildWorkspaceState, type WorkspaceState } from "../workspace-state"
+import {
+	getOpenTabSnapshotsForWorkspacePolicy,
+	getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy,
+} from "../workspace-tab-policy"
 
 const MAX_RESTORED_LAST_OPENED_FILE_PATHS = 5
 
@@ -57,13 +61,15 @@ export const closeWorkspaceTabs = (
 	ctx: WorkspaceActionContext,
 	options?: { clearHistoryWhenNoActiveTab?: boolean },
 ) => {
-	const activeTabPath = ctx.ports.tab.getActiveTabPath()
+	const openTabSnapshots = getOpenTabSnapshotsForWorkspacePolicy(ctx)
+	const primaryOpenTabPath =
+		getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy(openTabSnapshots)
 
-	if (activeTabPath) {
-		ctx.ports.tab.closeTab(activeTabPath)
+	if (primaryOpenTabPath) {
+		ctx.ports.tab.closeTab(primaryOpenTabPath)
 	}
 
-	if (activeTabPath || options?.clearHistoryWhenNoActiveTab) {
+	if (openTabSnapshots.length > 0 || options?.clearHistoryWhenNoActiveTab) {
 		ctx.ports.tab.clearHistory()
 	}
 }

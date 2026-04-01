@@ -33,7 +33,7 @@ export function GraphViewDialog() {
 			setGraphViewDialogOpen: state.setGraphViewDialogOpen,
 			workspacePath: state.workspacePath,
 			openTab: state.openTab,
-			tabPath: state.tab?.path ?? null,
+			tabPath: state.getActiveTabPath(),
 		})),
 	)
 
