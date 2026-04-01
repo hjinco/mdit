@@ -1,6 +1,7 @@
 import type { ApiKeyProviderId, ProviderId } from "@mdit/ai"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { useOllamaModelRefresh } from "../shared/use-ollama-model-refresh"
@@ -60,6 +61,7 @@ export function AITab() {
 			await action()
 		} catch (error) {
 			console.error(`Failed to process provider action (${provider}):`, error)
+			toast.error(`Failed to process provider action (${provider}).`)
 		} finally {
 			setProviderBusy((prev) => ({ ...prev, [provider]: false }))
 		}
@@ -121,11 +123,16 @@ export function AITab() {
 				selectedChatModelValue={selectedChatModelValue}
 				selectedChatModelLabel={selectedChatModelLabel}
 				chatModelSelectOptions={chatModelSelectOptions}
-				onSelectChatModel={(value) => {
+				onSelectChatModel={async (value) => {
 					if (!value) {
 						return
 					}
-					void handleChatModelSelectChange(value, selectModel)
+					try {
+						await handleChatModelSelectChange(value, selectModel)
+					} catch (error) {
+						console.error("Failed to change chat model:", error)
+						toast.error("Failed to change chat model.")
+					}
 				}}
 				onToggleModelEnabled={(provider, model, checked) =>
 					toggleModelEnabled(provider, model, checked)
