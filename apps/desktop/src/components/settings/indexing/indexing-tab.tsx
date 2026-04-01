@@ -20,10 +20,10 @@ import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import type { WorkspaceEntry } from "@/store"
 import { calculateIndexingProgress, useStore } from "@/store"
-import { useIndexingMetaPolling } from "../hooks/use-indexing-meta-polling"
-import { useIndexingModelChange } from "../hooks/use-indexing-model-change"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 import { INDEXING_MODEL_CONTROL_STATE } from "./indexing-ui-state"
+import { useIndexingMetaPolling } from "./use-indexing-meta-polling"
+import { useIndexingModelChange } from "./use-indexing-model-change"
 
 export function IndexingTab() {
 	const {

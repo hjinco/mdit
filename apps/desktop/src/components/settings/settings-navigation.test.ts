@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getSettingsSections } from "./navigation"
+import { getSettingsSections } from "./settings-tabs"
 
 describe("settings navigation", () => {
 	it("does not expose a license tab when a workspace is open", () => {

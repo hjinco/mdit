@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { useFontScale } from "@/hooks/use-font-scale"
 import { useStore } from "@/store"
 import { Editor } from "../editor/editor"
-import { SettingsDialog } from "../settings/settings"
+import { SettingsDialog } from "../settings"
 
 export function EditNote({ filePath }: { filePath: string }) {
 	useFontScale()

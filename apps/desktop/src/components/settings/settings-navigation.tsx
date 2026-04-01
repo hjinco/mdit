@@ -1,66 +1,13 @@
 import { Button } from "@base-ui/react/button"
 import { DialogTitle } from "@mdit/ui/components/dialog"
 import { cn } from "@mdit/ui/lib/utils"
-import {
-	IconAdjustmentsHorizontal,
-	IconBrain,
-	IconKeyboard,
-	IconPlugConnected,
-	IconRefresh,
-	IconSearch,
-} from "@tabler/icons-react"
-import type { ComponentType } from "react"
 import type { SettingsTab } from "@/store"
+import { getSettingsSections, SETTINGS_TAB_META } from "./settings-tabs"
 
 interface SettingsNavigationProps {
 	activeTab: SettingsTab
 	onTabChange: (tab: SettingsTab) => void
 	hasWorkspace: boolean
-}
-
-type TabIcon = ComponentType<{
-	className?: string
-	size?: number | string
-	stroke?: number | string
-}>
-
-type SettingsSection = {
-	id: string
-	label: string
-	tabs: SettingsTab[]
-}
-
-const tabMeta: Record<SettingsTab, { label: string; icon: TabIcon }> = {
-	preferences: { label: "Preferences", icon: IconAdjustmentsHorizontal },
-	ai: { label: "AI", icon: IconBrain },
-	"api-mcp": { label: "MCP", icon: IconPlugConnected },
-	sync: { label: "Sync", icon: IconRefresh },
-	indexing: { label: "Indexing", icon: IconSearch },
-	hotkeys: { label: "Hotkeys", icon: IconKeyboard },
-}
-
-export const getSettingsSections = (
-	hasWorkspace: boolean,
-): SettingsSection[] => {
-	const accountSection: SettingsSection = {
-		id: "account",
-		label: "Account",
-		tabs: ["preferences"],
-	}
-	const vaultSection: SettingsSection = {
-		id: "vault",
-		label: "Vault",
-		tabs: ["sync", "indexing"],
-	}
-	const featuresSection: SettingsSection = {
-		id: "features",
-		label: "Features",
-		tabs: ["ai", "api-mcp", "hotkeys"],
-	}
-
-	return hasWorkspace
-		? [accountSection, vaultSection, featuresSection]
-		: [accountSection, featuresSection]
 }
 
 export function SettingsNavigation({
@@ -79,7 +26,7 @@ export function SettingsNavigation({
 						{section.label}
 					</p>
 					{section.tabs.map((tabId) => {
-						const tab = tabMeta[tabId]
+						const tab = SETTINGS_TAB_META[tabId]
 						const Icon = tab.icon
 
 						return (

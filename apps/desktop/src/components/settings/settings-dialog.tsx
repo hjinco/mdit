@@ -1,15 +1,25 @@
 import { Dialog, DialogContent } from "@mdit/ui/components/dialog"
-import { useEffect, useState } from "react"
+import { type ComponentType, useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
 import type { SettingsTab } from "@/store"
 import { useStore } from "@/store"
-import { AITab } from "./ui/ai-tab"
-import { ApiMcpTab } from "./ui/api-mcp-tab"
-import { HotkeysTab } from "./ui/hotkeys-tab"
-import { IndexingTab } from "./ui/indexing-tab"
-import { SettingsNavigation } from "./ui/navigation"
-import { PreferencesTab } from "./ui/preferences-tab"
-import { SyncTab } from "./ui/sync-tab"
+import { AITab } from "./ai/ai-tab"
+import { ApiMcpTab } from "./api-mcp/api-mcp-tab"
+import { HotkeysTab } from "./hotkeys/hotkeys-tab"
+import { IndexingTab } from "./indexing/indexing-tab"
+import { PreferencesTab } from "./preferences/preferences-tab"
+import { SettingsNavigation } from "./settings-navigation"
+import { coerceSettingsTab } from "./settings-tabs"
+import { SyncTab } from "./sync/sync-tab"
+
+const SETTINGS_TAB_COMPONENTS: Record<SettingsTab, ComponentType> = {
+	preferences: PreferencesTab,
+	hotkeys: HotkeysTab,
+	ai: AITab,
+	"api-mcp": ApiMcpTab,
+	sync: SyncTab,
+	indexing: IndexingTab,
+}
 
 export function SettingsDialog() {
 	const {
@@ -26,20 +36,18 @@ export function SettingsDialog() {
 		})),
 	)
 
+	const hasWorkspace = Boolean(workspacePath)
 	const [activeTab, setActiveTab] = useState<SettingsTab>("preferences")
 
 	useEffect(() => {
 		if (isSettingsDialogOpen && settingsInitialTab) {
-			setActiveTab(settingsInitialTab)
+			setActiveTab(coerceSettingsTab(settingsInitialTab, hasWorkspace))
 		}
-	}, [isSettingsDialogOpen, settingsInitialTab])
+	}, [isSettingsDialogOpen, settingsInitialTab, hasWorkspace])
 
-	// Redirect to preferences if active tab is not available
 	useEffect(() => {
-		if (!workspacePath && (activeTab === "sync" || activeTab === "indexing")) {
-			setActiveTab("preferences")
-		}
-	}, [workspacePath, activeTab])
+		setActiveTab((prev) => coerceSettingsTab(prev, hasWorkspace))
+	}, [hasWorkspace])
 
 	const handleOpenChange = (open: boolean) => {
 		setSettingsDialogOpen(open)
@@ -49,22 +57,21 @@ export function SettingsDialog() {
 		}
 	}
 
+	const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab]
+
 	return (
 		<Dialog open={isSettingsDialogOpen} onOpenChange={handleOpenChange}>
 			<DialogContent className="md:max-w-5xl max-h-[min(800px,calc(100vh-6rem))] w-full h-full p-0 overflow-hidden flex">
 				<SettingsNavigation
 					activeTab={activeTab}
-					onTabChange={setActiveTab}
-					hasWorkspace={!!workspacePath}
+					onTabChange={(tab) =>
+						setActiveTab(coerceSettingsTab(tab, hasWorkspace))
+					}
+					hasWorkspace={hasWorkspace}
 				/>
 
 				<div className="flex-1 flex flex-col">
-					{activeTab === "preferences" && <PreferencesTab />}
-					{activeTab === "hotkeys" && <HotkeysTab />}
-					{activeTab === "ai" && <AITab />}
-					{activeTab === "api-mcp" && <ApiMcpTab />}
-					{activeTab === "sync" && <SyncTab />}
-					{activeTab === "indexing" && <IndexingTab />}
+					<ActiveTabComponent />
 				</div>
 			</DialogContent>
 		</Dialog>
