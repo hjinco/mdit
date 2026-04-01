@@ -21,78 +21,88 @@ export type WorkspaceLifecycleActions = {
 
 export const createLifecycleActions = (
 	ctx: WorkspaceActionContext,
-): WorkspaceLifecycleActions => ({
-	syncRecentWorkspacePaths: async () => {
-		return syncRecentWorkspacePaths(ctx)
-	},
+): WorkspaceLifecycleActions => {
+	const listRecentWorkspacePaths = () =>
+		ctx.deps.historyRepository.listWorkspacePaths()
 
-	loadWorkspace: async (workspacePath, options) => {
-		await loadWorkspace(ctx, workspacePath, options)
-	},
+	const updateRecentWorkspacePaths = async () => {
+		const recentWorkspacePaths = await listRecentWorkspacePaths()
+		ctx.set({ recentWorkspacePaths })
+		return recentWorkspacePaths
+	}
 
-	setWorkspace: async (path: string) => {
-		try {
-			if (!(await ctx.deps.fileSystemRepository.isExistingDirectory(path))) {
+	return {
+		syncRecentWorkspacePaths: async () => {
+			return syncRecentWorkspacePaths(ctx)
+		},
+
+		loadWorkspace: async (workspacePath, options) => {
+			await loadWorkspace(ctx, workspacePath, options)
+		},
+
+		setWorkspace: async (path: string) => {
+			try {
+				if (!(await ctx.deps.fileSystemRepository.isExistingDirectory(path))) {
+					await ctx.deps.historyRepository.removeWorkspace(path)
+					await updateRecentWorkspacePaths()
+					ctx.deps.toast.error?.("Folder does not exist.", {
+						description: path,
+						position: "bottom-left",
+					})
+					return
+				}
+
+				closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
+
+				await ctx.deps.historyRepository.touchWorkspace(path)
+				const recentWorkspacePaths = await listRecentWorkspacePaths()
+				await loadWorkspace(ctx, path, { recentWorkspacePaths })
+			} catch (error) {
+				console.error("Failed to set workspace:", error)
+			}
+		},
+
+		removeWorkspaceFromHistory: async (path: string) => {
+			try {
 				await ctx.deps.historyRepository.removeWorkspace(path)
-				const updatedHistory =
-					await ctx.deps.historyRepository.listWorkspacePaths()
-				ctx.set({ recentWorkspacePaths: updatedHistory })
-				ctx.deps.toast.error?.("Folder does not exist.", {
-					description: path,
-					position: "bottom-left",
-				})
+				await updateRecentWorkspacePaths()
+			} catch (error) {
+				console.error("Failed to remove workspace from history:", error)
+			}
+		},
+
+		openFolderPicker: async () => {
+			const path = await ctx.deps.openDialog({
+				multiple: false,
+				directory: true,
+				title: "Select a folder",
+			})
+
+			if (path) {
+				await ctx.get().setWorkspace(path)
+			}
+		},
+
+		clearWorkspace: async () => {
+			const { workspacePath } = ctx.get()
+
+			if (!workspacePath) {
 				return
 			}
 
-			closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
+			try {
+				await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
+				closeWorkspaceTabs(ctx)
 
-			await ctx.deps.historyRepository.touchWorkspace(path)
-			const updatedHistory =
-				await ctx.deps.historyRepository.listWorkspacePaths()
-			await loadWorkspace(ctx, path, { recentWorkspacePaths: updatedHistory })
-		} catch (error) {
-			console.error("Failed to set workspace:", error)
-		}
-	},
-
-	removeWorkspaceFromHistory: async (path: string) => {
-		try {
-			await ctx.deps.historyRepository.removeWorkspace(path)
-			const updatedHistory =
-				await ctx.deps.historyRepository.listWorkspacePaths()
-			ctx.set({ recentWorkspacePaths: updatedHistory })
-		} catch (error) {
-			console.error("Failed to remove workspace from history:", error)
-		}
-	},
-
-	openFolderPicker: async () => {
-		const path = await ctx.deps.openDialog({
-			multiple: false,
-			directory: true,
-			title: "Select a folder",
-		})
-
-		if (path) {
-			await ctx.get().setWorkspace(path)
-		}
-	},
-
-	clearWorkspace: async () => {
-		const { workspacePath } = ctx.get()
-
-		if (!workspacePath) {
-			return
-		}
-
-		await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
-		closeWorkspaceTabs(ctx)
-
-		await ctx.deps.historyRepository.removeWorkspace(workspacePath)
-		const updatedHistory = await ctx.deps.historyRepository.listWorkspacePaths()
-		resetWorkspaceState(ctx, {
-			recentWorkspacePaths: updatedHistory,
-			isMigrationsComplete: true,
-		})
-	},
-})
+				await ctx.deps.historyRepository.removeWorkspace(workspacePath)
+				const recentWorkspacePaths = await listRecentWorkspacePaths()
+				resetWorkspaceState(ctx, {
+					recentWorkspacePaths,
+					isMigrationsComplete: true,
+				})
+			} catch (error) {
+				console.error("Failed to clear workspace:", error)
+			}
+		},
+	}
+}

@@ -15,6 +15,16 @@ export type WorkspaceFsNoteActions = {
 	removeFrontmatterProperty: (path: string, key: string) => Promise<void>
 }
 
+const runFrontmatterMutation = async (
+	ctx: WorkspaceActionContext,
+	path: string,
+	mutate: () => Promise<unknown>,
+) => {
+	await mutate()
+	registerExactLocalMutation(ctx.get().registerLocalMutation, path)
+	await ctx.get().updateEntryModifiedDate(path)
+}
+
 export const createFsNoteActions = (
 	ctx: WorkspaceActionContext,
 ): WorkspaceFsNoteActions => ({
@@ -24,9 +34,9 @@ export const createFsNoteActions = (
 	},
 
 	updateFrontmatter: async (path: string, updates: Record<string, unknown>) => {
-		await ctx.deps.frontmatterUtils.updateFileFrontmatter(path, updates)
-		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
-		await ctx.get().updateEntryModifiedDate(path)
+		await runFrontmatterMutation(ctx, path, () =>
+			ctx.deps.frontmatterUtils.updateFileFrontmatter(path, updates),
+		)
 	},
 
 	renameFrontmatterProperty: async (
@@ -34,18 +44,18 @@ export const createFsNoteActions = (
 		oldKey: string,
 		newKey: string,
 	) => {
-		await ctx.deps.frontmatterUtils.renameFileFrontmatterProperty(
-			path,
-			oldKey,
-			newKey,
+		await runFrontmatterMutation(ctx, path, () =>
+			ctx.deps.frontmatterUtils.renameFileFrontmatterProperty(
+				path,
+				oldKey,
+				newKey,
+			),
 		)
-		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
-		await ctx.get().updateEntryModifiedDate(path)
 	},
 
 	removeFrontmatterProperty: async (path: string, key: string) => {
-		await ctx.deps.frontmatterUtils.removeFileFrontmatterProperty(path, key)
-		registerExactLocalMutation(ctx.get().registerLocalMutation, path)
-		await ctx.get().updateEntryModifiedDate(path)
+		await runFrontmatterMutation(ctx, path, () =>
+			ctx.deps.frontmatterUtils.removeFileFrontmatterProperty(path, key),
+		)
 	},
 })
