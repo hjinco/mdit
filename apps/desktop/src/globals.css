@@ -12,17 +12,17 @@
 @layer base {
 	* {
 		@apply border-border outline-ring/50 select-none;
+		overscroll-behavior: none;
 		scrollbar-width: thin;
 	}
 
 	html {
-		overscroll-behavior: none;
 		font-size: 16px;
 		font-weight: 500;
 	}
 
 	body {
-		@apply relative text-foreground overflow-hidden overscroll-none antialiased;
+		@apply relative text-foreground overflow-hidden antialiased;
 	}
 }
 

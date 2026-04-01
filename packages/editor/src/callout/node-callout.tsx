@@ -28,7 +28,7 @@ function CalloutTypePicker({
 }) {
 	return (
 		<div
-			className="w-56 max-h-80 rounded-xl border bg-popover px-1.5 py-1.5 overflow-y-auto overscroll-none shadow-md"
+			className="w-56 max-h-80 rounded-xl border bg-popover px-1.5 py-1.5 overflow-y-auto shadow-md"
 			contentEditable={false}
 		>
 			<div className="px-1 py-1 text-xs font-semibold text-muted-foreground">

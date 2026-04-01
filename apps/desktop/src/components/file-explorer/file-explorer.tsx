@@ -366,7 +366,7 @@ export function FileExplorer() {
 						onClick={resetSelection}
 					>
 						<PinnedList lookupEntryByPath={lookupEntryByPath} />
-						<div className="min-h-0 flex-1 px-2 pb-4 pt-0.5 overflow-y-auto overscroll-none mask-fade-bottom">
+						<div className="min-h-0 flex-1 px-2 pb-4 pt-0.5 overflow-y-auto mask-fade-bottom">
 							<ul className="space-y-0.5">
 								{pendingNewFolderPath === workspacePath && workspacePath && (
 									<RootNewFolderInput
