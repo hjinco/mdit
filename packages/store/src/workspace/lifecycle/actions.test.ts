@@ -91,6 +91,26 @@ describe("lifecycle-actions", () => {
 		expect(getState().unwatchFn).toBeNull()
 	})
 
+	it("clearWorkspace handles moveToTrash failure without throwing", async () => {
+		const { context, deps, setState, getState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+		const failure = new Error("trash failed")
+		setState({
+			workspacePath: "/old",
+			recentWorkspacePaths: ["/old", "/other"],
+		})
+		deps.fileSystemRepository.moveToTrash.mockRejectedValue(failure)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		await expect(actions.clearWorkspace()).resolves.toBeUndefined()
+
+		expect(errorSpy).toHaveBeenCalledWith("Failed to clear workspace:", failure)
+		expect(deps.historyRepository.removeWorkspace).not.toHaveBeenCalled()
+		expect(getState().workspacePath).toBe("/old")
+
+		errorSpy.mockRestore()
+	})
+
 	it("bootstrapWorkspace unwatches existing watcher when workspace path changes", async () => {
 		const { context, deps, ports, setState, getState } =
 			createActionTestContext()

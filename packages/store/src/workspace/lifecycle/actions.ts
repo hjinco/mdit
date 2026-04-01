@@ -90,15 +90,19 @@ export const createLifecycleActions = (
 				return
 			}
 
-			await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
-			closeWorkspaceTabs(ctx)
+			try {
+				await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
+				closeWorkspaceTabs(ctx)
 
-			await ctx.deps.historyRepository.removeWorkspace(workspacePath)
-			const recentWorkspacePaths = await listRecentWorkspacePaths()
-			resetWorkspaceState(ctx, {
-				recentWorkspacePaths,
-				isMigrationsComplete: true,
-			})
+				await ctx.deps.historyRepository.removeWorkspace(workspacePath)
+				const recentWorkspacePaths = await listRecentWorkspacePaths()
+				resetWorkspaceState(ctx, {
+					recentWorkspacePaths,
+					isMigrationsComplete: true,
+				})
+			} catch (error) {
+				console.error("Failed to clear workspace:", error)
+			}
 		},
 	}
 }
