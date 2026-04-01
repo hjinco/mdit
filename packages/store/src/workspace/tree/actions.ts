@@ -59,10 +59,8 @@ export const createTreeActions = (
 					persistExpandedWhenUnchanged: true,
 				},
 			})
+		} finally {
 			ctx.set({ isTreeLoading: false })
-		} catch (error) {
-			ctx.set({ isTreeLoading: false })
-			throw error
 		}
 	},
 })
