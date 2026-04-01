@@ -27,7 +27,7 @@ type BlockSelectionHostRuntimeDeps = {
 
 const defaultRuntimeDeps: BlockSelectionHostRuntimeDeps = {
 	getWorkspacePath: () => useStore.getState().workspacePath,
-	getCurrentTabPath: () => useStore.getState().tab?.path ?? null,
+	getCurrentTabPath: () => useStore.getState().getActiveTabPath(),
 	createNote: (directoryPath, options) =>
 		useStore.getState().createNote(directoryPath, options),
 	onCreateFailure: (error) =>

@@ -70,6 +70,24 @@ describe("lifecycle-actions", () => {
 		expect(getState().unwatchFn).toBe(unwatch)
 	})
 
+	it("setWorkspace closes the policy-selected tab when tabs are open", async () => {
+		const { context, deps, ports, setState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+		setState({
+			workspacePath: "/old",
+		})
+		ports.tab.getOpenTabSnapshots.mockReturnValue([
+			{ path: "/old/first.md", isSaved: true },
+			{ path: "/old/second.md", isSaved: true },
+		])
+		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/new"])
+
+		await actions.setWorkspace("/new")
+
+		expect(ports.tab.closeTab).toHaveBeenCalledWith("/old/first.md")
+		expect(ports.tab.clearHistory).toHaveBeenCalledTimes(1)
+	})
+
 	it("clearWorkspace unwatches existing watcher", async () => {
 		const { context, deps, ports, setState, getState } =
 			createActionTestContext()

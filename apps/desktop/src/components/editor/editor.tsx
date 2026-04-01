@@ -26,7 +26,7 @@ import {
 } from "./utils/history-restore-utils"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
-	const tab = useStore((s) => s.tab)
+	const tab = useStore((s) => s.getActiveTab())
 	const handleTypingProgress = useStore((s) => s.handleTypingProgress)
 
 	const deserializeWithFallback = useMemo(
@@ -128,15 +128,15 @@ function EditorContent({
 		await saveNoteContent(path, editor.api.markdown.serialize())
 			.then(async () => {
 				isSaved.current = true
-				setTabSaved(true)
+				setTabSaved(tabId, true)
 				await handleRenameAfterSave()
 			})
 			.catch(() => {
 				isSaved.current = false
-				setTabSaved(false)
+				setTabSaved(tabId, false)
 				toast.error("Failed to save note")
 			})
-	}, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent])
+	}, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent, tabId])
 
 	useEffect(() => {
 		const appWindow = getCurrentWindow()
@@ -248,7 +248,7 @@ function EditorContent({
 						isInitializing.current = false
 					} else {
 						isSaved.current = false
-						setTabSaved(false)
+						setTabSaved(tabId, false)
 					}
 				}}
 				onKeyDown={handleTypingDetection}

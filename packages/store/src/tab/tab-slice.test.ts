@@ -85,7 +85,7 @@ describe("tab-slice history selection", () => {
 		const moved = await store.getState().goBack()
 		expect(moved).toBe(true)
 
-		expect(store.getState().tab?.path).toBe("/notes/a.md")
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 		expect(store.getState().historyIndex).toBe(0)
 		expect(store.getState().history).toEqual([
 			{ path: "/notes/a.md", selection: selectionInA },
@@ -205,7 +205,13 @@ describe("tab-slice history selection", () => {
 			{ path: "/notes/c.md", selection: null },
 		])
 		expect(store.getState().historyIndex).toBe(2)
-		expect(store.getState().tab?.path).toBe("/notes/c.md")
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/c.md",
+		])
+		expect(store.getState().activeTabId).toBe(
+			store.getState().getActiveTab()?.id ?? null,
+		)
 	})
 
 	it("refreshes the active tab from external content and queues selection restore", async () => {
@@ -215,21 +221,21 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/a.md")
 
-		const initialTabId = store.getState().tab?.id
+		const initialTabId = store.getState().getActiveTab()?.id
 		store
 			.getState()
 			.refreshTabFromExternalContent("/notes/a.md", "external-content", {
 				preserveSelection: true,
 			})
 
-		expect(store.getState().tab).toEqual({
+		expect(store.getState().getActiveTab()).toEqual({
 			id: expect.any(Number),
 			path: "/notes/a.md",
 			name: "a",
 			content: "external-content",
 		})
-		expect(store.getState().tab?.id).not.toBe(initialTabId)
-		expect(store.getState().isSaved).toBe(true)
+		expect(store.getState().getActiveTab()?.id).not.toBe(initialTabId)
+		expect(store.getState().getIsSaved()).toBe(true)
 		expect(store.getState().history).toEqual([
 			{
 				path: "/notes/a.md",
@@ -241,12 +247,26 @@ describe("tab-slice history selection", () => {
 		).toEqual({ found: true, selection: selectionInA })
 	})
 
+	it("tracks saved state per active tab id", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		const activeTabId = store.getState().getActiveTab()?.id
+		expect(activeTabId).toBeTypeOf("number")
+		store.getState().setTabSaved(activeTabId as number, false)
+		expect(store.getState().getIsSaved()).toBe(false)
+		expect(store.getState().tabSaveStates[activeTabId as number]).toBe(false)
+		expect(store.getState().getOpenTabSnapshots()).toEqual([
+			{ path: "/notes/a.md", isSaved: false },
+		])
+	})
+
 	it("consumes external reload save skip tokens exactly once", async () => {
 		const { store } = createTabStore()
 
 		await store.getState().openTab("/notes/a.md")
 
-		const initialTabId = store.getState().tab?.id
+		const initialTabId = store.getState().getActiveTab()?.id
 		expect(initialTabId).toBeTypeOf("number")
 
 		store
@@ -266,7 +286,9 @@ describe("tab-slice history selection", () => {
 		expect(
 			store
 				.getState()
-				.consumePendingExternalReloadSaveSkip(store.getState().tab!.id),
+				.consumePendingExternalReloadSaveSkip(
+					store.getState().getActiveTab()!.id,
+				),
 		).toBe(false)
 	})
 })

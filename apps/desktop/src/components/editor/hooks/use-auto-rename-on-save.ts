@@ -8,7 +8,9 @@ import { useStore } from "@/store"
 export function useAutoRenameOnSave(path: string) {
 	const handleRenameAfterSave = useCallback(async () => {
 		// Check if we should rename based on tab.name (which may be from first heading)
-		const { tab, linkedTab, renameEntry } = useStore.getState()
+		const store = useStore.getState()
+		const tab = store.getActiveTab()
+		const { linkedTab, renameEntry } = store
 
 		if (tab && tab.path === path) {
 			const isLinkedToCurrentTab = linkedTab && linkedTab.path === tab.path

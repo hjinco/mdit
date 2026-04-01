@@ -21,7 +21,7 @@ import { useStore } from "@/store"
 export function Tab() {
 	const { tab, linkedTab, clearLinkedTab, renameEntry } = useStore(
 		useShallow((s) => ({
-			tab: s.tab,
+			tab: s.getActiveTab(),
 			linkedTab: s.linkedTab,
 			clearLinkedTab: s.clearLinkedTab,
 			renameEntry: s.renameEntry,

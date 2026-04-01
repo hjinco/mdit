@@ -38,7 +38,7 @@ export function InfoButton() {
 	const { tab, workspacePath, openTab, isNoteInfoOpen, setNoteInfoOpen } =
 		useStore(
 			useShallow((s) => ({
-				tab: s.tab,
+				tab: s.getActiveTab(),
 				workspacePath: s.workspacePath,
 				openTab: s.openTab,
 				isNoteInfoOpen: s.isNoteInfoOpen,

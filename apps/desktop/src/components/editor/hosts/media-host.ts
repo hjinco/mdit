@@ -6,7 +6,7 @@ import { useStore } from "@/store"
 const useDesktopWorkspaceState: MediaHostDeps["useWorkspaceState"] = () =>
 	useStore(
 		useShallow((state) => ({
-			tabPath: state.tab?.path ?? null,
+			tabPath: state.getActiveTabPath(),
 			workspacePath: state.workspacePath,
 		})),
 	)

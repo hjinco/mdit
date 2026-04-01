@@ -2,42 +2,54 @@ import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { waitForUnsavedTabToSettle } from "./helpers/tab-save-helpers"
 
-const readTabState = (ctx: WorkspaceActionContext) => ({
-	tabPath: ctx.ports.tab.getActiveTabPath(),
-	isSaved: ctx.ports.tab.getIsSaved(),
-})
+const readOpenTabSnapshots = (ctx: WorkspaceActionContext) =>
+	ctx.ports.tab.getOpenTabSnapshots()
+
+const readTabState = (ctx: WorkspaceActionContext, path: string) => {
+	const matchingTab = readOpenTabSnapshots(ctx).find((tab) => tab.path === path)
+	return {
+		tabPath: matchingTab?.path ?? null,
+		isSaved: matchingTab?.isSaved ?? true,
+	}
+}
 
 export const waitForActiveTabPathToSettle = async (
 	ctx: WorkspaceActionContext,
 	targetPath: string,
 ): Promise<void> => {
-	await waitForUnsavedTabToSettle(targetPath, () => readTabState(ctx))
+	await waitForUnsavedTabToSettle(targetPath, () =>
+		readTabState(ctx, targetPath),
+	)
 }
 
 export const waitForActiveTabDescendantToSettle = async (
 	ctx: WorkspaceActionContext,
 	targetPath: string,
 ): Promise<void> => {
-	const activeTabPath = ctx.ports.tab.getActiveTabPath()
-	if (!activeTabPath || !isPathEqualOrDescendant(activeTabPath, targetPath)) {
+	const matchingTab = readOpenTabSnapshots(ctx).find((tab) =>
+		isPathEqualOrDescendant(tab.path, targetPath),
+	)
+	if (!matchingTab) {
 		return
 	}
 
-	await waitForUnsavedTabToSettle(activeTabPath, () => readTabState(ctx))
+	await waitForUnsavedTabToSettle(matchingTab.path, () =>
+		readTabState(ctx, matchingTab.path),
+	)
 }
 
 export const waitForActiveTabUnderPathsToSettle = async (
 	ctx: WorkspaceActionContext,
 	paths: string[],
 ): Promise<void> => {
-	const activeTabPath = ctx.ports.tab.getActiveTabPath()
-	if (!activeTabPath) {
+	const matchingTab = readOpenTabSnapshots(ctx).find((tab) =>
+		paths.some((path) => isPathEqualOrDescendant(tab.path, path)),
+	)
+	if (!matchingTab) {
 		return
 	}
 
-	if (!paths.some((path) => isPathEqualOrDescendant(activeTabPath, path))) {
-		return
-	}
-
-	await waitForUnsavedTabToSettle(activeTabPath, () => readTabState(ctx))
+	await waitForUnsavedTabToSettle(matchingTab.path, () =>
+		readTabState(ctx, matchingTab.path),
+	)
 }

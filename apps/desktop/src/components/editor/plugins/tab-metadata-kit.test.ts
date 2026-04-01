@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 let storeState = {
 	workspacePath: "/workspace",
-	tab: { path: "/workspace/note.md" },
 	linkedTab: { path: "/workspace/note.md", name: "Title" },
+	getActiveTab: () => ({ path: "/workspace/note.md" }),
 	updateLinkedName: vi.fn(),
 }
 
@@ -68,8 +68,8 @@ describe("tab-metadata-kit", () => {
 	beforeEach(() => {
 		storeState = {
 			workspacePath: "/workspace",
-			tab: { path: "/workspace/note.md" },
 			linkedTab: { path: "/workspace/note.md", name: "Title" },
+			getActiveTab: () => ({ path: "/workspace/note.md" }),
 			updateLinkedName: vi.fn(),
 		}
 	})
