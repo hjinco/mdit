@@ -3,7 +3,7 @@ import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
 import { useCallback } from "react"
 import { useEditorDropOwnership } from "@/components/dnd/editor-drop-ownership"
-import { useHoveredExplorerDropPath } from "@/components/dnd/explorer-drag-state"
+import { useIsHoveredExplorerDropPath } from "@/components/dnd/explorer-drag-state"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
@@ -32,7 +32,7 @@ export function DirectoryTreeNode({
 	const hasChildren = node.hasChildren
 	const isExpanded = node.isExpanded
 	const isPointerInEditor = useEditorDropOwnership()
-	const hoveredExplorerDropPath = useHoveredExplorerDropPath()
+	const isHoveredExplorerDropPath = useIsHoveredExplorerDropPath(entry.path)
 	const {
 		isRenaming,
 		isLocked,
@@ -66,8 +66,7 @@ export function DirectoryTreeNode({
 	})
 
 	const isInternalDropTarget = isDropTarget && !isPointerInEditor
-	const isScopeDropTarget =
-		hoveredExplorerDropPath === entry.path || isOverExternal
+	const isScopeDropTarget = isHoveredExplorerDropPath || isOverExternal
 	const isOver = isInternalDropTarget || isScopeDropTarget
 
 	const handleExpand = useCallback(() => {

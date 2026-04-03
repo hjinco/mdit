@@ -18,6 +18,7 @@ import {
 	EMPTY_DRAGGED_EXPLORER_PATHS,
 	ExplorerDragPathsProvider,
 	getDraggedExplorerPaths,
+	setHoveredExplorerDropPath,
 } from "./explorer-drag-state"
 import { handleExplorerDrop } from "./explorer-drop-handler"
 import { computeExplorerDropTarget } from "./explorer-drop-target.helpers"
@@ -78,9 +79,6 @@ export function DndProvider({ children }: DndProviderProps) {
 	const [draggedExplorerPaths, setDraggedExplorerPaths] = useState<
 		ReadonlySet<string>
 	>(EMPTY_DRAGGED_EXPLORER_PATHS)
-	const [hoveredExplorerDropPath, setHoveredExplorerDropPath] = useState<
-		string | null
-	>(null)
 	const { moveEntry, selectedEntryPaths, resetSelection } = useStore(
 		useShallow((state) => ({
 			moveEntry: state.moveEntry,
@@ -217,10 +215,7 @@ export function DndProvider({ children }: DndProviderProps) {
 			onDragEnd={handleDragEnd}
 		>
 			<EditorDropOwnershipProvider isPointerInEditor={isPointerInEditor}>
-				<ExplorerDragPathsProvider
-					draggedExplorerPaths={draggedExplorerPaths}
-					hoveredExplorerDropPath={hoveredExplorerDropPath}
-				>
+				<ExplorerDragPathsProvider draggedExplorerPaths={draggedExplorerPaths}>
 					{children}
 					{editorDropIndicator ? (
 						<EditorDropLine indicator={editorDropIndicator} />
