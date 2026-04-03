@@ -3,6 +3,7 @@ import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight, PanelLeftIcon } from "lucide-react"
 import { useCallback } from "react"
 import { useEditorDropOwnership } from "@/components/dnd/editor-drop-ownership"
+import { useIsHoveredExplorerDropPath } from "@/components/dnd/explorer-drag-state"
 import { useAutoExpandOnHover } from "../hooks/use-auto-expand-on-hover"
 import { useFolderDropZone } from "../hooks/use-folder-drop-zone"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
@@ -31,6 +32,7 @@ export function DirectoryTreeNode({
 	const hasChildren = node.hasChildren
 	const isExpanded = node.isExpanded
 	const isPointerInEditor = useEditorDropOwnership()
+	const isHoveredExplorerDropPath = useIsHoveredExplorerDropPath(entry.path)
 	const {
 		isRenaming,
 		isLocked,
@@ -45,6 +47,8 @@ export function DirectoryTreeNode({
 		onEntryPrimaryAction,
 		onEntryContextMenu,
 	})
+	const isExplorerDropEnabled =
+		entry.isDirectory && !isBusy && isFileExplorerOpen
 
 	const { ref: droppableRef, isDropTarget } = useDroppable({
 		id: `droppable-${entry.path}`,
@@ -53,7 +57,7 @@ export function DirectoryTreeNode({
 			isDirectory: entry.isDirectory,
 			depth: node.depth,
 		},
-		disabled: !entry.isDirectory || isBusy || !isFileExplorerOpen,
+		disabled: !isExplorerDropEnabled,
 	})
 
 	const { isOver: isOverExternal, ref: externalDropRef } = useFolderDropZone({
@@ -62,7 +66,8 @@ export function DirectoryTreeNode({
 	})
 
 	const isInternalDropTarget = isDropTarget && !isPointerInEditor
-	const isOver = isInternalDropTarget || isOverExternal
+	const isScopeDropTarget = isHoveredExplorerDropPath || isOverExternal
+	const isOver = isInternalDropTarget || isScopeDropTarget
 
 	const handleExpand = useCallback(() => {
 		onDirectoryClick(entry.path)
@@ -109,84 +114,92 @@ export function DirectoryTreeNode({
 	return (
 		<li>
 			<div
-				ref={(node) => {
-					droppableRef(node)
-					externalDropRef(node)
-				}}
-				className="relative rounded-sm"
+				ref={externalDropRef}
+				data-explorer-drop-scope={
+					isExplorerDropEnabled ? entry.path : undefined
+				}
+				className="relative"
 			>
 				{isOver && (
 					<div className="absolute inset-0 z-10 rounded-sm bg-blue-100/30 dark:bg-blue-900/30 ring-2 ring-inset ring-blue-400 dark:ring-blue-600 pointer-events-none" />
 				)}
-				<div className="flex items-center group">
-					<button
-						ref={setDraggableRef}
-						type="button"
-						id={entry.path}
-						onClick={handlePrimaryAction}
-						onContextMenu={handleContextMenu}
-						className={cn(
-							getEntryButtonClassName({
-								isSelected,
-								isDragging,
-								isRenaming,
-								isLocked,
-								widthClass: "flex-1",
-							}),
-						)}
-						style={{ paddingLeft: `${node.depth * INDENTATION_WIDTH}px` }}
-						disabled={isBusy}
-					>
-						<div
+				<div
+					ref={droppableRef}
+					data-explorer-drop-path={
+						isExplorerDropEnabled ? entry.path : undefined
+					}
+					className="relative rounded-sm"
+				>
+					<div className="flex items-center group">
+						<button
+							ref={setDraggableRef}
+							type="button"
+							id={entry.path}
+							onClick={handlePrimaryAction}
+							onContextMenu={handleContextMenu}
 							className={cn(
-								"shrink-0 pl-1.5 py-1",
-								"text-foreground/70",
-								"pointer-events-none",
+								getEntryButtonClassName({
+									isSelected,
+									isDragging,
+									isRenaming,
+									isLocked,
+									widthClass: "flex-1",
+								}),
 							)}
-							aria-hidden="true"
+							style={{ paddingLeft: `${node.depth * INDENTATION_WIDTH}px` }}
+							disabled={isBusy}
 						>
-							<ChevronRight
+							<div
 								className={cn(
-									"size-4 transition-transform duration-150",
-									isExpanded && "rotate-90",
+									"shrink-0 pl-1.5 py-1",
+									"text-foreground/70",
+									"pointer-events-none",
 								)}
-							/>
-						</div>
-						<div
-							className={cn(
-								"relative flex-1 flex items-center overflow-hidden whitespace-nowrap",
-								!isRenaming && "text-overflow-mask",
-							)}
-						>
-							<span className={cn("text-sm", isRenaming && "opacity-0")}>
-								{entry.name}
-							</span>
-							{isRenaming && (
-								<TreeNodeRenameInput
-									value={renameInput.value}
-									setValue={renameInput.setValue}
-									inputRef={renameInput.inputRef}
-									onKeyDown={renameInput.onKeyDown}
-									onBlur={renameInput.onBlur}
+								aria-hidden="true"
+							>
+								<ChevronRight
+									className={cn(
+										"size-4 transition-transform duration-150",
+										isExpanded && "rotate-90",
+									)}
 								/>
+							</div>
+							<div
+								className={cn(
+									"relative flex-1 flex items-center overflow-hidden whitespace-nowrap",
+									!isRenaming && "text-overflow-mask",
+								)}
+							>
+								<span className={cn("text-sm", isRenaming && "opacity-0")}>
+									{entry.name}
+								</span>
+								{isRenaming && (
+									<TreeNodeRenameInput
+										value={renameInput.value}
+										setValue={renameInput.setValue}
+										inputRef={renameInput.inputRef}
+										onKeyDown={renameInput.onKeyDown}
+										onBlur={renameInput.onBlur}
+									/>
+								)}
+							</div>
+						</button>
+						<button
+							type="button"
+							onClick={handleCollectionViewClick}
+							className={cn(
+								"absolute right-1 shrink-0 px-0.5 py-0.5 outline-none",
+								"bg-background text-foreground/70 hover:text-foreground rounded-sm",
+								"opacity-0 group-hover:opacity-100 transition-opacity duration-250",
+								isBusy && "cursor-not-allowed opacity-50",
+								isRenaming && "opacity-0",
 							)}
-						</div>
-					</button>
-					<button
-						type="button"
-						onClick={handleCollectionViewClick}
-						className={cn(
-							"absolute right-1 shrink-0 px-0.5 py-0.5 outline-none",
-							"bg-background text-foreground/70 hover:text-foreground rounded-sm",
-							"opacity-0 group-hover:opacity-100 transition-opacity duration-250",
-							isBusy && "cursor-not-allowed opacity-50",
-							isRenaming && "opacity-0",
-						)}
-						aria-label="Open collection view"
-						disabled={isBusy}
-					>
-						<PanelLeftIcon className="size-4" />
-					</button>
+							aria-label="Open collection view"
+							disabled={isBusy}
+						>
+							<PanelLeftIcon className="size-4" />
+						</button>
+					</div>
 				</div>
 				{hasPendingNewFolder && (
 					<TreeInlineEditRow

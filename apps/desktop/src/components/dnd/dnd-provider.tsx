@@ -18,8 +18,10 @@ import {
 	EMPTY_DRAGGED_EXPLORER_PATHS,
 	ExplorerDragPathsProvider,
 	getDraggedExplorerPaths,
+	setHoveredExplorerDropPath,
 } from "./explorer-drag-state"
 import { handleExplorerDrop } from "./explorer-drop-handler"
+import { computeExplorerDropTarget } from "./explorer-drop-target.helpers"
 import { useEditorDropState } from "./use-editor-drop-state"
 
 type DndProviderProps = {
@@ -104,6 +106,9 @@ export function DndProvider({ children }: DndProviderProps) {
 			const point = isPoint(event.operation.position.current)
 				? event.operation.position.current
 				: null
+			setHoveredExplorerDropPath(
+				point ? computeExplorerDropTarget(point) : null,
+			)
 			startDragging(point)
 		},
 		[selectedEntryPaths, startDragging],
@@ -111,6 +116,9 @@ export function DndProvider({ children }: DndProviderProps) {
 
 	const handleDragMove = useCallback(
 		(event: DragMoveEvent) => {
+			setHoveredExplorerDropPath(
+				isPoint(event.to) ? computeExplorerDropTarget(event.to) : null,
+			)
 			updateDragging(isPoint(event.to) ? event.to : null)
 		},
 		[updateDragging],
@@ -125,6 +133,10 @@ export function DndProvider({ children }: DndProviderProps) {
 				: null
 			const { syntheticTarget, isPointerInEditor: wasPointerInEditor } =
 				completeDragging(finalPoint)
+			const syntheticExplorerTarget = finalPoint
+				? computeExplorerDropTarget(finalPoint)
+				: null
+			setHoveredExplorerDropPath(null)
 
 			if (!isDndDragEndEvent(rawEvent)) {
 				return
@@ -154,6 +166,7 @@ export function DndProvider({ children }: DndProviderProps) {
 				moveEntry,
 				selectedEntryPaths,
 				resetSelection,
+				overrideTargetPath: syntheticExplorerTarget,
 			})
 		},
 		[completeDragging, editor, moveEntry, resetSelection, selectedEntryPaths],

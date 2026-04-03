@@ -7,6 +7,7 @@ type HandleExplorerDropParams = {
 	moveEntry: WorkspaceSlice["moveEntry"]
 	selectedEntryPaths: Set<string>
 	resetSelection: () => void
+	overrideTargetPath?: string | null
 }
 
 export async function handleExplorerDrop({
@@ -14,18 +15,23 @@ export async function handleExplorerDrop({
 	moveEntry,
 	selectedEntryPaths,
 	resetSelection,
+	overrideTargetPath,
 }: HandleExplorerDropParams): Promise<boolean> {
 	const sourceData = event.operation.source.data
 	const sourcePath = isFileEntryDragData(sourceData)
 		? sourceData.path
 		: undefined
 	const dropZoneId = event.operation.target?.id
+	const destinationPath =
+		overrideTargetPath ??
+		(dropZoneId?.startsWith("droppable-")
+			? dropZoneId.slice("droppable-".length)
+			: dropZoneId)
 
-	if (!sourcePath || !dropZoneId) {
+	if (!sourcePath || !destinationPath) {
 		return false
 	}
 
-	const destinationPath = dropZoneId.replace("droppable-", "")
 	if (!destinationPath || sourcePath === destinationPath) {
 		return true
 	}
