@@ -23,33 +23,31 @@ export function useAutoExpandOnHover({
 			return
 		}
 
+		const timeoutId = setTimeout(onExpand, 500)
+
+		return () => clearTimeout(timeoutId)
+	}, [hasChildren, isDirectory, isExpanded, isOver, onExpand])
+
+	useEffect(() => {
+		if (!isExpanded || !manager?.dragOperation.status.initialized) {
+			return
+		}
+
 		let refreshFrameId = 0
 		let settleFrameId = 0
-		const timeoutId = setTimeout(() => {
-			onExpand()
 
-			// Auto-expand changes the subtree bounds without moving the pointer.
-			// Refresh droppable shapes and force collision recomputation so the
-			// expanded area becomes a valid drop target immediately.
-			refreshFrameId = requestAnimationFrame(() => {
-				settleFrameId = requestAnimationFrame(() => {
-					if (!manager?.dragOperation.status.initialized) {
-						return
-					}
-
-					for (const droppable of manager.registry.droppables) {
-						droppable.refreshShape()
-					}
-
-					manager.collisionObserver.forceUpdate()
-				})
+		// Auto-expand changes the subtree bounds without moving the pointer.
+		// Force collision recomputation after layout settles so the expanded
+		// area becomes a valid drop target immediately.
+		refreshFrameId = requestAnimationFrame(() => {
+			settleFrameId = requestAnimationFrame(() => {
+				manager.collisionObserver.forceUpdate()
 			})
-		}, 500)
+		})
 
 		return () => {
-			clearTimeout(timeoutId)
 			cancelAnimationFrame(refreshFrameId)
 			cancelAnimationFrame(settleFrameId)
 		}
-	}, [hasChildren, isDirectory, isExpanded, isOver, manager, onExpand])
+	}, [isExpanded, manager])
 }
