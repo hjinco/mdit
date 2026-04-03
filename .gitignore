@@ -27,3 +27,5 @@ dist-ssr
 target
 
 tsconfig.tsbuildinfo
+
+.omx

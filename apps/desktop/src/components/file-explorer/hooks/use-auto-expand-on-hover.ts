@@ -1,3 +1,4 @@
+import { useDragDropManager } from "@dnd-kit/react"
 import { useEffect } from "react"
 
 type UseAutoExpandOnHoverOptions = {
@@ -15,17 +16,38 @@ export function useAutoExpandOnHover({
 	hasChildren,
 	onExpand,
 }: UseAutoExpandOnHoverOptions) {
+	const manager = useDragDropManager()
+
 	useEffect(() => {
 		if (!(isOver && isDirectory && !isExpanded && hasChildren)) {
 			return
 		}
 
-		const timeoutId = setTimeout(() => {
-			onExpand()
-		}, 500)
+		const timeoutId = setTimeout(onExpand, 500)
+
+		return () => clearTimeout(timeoutId)
+	}, [hasChildren, isDirectory, isExpanded, isOver, onExpand])
+
+	useEffect(() => {
+		if (!isExpanded || !manager?.dragOperation.status.initialized) {
+			return
+		}
+
+		let refreshFrameId = 0
+		let settleFrameId = 0
+
+		// Auto-expand changes the subtree bounds without moving the pointer.
+		// Force collision recomputation after layout settles so the expanded
+		// area becomes a valid drop target immediately.
+		refreshFrameId = requestAnimationFrame(() => {
+			settleFrameId = requestAnimationFrame(() => {
+				manager.collisionObserver.forceUpdate()
+			})
+		})
 
 		return () => {
-			clearTimeout(timeoutId)
+			cancelAnimationFrame(refreshFrameId)
+			cancelAnimationFrame(settleFrameId)
 		}
-	}, [hasChildren, isDirectory, isExpanded, isOver, onExpand])
+	}, [isExpanded, manager])
 }
