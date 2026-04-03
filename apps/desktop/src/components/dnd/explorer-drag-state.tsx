@@ -6,25 +6,34 @@ export const EMPTY_DRAGGED_EXPLORER_PATHS: ReadonlySet<string> = new Set()
 const ExplorerDragPathsContext = createContext<ReadonlySet<string>>(
 	EMPTY_DRAGGED_EXPLORER_PATHS,
 )
+const ExplorerDropPathContext = createContext<string | null>(null)
 
 type ExplorerDragPathsProviderProps = {
 	children: ReactNode
 	draggedExplorerPaths: ReadonlySet<string>
+	hoveredExplorerDropPath: string | null
 }
 
 export function ExplorerDragPathsProvider({
 	children,
 	draggedExplorerPaths,
+	hoveredExplorerDropPath,
 }: ExplorerDragPathsProviderProps) {
 	return (
 		<ExplorerDragPathsContext.Provider value={draggedExplorerPaths}>
-			{children}
+			<ExplorerDropPathContext.Provider value={hoveredExplorerDropPath}>
+				{children}
+			</ExplorerDropPathContext.Provider>
 		</ExplorerDragPathsContext.Provider>
 	)
 }
 
 export function useDraggedExplorerPaths() {
 	return useContext(ExplorerDragPathsContext)
+}
+
+export function useHoveredExplorerDropPath() {
+	return useContext(ExplorerDropPathContext)
 }
 
 export function getDraggedExplorerPaths(
