@@ -28,6 +28,7 @@ import {
 import { registerCollectionIntegration } from "./integrations/register-collection-integration"
 import { registerGitSyncWorkspaceIntegration } from "./integrations/register-git-sync-workspace-integration"
 import { registerIndexingIntegration } from "./integrations/register-indexing-integration"
+import { registerTabPathIntegration } from "./integrations/register-tab-path-integration"
 import { createStoreEventHub } from "./integrations/store-events"
 import type { TabSlice } from "./tab/tab-slice"
 import { prepareTabSlice, type TabSliceDependencies } from "./tab/tab-slice"
@@ -95,6 +96,7 @@ export const createMditStore = (
 	registerCollectionIntegration(store, events)
 	registerIndexingIntegration(store, events)
 	registerGitSyncWorkspaceIntegration(store, events)
+	registerTabPathIntegration(store, events)
 
 	return store
 }

@@ -2,9 +2,15 @@ import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
 import type { MditStore } from ".."
 import { prepareCollectionSlice } from "../collection/collection-slice"
+import {
+	prepareTabSlice,
+	type TabSlice,
+	type TabSliceDependencies,
+} from "../tab/tab-slice"
 import { registerCollectionIntegration } from "./register-collection-integration"
 import { registerGitSyncWorkspaceIntegration } from "./register-git-sync-workspace-integration"
 import { registerIndexingIntegration } from "./register-indexing-integration"
+import { registerTabPathIntegration } from "./register-tab-path-integration"
 import { createStoreEventHub } from "./store-events"
 
 type EntryLike = {
@@ -39,6 +45,34 @@ const createCollectionIntegrationStore = () => {
 		entries: [],
 		...createSlice(set, get, api),
 	}))
+}
+
+type TabIntegrationState = TabSlice & {
+	workspacePath: string | null
+}
+
+const createTabIntegrationStore = (
+	overrides: Partial<TabSliceDependencies> = {},
+) => {
+	const readTextFile =
+		overrides.readTextFile ?? vi.fn(async (path: string) => `content:${path}`)
+	const renameFile = overrides.renameFile ?? vi.fn(async () => undefined)
+	const saveSettings = overrides.saveSettings ?? vi.fn(async () => undefined)
+	const createSlice = prepareTabSlice({
+		readTextFile,
+		renameFile,
+		saveSettings,
+	}) as any
+
+	const store = createStore<TabIntegrationState>()((set, get, api) => ({
+		workspacePath: "/ws",
+		...createSlice(set, get, api),
+	}))
+
+	return {
+		store,
+		readTextFile,
+	}
 }
 
 describe("store integrations", () => {
@@ -200,6 +234,103 @@ describe("store integrations", () => {
 		})
 
 		expect(store.getState().collectionEntries).toEqual([])
+	})
+
+	it("removes deleted paths from tab history", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		await store.getState().openTab("/ws/a.md")
+		await store.getState().openTab("/ws/folder/note.md")
+		await store.getState().openTab("/ws/keep.md")
+
+		registerTabPathIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-paths-removed",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md", "/ws/folder"],
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/ws/keep.md",
+		])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/ws/keep.md",
+		])
+		expect(store.getState().historyIndex).toBe(0)
+	})
+
+	it("renames open tabs and history paths when a tab path is renamed", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		await store.getState().openTab("/ws/old/note.md")
+
+		registerTabPathIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-path-renamed",
+			workspacePath: "/ws",
+			oldPath: "/ws/old",
+			newPath: "/ws/new",
+			clearSyncedName: true,
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/ws/new/note.md",
+		])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/ws/new/note.md",
+		])
+	})
+
+	it("moves open tabs and history paths when a tab path is moved", async () => {
+		const events = createStoreEventHub()
+		const { store, readTextFile } = createTabIntegrationStore()
+		const readTextFileMock = vi.mocked(readTextFile)
+
+		await store.getState().openTab("/ws/folder/note.md")
+		readTextFileMock.mockClear()
+
+		registerTabPathIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-path-moved",
+			workspacePath: "/ws",
+			sourcePath: "/ws/folder",
+			newPath: "/ws/archive/folder",
+			refreshContent: true,
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/ws/archive/folder/note.md",
+		])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/ws/archive/folder/note.md",
+		])
+		expect(readTextFileMock).not.toHaveBeenCalled()
+	})
+
+	it("ignores tab path events for a different workspace", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		await store.getState().openTab("/other/a.md")
+		store.setState({ workspacePath: "/other" })
+
+		registerTabPathIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-path-renamed",
+			workspacePath: "/ws",
+			oldPath: "/other/a.md",
+			newPath: "/other/b.md",
+			clearSyncedName: false,
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/other/a.md",
+		])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/other/a.md",
+		])
 	})
 
 	it("resets indexing state when workspace resets", async () => {

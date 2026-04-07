@@ -101,10 +101,14 @@ export const createTreeEntryActions = (
 			ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		ctx.ports.tab.removePathsFromHistory(paths)
-
 		ctx.get().updateEntries(removeEntriesFromState(entries, paths), {
 			emitEvent: false,
+		})
+
+		await ctx.runtime.events.emit({
+			type: "workspace/tab-paths-removed",
+			workspacePath,
+			paths,
 		})
 
 		const nextExpanded = removeExpandedDirectories(expandedDirectories, paths)
@@ -141,14 +145,19 @@ export const createTreeEntryActions = (
 			ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		await ctx.ports.tab.renameTab(oldPath, newPath, { clearSyncedName })
-		ctx.ports.tab.updateHistoryPath(oldPath, newPath)
-
 		ctx
 			.get()
 			.updateEntries(updateEntryInState(entries, oldPath, newPath, newName), {
 				emitEvent: false,
 			})
+
+		await ctx.runtime.events.emit({
+			type: "workspace/tab-path-renamed",
+			workspacePath,
+			oldPath,
+			newPath,
+			clearSyncedName,
+		})
 
 		if (!isDirectory) {
 			await ctx.runtime.events.emit({
@@ -207,11 +216,6 @@ export const createTreeEntryActions = (
 			ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		await ctx.ports.tab.renameTab(sourcePath, newPath, {
-			refreshContent,
-		})
-		ctx.ports.tab.updateHistoryPath(sourcePath, newPath)
-
 		ctx
 			.get()
 			.updateEntries(
@@ -224,6 +228,14 @@ export const createTreeEntryActions = (
 				),
 				{ emitEvent: false },
 			)
+
+		await ctx.runtime.events.emit({
+			type: "workspace/tab-path-moved",
+			workspacePath,
+			sourcePath,
+			newPath,
+			refreshContent,
+		})
 
 		if (isDirectory) {
 			const nextExpanded = renameExpandedDirectories(
