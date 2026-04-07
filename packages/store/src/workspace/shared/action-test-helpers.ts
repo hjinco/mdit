@@ -104,12 +104,24 @@ export function createActionTestContext() {
 			hydrateFromOpenedFiles: vi.fn().mockResolvedValue(true),
 			openTab: vi.fn().mockResolvedValue(undefined),
 			closeTab: vi.fn(),
+			closeAllTabs: vi.fn(),
 			renameTab: vi.fn().mockResolvedValue(undefined),
+			clearActiveTabSyncedName: vi.fn(),
 			refreshTabFromExternalContent: vi.fn(),
 			updateHistoryPath: vi.fn(),
 			removePathsFromHistory: vi.fn(),
 			clearHistory: vi.fn(),
 			getOpenTabSnapshots: vi.fn(() => getOpenTabSnapshotsFromState()),
+			getActiveTabPath: vi.fn(() => {
+				const activeTabId =
+					typeof state.activeTabId === "number" ? state.activeTabId : null
+				const activeTab = Array.isArray(state.tabs)
+					? state.tabs.find(
+							(tab: { id: number; path: string }) => tab.id === activeTabId,
+						)
+					: null
+				return activeTab?.path ?? null
+			}),
 		},
 		collection: {
 			refreshCollectionEntries: vi.fn(),

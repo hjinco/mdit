@@ -2,7 +2,7 @@ import {
 	getFileNameWithoutExtension,
 	isPathEqualOrDescendant,
 } from "@mdit/utils/path-utils"
-import { relative } from "pathe"
+import { relative, resolve } from "pathe"
 import type { StateCreator } from "zustand"
 import type { WorkspaceSettings } from "../workspace/workspace-settings"
 import type { WorkspaceSlice } from "../workspace/workspace-slice"
@@ -36,6 +36,7 @@ export type Tab = {
 	path: string
 	name: string
 	content: string
+	syncedName?: string | null
 }
 
 export type TabHistoryPoint = {
@@ -65,6 +66,7 @@ export type PendingHistorySelectionRestoreResult =
 type RenameTabOptions = {
 	refreshContent?: boolean
 	renameOnFs?: boolean
+	clearSyncedName?: boolean
 }
 
 type OpenTabOptions = {
@@ -75,11 +77,6 @@ type OpenTabOptions = {
 type RefreshTabFromExternalContentOptions = {
 	preserveSelection?: boolean
 }
-
-type LinkedTab = {
-	path: string
-	name: string
-} | null
 
 export type OpenTabSnapshot = {
 	path: string
@@ -92,7 +89,6 @@ export type TabSlice = {
 	tabs: Tab[]
 	activeTabId: number | null
 	tabSaveStates: TabSaveStateMap
-	linkedTab: LinkedTab
 	history: TabHistoryEntry[]
 	historyIndex: number
 	setHistorySelectionProvider: (
@@ -115,15 +111,15 @@ export type TabSlice = {
 		options?: OpenTabOptions,
 	) => Promise<void>
 	closeTab: (path: string) => void
+	closeAllTabs: () => void
 	renameTab: (
 		oldPath: string,
 		newPath: string,
 		options?: RenameTabOptions,
 	) => Promise<void>
 	setTabSaved: (tabId: number, isSaved: boolean) => void
-	setLinkedTab: (linkedTab: LinkedTab) => void
-	updateLinkedName: (name: string) => void
-	clearLinkedTab: () => void
+	setActiveTabSyncedName: (name: string) => void
+	clearActiveTabSyncedName: () => void
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
@@ -163,21 +159,94 @@ const getActiveTabSavedFromState = (
 	return getTabSavedFromState(state, activeTab.id)
 }
 
-const buildSingleActiveTabState = (
-	tab: Tab | null,
-	isSaved = true,
-): Pick<TabSlice, "tabs" | "activeTabId" | "tabSaveStates"> =>
-	tab
-		? {
-				tabs: [tab],
-				activeTabId: tab.id,
-				tabSaveStates: { [tab.id]: isSaved },
-			}
-		: {
-				tabs: [],
-				activeTabId: null,
-				tabSaveStates: {},
-			}
+const buildEmptyTabState = (): Pick<
+	TabSlice,
+	"tabs" | "activeTabId" | "tabSaveStates"
+> => ({
+	tabs: [],
+	activeTabId: null,
+	tabSaveStates: {},
+})
+
+const findTabIndexByPath = (
+	state: Pick<TabSlice, "tabs">,
+	path: string,
+): number => state.tabs.findIndex((tab) => tab.path === path)
+
+const removeTabSaveState = (
+	tabSaveStates: TabSaveStateMap,
+	tabId: number,
+): TabSaveStateMap => {
+	if (!Object.hasOwn(tabSaveStates, tabId)) {
+		return tabSaveStates
+	}
+
+	const nextTabSaveStates = { ...tabSaveStates }
+	delete nextTabSaveStates[tabId]
+	return nextTabSaveStates
+}
+
+const selectFallbackActiveTabId = (
+	tabs: readonly Tab[],
+	removedIndex: number,
+): number | null => {
+	if (tabs.length === 0) {
+		return null
+	}
+
+	const fallbackIndex = Math.min(
+		removedIndex > 0 ? removedIndex - 1 : 0,
+		tabs.length - 1,
+	)
+	return tabs[fallbackIndex]?.id ?? null
+}
+
+const dedupePathsPreservingLastOccurrence = (
+	paths: readonly string[],
+): string[] => {
+	const seen = new Set<string>()
+	const uniquePaths: string[] = []
+
+	for (let index = paths.length - 1; index >= 0; index -= 1) {
+		const path = paths[index]
+		if (seen.has(path)) {
+			continue
+		}
+
+		seen.add(path)
+		uniquePaths.unshift(path)
+	}
+
+	return uniquePaths
+}
+
+const buildPersistedLastOpenedFilePaths = (
+	state: Pick<TabSlice, "tabs" | "activeTabId" | "history">,
+): string[] => {
+	if (state.tabs.length === 0) {
+		return []
+	}
+
+	const openTabPaths = state.tabs.map((tab) => tab.path)
+	const openTabPathSet = new Set(openTabPaths)
+	const historyPaths = dedupePathsPreservingLastOccurrence(
+		state.history
+			.map((entry) => entry.path)
+			.filter((path) => openTabPathSet.has(path)),
+	)
+	const activeTabPath = getActiveTabFromState(state)?.path ?? null
+	const fallbackPaths = activeTabPath
+		? [...openTabPaths.filter((path) => path !== activeTabPath), activeTabPath]
+		: openTabPaths
+
+	for (const path of fallbackPaths) {
+		if (!historyPaths.includes(path)) {
+			historyPaths.push(path)
+		}
+	}
+
+	return historyPaths.slice(-MAX_PERSISTED_LAST_OPENED_FILE_PATHS)
+}
 
 export const prepareTabSlice =
 	({
@@ -196,6 +265,7 @@ export const prepareTabSlice =
 			path: string
 			selection: TabHistorySelection
 		} | null = null
+		let lastOpenedFileHistoryPersistQueue: Promise<void> = Promise.resolve()
 		const pendingExternalReloadSaveSkipTabIds = new Set<number>()
 
 		const readCurrentHistorySelection = (): TabHistorySelection => {
@@ -253,6 +323,32 @@ export const prepareTabSlice =
 			pendingHistorySelectionRestore = null
 		}
 
+		const updateActiveTab = (
+			updater: (tab: Tab) => Tab | null,
+		): Pick<TabSlice, "tabs"> | {} => {
+			const state = get()
+			const activeTab = getActiveTabFromState(state)
+			if (!activeTab) {
+				return {}
+			}
+
+			const tabIndex = findTabIndexByPath(state, activeTab.path)
+			if (tabIndex === -1) {
+				return {}
+			}
+
+			const nextTab = updater(activeTab)
+			if (!nextTab) {
+				return {}
+			}
+
+			const nextTabs = [...state.tabs]
+			nextTabs[tabIndex] = nextTab
+			return {
+				tabs: nextTabs,
+			}
+		}
+
 		const updateHistoryForOpenedTab = (path: string) => {
 			const state = get()
 			const nextHistoryState = appendHistoryEntry(
@@ -275,19 +371,77 @@ export const prepareTabSlice =
 			})
 		}
 
-		const persistLastOpenedFileHistory = async () => {
+		const buildLastOpenedFileHistoryPersistInput = (): {
+			workspacePath: string
+			lastOpenedFilePaths: string[]
+		} | null => {
 			const workspacePath = get().workspacePath
 			if (!workspacePath) {
+				return null
+			}
+
+			return {
+				workspacePath,
+				lastOpenedFilePaths: buildPersistedLastOpenedFilePaths(get()).map(
+					(path) => relative(workspacePath, path),
+				),
+			}
+		}
+
+		const persistLastOpenedFileHistory = async (input: {
+			workspacePath: string
+			lastOpenedFilePaths: string[]
+		}) => {
+			await saveSettings(input.workspacePath, {
+				lastOpenedFilePaths: input.lastOpenedFilePaths,
+			})
+		}
+
+		const enqueuePersistLastOpenedFileHistory = (): Promise<void> => {
+			const persistInput = buildLastOpenedFileHistoryPersistInput()
+			if (!persistInput) {
+				return Promise.resolve()
+			}
+
+			const persistTask = lastOpenedFileHistoryPersistQueue
+				.catch(() => {})
+				.then(() => persistLastOpenedFileHistory(persistInput))
+
+			lastOpenedFileHistoryPersistQueue = persistTask
+			return persistTask
+		}
+
+		const persistLastOpenedFileHistorySafely = () => {
+			void enqueuePersistLastOpenedFileHistory().catch((error) => {
+				console.error("Failed to persist last opened file history:", error)
+			})
+		}
+
+		const setAndPersistLastOpenedFileHistory = (
+			updater: (state: TabSlice) => Partial<TabSlice> | {},
+		): boolean => {
+			let didChange = false
+
+			set((state) => {
+				const nextState = updater(state)
+				didChange = Object.keys(nextState).length > 0
+				return nextState
+			})
+
+			if (didChange) {
+				persistLastOpenedFileHistorySafely()
+			}
+
+			return didChange
+		}
+
+		const trackOpenedTab = async (path: string, skipHistory: boolean) => {
+			if (skipHistory) {
 				return
 			}
 
-			const relativePaths = get()
-				.history.slice(-MAX_PERSISTED_LAST_OPENED_FILE_PATHS)
-				.map((entry) => relative(workspacePath, entry.path))
-
-			await saveSettings(workspacePath, {
-				lastOpenedFilePaths: relativePaths,
-			})
+			updateHistoryForOpenedTab(path)
+			await enqueuePersistLastOpenedFileHistory()
 		}
 
 		const navigateHistory = async (
@@ -326,8 +480,7 @@ export const prepareTabSlice =
 		}
 
 		return {
-			...buildSingleActiveTabState(null),
-			linkedTab: null,
+			...buildEmptyTabState(),
 			history: [],
 			historyIndex: -1,
 			setHistorySelectionProvider: (provider) => {
@@ -348,44 +501,78 @@ export const prepareTabSlice =
 				return { found: true, selection }
 			},
 			refreshTabFromExternalContent: (path, content, options) => {
-				const activeTab = getActiveTabFromState(get())
+				const state = get()
+				const tabIndex = findTabIndexByPath(state, path)
+				if (tabIndex === -1) {
+					return
+				}
+
+				const matchingTab = state.tabs[tabIndex]
 				if (
-					!activeTab ||
-					activeTab.path !== path ||
-					activeTab.content === content
+					matchingTab.content === content ||
+					!getTabSavedFromState(state, matchingTab.id)
 				) {
 					return
 				}
 
-				const nextSelection = options?.preserveSelection
-					? readCurrentHistorySelection()
-					: null
+				const isActiveTab = state.activeTabId === matchingTab.id
+				const nextSelection =
+					isActiveTab && options?.preserveSelection
+						? readCurrentHistorySelection()
+						: null
 				let didRefresh = false
 
-				set((state) => {
-					const currentTab = getActiveTabFromState(state)
+				set((currentState) => {
+					const currentIndex = findTabIndexByPath(currentState, path)
+					if (currentIndex === -1) {
+						return {}
+					}
+
+					const currentTab = currentState.tabs[currentIndex]
 					if (
-						!currentTab ||
-						currentTab.path !== path ||
-						currentTab.id !== activeTab.id
+						currentTab.content === content ||
+						!getTabSavedFromState(currentState, currentTab.id)
 					) {
 						return {}
 					}
 
 					didRefresh = true
-					pendingExternalReloadSaveSkipTabIds.add(currentTab.id)
-					const nextTab = {
-						...currentTab,
-						id: ++tabIdCounter,
-						content,
+					const nextTabs = [...currentState.tabs]
+					let nextActiveTabId = currentState.activeTabId
+					let nextTabSaveStates = currentState.tabSaveStates
+
+					if (currentState.activeTabId === currentTab.id) {
+						pendingExternalReloadSaveSkipTabIds.add(currentTab.id)
+						const nextTab = {
+							...currentTab,
+							id: ++tabIdCounter,
+							content,
+						}
+						nextTabs[currentIndex] = nextTab
+						nextActiveTabId = nextTab.id
+						nextTabSaveStates = {
+							...removeTabSaveState(currentState.tabSaveStates, currentTab.id),
+							[nextTab.id]: true,
+						}
+					} else {
+						nextTabs[currentIndex] = {
+							...currentTab,
+							content,
+						}
+						nextTabSaveStates = {
+							...currentState.tabSaveStates,
+							[currentTab.id]: true,
+						}
 					}
 
 					return {
-						...buildSingleActiveTabState(nextTab, true),
+						tabs: nextTabs,
+						activeTabId: nextActiveTabId,
+						tabSaveStates: nextTabSaveStates,
 					}
 				})
 
-				if (!didRefresh || !options?.preserveSelection) {
+				if (!didRefresh || !isActiveTab || !options?.preserveSelection) {
 					return
 				}
 
@@ -400,42 +587,60 @@ export const prepareTabSlice =
 				return shouldSkip
 			},
 			hydrateFromOpenedFiles: async (paths: string[]) => {
-				const validPaths = paths.filter((path) => path.endsWith(".md"))
+				const validPaths = paths
+					.filter((path) => path.endsWith(".md"))
+					.slice(0, MAX_HISTORY_LENGTH)
 
 				if (validPaths.length === 0) {
 					return false
 				}
 
-				const limitedHistory = validPaths
-					.slice(0, MAX_HISTORY_LENGTH)
-					.map<TabHistoryEntry>((path) => ({
-						path,
-						selection: null,
-					}))
+				const limitedHistory = validPaths.map<TabHistoryEntry>((path) => ({
+					path,
+					selection: null,
+				}))
+				const uniquePaths = dedupePathsPreservingLastOccurrence(validPaths)
 				const activePath = limitedHistory[limitedHistory.length - 1]?.path
 				if (!activePath) {
 					return false
 				}
 
-				const name = getFileNameWithoutExtension(activePath)
-
-				if (!name) {
-					return false
-				}
-
 				try {
-					const content = await readTextFile(activePath)
-					const activeIndex = limitedHistory.length - 1
-					const activeTab = {
-						id: ++tabIdCounter,
-						path: activePath,
-						name,
-						content,
+					const tabs = (
+						await Promise.all(
+							uniquePaths.map(async (currentPath) => {
+								const name = getFileNameWithoutExtension(currentPath)
+								if (!name) {
+									return null
+								}
+
+								const nextTabId = ++tabIdCounter
+								const content = await readTextFile(currentPath)
+								return {
+									id: nextTabId,
+									path: currentPath,
+									name,
+									content,
+								}
+							}),
+						)
+					).filter((tab): tab is Tab => tab !== null)
+
+					const activeTab = tabs.find((tab) => tab.path === activePath)
+					if (!activeTab) {
+						return false
 					}
 
+					pendingExternalReloadSaveSkipTabIds.clear()
+					const activeIndex = limitedHistory.length - 1
+					const tabSaveStates = Object.fromEntries(
+						tabs.map((tab) => [tab.id, true]),
+					) as TabSaveStateMap
+
 					set({
-						...buildSingleActiveTabState(activeTab, true),
-						linkedTab: null,
+						tabs,
+						activeTabId: activeTab.id,
+						tabSaveStates,
 						history: limitedHistory,
 						historyIndex: activeIndex,
 					})
@@ -462,9 +667,27 @@ export const prepareTabSlice =
 
 				const state = get()
 				const activeTab = getActiveTabFromState(state)
+				const existingIndex = findTabIndexByPath(state, path)
 
 				// If opening the same tab, don't do anything (unless force is true)
 				if (!force && activeTab?.path === path) {
+					return
+				}
+
+				if (existingIndex !== -1 && !force) {
+					set((currentState) => {
+						const currentIndex = findTabIndexByPath(currentState, path)
+						if (currentIndex === -1) {
+							return {}
+						}
+
+						const currentTab = currentState.tabs[currentIndex]
+						return {
+							activeTabId: currentTab.id,
+						}
+					})
+
+					await trackOpenedTab(path, skipHistory)
 					return
 				}
 
@@ -481,87 +704,97 @@ export const prepareTabSlice =
 						name,
 						content,
 					}
-					set({
-						...buildSingleActiveTabState(nextTab, true),
-						linkedTab: null,
+					set((currentState) => {
+						const currentIndex = findTabIndexByPath(currentState, path)
+						if (currentIndex !== -1) {
+							const currentTab = currentState.tabs[currentIndex]
+							const nextTabs = [...currentState.tabs]
+							nextTabs[currentIndex] = nextTab
+							const nextTabSaveStates = {
+								...removeTabSaveState(
+									currentState.tabSaveStates,
+									currentTab.id,
+								),
+								[nextTab.id]: true,
+							}
+
+							return {
+								tabs: nextTabs,
+								activeTabId: nextTab.id,
+								tabSaveStates: nextTabSaveStates,
+							}
+						}
+
+						return {
+							tabs: [...currentState.tabs, nextTab],
+							activeTabId: nextTab.id,
+							tabSaveStates: {
+								...currentState.tabSaveStates,
+								[nextTab.id]: true,
+							},
+						}
 					})
 
-					if (!skipHistory) {
-						updateHistoryForOpenedTab(path)
-						await persistLastOpenedFileHistory()
-					}
+					await trackOpenedTab(path, skipHistory)
 				}
 			},
 			closeTab: (path) => {
-				const tab = getActiveTabFromState(get())
+				setAndPersistLastOpenedFileHistory((state) => {
+					const tabIndex = findTabIndexByPath(state, path)
+					if (tabIndex === -1) {
+						return {}
+					}
 
-				if (!tab || tab.path !== path) {
-					return
-				}
+					const tab = state.tabs[tabIndex]
+					pendingExternalReloadSaveSkipTabIds.delete(tab.id)
+					const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
+					const nextActiveTabId =
+						state.activeTabId === tab.id
+							? selectFallbackActiveTabId(nextTabs, tabIndex)
+							: state.activeTabId
+					const nextTabSaveStates = removeTabSaveState(
+						state.tabSaveStates,
+						tab.id,
+					)
 
-				set(buildSingleActiveTabState(null))
+					return {
+						tabs: nextTabs,
+						activeTabId: nextActiveTabId,
+						tabSaveStates: nextTabSaveStates,
+					}
+				})
+			},
+			closeAllTabs: () => {
+				pendingExternalReloadSaveSkipTabIds.clear()
+				set(buildEmptyTabState())
 			},
 			renameTab: async (oldPath, newPath, options) => {
 				const refreshContent = options?.refreshContent ?? false
 				const shouldRenameOnFs = options?.renameOnFs ?? false
-				const tab = getActiveTabFromState(get())
-				const currentTabSaved = getActiveTabSavedFromState(get())
+				const shouldClearSyncedName = options?.clearSyncedName ?? false
+				const matchingTabs = get().tabs.filter((tab) =>
+					isPathEqualOrDescendant(tab.path, oldPath),
+				)
 
-				if (!tab || tab.path !== oldPath) {
+				if (matchingTabs.length === 0) {
 					return
 				}
 
 				if (shouldRenameOnFs && oldPath !== newPath) {
 					try {
 						await renameFile(oldPath, newPath)
-						const nextName = getFileNameWithoutExtension(newPath)
-						const { linkedTab } = get()
-						const tab = getActiveTabFromState(get())
-						if (!tab) {
-							return
-						}
-						const nextTab = {
-							...tab,
-							path: newPath,
-							name: nextName,
-						}
-						const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
-
-						set({
-							...buildSingleActiveTabState(nextTab, currentTabSaved),
-							linkedTab: shouldCarryLinked
-								? {
-										...linkedTab,
-										path: newPath,
-									}
-								: linkedTab,
-						})
-						return
 					} catch (error) {
 						console.error("Failed to rename tab on filesystem:", error)
 						throw error
 					}
 				}
 
-				const name = getFileNameWithoutExtension(newPath)
-
-				if (!name) {
-					set({
-						...buildSingleActiveTabState(null),
-						linkedTab: null,
-					})
-					return
-				}
-
-				let content = tab.content
-				let nextId = tab.id
+				let refreshedContent: string | null = null
 
 				if (refreshContent) {
-					nextId = ++tabIdCounter
-
 					if (newPath.endsWith(".md")) {
 						try {
-							content = await readTextFile(newPath)
+							refreshedContent = await readTextFile(newPath)
 						} catch (error) {
 							console.error(
 								"Failed to refresh tab content after rename:",
@@ -571,28 +804,70 @@ export const prepareTabSlice =
 					}
 				}
 
-				const { linkedTab } = get()
-				const shouldCarryLinked = linkedTab && linkedTab.path === oldPath
-				const nextTab = {
-					...tab,
-					id: nextId,
-					path: newPath,
-					name,
-					content,
-				}
-
 				set((state) => ({
-					...state,
-					...buildSingleActiveTabState(
-						nextTab,
-						getActiveTabSavedFromState(state),
-					),
-					linkedTab: shouldCarryLinked
-						? {
-								...linkedTab,
-								path: newPath,
+					...(() => {
+						let didChange = false
+						const nextTabs = [...state.tabs]
+						let nextActiveTabId = state.activeTabId
+						let nextTabSaveStates = state.tabSaveStates
+
+						for (let index = 0; index < state.tabs.length; index += 1) {
+							const currentTab = state.tabs[index]
+							if (!isPathEqualOrDescendant(currentTab.path, oldPath)) {
+								continue
 							}
-						: state.linkedTab,
+
+							const nextPath =
+								currentTab.path === oldPath
+									? newPath
+									: resolve(newPath, relative(oldPath, currentTab.path))
+							const nextName = getFileNameWithoutExtension(nextPath)
+							if (!nextName) {
+								continue
+							}
+
+							let nextId = currentTab.id
+							let nextContent = currentTab.content
+							const currentIsSaved = getTabSavedFromState(state, currentTab.id)
+
+							if (refreshContent && currentTab.path === oldPath) {
+								nextId = ++tabIdCounter
+								if (refreshedContent !== null) {
+									nextContent = refreshedContent
+								}
+								nextTabSaveStates = {
+									...removeTabSaveState(nextTabSaveStates, currentTab.id),
+									[nextId]: currentIsSaved,
+								}
+								if (nextActiveTabId === currentTab.id) {
+									nextActiveTabId = nextId
+								}
+							}
+
+							nextTabs[index] = {
+								...currentTab,
+								id: nextId,
+								path: nextPath,
+								name: nextName,
+								content: nextContent,
+								syncedName:
+									shouldClearSyncedName && currentTab.path === oldPath
+										? null
+										: currentTab.syncedName,
+							}
+							didChange = true
+						}
+
+						if (!didChange) {
+							return {}
+						}
+
+						return {
+							tabs: nextTabs,
+							activeTabId: nextActiveTabId,
+							tabSaveStates: nextTabSaveStates,
+						}
+					})(),
 				}))
 			},
 			setTabSaved: (tabId, isSaved) => {
@@ -610,27 +885,29 @@ export const prepareTabSlice =
 					}
 				})
 			},
-			setLinkedTab: (linkedTab) => {
-				set({ linkedTab })
+			setActiveTabSyncedName: (name) => {
+				set(() =>
+					updateActiveTab((activeTab) =>
+						(activeTab.syncedName ?? null) === name
+							? null
+							: {
+									...activeTab,
+									syncedName: name,
+								},
+					),
+				)
 			},
-			updateLinkedName: (name) => {
-				const { linkedTab } = get()
-				const tab = getActiveTabFromState(get())
-
-				if (!tab || !linkedTab) {
-					return
-				}
-
-				const isSameTab = linkedTab.path === tab.path
-
-				if (!isSameTab || linkedTab.name === name) {
-					return
-				}
-
-				set({ linkedTab: { ...linkedTab, name } })
-			},
-			clearLinkedTab: () => {
-				set({ linkedTab: null })
+			clearActiveTabSyncedName: () => {
+				set(() =>
+					updateActiveTab((activeTab) =>
+						activeTab.syncedName == null
+							? null
+							: {
+									...activeTab,
+									syncedName: null,
+								},
+					),
+				)
 			},
 			goBack: async () => navigateHistory(-1, "back"),
 			goForward: async () => navigateHistory(1, "forward"),
@@ -653,10 +930,9 @@ export const prepareTabSlice =
 			getActiveTabPath: () => getActiveTabFromState(get())?.path ?? null,
 			getIsSaved: () => getActiveTabSavedFromState(get()),
 			updateHistoryPath: (oldPath: string, newPath: string) => {
-				const state = get()
-				set({
+				setAndPersistLastOpenedFileHistory((state) => ({
 					history: replaceHistoryPath(state.history, oldPath, newPath),
-				})
+				}))
 			},
 			removePathsFromHistory: (paths) => {
 				const state = get()
@@ -665,45 +941,72 @@ export const prepareTabSlice =
 					state.historyIndex,
 					paths,
 				)
-				const tabPath = getActiveTabFromState(state)?.path
+				const removedTabs = state.tabs.filter((tab) =>
+					paths.some((path) => isPathEqualOrDescendant(tab.path, path)),
+				)
+				const removedTabIds = new Set(removedTabs.map((tab) => tab.id))
+				const activeTab = getActiveTabFromState(state)
 				const isCurrentTabDeleted =
-					!!tabPath &&
-					paths.some((path) => isPathEqualOrDescendant(tabPath, path))
+					!!activeTab && removedTabIds.has(activeTab.id)
 
-				if (isCurrentTabDeleted) {
-					if (history.length > 0) {
-						set({
-							history,
-							historyIndex,
-						})
-
-						const targetPath = history[historyIndex]?.path
-						if (!targetPath) {
-							set(buildSingleActiveTabState(null))
-							return
-						}
-
-						get()
-							.openTab(targetPath, true, false, {
-								skipSelectionCapture: true,
-							})
-							.catch((error) => {
-								console.error("Failed to navigate after deletion:", error)
-								set(buildSingleActiveTabState(null))
-							})
-					} else {
-						set({
-							...buildSingleActiveTabState(null),
-							history,
-							historyIndex: -1,
-						})
-					}
-				} else {
+				if (removedTabs.length === 0) {
 					set({
 						history,
 						historyIndex,
 					})
+					return
 				}
+
+				for (const removedTab of removedTabs) {
+					pendingExternalReloadSaveSkipTabIds.delete(removedTab.id)
+				}
+
+				setAndPersistLastOpenedFileHistory((currentState) => {
+					const nextTabs = currentState.tabs.filter(
+						(tab) => !removedTabIds.has(tab.id),
+					)
+					let nextActiveTabId = currentState.activeTabId
+					if (
+						currentState.activeTabId !== null &&
+						removedTabIds.has(currentState.activeTabId)
+					) {
+						const removedIndex = currentState.tabs.findIndex(
+							(tab) => tab.id === currentState.activeTabId,
+						)
+						nextActiveTabId = selectFallbackActiveTabId(nextTabs, removedIndex)
+					}
+
+					const nextTabSaveStates = Object.fromEntries(
+						Object.entries(currentState.tabSaveStates).filter(
+							([tabId]) => !removedTabIds.has(Number(tabId)),
+						),
+					) as TabSaveStateMap
+
+					return {
+						tabs: nextTabs,
+						activeTabId: nextActiveTabId,
+						tabSaveStates: nextTabSaveStates,
+						history,
+						historyIndex: history.length > 0 ? historyIndex : -1,
+					}
+				})
+
+				if (!isCurrentTabDeleted || history.length === 0) {
+					return
+				}
+
+				const targetPath = history[historyIndex]?.path
+				if (!targetPath) {
+					return
+				}
+
+				get()
+					.openTab(targetPath, true, false, {
+						skipSelectionCapture: true,
+					})
+					.catch((error) => {
+						console.error("Failed to navigate after deletion:", error)
+					})
 			},
 			clearHistory: () => {
 				clearPendingHistorySelectionRestore()

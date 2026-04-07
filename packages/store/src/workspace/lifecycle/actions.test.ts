@@ -70,7 +70,7 @@ describe("lifecycle-actions", () => {
 		expect(getState().unwatchFn).toBe(unwatch)
 	})
 
-	it("setWorkspace closes the policy-selected tab when tabs are open", async () => {
+	it("setWorkspace closes all open tabs when tabs are open", async () => {
 		const { context, deps, ports, setState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		setState({
@@ -84,8 +84,29 @@ describe("lifecycle-actions", () => {
 
 		await actions.setWorkspace("/new")
 
-		expect(ports.tab.closeTab).toHaveBeenCalledWith("/old/first.md")
+		expect(ports.tab.closeAllTabs).toHaveBeenCalledTimes(1)
 		expect(ports.tab.clearHistory).toHaveBeenCalledTimes(1)
+	})
+
+	it("setWorkspace aborts when any open tab is unsaved", async () => {
+		const { context, deps, ports, setState } = createActionTestContext()
+		const actions = createLifecycleActions(context)
+		setState({
+			workspacePath: "/old",
+		})
+		ports.tab.getOpenTabSnapshots.mockReturnValue([
+			{ path: "/old/first.md", isSaved: true },
+			{ path: "/old/second.md", isSaved: false },
+		])
+
+		await actions.setWorkspace("/new")
+
+		expect(ports.tab.closeAllTabs).not.toHaveBeenCalled()
+		expect(ports.tab.clearHistory).not.toHaveBeenCalled()
+		expect(deps.historyRepository.touchWorkspace).not.toHaveBeenCalled()
+		expect(deps.toast.error).toHaveBeenCalledWith(
+			"Save open notes before switching workspaces.",
+		)
 	})
 
 	it("clearWorkspace unwatches existing watcher", async () => {
@@ -107,6 +128,29 @@ describe("lifecycle-actions", () => {
 		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
+	})
+
+	it("clearWorkspace aborts when any open tab is unsaved", async () => {
+		const { context, deps, ports, setState, getState } =
+			createActionTestContext()
+		const actions = createLifecycleActions(context)
+		setState({
+			workspacePath: "/old",
+			recentWorkspacePaths: ["/old", "/other"],
+		})
+		ports.tab.getOpenTabSnapshots.mockReturnValue([
+			{ path: "/old/first.md", isSaved: false },
+		])
+
+		await actions.clearWorkspace()
+
+		expect(deps.fileSystemRepository.moveToTrash).not.toHaveBeenCalled()
+		expect(ports.tab.closeAllTabs).not.toHaveBeenCalled()
+		expect(deps.historyRepository.removeWorkspace).not.toHaveBeenCalled()
+		expect(deps.toast.error).toHaveBeenCalledWith(
+			"Save open notes before clearing the workspace.",
+		)
+		expect(getState().workspacePath).toBe("/old")
 	})
 
 	it("clearWorkspace handles moveToTrash failure without throwing", async () => {

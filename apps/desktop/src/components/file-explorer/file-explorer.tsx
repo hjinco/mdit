@@ -60,7 +60,6 @@ export function FileExplorer() {
 		setCurrentCollectionPath,
 		tab,
 		openTab,
-		clearLinkedTab,
 		aiLockedEntryPaths,
 		selectedEntryPaths,
 		selectionAnchorPath,
@@ -89,7 +88,6 @@ export function FileExplorer() {
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			tab: state.getActiveTab(),
 			openTab: state.openTab,
-			clearLinkedTab: state.clearLinkedTab,
 			aiLockedEntryPaths: state.aiLockedEntryPaths,
 			selectedEntryPaths: state.selectedEntryPaths,
 			selectionAnchorPath: state.selectionAnchorPath,
@@ -170,15 +168,12 @@ export function FileExplorer() {
 		async (entry: WorkspaceEntry, nextName: string) => {
 			try {
 				await renameEntry(entry, nextName, { allowLockedSourcePath: true })
-				if (tab?.path === entry.path) {
-					clearLinkedTab()
-				}
 			} finally {
 				unlockAiEntries([entry.path])
 				setRenamingEntryPath(null)
 			}
 		},
-		[clearLinkedTab, renameEntry, tab?.path, unlockAiEntries],
+		[renameEntry, unlockAiEntries],
 	)
 
 	const beginNewFolder = useCallback(

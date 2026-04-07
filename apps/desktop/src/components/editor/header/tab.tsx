@@ -19,16 +19,14 @@ import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
 
 export function Tab() {
-	const { tab, linkedTab, clearLinkedTab, renameEntry } = useStore(
+	const { tab, renameEntry } = useStore(
 		useShallow((s) => ({
 			tab: s.getActiveTab(),
-			linkedTab: s.linkedTab,
-			clearLinkedTab: s.clearLinkedTab,
 			renameEntry: s.renameEntry,
 		})),
 	)
 	const [isEditing, setIsEditing] = useState(false)
-	const displayName = linkedTab?.name ?? tab?.name ?? ""
+	const displayName = tab?.syncedName ?? tab?.name ?? ""
 	const [draftName, setDraftName] = useState(displayName)
 	const [isRenaming, setIsRenaming] = useState(false)
 	const inputRef = useRef<HTMLInputElement>(null)
@@ -57,8 +55,8 @@ export function Tab() {
 
 		// Cancel edits when the active tab changes to avoid renaming the wrong file.
 		setIsEditing(false)
-		setDraftName(linkedTab?.name ?? getFileNameWithoutExtension(tab.path))
-	}, [linkedTab?.name, tab?.path])
+		setDraftName(tab.syncedName ?? getFileNameWithoutExtension(tab.path))
+	}, [tab?.syncedName, tab?.path])
 
 	useEffect(() => {
 		if (!isEditing) return
@@ -112,7 +110,6 @@ export function Tab() {
 			if (!renamedPath) {
 				throw new Error("Rename rejected")
 			}
-			clearLinkedTab()
 		} catch (error) {
 			console.error("Failed to rename tab entry:", error)
 			toast.error("Failed to rename tab.")
@@ -123,15 +120,7 @@ export function Tab() {
 		}
 
 		setIsEditing(false)
-	}, [
-		clearLinkedTab,
-		draftName,
-		entry,
-		handleCancelEditing,
-		isRenaming,
-		renameEntry,
-		tab,
-	])
+	}, [draftName, entry, handleCancelEditing, isRenaming, renameEntry, tab])
 
 	const handleBlur = useCallback(() => {
 		if (!isEditing || isRenaming) return

@@ -63,7 +63,7 @@ describe("fs-structure-actions", () => {
 		expect(getState().createNote).toBe(createNote)
 	})
 
-	it("createAndOpenNote uses primary open tab directory when collection path is unset", async () => {
+	it("createAndOpenNote uses the active tab directory when collection path is unset", async () => {
 		const { context, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		const createNote = vi.fn().mockResolvedValue("/ws/folder/Untitled.md")
@@ -71,7 +71,15 @@ describe("fs-structure-actions", () => {
 		setState({
 			workspacePath: "/ws",
 			currentCollectionPath: null,
-			openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: true }],
+			tabs: [
+				{
+					id: 1,
+					path: "/ws/folder/note.md",
+					name: "note",
+					content: "",
+				},
+			],
+			activeTabId: 1,
 			createNote,
 		})
 
@@ -227,8 +235,126 @@ describe("fs-structure-actions", () => {
 			"/ws/old.md",
 			"/ws/new.md",
 		)
-		expect(ports.tab.renameTab).toHaveBeenCalledWith("/ws/old.md", "/ws/new.md")
+		expect(ports.tab.renameTab).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/new.md",
+			{
+				clearSyncedName: true,
+			},
+		)
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
+	it("renameEntry forwards manual rename synced-name cleanup intent", async () => {
+		const { context, getState, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({
+			tabs: [
+				{
+					id: 1,
+					path: "/ws/old.md",
+					name: "old",
+					content: "",
+					syncedName: "Title",
+				},
+			],
+			activeTabId: 1,
+		})
+
+		await actions.renameEntry(
+			{
+				path: "/ws/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"new.md",
+		)
+
+		expect(getState().entryRenamed).toHaveBeenCalledWith({
+			oldPath: "/ws/old.md",
+			newPath: "/ws/new.md",
+			isDirectory: false,
+			newName: "new.md",
+			clearSyncedName: true,
+		})
+	})
+
+	it("renameEntry keeps forwarding synced-name cleanup for inactive renamed tabs", async () => {
+		const { context, getState, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({
+			tabs: [
+				{
+					id: 1,
+					path: "/ws/old.md",
+					name: "old",
+					content: "",
+					syncedName: "Title",
+				},
+				{
+					id: 2,
+					path: "/ws/other.md",
+					name: "other",
+					content: "",
+				},
+			],
+			activeTabId: 2,
+		})
+
+		await actions.renameEntry(
+			{
+				path: "/ws/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"new.md",
+		)
+
+		expect(getState().entryRenamed).toHaveBeenCalledWith({
+			oldPath: "/ws/old.md",
+			newPath: "/ws/new.md",
+			isDirectory: false,
+			newName: "new.md",
+			clearSyncedName: true,
+		})
+	})
+
+	it("renameEntry can preserve the active synced name when requested", async () => {
+		const { context, getState, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({
+			tabs: [
+				{
+					id: 1,
+					path: "/ws/old.md",
+					name: "old",
+					content: "",
+					syncedName: "Title",
+				},
+			],
+			activeTabId: 1,
+		})
+
+		await actions.renameEntry(
+			{
+				path: "/ws/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"new.md",
+			{ preserveActiveTabSyncedName: true },
+		)
+
+		expect(getState().entryRenamed).toHaveBeenCalledWith({
+			oldPath: "/ws/old.md",
+			newPath: "/ws/new.md",
+			isDirectory: false,
+			newName: "new.md",
+			clearSyncedName: false,
+		})
 	})
 
 	it("renameEntry waits for unsaved active tab under renamed directory", async () => {

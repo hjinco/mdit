@@ -30,10 +30,8 @@ export function CollectionView() {
 		setCurrentCollectionPath,
 		collectionEntries,
 		tab,
-		linkedTab,
 		openTab,
 		activeTabSaved,
-		clearLinkedTab,
 		deleteEntries,
 		renameEntry,
 		updateEntryModifiedDate,
@@ -45,10 +43,8 @@ export function CollectionView() {
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			collectionEntries: state.collectionEntries,
 			tab: state.getActiveTab(),
-			linkedTab: state.linkedTab,
 			openTab: state.openTab,
 			activeTabSaved: state.getIsSaved(),
-			clearLinkedTab: state.clearLinkedTab,
 			deleteEntries: state.deleteEntries,
 			renameEntry: state.renameEntry,
 			updateEntryModifiedDate: state.updateEntryModifiedDate,
@@ -137,11 +133,6 @@ export function CollectionView() {
 	} = useCollectionRename({
 		renameEntry,
 		invalidatePreview,
-		onRenameSuccess: (oldPath) => {
-			if (oldPath === tab?.path) {
-				clearLinkedTab()
-			}
-		},
 	})
 
 	const handleDeleteEntries = useCallback(
@@ -260,7 +251,7 @@ export function CollectionView() {
 									key={entry.path}
 									entry={entry}
 									name={
-										isActive ? (linkedTab?.name ?? tab?.name ?? "") : entry.name
+										isActive ? (tab?.syncedName ?? tab?.name ?? "") : entry.name
 									}
 									isActive={isActive}
 									isSelected={isSelected}

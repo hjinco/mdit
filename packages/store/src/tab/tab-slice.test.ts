@@ -4,6 +4,7 @@ import {
 	prepareTabSlice,
 	type TabHistorySelection,
 	type TabSlice,
+	type TabSliceDependencies,
 } from "./tab-slice"
 
 type TestState = TabSlice & {
@@ -26,10 +27,47 @@ const createSelection = (
 	},
 })
 
-function createTabStore() {
-	const readTextFile = vi.fn(async (path: string) => `content:${path}`)
-	const renameFile = vi.fn(async () => undefined)
-	const saveSettings = vi.fn(async () => undefined)
+type DeferredPromise<T> = {
+	promise: Promise<T>
+	resolve: (value: T | PromiseLike<T>) => void
+	reject: (reason?: unknown) => void
+}
+
+const createDeferredPromise = <T>(): DeferredPromise<T> => {
+	let resolve!: (value: T | PromiseLike<T>) => void
+	let reject!: (reason?: unknown) => void
+	const promise = new Promise<T>((nextResolve, nextReject) => {
+		resolve = nextResolve
+		reject = nextReject
+	})
+
+	return { promise, resolve, reject }
+}
+
+const flushMicrotasks = async () => {
+	await Promise.resolve()
+	await Promise.resolve()
+}
+
+const waitForAssertion = async (assertion: () => void) => {
+	for (let attempt = 0; attempt < 10; attempt += 1) {
+		try {
+			assertion()
+			return
+		} catch (error) {
+			if (attempt === 9) {
+				throw error
+			}
+			await flushMicrotasks()
+		}
+	}
+}
+
+function createTabStore(overrides: Partial<TabSliceDependencies> = {}) {
+	const readTextFile =
+		overrides.readTextFile ?? vi.fn(async (path: string) => `content:${path}`)
+	const renameFile = overrides.renameFile ?? vi.fn(async () => undefined)
+	const saveSettings = overrides.saveSettings ?? vi.fn(async () => undefined)
 
 	const createSlice = prepareTabSlice({
 		readTextFile,
@@ -191,6 +229,59 @@ describe("tab-slice history selection", () => {
 		expect(saveSettings).not.toHaveBeenCalled()
 	})
 
+	it("persists the remaining open tabs when one tab closes", async () => {
+		const { store, saveSettings } = createTabStore()
+		store.setState({ workspacePath: "/workspace" })
+
+		await store.getState().openTab("/workspace/a.md")
+		await store.getState().openTab("/workspace/b.md")
+		await store.getState().openTab("/workspace/c.md")
+
+		store.getState().closeTab("/workspace/b.md")
+
+		await waitForAssertion(() =>
+			expect(saveSettings).toHaveBeenLastCalledWith("/workspace", {
+				lastOpenedFilePaths: ["a.md", "c.md"],
+			}),
+		)
+	})
+
+	it("serializes close-tab persistence updates", async () => {
+		const firstPersist = createDeferredPromise<void>()
+		const secondPersist = createDeferredPromise<void>()
+		const saveSettings = vi
+			.fn<TabSliceDependencies["saveSettings"]>()
+			.mockResolvedValue(undefined)
+		const { store } = createTabStore({ saveSettings })
+		store.setState({ workspacePath: "/workspace" })
+
+		await store.getState().openTab("/workspace/a.md")
+		await store.getState().openTab("/workspace/b.md")
+
+		saveSettings.mockReset()
+		saveSettings
+			.mockImplementationOnce(async () => firstPersist.promise)
+			.mockImplementationOnce(async () => secondPersist.promise)
+
+		store.getState().closeTab("/workspace/a.md")
+		store.getState().closeTab("/workspace/b.md")
+		await waitForAssertion(() => expect(saveSettings).toHaveBeenCalledTimes(1))
+
+		expect(saveSettings).toHaveBeenNthCalledWith(1, "/workspace", {
+			lastOpenedFilePaths: ["b.md"],
+		})
+
+		firstPersist.resolve(undefined)
+		await waitForAssertion(() => expect(saveSettings).toHaveBeenCalledTimes(2))
+
+		expect(saveSettings).toHaveBeenNthCalledWith(2, "/workspace", {
+			lastOpenedFilePaths: [],
+		})
+
+		secondPersist.resolve(undefined)
+		await flushMicrotasks()
+	})
+
 	it("hydrates history and sets the most recent file as active", async () => {
 		const { store } = createTabStore()
 
@@ -207,11 +298,110 @@ describe("tab-slice history selection", () => {
 		expect(store.getState().historyIndex).toBe(2)
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
 		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
 			"/notes/c.md",
 		])
 		expect(store.getState().activeTabId).toBe(
 			store.getState().getActiveTab()?.id ?? null,
 		)
+	})
+
+	it("activates an already open tab instead of replacing other open tabs", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		const firstTabId = store.getState().getActiveTab()?.id
+		await store.getState().openTab("/notes/b.md")
+		await store.getState().openTab("/notes/a.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(store.getState().getActiveTab()?.id).toBe(firstTabId)
+	})
+
+	it("removes deleted tabs while preserving unrelated open tabs", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		await store.getState().openTab("/notes/b.md")
+
+		store.getState().removePathsFromHistory(["/notes/b.md"])
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+	})
+
+	it("preserves unrelated open tabs when reopening fallback history fails", async () => {
+		const readTextFile = vi.fn(async (path: string) => `content:${path}`)
+		const { store } = createTabStore({ readTextFile })
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		await store.getState().openTab("/notes/a.md")
+		await store.getState().openTab("/notes/b.md")
+		await store.getState().openTab("/notes/c.md")
+		store.getState().closeTab("/notes/b.md")
+		readTextFile.mockImplementation(async (path: string) => {
+			if (path === "/notes/b.md") {
+				throw new Error("missing fallback note")
+			}
+
+			return `content:${path}`
+		})
+
+		store.getState().removePathsFromHistory(["/notes/c.md"])
+		await flushMicrotasks()
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+
+		consoleError.mockRestore()
+	})
+
+	it("renames inactive open tabs without disturbing the active tab", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		await store.getState().openTab("/notes/b.md")
+
+		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a-renamed.md",
+			"/notes/b.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+	})
+
+	it("can clear the renamed tab synced name without disturbing others", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		store.getState().setActiveTabSyncedName("Title A")
+		await store.getState().openTab("/notes/b.md")
+		store.getState().setActiveTabSyncedName("Title B")
+
+		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md", {
+			clearSyncedName: true,
+		})
+
+		expect(store.getState().tabs).toEqual([
+			expect.objectContaining({
+				path: "/notes/a-renamed.md",
+				syncedName: null,
+			}),
+			expect.objectContaining({
+				path: "/notes/b.md",
+				syncedName: "Title B",
+			}),
+		])
 	})
 
 	it("refreshes the active tab from external content and queues selection restore", async () => {

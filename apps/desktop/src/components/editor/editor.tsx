@@ -17,7 +17,7 @@ import { Header } from "./header/header"
 import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useExternalImageDrop } from "./hooks/use-external-image-drop"
-import { useLinkedTabName } from "./hooks/use-linked-tab-name"
+import { useTabSyncedName } from "./hooks/use-tab-synced-name"
 import { EditorKit, EditorKitNoMdx } from "./plugins/editor-kit"
 import {
 	focusEditorAtDefaultSelection,
@@ -208,7 +208,7 @@ function EditorContent({
 	}, [resetFocusMode])
 
 	useCommandMenuSelectionRestore(editor)
-	useLinkedTabName(path, value)
+	useTabSyncedName(path, value)
 
 	const { isExternalDropOver } = useExternalImageDrop(
 		editor,

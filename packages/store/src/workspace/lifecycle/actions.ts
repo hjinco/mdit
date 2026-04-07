@@ -1,6 +1,7 @@
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import {
 	closeWorkspaceTabs,
+	hasUnsavedWorkspaceTabs,
 	type LoadWorkspaceOptions,
 	loadWorkspace,
 	resetWorkspaceState,
@@ -52,8 +53,12 @@ export const createLifecycleActions = (
 					return
 				}
 
-				closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
+				if (hasUnsavedWorkspaceTabs(ctx)) {
+					ctx.deps.toast.error?.("Save open notes before switching workspaces.")
+					return
+				}
 
+				closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
 				await ctx.deps.historyRepository.touchWorkspace(path)
 				const recentWorkspacePaths = await listRecentWorkspacePaths()
 				await loadWorkspace(ctx, path, { recentWorkspacePaths })
@@ -91,9 +96,15 @@ export const createLifecycleActions = (
 			}
 
 			try {
+				if (hasUnsavedWorkspaceTabs(ctx)) {
+					ctx.deps.toast.error?.(
+						"Save open notes before clearing the workspace.",
+					)
+					return
+				}
+
 				await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
 				closeWorkspaceTabs(ctx)
-
 				await ctx.deps.historyRepository.removeWorkspace(workspacePath)
 				const recentWorkspacePaths = await listRecentWorkspacePaths()
 				resetWorkspaceState(ctx, {

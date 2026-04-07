@@ -7,7 +7,7 @@ import { dirname, resolve } from "pathe"
 import { findEntryByPath, findParentDirectory } from "../tree/domain/entry-tree"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
-import { getPrimaryOpenTabPathForWorkspacePolicy } from "../workspace-tab-policy"
+import { getOpenTabSnapshotsForWorkspacePolicy } from "../workspace-tab-policy"
 import { collapseDirectoryPaths } from "./tree-patch"
 import type { VaultWatchOp } from "./types"
 
@@ -152,6 +152,21 @@ export const applyWatchBatchChanges = async (
 	)
 	const fallbackDirectoryPaths = new Set<string>()
 	let requiresFullRefresh = false
+	let openTabPathSet: Set<string> | null = null
+
+	const readOpenTabPathSet = (): Set<string> => {
+		if (openTabPathSet === null) {
+			openTabPathSet = new Set(
+				getOpenTabSnapshotsForWorkspacePolicy(ctx).map((tab) => tab.path),
+			)
+		}
+
+		return openTabPathSet
+	}
+
+	const invalidateOpenTabPathSet = () => {
+		openTabPathSet = null
+	}
 
 	for (const op of input.ops) {
 		if (!isExternalChange(op, externalRelPathSet)) {
@@ -201,6 +216,7 @@ export const applyWatchBatchChanges = async (
 						isDirectory,
 						newName: getFileNameFromPath(toPath),
 					})
+					invalidateOpenTabPathSet()
 				} catch {
 					if (
 						!addBothParentFallbacks(
@@ -237,6 +253,7 @@ export const applyWatchBatchChanges = async (
 					newPath: toPath,
 					isDirectory,
 				})
+				invalidateOpenTabPathSet()
 			} catch {
 				if (
 					!addBothParentFallbacks(
@@ -269,6 +286,7 @@ export const applyWatchBatchChanges = async (
 		if (op.after === "missing") {
 			try {
 				await ctx.get().entriesDeleted({ paths: [absolutePath] })
+				invalidateOpenTabPathSet()
 			} catch {
 				if (
 					!addFallbackParentDirectoryPath(
@@ -380,8 +398,8 @@ export const applyWatchBatchChanges = async (
 			continue
 		}
 
-		const primaryOpenTabPath = getPrimaryOpenTabPathForWorkspacePolicy(ctx)
-		if (primaryOpenTabPath === absolutePath && absolutePath.endsWith(".md")) {
+		const isOpenTabPath = readOpenTabPathSet().has(absolutePath)
+		if (isOpenTabPath && absolutePath.endsWith(".md")) {
 			try {
 				const content =
 					await ctx.deps.fileSystemRepository.readTextFile(absolutePath)

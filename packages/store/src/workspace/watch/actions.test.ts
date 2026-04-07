@@ -484,7 +484,7 @@ describe("watch/actions", () => {
 		})
 	})
 
-	it("does not reload non-primary tabs when policy has multiple open snapshots", async () => {
+	it("reloads open tabs when policy has multiple open snapshots", async () => {
 		const { context, setState, originJournal, deps, ports } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
@@ -531,7 +531,11 @@ describe("watch/actions", () => {
 		})
 		await flushQueue()
 
-		expect(ports.tab.refreshTabFromExternalContent).not.toHaveBeenCalled()
+		expect(ports.tab.refreshTabFromExternalContent).toHaveBeenCalledWith(
+			"/ws/docs/second.md",
+			"",
+			{ preserveSelection: true },
+		)
 	})
 
 	it("reloads the active markdown tab and updates metadata for external file changes", async () => {
