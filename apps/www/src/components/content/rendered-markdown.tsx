@@ -8,10 +8,6 @@ export function RenderedMarkdown({
 	className = "content-body",
 }: RenderedMarkdownProps) {
 	return (
-		<div
-			className={className}
-			// biome-ignore lint/security/noDangerouslySetInnerHtml: content is generated from local repository markdown during build.
-			dangerouslySetInnerHTML={{ __html: html }}
-		/>
+		<div className={className} dangerouslySetInnerHTML={{ __html: html }} />
 	)
 }

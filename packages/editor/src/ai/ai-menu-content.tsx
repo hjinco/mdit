@@ -189,7 +189,6 @@ export function AIMenuContent({
 		[textareaLineCount, value],
 	)
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: true
 	useEffect(() => {
 		if (!isLoading) {
 			adjustTextareaHeight()

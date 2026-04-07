@@ -89,7 +89,6 @@ export function InfoButton() {
 		}
 	}, [isNoteInfoOpen, workspacePath, tab?.path])
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: off
 	useEffect(() => {
 		setRelatedNotes([])
 	}, [tab?.path])

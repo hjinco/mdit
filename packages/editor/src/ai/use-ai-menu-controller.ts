@@ -219,7 +219,6 @@ const useAIMenuAnchor = ({
 		},
 	})
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: keep behavior aligned with prior implementation
 	useEffect(() => {
 		if (streaming) {
 			const anchor = api.aiChat.node({ anchor: true })
@@ -231,7 +230,6 @@ const useAIMenuAnchor = ({
 		}
 	}, [streaming])
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: keep behavior aligned with prior implementation
 	useEffect(() => {
 		if (toolName === "edit" && mode === "chat" && !isLoading) {
 			let anchorNode = editor.api.node({

@@ -440,7 +440,6 @@ export const useEquationElement = ({
 	katexRef: React.MutableRefObject<HTMLDivElement | null>
 	options?: KatexOptions
 }) => {
-	// biome-ignore lint/correctness/useExhaustiveDependencies: true
 	useEffect(() => {
 		if (!katexRef.current) return
 		const equation =

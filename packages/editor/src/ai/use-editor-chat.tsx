@@ -257,7 +257,6 @@ export const useEditorChat = (host: EditorChatHostDeps): Chat => {
 		},
 	})
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: true
 	useEffect(() => {
 		editor.setOption(AIChatPlugin, "chat", chat)
 	}, [chat.status, chat.messages, chat.error])
