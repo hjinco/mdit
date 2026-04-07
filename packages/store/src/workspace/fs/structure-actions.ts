@@ -234,7 +234,21 @@ export const createFsStructureActions = (
 			!entry.isDirectory && !options?.preserveActiveTabSyncedName
 
 		if (ctx.get().isEditMode) {
-			await ctx.ports.tab.renameTab(entry.path, nextPath, { clearSyncedName })
+			const { workspacePath } = ctx.get()
+			if (!workspacePath) {
+				await ctx.ports.tab.renameTab(entry.path, nextPath, {
+					clearSyncedName,
+				})
+				return nextPath
+			}
+
+			await ctx.runtime.events.emit({
+				type: "workspace/tab-path-renamed",
+				workspacePath,
+				oldPath: entry.path,
+				newPath: nextPath,
+				clearSyncedName,
+			})
 			return nextPath
 		}
 

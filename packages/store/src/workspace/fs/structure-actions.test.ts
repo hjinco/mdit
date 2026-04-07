@@ -215,11 +215,11 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
-		const { context, deps, ports, setState, getState } =
+		const { context, deps, events, ports, setState, getState } =
 			createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
-		setState({ isEditMode: true })
+		setState({ isEditMode: true, workspacePath: "/ws" })
 
 		const renamedPath = await actions.renameEntry(
 			{
@@ -235,13 +235,46 @@ describe("fs-structure-actions", () => {
 			"/ws/old.md",
 			"/ws/new.md",
 		)
+		expect(ports.tab.renameTab).not.toHaveBeenCalled()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/tab-path-renamed",
+			workspacePath: "/ws",
+			oldPath: "/ws/old.md",
+			newPath: "/ws/new.md",
+			clearSyncedName: true,
+		})
+		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
+	it("renameEntry falls back to direct tab rename in edit mode without workspace", async () => {
+		const { context, deps, events, ports, setState, getState } =
+			createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({ isEditMode: true, workspacePath: null })
+
+		const renamedPath = await actions.renameEntry(
+			{
+				path: "/tmp/old.md",
+				name: "old.md",
+				isDirectory: false,
+			},
+			"new.md",
+		)
+
+		expect(renamedPath).toBe("/tmp/new.md")
+		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
+			"/tmp/old.md",
+			"/tmp/new.md",
+		)
 		expect(ports.tab.renameTab).toHaveBeenCalledWith(
-			"/ws/old.md",
-			"/ws/new.md",
+			"/tmp/old.md",
+			"/tmp/new.md",
 			{
 				clearSyncedName: true,
 			},
 		)
+		expect(events.emit).not.toHaveBeenCalled()
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 

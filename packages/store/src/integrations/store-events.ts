@@ -5,6 +5,25 @@ export type StoreEvent =
 	| { type: "workspace/loaded"; workspacePath: string }
 	| { type: "workspace/entries-replaced"; workspacePath: string }
 	| {
+			type: "workspace/tab-paths-removed"
+			workspacePath: string
+			paths: string[]
+	  }
+	| {
+			type: "workspace/tab-path-renamed"
+			workspacePath: string
+			oldPath: string
+			newPath: string
+			clearSyncedName: boolean
+	  }
+	| {
+			type: "workspace/tab-path-moved"
+			workspacePath: string
+			sourcePath: string
+			newPath: string
+			refreshContent: boolean
+	  }
+	| {
 			type: "workspace/entry-created"
 			workspacePath: string
 			parentPath: string
