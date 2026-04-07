@@ -19,13 +19,7 @@ export type WorkspacePorts = {
 	>
 	collection: Pick<
 		CollectionSlice,
-		| "refreshCollectionEntries"
-		| "onEntryCreated"
-		| "onEntriesDeleted"
-		| "onEntryRenamed"
-		| "onEntryMoved"
-		| "resetCollectionPath"
-		| "getCurrentCollectionPath"
+		"resetCollectionPath" | "getCurrentCollectionPath"
 	>
 }
 
@@ -50,12 +44,6 @@ export const createWorkspacePorts = (
 		getActiveTabPath: () => get().getActiveTabPath(),
 	},
 	collection: {
-		refreshCollectionEntries: (...args) =>
-			get().refreshCollectionEntries(...args),
-		onEntryCreated: (...args) => get().onEntryCreated(...args),
-		onEntriesDeleted: (...args) => get().onEntriesDeleted(...args),
-		onEntryRenamed: (...args) => get().onEntryRenamed(...args),
-		onEntryMoved: (...args) => get().onEntryMoved(...args),
 		resetCollectionPath: (...args) => get().resetCollectionPath(...args),
 		getCurrentCollectionPath: () => get().getCurrentCollectionPath(),
 	},

@@ -107,7 +107,14 @@ export const prepareCollectionSlice =
 			}))
 		},
 
-		onEntryCreated: () => {},
+		onEntryCreated: () => {
+			set((state) => ({
+				collectionEntries: computeCollectionEntries(
+					state.currentCollectionPath,
+					get().entries,
+				),
+			}))
+		},
 
 		onEntriesDeleted: ({ paths }) => {
 			set((state) => {
@@ -142,21 +149,21 @@ export const prepareCollectionSlice =
 		},
 
 		onEntryRenamed: ({ oldPath, newPath, isDirectory }) => {
-			if (!isDirectory) {
-				return
-			}
-
 			set((state) => {
-				const nextCurrentCollectionPath = replacePathPrefixIfDescendant(
-					state.currentCollectionPath,
-					oldPath,
-					newPath,
-				)
-				const nextLastCollectionPath = replacePathPrefixIfDescendant(
-					state.lastCollectionPath,
-					oldPath,
-					newPath,
-				)
+				const nextCurrentCollectionPath = isDirectory
+					? replacePathPrefixIfDescendant(
+							state.currentCollectionPath,
+							oldPath,
+							newPath,
+						)
+					: state.currentCollectionPath
+				const nextLastCollectionPath = isDirectory
+					? replacePathPrefixIfDescendant(
+							state.lastCollectionPath,
+							oldPath,
+							newPath,
+						)
+					: state.lastCollectionPath
 
 				return {
 					currentCollectionPath: nextCurrentCollectionPath,
@@ -170,21 +177,21 @@ export const prepareCollectionSlice =
 		},
 
 		onEntryMoved: ({ sourcePath, newPath, isDirectory }) => {
-			if (!isDirectory) {
-				return
-			}
-
 			set((state) => {
-				const nextCurrentCollectionPath = replacePathPrefixIfDescendant(
-					state.currentCollectionPath,
-					sourcePath,
-					newPath,
-				)
-				const nextLastCollectionPath = replacePathPrefixIfDescendant(
-					state.lastCollectionPath,
-					sourcePath,
-					newPath,
-				)
+				const nextCurrentCollectionPath = isDirectory
+					? replacePathPrefixIfDescendant(
+							state.currentCollectionPath,
+							sourcePath,
+							newPath,
+						)
+					: state.currentCollectionPath
+				const nextLastCollectionPath = isDirectory
+					? replacePathPrefixIfDescendant(
+							state.lastCollectionPath,
+							sourcePath,
+							newPath,
+						)
+					: state.lastCollectionPath
 
 				return {
 					currentCollectionPath: nextCurrentCollectionPath,

@@ -3,8 +3,41 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createTreeEntryActions } from "./entry-actions"
 
 describe("tree/entry-actions", () => {
+	it("entryCreated emits workspace entry created events", async () => {
+		const { context, events, setState } = createActionTestContext()
+		setState({
+			workspacePath: "/ws",
+			entries: [],
+		})
+
+		const actions = createTreeEntryActions(context)
+
+		await actions.entryCreated({
+			parentPath: "/ws",
+			entry: {
+				path: "/ws/a.md",
+				name: "a.md",
+				isDirectory: false,
+			},
+			expandParent: true,
+		})
+
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/entry-created",
+			workspacePath: "/ws",
+			parentPath: "/ws",
+			entry: {
+				path: "/ws/a.md",
+				name: "a.md",
+				isDirectory: false,
+			},
+			expandParent: true,
+			expandNewDirectory: false,
+		})
+	})
+
 	it("entriesDeleted removes history paths in one batch", async () => {
-		const { context, ports, setState } = createActionTestContext()
+		const { context, events, ports, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [
@@ -25,7 +58,9 @@ describe("tree/entry-actions", () => {
 			"/ws/a.md",
 			"/ws/folder",
 		])
-		expect(ports.collection.onEntriesDeleted).toHaveBeenCalledWith({
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/entries-deleted",
+			workspacePath: "/ws",
 			paths: ["/ws/a.md", "/ws/folder"],
 		})
 	})
@@ -47,8 +82,8 @@ describe("tree/entry-actions", () => {
 		])
 	})
 
-	it("entryRenamed updates tab/history via ports and notifies collection", async () => {
-		const { context, ports, setState } = createActionTestContext()
+	it("entryRenamed updates tab/history via ports and emits workspace rename events", async () => {
+		const { context, events, ports, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
@@ -74,11 +109,44 @@ describe("tree/entry-actions", () => {
 			"/ws/folder",
 			"/ws/renamed",
 		)
-		expect(ports.collection.onEntryRenamed).toHaveBeenCalledWith({
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/entry-renamed",
+			workspacePath: "/ws",
 			oldPath: "/ws/folder",
 			newPath: "/ws/renamed",
 			isDirectory: true,
 			newName: "renamed",
+		})
+	})
+
+	it("entryMoved emits workspace move events", async () => {
+		const { context, events, ports, setState } = createActionTestContext()
+		setState({
+			workspacePath: "/ws",
+			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
+		})
+
+		const actions = createTreeEntryActions(context)
+
+		await actions.entryMoved({
+			sourcePath: "/ws/folder",
+			destinationDirPath: "/ws/archive",
+			newPath: "/ws/archive/folder",
+			isDirectory: true,
+		})
+
+		expect(ports.tab.renameTab).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/archive/folder",
+			{ refreshContent: false },
+		)
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/entry-moved",
+			workspacePath: "/ws",
+			sourcePath: "/ws/folder",
+			destinationDirPath: "/ws/archive",
+			newPath: "/ws/archive/folder",
+			isDirectory: true,
 		})
 	})
 

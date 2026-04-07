@@ -69,8 +69,10 @@ export const createTreeEntryActions = (
 				? sortWorkspaceEntries([...entries, entry])
 				: addEntryToState(entries, parentPath, entry)
 
-		ctx.get().updateEntries(nextEntries)
-		ctx.ports.collection.onEntryCreated({
+		ctx.get().updateEntries(nextEntries, { emitEvent: false })
+		await ctx.runtime.events.emit({
+			type: "workspace/entry-created",
+			workspacePath,
 			parentPath,
 			entry,
 			expandParent,
@@ -101,7 +103,9 @@ export const createTreeEntryActions = (
 
 		ctx.ports.tab.removePathsFromHistory(paths)
 
-		ctx.get().updateEntries(removeEntriesFromState(entries, paths))
+		ctx.get().updateEntries(removeEntriesFromState(entries, paths), {
+			emitEvent: false,
+		})
 
 		const nextExpanded = removeExpandedDirectories(expandedDirectories, paths)
 		await persistExpandedDirectoriesIfChanged(
@@ -119,7 +123,11 @@ export const createTreeEntryActions = (
 			nextPinned,
 		)
 
-		ctx.ports.collection.onEntriesDeleted({ paths })
+		await ctx.runtime.events.emit({
+			type: "workspace/entries-deleted",
+			workspacePath,
+			paths,
+		})
 	},
 
 	entryRenamed: async ({
@@ -138,9 +146,19 @@ export const createTreeEntryActions = (
 
 		ctx
 			.get()
-			.updateEntries(updateEntryInState(entries, oldPath, newPath, newName))
+			.updateEntries(updateEntryInState(entries, oldPath, newPath, newName), {
+				emitEvent: false,
+			})
 
 		if (!isDirectory) {
+			await ctx.runtime.events.emit({
+				type: "workspace/entry-renamed",
+				workspacePath,
+				oldPath,
+				newPath,
+				isDirectory,
+				newName,
+			})
 			return
 		}
 
@@ -168,7 +186,9 @@ export const createTreeEntryActions = (
 			nextPinned,
 		)
 
-		ctx.ports.collection.onEntryRenamed({
+		await ctx.runtime.events.emit({
+			type: "workspace/entry-renamed",
+			workspacePath,
 			oldPath,
 			newPath,
 			isDirectory,
@@ -202,6 +222,7 @@ export const createTreeEntryActions = (
 					workspacePath,
 					newPath,
 				),
+				{ emitEvent: false },
 			)
 
 		if (isDirectory) {
@@ -230,7 +251,9 @@ export const createTreeEntryActions = (
 			)
 		}
 
-		ctx.ports.collection.onEntryMoved({
+		await ctx.runtime.events.emit({
+			type: "workspace/entry-moved",
+			workspacePath,
 			sourcePath,
 			destinationDirPath,
 			newPath,

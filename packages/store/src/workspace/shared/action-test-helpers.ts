@@ -128,11 +128,6 @@ export function createActionTestContext() {
 			}),
 		},
 		collection: {
-			refreshCollectionEntries: vi.fn(),
-			onEntryCreated: vi.fn(),
-			onEntriesDeleted: vi.fn(),
-			onEntryRenamed: vi.fn(),
-			onEntryMoved: vi.fn(),
 			resetCollectionPath: vi.fn(),
 			getCurrentCollectionPath: vi.fn(() => state.currentCollectionPath),
 		},

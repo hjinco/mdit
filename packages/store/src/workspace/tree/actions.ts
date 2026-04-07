@@ -11,6 +11,9 @@ export type WorkspaceTreeActions = {
 		entriesOrAction:
 			| WorkspaceEntry[]
 			| ((entries: WorkspaceEntry[]) => WorkspaceEntry[]),
+		options?: {
+			emitEvent?: boolean
+		},
 	) => void
 	refreshWorkspaceEntries: () => Promise<void>
 }
@@ -27,13 +30,25 @@ export const createTreeActions = (
 		ctx.set({ isEditMode })
 	},
 
-	updateEntries: (entriesOrAction) => {
+	updateEntries: (entriesOrAction, options) => {
 		const entries =
 			typeof entriesOrAction === "function"
 				? entriesOrAction(ctx.get().entries)
 				: entriesOrAction
 		ctx.set({ entries })
-		ctx.ports.collection.refreshCollectionEntries()
+		const workspacePath = ctx.get().workspacePath
+		if (!workspacePath || options?.emitEvent === false) {
+			return
+		}
+
+		void ctx.runtime.events
+			.emit({
+				type: "workspace/entries-replaced",
+				workspacePath,
+			})
+			.catch((error) => {
+				console.error("Failed to emit workspace entries replaced event:", error)
+			})
 	},
 
 	refreshWorkspaceEntries: async () => {
