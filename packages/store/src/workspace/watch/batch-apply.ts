@@ -403,7 +403,11 @@ export const applyWatchBatchChanges = async (
 			try {
 				const content =
 					await ctx.deps.fileSystemRepository.readTextFile(absolutePath)
-				ctx.ports.tab.refreshTabFromExternalContent(absolutePath, content, {
+				await ctx.runtime.events.emit({
+					type: "workspace/tab-content-refresh-requested",
+					workspacePath: input.workspacePath,
+					path: absolutePath,
+					content,
 					preserveSelection: true,
 				})
 			} catch (error) {

@@ -58,7 +58,9 @@ export const createLifecycleActions = (
 					return
 				}
 
-				closeWorkspaceTabs(ctx, { clearHistoryWhenNoActiveTab: true })
+				await closeWorkspaceTabs(ctx, {
+					clearHistoryWhenNoActiveTab: true,
+				})
 				await ctx.deps.historyRepository.touchWorkspace(path)
 				const recentWorkspacePaths = await listRecentWorkspacePaths()
 				await loadWorkspace(ctx, path, { recentWorkspacePaths })
@@ -104,7 +106,7 @@ export const createLifecycleActions = (
 				}
 
 				await ctx.deps.fileSystemRepository.moveToTrash(workspacePath)
-				closeWorkspaceTabs(ctx)
+				await closeWorkspaceTabs(ctx)
 				await ctx.deps.historyRepository.removeWorkspace(workspacePath)
 				const recentWorkspacePaths = await listRecentWorkspacePaths()
 				resetWorkspaceState(ctx, {

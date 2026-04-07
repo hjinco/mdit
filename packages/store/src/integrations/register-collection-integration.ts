@@ -9,6 +9,10 @@ export const registerCollectionIntegration = (
 		const state = store.getState()
 
 		switch (event.type) {
+			case "workspace/reset": {
+				state.resetCollectionPath()
+				return
+			}
 			case "workspace/entries-replaced": {
 				if (state.workspacePath !== event.workspacePath) {
 					return

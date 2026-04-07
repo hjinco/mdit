@@ -77,7 +77,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("setWorkspace closes all open tabs when tabs are open", async () => {
-		const { context, deps, ports, setState } = createActionTestContext()
+		const { context, deps, events, ports, setState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		setState({
 			workspacePath: "/old",
@@ -90,12 +90,15 @@ describe("lifecycle-actions", () => {
 
 		await actions.setWorkspace("/new")
 
-		expect(ports.tab.closeAllTabs).toHaveBeenCalledTimes(1)
-		expect(ports.tab.clearHistory).toHaveBeenCalledTimes(1)
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/tab-reset-requested",
+			workspacePath: "/old",
+			clearHistoryWhenNoActiveTab: true,
+		})
 	})
 
 	it("setWorkspace aborts when any open tab is unsaved", async () => {
-		const { context, deps, ports, setState } = createActionTestContext()
+		const { context, deps, events, ports, setState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		setState({
 			workspacePath: "/old",
@@ -107,8 +110,11 @@ describe("lifecycle-actions", () => {
 
 		await actions.setWorkspace("/new")
 
-		expect(ports.tab.closeAllTabs).not.toHaveBeenCalled()
-		expect(ports.tab.clearHistory).not.toHaveBeenCalled()
+		expect(events.emit).not.toHaveBeenCalledWith({
+			type: "workspace/tab-reset-requested",
+			workspacePath: "/old",
+			clearHistoryWhenNoActiveTab: true,
+		})
 		expect(deps.historyRepository.touchWorkspace).not.toHaveBeenCalled()
 		expect(deps.toast.error).toHaveBeenCalledWith(
 			"Save open notes before switching workspaces.",
@@ -140,7 +146,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("clearWorkspace aborts when any open tab is unsaved", async () => {
-		const { context, deps, ports, setState, getState } =
+		const { context, deps, events, ports, setState, getState } =
 			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		setState({
@@ -154,7 +160,11 @@ describe("lifecycle-actions", () => {
 		await actions.clearWorkspace()
 
 		expect(deps.fileSystemRepository.moveToTrash).not.toHaveBeenCalled()
-		expect(ports.tab.closeAllTabs).not.toHaveBeenCalled()
+		expect(events.emit).not.toHaveBeenCalledWith({
+			type: "workspace/tab-reset-requested",
+			workspacePath: "/old",
+			clearHistoryWhenNoActiveTab: false,
+		})
 		expect(deps.historyRepository.removeWorkspace).not.toHaveBeenCalled()
 		expect(deps.toast.error).toHaveBeenCalledWith(
 			"Save open notes before clearing the workspace.",
@@ -284,7 +294,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("loadWorkspace uses provided recent paths and restores tabs when requested", async () => {
-		const { context, deps, ports, getState } = createActionTestContext()
+		const { context, deps, events, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
 		deps.fileSystemRepository.readDir.mockImplementation(
@@ -307,7 +317,11 @@ describe("lifecycle-actions", () => {
 
 		expect(getState().workspacePath).toBe("/ws")
 		expect(getState().recentWorkspacePaths).toEqual(["/ws", "/other"])
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md"],
+		})
 	})
 
 	it("setWorkspace removes missing path and refreshes workspace list", async () => {
@@ -343,8 +357,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("removeWorkspaceFromHistory keeps current workspace open", async () => {
-		const { context, deps, ports, setState, getState } =
-			createActionTestContext()
+		const { context, deps, setState, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 		setState({
 			workspacePath: "/current",
@@ -359,8 +372,6 @@ describe("lifecycle-actions", () => {
 		)
 		expect(getState().workspacePath).toBe("/current")
 		expect(getState().recentWorkspacePaths).toEqual(["/other"])
-		expect(ports.tab.closeTab).not.toHaveBeenCalled()
-		expect(ports.tab.clearHistory).not.toHaveBeenCalled()
 	})
 
 	it("bootstrapWorkspace sanitizes invalid expanded/pinned directories from settings", async () => {
@@ -403,7 +414,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("bootstrapWorkspace restores opened file history in order", async () => {
-		const { context, deps, ports } = createActionTestContext()
+		const { context, deps, events } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
@@ -417,17 +428,15 @@ describe("lifecycle-actions", () => {
 
 		await bootstrapWorkspace(actions)
 
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
-			"/ws/a.md",
-			"/ws/b.md",
-			"/ws/c.md",
-		])
-		expect(ports.tab.openTab).not.toHaveBeenCalled()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md", "/ws/b.md", "/ws/c.md"],
+		})
 	})
 
 	it("bootstrapWorkspace restores only valid opened file paths", async () => {
-		const { context, deps, ports } = createActionTestContext()
+		const { context, deps, events } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
@@ -446,16 +455,15 @@ describe("lifecycle-actions", () => {
 
 		await bootstrapWorkspace(actions)
 
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
-			"/ws/valid-a.md",
-			"/ws/valid-b.md",
-		])
-		expect(ports.tab.openTab).not.toHaveBeenCalled()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/valid-a.md", "/ws/valid-b.md"],
+		})
 	})
 
 	it("bootstrapWorkspace restores at most five opened file paths", async () => {
-		const { context, deps, ports } = createActionTestContext()
+		const { context, deps, events } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
@@ -467,19 +475,15 @@ describe("lifecycle-actions", () => {
 
 		await bootstrapWorkspace(actions)
 
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledTimes(1)
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith([
-			"/ws/2.md",
-			"/ws/3.md",
-			"/ws/4.md",
-			"/ws/5.md",
-			"/ws/6.md",
-		])
-		expect(ports.tab.openTab).not.toHaveBeenCalled()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/2.md", "/ws/3.md", "/ws/4.md", "/ws/5.md", "/ws/6.md"],
+		})
 	})
 
-	it("bootstrapWorkspace skips tab restore when hydration fails", async () => {
-		const { context, deps, ports } = createActionTestContext()
+	it("bootstrapWorkspace emits a restore request for valid paths", async () => {
+		const { context, deps, events } = createActionTestContext()
 		const actions = createLifecycleActions(context)
 
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
@@ -488,11 +492,13 @@ describe("lifecycle-actions", () => {
 			lastOpenedFilePaths: ["a.md"],
 		})
 		deps.fileSystemRepository.exists.mockResolvedValue(true)
-		ports.tab.hydrateFromOpenedFiles.mockResolvedValue(false)
 
 		await bootstrapWorkspace(actions)
 
-		expect(ports.tab.hydrateFromOpenedFiles).toHaveBeenCalledWith(["/ws/a.md"])
-		expect(ports.tab.openTab).not.toHaveBeenCalled()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md"],
+		})
 	})
 })

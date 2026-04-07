@@ -10,6 +10,7 @@ import {
 import { registerCollectionIntegration } from "./register-collection-integration"
 import { registerGitSyncWorkspaceIntegration } from "./register-git-sync-workspace-integration"
 import { registerIndexingIntegration } from "./register-indexing-integration"
+import { registerTabLifecycleIntegration } from "./register-tab-lifecycle-integration"
 import { registerTabPathIntegration } from "./register-tab-path-integration"
 import { createStoreEventHub } from "./store-events"
 
@@ -236,6 +237,26 @@ describe("store integrations", () => {
 		expect(store.getState().collectionEntries).toEqual([])
 	})
 
+	it("resets collection state when workspace resets", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/folder",
+			lastCollectionPath: "/ws/folder",
+			collectionEntries: [makeFile("/ws/folder/note.md", "note.md")],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/reset",
+			workspacePath: null,
+		})
+
+		expect(store.getState().currentCollectionPath).toBeNull()
+		expect(store.getState().lastCollectionPath).toBeNull()
+		expect(store.getState().collectionEntries).toEqual([])
+	})
+
 	it("removes deleted paths from tab history", async () => {
 		const events = createStoreEventHub()
 		const { store } = createTabIntegrationStore()
@@ -331,6 +352,123 @@ describe("store integrations", () => {
 		expect(store.getState().history.map((entry) => entry.path)).toEqual([
 			"/other/a.md",
 		])
+	})
+
+	it("closes tabs and clears history when workspace tab reset is requested", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		await store.getState().openTab("/ws/a.md")
+		await store.getState().openTab("/ws/b.md")
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-reset-requested",
+			workspacePath: "/ws",
+			clearHistoryWhenNoActiveTab: false,
+		})
+
+		expect(store.getState().tabs).toEqual([])
+		expect(store.getState().activeTabId).toBeNull()
+		expect(store.getState().history).toEqual([])
+		expect(store.getState().historyIndex).toBe(-1)
+	})
+
+	it("clears history without open tabs when explicitly requested", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		store.setState({
+			history: [{ path: "/ws/a.md", selection: null }],
+			historyIndex: 0,
+		})
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-reset-requested",
+			workspacePath: "/ws",
+			clearHistoryWhenNoActiveTab: true,
+		})
+
+		expect(store.getState().history).toEqual([])
+		expect(store.getState().historyIndex).toBe(-1)
+	})
+
+	it("opens a created note when requested", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/note-created",
+			workspacePath: "/ws",
+			path: "/ws/new.md",
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual(["/ws/new.md"])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/ws/new.md",
+		])
+	})
+
+	it("restores opened file history when requested", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md", "/ws/b.md"],
+		})
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/ws/a.md",
+			"/ws/b.md",
+		])
+		expect(store.getState().history.map((entry) => entry.path)).toEqual([
+			"/ws/a.md",
+			"/ws/b.md",
+		])
+	})
+
+	it("logs restore failures without throwing", async () => {
+		const events = createStoreEventHub()
+		const readError = new Error("read failed")
+		const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
+		const { store } = createTabIntegrationStore({
+			readTextFile: vi.fn().mockRejectedValue(readError),
+		})
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath: "/ws",
+			paths: ["/ws/a.md"],
+		})
+
+		expect(debugSpy).toHaveBeenCalledWith(
+			"Failed to hydrate opened file history",
+		)
+		debugSpy.mockRestore()
+	})
+
+	it("refreshes open tab content when external updates are requested", async () => {
+		const events = createStoreEventHub()
+		const { store } = createTabIntegrationStore()
+
+		await store.getState().openTab("/ws/a.md")
+
+		registerTabLifecycleIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/tab-content-refresh-requested",
+			workspacePath: "/ws",
+			path: "/ws/a.md",
+			content: "fresh-content",
+			preserveSelection: true,
+		})
+
+		expect(store.getState().tabs[0]?.content).toBe("fresh-content")
 	})
 
 	it("resets indexing state when workspace resets", async () => {
