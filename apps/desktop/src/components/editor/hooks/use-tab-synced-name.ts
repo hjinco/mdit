@@ -9,16 +9,16 @@ import { useStore } from "@/store"
 const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 
 /**
- * Link the active tab name to the first heading on initial load (per tab id).
- * Prevents relinking after a manual rename; resets when the tab id changes.
+ * Sync the active tab name to the first heading on initial load (per tab id).
+ * Prevents resyncing after a manual rename; resets when the tab id changes.
  */
-export function useLinkedTabName(path: string, value: Value) {
-	const hasLinkedForTab = useRef(false)
-	const setLinkedTab = useStore((s) => s.setLinkedTab)
+export function useTabSyncedName(path: string, value: Value) {
+	const hasSyncedForTab = useRef(false)
+	const setActiveTabSyncedName = useStore((s) => s.setActiveTabSyncedName)
 
-	// Link the tab name to the first heading on initial render if conditions match
+	// Sync the tab name to the first heading on initial render if conditions match.
 	useEffect(() => {
-		if (hasLinkedForTab.current) {
+		if (hasSyncedForTab.current) {
 			return
 		}
 
@@ -32,9 +32,9 @@ export function useLinkedTabName(path: string, value: Value) {
 			return
 		}
 
-		setLinkedTab({ path, name: firstHeading || name })
-		hasLinkedForTab.current = true
-	}, [path, setLinkedTab, value])
+		setActiveTabSyncedName(firstHeading || name)
+		hasSyncedForTab.current = true
+	}, [path, setActiveTabSyncedName, value])
 }
 
 function getFirstHeadingText(value: Value): string {

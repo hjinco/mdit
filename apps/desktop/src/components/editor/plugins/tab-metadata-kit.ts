@@ -6,8 +6,7 @@ const firstBlockTextByEditor = new WeakMap<object, string | null>()
 
 type TabNameSyncStoreState = {
 	workspacePath: string | null
-	linkedTab: { path: string; name: string } | null
-	getActiveTab: () => { path: string } | null
+	getActiveTab: () => { path: string; syncedName?: string | null } | null
 }
 
 /**
@@ -43,7 +42,7 @@ function getTrackedFirstBlockText(blocks: any): string | null {
 	return extractTextFromNode(firstBlock) || null
 }
 
-export function shouldSyncLinkedTabName(editor: any): string | null {
+export function shouldSyncTabNameFromHeading(editor: any): string | null {
 	const nextTrackedText = getTrackedFirstBlockText(editor.children)
 
 	if (nextTrackedText === null || !editor.selection) {
@@ -76,7 +75,7 @@ export function shouldSyncLinkedTabName(editor: any): string | null {
 	return sanitizeFilename(nextTrackedText)
 }
 
-export function getNextLinkedTabName(
+export function getNextTabSyncedName(
 	editor: any,
 	storeState: TabNameSyncStoreState,
 ) {
@@ -84,41 +83,38 @@ export function getNextLinkedTabName(
 		return null
 	}
 
-	const { linkedTab } = storeState
 	const tab = storeState.getActiveTab()
-	const isLinkedToCurrentTab = tab && linkedTab && linkedTab.path === tab.path
-
-	if (!isLinkedToCurrentTab) {
+	if (!tab || tab.syncedName == null) {
 		return null
 	}
 
-	const firstHeading = shouldSyncLinkedTabName(editor)
-	if (firstHeading === null || firstHeading === linkedTab.name) {
+	const firstHeading = shouldSyncTabNameFromHeading(editor)
+	if (firstHeading === null || firstHeading === tab.syncedName) {
 		return null
 	}
 
 	return firstHeading
 }
 
-export function syncLinkedTabName(
+export function syncTabSyncedName(
 	editor: any,
 	storeState: TabNameSyncStoreState & {
-		updateLinkedName: (name: string) => void
+		setActiveTabSyncedName: (name: string) => void
 	},
 ) {
-	const firstHeading = getNextLinkedTabName(editor, storeState)
+	const firstHeading = getNextTabSyncedName(editor, storeState)
 	if (firstHeading === null) {
 		return
 	}
 
-	storeState.updateLinkedName(firstHeading)
+	storeState.setActiveTabSyncedName(firstHeading)
 }
 
 const TabMetadataPlugin = createPlatePlugin({
 	key: "tabMetadata",
 	handlers: {
 		onChange: ({ editor }) => {
-			syncLinkedTabName(editor, useStore.getState())
+			syncTabSyncedName(editor, useStore.getState())
 		},
 	},
 })

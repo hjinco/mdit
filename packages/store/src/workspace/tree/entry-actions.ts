@@ -35,6 +35,7 @@ export type WorkspaceTreeEntryActions = {
 		newPath: string
 		isDirectory: boolean
 		newName: string
+		clearSyncedName?: boolean
 	}) => Promise<void>
 	entryMoved: (input: {
 		sourcePath: string
@@ -121,12 +122,18 @@ export const createTreeEntryActions = (
 		ctx.ports.collection.onEntriesDeleted({ paths })
 	},
 
-	entryRenamed: async ({ oldPath, newPath, isDirectory, newName }) => {
+	entryRenamed: async ({
+		oldPath,
+		newPath,
+		isDirectory,
+		newName,
+		clearSyncedName = false,
+	}) => {
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
 			ctx.get()
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		await ctx.ports.tab.renameTab(oldPath, newPath)
+		await ctx.ports.tab.renameTab(oldPath, newPath, { clearSyncedName })
 		ctx.ports.tab.updateHistoryPath(oldPath, newPath)
 
 		ctx

@@ -3,8 +3,8 @@ import { resolve } from "pathe"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { buildWorkspaceState, type WorkspaceState } from "../workspace-state"
 import {
+	getActiveTabPathForWorkspacePolicy,
 	getOpenTabSnapshotsForWorkspacePolicy,
-	getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy,
 } from "../workspace-tab-policy"
 
 const MAX_RESTORED_LAST_OPENED_FILE_PATHS = 5
@@ -62,17 +62,19 @@ export const closeWorkspaceTabs = (
 	options?: { clearHistoryWhenNoActiveTab?: boolean },
 ) => {
 	const openTabSnapshots = getOpenTabSnapshotsForWorkspacePolicy(ctx)
-	const primaryOpenTabPath =
-		getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy(openTabSnapshots)
+	const activeTabPath = getActiveTabPathForWorkspacePolicy(ctx)
 
-	if (primaryOpenTabPath) {
-		ctx.ports.tab.closeTab(primaryOpenTabPath)
+	if (activeTabPath || openTabSnapshots.length > 0) {
+		ctx.ports.tab.closeAllTabs()
 	}
 
 	if (openTabSnapshots.length > 0 || options?.clearHistoryWhenNoActiveTab) {
 		ctx.ports.tab.clearHistory()
 	}
 }
+
+export const hasUnsavedWorkspaceTabs = (ctx: WorkspaceActionContext): boolean =>
+	getOpenTabSnapshotsForWorkspacePolicy(ctx).some((tab) => !tab.isSaved)
 
 const restoreLastOpenedFileHistoryFromSettings = async (
 	ctx: WorkspaceActionContext,

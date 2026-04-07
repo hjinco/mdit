@@ -10,22 +10,21 @@ export function useAutoRenameOnSave(path: string) {
 		// Check if we should rename based on tab.name (which may be from first heading)
 		const store = useStore.getState()
 		const tab = store.getActiveTab()
-		const { linkedTab, renameEntry } = store
+		const { renameEntry } = store
 
 		if (tab && tab.path === path) {
-			const isLinkedToCurrentTab = linkedTab && linkedTab.path === tab.path
-
-			if (!isLinkedToCurrentTab) {
+			if (tab.syncedName == null) {
 				return path
 			}
 
 			const currentFileName = getFileNameWithoutExtension(path)
 
 			// Only rename if tab.name differs from current filename and is not empty
-			if (linkedTab.name !== "" && linkedTab.name !== currentFileName) {
+			if (tab.syncedName !== "" && tab.syncedName !== currentFileName) {
 				return renameEntry(
-					{ path, name: linkedTab.name, isDirectory: false },
-					`${linkedTab.name}.md`,
+					{ path, name: tab.syncedName, isDirectory: false },
+					`${tab.syncedName}.md`,
+					{ preserveActiveTabSyncedName: true },
 				)
 			}
 		}

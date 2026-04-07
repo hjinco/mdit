@@ -1,7 +1,7 @@
 import { dirname, join } from "pathe"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
-import { getPrimaryOpenTabPathForWorkspacePolicy } from "../workspace-tab-policy"
+import { getActiveTabPathForWorkspacePolicy } from "../workspace-tab-policy"
 import { hasLockedPathConflict, resolveLockPathsForSource } from "./guards"
 import { sanitizeWorkspaceEntryName } from "./helpers/fs-entry-name-helpers"
 import { generateUniqueFileName } from "./helpers/unique-filename-helpers"
@@ -18,6 +18,7 @@ export type CreateNoteOptions = {
 
 export type RenameEntryOptions = {
 	allowLockedSourcePath?: boolean
+	preserveActiveTabSyncedName?: boolean
 }
 
 export type WorkspaceFsStructureActions = {
@@ -155,13 +156,13 @@ export const createFsStructureActions = (
 
 		const currentCollectionPath =
 			ctx.ports.collection.getCurrentCollectionPath()
-		const primaryOpenTabPath = getPrimaryOpenTabPathForWorkspacePolicy(ctx)
+		const activeTabPath = getActiveTabPathForWorkspacePolicy(ctx)
 		let targetDirectory = workspacePath
 
 		if (currentCollectionPath) {
 			targetDirectory = currentCollectionPath
-		} else if (primaryOpenTabPath) {
-			targetDirectory = dirname(primaryOpenTabPath)
+		} else if (activeTabPath) {
+			targetDirectory = dirname(activeTabPath)
 		}
 
 		await ctx.get().createNote(targetDirectory, { openTab: true })
@@ -229,9 +230,11 @@ export const createFsStructureActions = (
 			{ path: entry.path, scope },
 			{ path: nextPath, scope },
 		])
+		const clearSyncedName =
+			!entry.isDirectory && !options?.preserveActiveTabSyncedName
 
 		if (ctx.get().isEditMode) {
-			await ctx.ports.tab.renameTab(entry.path, nextPath)
+			await ctx.ports.tab.renameTab(entry.path, nextPath, { clearSyncedName })
 			return nextPath
 		}
 
@@ -240,6 +243,7 @@ export const createFsStructureActions = (
 			newPath: nextPath,
 			isDirectory: entry.isDirectory,
 			newName: trimmedName,
+			clearSyncedName,
 		})
 
 		return nextPath

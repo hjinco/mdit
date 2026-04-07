@@ -5,13 +5,6 @@ export const getOpenTabSnapshotsForWorkspacePolicy = (
 	ctx: WorkspaceActionContext,
 ): OpenTabSnapshot[] => ctx.ports.tab.getOpenTabSnapshots()
 
-export const getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy = (
-	snapshots: readonly OpenTabSnapshot[],
-): string | null => snapshots[0]?.path ?? null
-
-export const getPrimaryOpenTabPathForWorkspacePolicy = (
+export const getActiveTabPathForWorkspacePolicy = (
 	ctx: WorkspaceActionContext,
-): string | null => {
-	const snapshots = getOpenTabSnapshotsForWorkspacePolicy(ctx)
-	return getPrimaryOpenTabPathFromSnapshotsForWorkspacePolicy(snapshots)
-}
+): string | null => ctx.ports.tab.getActiveTabPath()

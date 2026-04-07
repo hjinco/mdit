@@ -68,6 +68,7 @@ describe("tree/entry-actions", () => {
 		expect(ports.tab.renameTab).toHaveBeenCalledWith(
 			"/ws/folder",
 			"/ws/renamed",
+			{ clearSyncedName: false },
 		)
 		expect(ports.tab.updateHistoryPath).toHaveBeenCalledWith(
 			"/ws/folder",
