@@ -89,7 +89,7 @@ describe("watch/actions", () => {
 	})
 
 	it("ignores non-rescan local-only batches", async () => {
-		const { context, setState, getState, originJournal, deps, events } =
+		const { context, setState, getState, originJournal, deps } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({ workspacePath: "/ws" })
@@ -120,13 +120,7 @@ describe("watch/actions", () => {
 			workspacePath: "/ws",
 			relPaths: ["docs/local.md"],
 		})
-		expect(events.emit).not.toHaveBeenCalledWith({
-			type: "workspace/tab-content-refresh-requested",
-			workspacePath: "/ws",
-			path: "/ws/docs/local.md",
-			content: "",
-			preserveSelection: true,
-		})
+		expect(getState().refreshTabFromExternalContent).not.toHaveBeenCalled()
 		expect(deps.fileSystemRepository.readDir).not.toHaveBeenCalled()
 		expect(getState().refreshWorkspaceEntries).not.toHaveBeenCalled()
 	})
@@ -491,7 +485,7 @@ describe("watch/actions", () => {
 	})
 
 	it("reloads open tabs when policy has multiple open snapshots", async () => {
-		const { context, setState, originJournal, deps, events, ports } =
+		const { context, setState, originJournal, deps, getState, ports } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({
@@ -537,17 +531,17 @@ describe("watch/actions", () => {
 		})
 		await flushQueue()
 
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/tab-content-refresh-requested",
-			workspacePath: "/ws",
-			path: "/ws/docs/second.md",
-			content: "",
-			preserveSelection: true,
-		})
+		expect(getState().refreshTabFromExternalContent).toHaveBeenCalledWith(
+			"/ws/docs/second.md",
+			"",
+			{
+				preserveSelection: true,
+			},
+		)
 	})
 
 	it("reloads the active markdown tab and updates metadata for external file changes", async () => {
-		const { context, setState, originJournal, getState, deps, events } =
+		const { context, setState, originJournal, getState, deps } =
 			createActionTestContext()
 		const actions = createWatchActions(context)
 		setState({
@@ -593,13 +587,13 @@ describe("watch/actions", () => {
 		})
 		await flushQueue()
 
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/tab-content-refresh-requested",
-			workspacePath: "/ws",
-			path: "/ws/docs/a.md",
-			content: "fresh-content",
-			preserveSelection: true,
-		})
+		expect(getState().refreshTabFromExternalContent).toHaveBeenCalledWith(
+			"/ws/docs/a.md",
+			"fresh-content",
+			{
+				preserveSelection: true,
+			},
+		)
 		expect(getState().updateEntryModifiedDate).toHaveBeenCalledWith(
 			"/ws/docs/a.md",
 		)

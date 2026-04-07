@@ -2,31 +2,32 @@ import { describe, expect, it, vi } from "vitest"
 import { createStore } from "zustand/vanilla"
 import { type GitSyncSlice, prepareGitSyncSlice } from "./git-sync-slice"
 
+type GitSyncTestState = GitSyncSlice & {
+	refreshWorkspaceEntries: () => Promise<void>
+	workspacePath: string | null
+}
+
 describe("git-sync-slice", () => {
-	it("emits a pulled-changes event instead of refreshing the workspace directly", async () => {
+	it("refreshes the active workspace directly when sync pulls changes", async () => {
 		const sync = vi.fn().mockResolvedValue({ pulledChanges: true })
-		const events = {
-			emit: vi.fn().mockResolvedValue(undefined),
-			subscribe: vi.fn(),
-		}
-		const store = createStore<GitSyncSlice>()((set, get, api) =>
-			prepareGitSyncSlice(
-				{
-					loadSettings: vi.fn().mockResolvedValue({}),
-					saveSettings: vi.fn().mockResolvedValue(undefined),
-					createGitSyncCore: () => ({
-						isGitRepository: vi.fn().mockResolvedValue(true),
-						getCurrentBranch: vi.fn().mockResolvedValue("main"),
-						hasChangesToCommit: vi.fn().mockResolvedValue(false),
-						getCurrentCommitHash: vi.fn().mockResolvedValue(null),
-						ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
-						detectSyncStatus: vi.fn().mockResolvedValue("synced"),
-						sync,
-					}),
-				},
-				{ events: events as any },
-			)(set, get, api),
-		)
+		const refreshWorkspaceEntries = vi.fn().mockResolvedValue(undefined)
+		const store = createStore<GitSyncTestState>()((set, get, api) => ({
+			workspacePath: "/ws",
+			refreshWorkspaceEntries,
+			...prepareGitSyncSlice({
+				loadSettings: vi.fn().mockResolvedValue({}),
+				saveSettings: vi.fn().mockResolvedValue(undefined),
+				createGitSyncCore: () => ({
+					isGitRepository: vi.fn().mockResolvedValue(true),
+					getCurrentBranch: vi.fn().mockResolvedValue("main"),
+					hasChangesToCommit: vi.fn().mockResolvedValue(false),
+					getCurrentCommitHash: vi.fn().mockResolvedValue(null),
+					ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
+					detectSyncStatus: vi.fn().mockResolvedValue("synced"),
+					sync,
+				}),
+			})(set, get, api),
+		}))
 
 		store.setState((state) => ({
 			...state,
@@ -41,40 +42,32 @@ describe("git-sync-slice", () => {
 		await store.getState().performSync()
 
 		expect(sync).toHaveBeenCalledTimes(1)
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "git-sync/pulled-changes",
-			workspacePath: "/ws",
-		})
+		expect(refreshWorkspaceEntries).toHaveBeenCalledTimes(1)
 	})
 
-	it("waits for the pulled-changes event handlers before resolving", async () => {
+	it("waits for workspace refresh before resolving", async () => {
 		const sync = vi.fn().mockResolvedValue({ pulledChanges: true })
-		let resolveEmit!: () => void
-		const emitPromise = new Promise<void>((resolve) => {
-			resolveEmit = resolve
+		let resolveRefresh!: () => void
+		const refreshPromise = new Promise<void>((resolve) => {
+			resolveRefresh = resolve
 		})
-		const events = {
-			emit: vi.fn().mockReturnValue(emitPromise),
-			subscribe: vi.fn(),
-		}
-		const store = createStore<GitSyncSlice>()((set, get, api) =>
-			prepareGitSyncSlice(
-				{
-					loadSettings: vi.fn().mockResolvedValue({}),
-					saveSettings: vi.fn().mockResolvedValue(undefined),
-					createGitSyncCore: () => ({
-						isGitRepository: vi.fn().mockResolvedValue(true),
-						getCurrentBranch: vi.fn().mockResolvedValue("main"),
-						hasChangesToCommit: vi.fn().mockResolvedValue(false),
-						getCurrentCommitHash: vi.fn().mockResolvedValue(null),
-						ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
-						detectSyncStatus: vi.fn().mockResolvedValue("synced"),
-						sync,
-					}),
-				},
-				{ events: events as any },
-			)(set, get, api),
-		)
+		const store = createStore<GitSyncTestState>()((set, get, api) => ({
+			workspacePath: "/ws",
+			refreshWorkspaceEntries: vi.fn().mockReturnValue(refreshPromise),
+			...prepareGitSyncSlice({
+				loadSettings: vi.fn().mockResolvedValue({}),
+				saveSettings: vi.fn().mockResolvedValue(undefined),
+				createGitSyncCore: () => ({
+					isGitRepository: vi.fn().mockResolvedValue(true),
+					getCurrentBranch: vi.fn().mockResolvedValue("main"),
+					hasChangesToCommit: vi.fn().mockResolvedValue(false),
+					getCurrentCommitHash: vi.fn().mockResolvedValue(null),
+					ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
+					detectSyncStatus: vi.fn().mockResolvedValue("synced"),
+					sync,
+				}),
+			})(set, get, api),
+		}))
 
 		store.setState((state) => ({
 			...state,
@@ -97,36 +90,33 @@ describe("git-sync-slice", () => {
 		await Promise.resolve()
 		expect(resolved).toBe(false)
 
-		resolveEmit()
+		resolveRefresh()
 		await syncPromise
 
 		expect(resolved).toBe(true)
 	})
 
-	it("sets an error state when the pulled-changes refresh fails", async () => {
+	it("sets an error state when the workspace refresh fails", async () => {
 		const sync = vi.fn().mockResolvedValue({ pulledChanges: true })
-		const events = {
-			emit: vi.fn().mockRejectedValue(new Error("refresh failed")),
-			subscribe: vi.fn(),
-		}
-		const store = createStore<GitSyncSlice>()((set, get, api) =>
-			prepareGitSyncSlice(
-				{
-					loadSettings: vi.fn().mockResolvedValue({}),
-					saveSettings: vi.fn().mockResolvedValue(undefined),
-					createGitSyncCore: () => ({
-						isGitRepository: vi.fn().mockResolvedValue(true),
-						getCurrentBranch: vi.fn().mockResolvedValue("main"),
-						hasChangesToCommit: vi.fn().mockResolvedValue(false),
-						getCurrentCommitHash: vi.fn().mockResolvedValue(null),
-						ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
-						detectSyncStatus: vi.fn().mockResolvedValue("synced"),
-						sync,
-					}),
-				},
-				{ events: events as any },
-			)(set, get, api),
-		)
+		const store = createStore<GitSyncTestState>()((set, get, api) => ({
+			workspacePath: "/ws",
+			refreshWorkspaceEntries: vi
+				.fn()
+				.mockRejectedValue(new Error("refresh failed")),
+			...prepareGitSyncSlice({
+				loadSettings: vi.fn().mockResolvedValue({}),
+				saveSettings: vi.fn().mockResolvedValue(undefined),
+				createGitSyncCore: () => ({
+					isGitRepository: vi.fn().mockResolvedValue(true),
+					getCurrentBranch: vi.fn().mockResolvedValue("main"),
+					hasChangesToCommit: vi.fn().mockResolvedValue(false),
+					getCurrentCommitHash: vi.fn().mockResolvedValue(null),
+					ensureGitignoreEntry: vi.fn().mockResolvedValue(undefined),
+					detectSyncStatus: vi.fn().mockResolvedValue("synced"),
+					sync,
+				}),
+			})(set, get, api),
+		}))
 
 		store.setState((state) => ({
 			...state,

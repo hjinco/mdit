@@ -31,8 +31,8 @@ describe("workspace-tree-actions", () => {
 		expect(actions.getEntryByPath("/ws/missing.md")).toBeNull()
 	})
 
-	it("updateEntries emits workspace entries replaced events", () => {
-		const { context, events, getState, setState } = createActionTestContext()
+	it("updateEntries refreshes collection state directly", () => {
+		const { context, getState, setState } = createActionTestContext()
 		const actions = createTreeActions(context)
 		setState({ workspacePath: "/ws" })
 
@@ -41,10 +41,7 @@ describe("workspace-tree-actions", () => {
 		])
 
 		expect(getState().entries).toHaveLength(1)
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/entries-replaced",
-			workspacePath: "/ws",
-		})
+		expect(getState().refreshCollectionEntries).toHaveBeenCalledTimes(1)
 	})
 
 	it("readWorkspaceEntriesFromPath reads recursively, filters hidden entries, and sorts results", async () => {

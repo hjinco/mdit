@@ -147,6 +147,31 @@ export function createActionTestContext() {
 		entryMoved: vi.fn(),
 		entryImported: vi.fn(),
 		setWorkspace: vi.fn(),
+		openTab: vi.fn().mockResolvedValue(undefined),
+		getOpenTabSnapshots: vi.fn(() => ports.tab.getOpenTabSnapshots()),
+		getActiveTabPath: vi.fn(() => ports.tab.getActiveTabPath()),
+		closeAllTabs: vi.fn(() => {
+			state = {
+				...state,
+				tabs: [],
+				activeTabId: null,
+				tabSaveStates: {},
+				history: [],
+				historyIndex: -1,
+			}
+		}),
+		clearHistory: vi.fn(() => {
+			state = {
+				...state,
+				history: [],
+				historyIndex: -1,
+			}
+		}),
+		hydrateFromOpenedFiles: vi.fn().mockResolvedValue(true),
+		renameTab: vi.fn().mockResolvedValue(undefined),
+		updateHistoryPath: vi.fn(),
+		removePathsFromHistory: vi.fn(),
+		refreshTabFromExternalContent: vi.fn(),
 		createNote: vi.fn().mockResolvedValue("/ws/Untitled.md"),
 		deleteEntries: vi.fn(),
 		renameEntry: vi.fn(),
@@ -175,6 +200,20 @@ export function createActionTestContext() {
 			}
 		}),
 		refreshWorkspaceEntries: vi.fn().mockResolvedValue(undefined),
+		resetCollectionPath: vi.fn(() => {
+			state = {
+				...state,
+				currentCollectionPath: null,
+				lastCollectionPath: null,
+				collectionEntries: [],
+			}
+		}),
+		refreshCollectionEntries: vi.fn(),
+		onEntryCreated: vi.fn(),
+		onEntriesDeleted: vi.fn(),
+		onEntryRenamed: vi.fn(),
+		onEntryMoved: vi.fn(),
+		resetIndexingState: vi.fn(),
 		getIndexingConfig: vi.fn().mockResolvedValue(null),
 	}
 
@@ -192,7 +231,6 @@ export function createActionTestContext() {
 		ports: ports as any,
 		runtime: {
 			originJournal: originJournal as any,
-			events: events as any,
 		},
 	}
 	const directoryUiActions = createDirectoryUiActions(context)

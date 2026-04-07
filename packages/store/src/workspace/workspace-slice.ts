@@ -4,7 +4,6 @@ import {
 } from "@mdit/local-fs-origin"
 import type { StateCreator } from "zustand"
 import type { CollectionSlice } from "../collection/collection-slice"
-import type { StoreEventHub } from "../integrations/store-events"
 import type { TabSlice } from "../tab/tab-slice"
 import {
 	createDirectoryUiActions,
@@ -43,7 +42,6 @@ type WorkspaceSliceStoreState = WorkspaceSlice & TabSlice & CollectionSlice
 export const prepareWorkspaceSlice =
 	(
 		dependencies: WorkspaceDependencies,
-		{ events }: { events: StoreEventHub },
 	): StateCreator<WorkspaceSliceStoreState, [], [], WorkspaceSlice> =>
 	(set, get) => {
 		const originJournal = createLocalMutationJournal({
@@ -56,7 +54,6 @@ export const prepareWorkspaceSlice =
 			ports: createWorkspacePorts(get),
 			runtime: {
 				originJournal,
-				events,
 			},
 		}
 

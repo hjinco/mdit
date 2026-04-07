@@ -1,6 +1,5 @@
 import type { LocalMutationJournal } from "@mdit/local-fs-origin"
 import type { StoreApi } from "zustand"
-import type { StoreEventHub } from "../integrations/store-events"
 import type { WorkspaceDependencies } from "./workspace-dependencies"
 import type { WorkspacePorts } from "./workspace-ports"
 import type { WorkspaceSlice } from "./workspace-slice"
@@ -17,7 +16,6 @@ export type WorkspaceGetState<
 
 export type WorkspaceRuntime = {
 	originJournal: LocalMutationJournal
-	events: StoreEventHub
 }
 
 export type WorkspaceActionContext<

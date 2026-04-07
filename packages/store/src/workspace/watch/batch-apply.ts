@@ -4,6 +4,7 @@ import {
 	normalizePathSeparators,
 } from "@mdit/utils/path-utils"
 import { dirname, resolve } from "pathe"
+import type { TabSlice } from "../../tab/tab-slice"
 import { findEntryByPath, findParentDirectory } from "../tree/domain/entry-tree"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
@@ -403,13 +404,13 @@ export const applyWatchBatchChanges = async (
 			try {
 				const content =
 					await ctx.deps.fileSystemRepository.readTextFile(absolutePath)
-				await ctx.runtime.events.emit({
-					type: "workspace/tab-content-refresh-requested",
-					workspacePath: input.workspacePath,
-					path: absolutePath,
+				;(ctx.get() as Partial<TabSlice>).refreshTabFromExternalContent?.(
+					absolutePath,
 					content,
-					preserveSelection: true,
-				})
+					{
+						preserveSelection: true,
+					},
+				)
 			} catch (error) {
 				console.warn(
 					"Failed to refresh active tab from external file change:",

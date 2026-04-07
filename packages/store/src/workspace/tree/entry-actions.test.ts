@@ -3,8 +3,8 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createTreeEntryActions } from "./entry-actions"
 
 describe("tree/entry-actions", () => {
-	it("entryCreated emits workspace entry created events", async () => {
-		const { context, events, setState } = createActionTestContext()
+	it("entryCreated syncs collection state directly", async () => {
+		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [],
@@ -22,9 +22,7 @@ describe("tree/entry-actions", () => {
 			expandParent: true,
 		})
 
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/entry-created",
-			workspacePath: "/ws",
+		expect(getState().onEntryCreated).toHaveBeenCalledWith({
 			parentPath: "/ws",
 			entry: {
 				path: "/ws/a.md",
@@ -36,59 +34,8 @@ describe("tree/entry-actions", () => {
 		})
 	})
 
-	it("entriesDeleted removes history paths in one batch", async () => {
-		const { context, events, setState } = createActionTestContext()
-		setState({
-			workspacePath: "/ws",
-			entries: [
-				{ path: "/ws/a.md", name: "a.md", isDirectory: false },
-				{ path: "/ws/folder", name: "folder", isDirectory: true },
-			],
-			expandedDirectories: ["/ws/folder"],
-			pinnedDirectories: ["/ws/folder"],
-		})
-
-		const actions = createTreeEntryActions(context)
-
-		await actions.entriesDeleted({ paths: ["/ws/a.md", "/ws/folder"] })
-
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-paths-removed",
-			workspacePath: "/ws",
-			paths: ["/ws/a.md", "/ws/folder"],
-		})
-		expect(events.emit).toHaveBeenNthCalledWith(2, {
-			type: "workspace/entries-deleted",
-			workspacePath: "/ws",
-			paths: ["/ws/a.md", "/ws/folder"],
-		})
-	})
-
-	it("entriesDeleted emits tab-path removal events for descendant cleanup", async () => {
-		const { context, events, setState } = createActionTestContext()
-		setState({
-			workspacePath: "/ws",
-			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
-		})
-
-		const actions = createTreeEntryActions(context)
-
-		await actions.entriesDeleted({ paths: ["/ws/folder"] })
-
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-paths-removed",
-			workspacePath: "/ws",
-			paths: ["/ws/folder"],
-		})
-		expect(events.emit).toHaveBeenNthCalledWith(2, {
-			type: "workspace/entries-deleted",
-			workspacePath: "/ws",
-			paths: ["/ws/folder"],
-		})
-	})
-
-	it("entriesDeleted emits tab cleanup before directory persistence", async () => {
-		const { context, deps, events, setState } = createActionTestContext()
+	it("entriesDeleted syncs tabs and collection before persistence", async () => {
+		const { context, deps, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
@@ -104,16 +51,16 @@ describe("tree/entry-actions", () => {
 			actions.entriesDeleted({ paths: ["/ws/folder"] }),
 		).rejects.toThrow("persist failed")
 
-		expect(events.emit).toHaveBeenCalledTimes(1)
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/tab-paths-removed",
-			workspacePath: "/ws",
+		expect(getState().removePathsFromHistory).toHaveBeenCalledWith([
+			"/ws/folder",
+		])
+		expect(getState().onEntriesDeleted).toHaveBeenCalledWith({
 			paths: ["/ws/folder"],
 		})
 	})
 
-	it("entryRenamed emits tab/history sync events and workspace rename events", async () => {
-		const { context, events, setState } = createActionTestContext()
+	it("entryRenamed syncs tab paths, history, and collection state", async () => {
+		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
@@ -130,16 +77,18 @@ describe("tree/entry-actions", () => {
 			newName: "renamed",
 		})
 
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-path-renamed",
-			workspacePath: "/ws",
-			oldPath: "/ws/folder",
-			newPath: "/ws/renamed",
-			clearSyncedName: false,
-		})
-		expect(events.emit).toHaveBeenNthCalledWith(2, {
-			type: "workspace/entry-renamed",
-			workspacePath: "/ws",
+		expect(getState().renameTab).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/renamed",
+			{
+				clearSyncedName: false,
+			},
+		)
+		expect(getState().updateHistoryPath).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/renamed",
+		)
+		expect(getState().onEntryRenamed).toHaveBeenCalledWith({
 			oldPath: "/ws/folder",
 			newPath: "/ws/renamed",
 			isDirectory: true,
@@ -147,41 +96,8 @@ describe("tree/entry-actions", () => {
 		})
 	})
 
-	it("entryMoved emits tab/history sync events and workspace move events", async () => {
-		const { context, events, setState } = createActionTestContext()
-		setState({
-			workspacePath: "/ws",
-			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
-		})
-
-		const actions = createTreeEntryActions(context)
-
-		await actions.entryMoved({
-			sourcePath: "/ws/folder",
-			destinationDirPath: "/ws/archive",
-			newPath: "/ws/archive/folder",
-			isDirectory: true,
-		})
-
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-path-moved",
-			workspacePath: "/ws",
-			sourcePath: "/ws/folder",
-			newPath: "/ws/archive/folder",
-			refreshContent: false,
-		})
-		expect(events.emit).toHaveBeenNthCalledWith(2, {
-			type: "workspace/entry-moved",
-			workspacePath: "/ws",
-			sourcePath: "/ws/folder",
-			destinationDirPath: "/ws/archive",
-			newPath: "/ws/archive/folder",
-			isDirectory: true,
-		})
-	})
-
-	it("entryMoved preserves refreshContent in tab move events", async () => {
-		const { context, events, setState } = createActionTestContext()
+	it("entryMoved syncs tab paths, history, and collection state", async () => {
+		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/folder", name: "folder", isDirectory: true }],
@@ -197,17 +113,27 @@ describe("tree/entry-actions", () => {
 			refreshContent: true,
 		})
 
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-path-moved",
-			workspacePath: "/ws",
+		expect(getState().renameTab).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/archive/folder",
+			{
+				refreshContent: true,
+			},
+		)
+		expect(getState().updateHistoryPath).toHaveBeenCalledWith(
+			"/ws/folder",
+			"/ws/archive/folder",
+		)
+		expect(getState().onEntryMoved).toHaveBeenCalledWith({
 			sourcePath: "/ws/folder",
+			destinationDirPath: "/ws/archive",
 			newPath: "/ws/archive/folder",
-			refreshContent: true,
+			isDirectory: true,
 		})
 	})
 
-	it("entryRenamed forwards clearSyncedName in tab rename events", async () => {
-		const { context, events, setState } = createActionTestContext()
+	it("entryRenamed forwards clearSyncedName to direct tab sync", async () => {
+		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
 			entries: [{ path: "/ws/old.md", name: "old.md", isDirectory: false }],
@@ -223,21 +149,13 @@ describe("tree/entry-actions", () => {
 			clearSyncedName: true,
 		})
 
-		expect(events.emit).toHaveBeenNthCalledWith(1, {
-			type: "workspace/tab-path-renamed",
-			workspacePath: "/ws",
-			oldPath: "/ws/old.md",
-			newPath: "/ws/new.md",
-			clearSyncedName: true,
-		})
-		expect(events.emit).toHaveBeenNthCalledWith(2, {
-			type: "workspace/entry-renamed",
-			workspacePath: "/ws",
-			oldPath: "/ws/old.md",
-			newPath: "/ws/new.md",
-			isDirectory: false,
-			newName: "new.md",
-		})
+		expect(getState().renameTab).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/new.md",
+			{
+				clearSyncedName: true,
+			},
+		)
 	})
 
 	it("updateEntryModifiedDate updates createdAt and modifiedAt", async () => {

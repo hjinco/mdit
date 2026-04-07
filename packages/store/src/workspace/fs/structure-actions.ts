@@ -1,4 +1,5 @@
 import { dirname, join } from "pathe"
+import type { TabSlice } from "../../tab/tab-slice"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { getActiveTabPathForWorkspacePolicy } from "../workspace-tab-policy"
@@ -141,11 +142,7 @@ export const createFsStructureActions = (
 		})
 
 		if (options?.openTab) {
-			await ctx.runtime.events.emit({
-				type: "workspace/note-created",
-				workspacePath: ctx.get().workspacePath,
-				path: filePath,
-			})
+			await (ctx.get() as Partial<TabSlice>).openTab?.(filePath)
 			ctx.get().setEntrySelection(createSingleEntrySelection(filePath))
 		}
 
@@ -243,13 +240,11 @@ export const createFsStructureActions = (
 			!entry.isDirectory && !options?.preserveActiveTabSyncedName
 
 		if (isEditMode) {
-			await ctx.runtime.events.emit({
-				type: "workspace/tab-path-renamed",
-				workspacePath,
-				oldPath: entry.path,
-				newPath: nextPath,
+			const tabState = ctx.get() as Partial<TabSlice>
+			await tabState.renameTab?.(entry.path, nextPath, {
 				clearSyncedName,
 			})
+			tabState.updateHistoryPath?.(entry.path, nextPath)
 			return nextPath
 		}
 

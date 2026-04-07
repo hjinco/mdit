@@ -1,3 +1,5 @@
+import type { CollectionSlice } from "../../collection/collection-slice"
+import type { TabSlice } from "../../tab/tab-slice"
 import {
 	addExpandedDirectories,
 	removeExpandedDirectories,
@@ -21,6 +23,19 @@ import {
 	updateEntryInState,
 	updateEntryMetadata,
 } from "./domain/entry-tree"
+
+type WorkspaceTreeStoreState = Partial<TabSlice & CollectionSlice> & {
+	workspacePath: string | null
+	entries: WorkspaceEntry[]
+	expandedDirectories: string[]
+	pinnedDirectories: string[]
+	updateEntries: (
+		entries:
+			| WorkspaceEntry[]
+			| ((entries: WorkspaceEntry[]) => WorkspaceEntry[]),
+		options?: { emitEvent?: boolean },
+	) => void
+}
 
 export type WorkspaceTreeEntryActions = {
 	entryCreated: (input: {
@@ -61,7 +76,8 @@ export const createTreeEntryActions = (
 		expandParent = false,
 		expandNewDirectory = false,
 	}) => {
-		const { workspacePath, entries, expandedDirectories } = ctx.get()
+		const store = ctx.get() as WorkspaceTreeStoreState
+		const { workspacePath, entries, expandedDirectories } = store
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
 		const nextEntries =
@@ -69,10 +85,8 @@ export const createTreeEntryActions = (
 				? sortWorkspaceEntries([...entries, entry])
 				: addEntryToState(entries, parentPath, entry)
 
-		ctx.get().updateEntries(nextEntries, { emitEvent: false })
-		await ctx.runtime.events.emit({
-			type: "workspace/entry-created",
-			workspacePath,
+		store.updateEntries(nextEntries, { emitEvent: false })
+		;(store as typeof store & Partial<CollectionSlice>).onEntryCreated?.({
 			parentPath,
 			entry,
 			expandParent,
@@ -97,17 +111,16 @@ export const createTreeEntryActions = (
 	},
 
 	entriesDeleted: async ({ paths }) => {
+		const store = ctx.get() as WorkspaceTreeStoreState
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
-			ctx.get()
+			store
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		ctx.get().updateEntries(removeEntriesFromState(entries, paths), {
+		store.updateEntries(removeEntriesFromState(entries, paths), {
 			emitEvent: false,
 		})
-
-		await ctx.runtime.events.emit({
-			type: "workspace/tab-paths-removed",
-			workspacePath,
+		;(store as typeof store & Partial<TabSlice>).removePathsFromHistory?.(paths)
+		;(store as typeof store & Partial<CollectionSlice>).onEntriesDeleted?.({
 			paths,
 		})
 
@@ -126,12 +139,6 @@ export const createTreeEntryActions = (
 			pinnedDirectories,
 			nextPinned,
 		)
-
-		await ctx.runtime.events.emit({
-			type: "workspace/entries-deleted",
-			workspacePath,
-			paths,
-		})
 	},
 
 	entryRenamed: async ({
@@ -141,33 +148,36 @@ export const createTreeEntryActions = (
 		newName,
 		clearSyncedName = false,
 	}) => {
+		const store = ctx.get() as WorkspaceTreeStoreState
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
-			ctx.get()
+			store
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		ctx
-			.get()
-			.updateEntries(updateEntryInState(entries, oldPath, newPath, newName), {
+		store.updateEntries(
+			updateEntryInState(entries, oldPath, newPath, newName),
+			{
 				emitEvent: false,
-			})
-
-		await ctx.runtime.events.emit({
-			type: "workspace/tab-path-renamed",
-			workspacePath,
+			},
+		)
+		await (store as typeof store & Partial<TabSlice>).renameTab?.(
 			oldPath,
 			newPath,
-			clearSyncedName,
+			{
+				clearSyncedName,
+			},
+		)
+		;(store as typeof store & Partial<TabSlice>).updateHistoryPath?.(
+			oldPath,
+			newPath,
+		)
+		;(store as typeof store & Partial<CollectionSlice>).onEntryRenamed?.({
+			oldPath,
+			newPath,
+			isDirectory,
+			newName,
 		})
 
 		if (!isDirectory) {
-			await ctx.runtime.events.emit({
-				type: "workspace/entry-renamed",
-				workspacePath,
-				oldPath,
-				newPath,
-				isDirectory,
-				newName,
-			})
 			return
 		}
 
@@ -194,15 +204,6 @@ export const createTreeEntryActions = (
 			pinnedDirectories,
 			nextPinned,
 		)
-
-		await ctx.runtime.events.emit({
-			type: "workspace/entry-renamed",
-			workspacePath,
-			oldPath,
-			newPath,
-			isDirectory,
-			newName,
-		})
 	},
 
 	entryMoved: async ({
@@ -212,29 +213,37 @@ export const createTreeEntryActions = (
 		isDirectory,
 		refreshContent = false,
 	}) => {
+		const store = ctx.get() as WorkspaceTreeStoreState
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
-			ctx.get()
+			store
 		if (!workspacePath) throw new Error("Workspace path is not set")
 
-		ctx
-			.get()
-			.updateEntries(
-				moveEntryInState(
-					entries,
-					sourcePath,
-					destinationDirPath,
-					workspacePath,
-					newPath,
-				),
-				{ emitEvent: false },
-			)
-
-		await ctx.runtime.events.emit({
-			type: "workspace/tab-path-moved",
-			workspacePath,
+		store.updateEntries(
+			moveEntryInState(
+				entries,
+				sourcePath,
+				destinationDirPath,
+				workspacePath,
+				newPath,
+			),
+			{ emitEvent: false },
+		)
+		await (store as typeof store & Partial<TabSlice>).renameTab?.(
 			sourcePath,
 			newPath,
-			refreshContent,
+			{
+				refreshContent,
+			},
+		)
+		;(store as typeof store & Partial<TabSlice>).updateHistoryPath?.(
+			sourcePath,
+			newPath,
+		)
+		;(store as typeof store & Partial<CollectionSlice>).onEntryMoved?.({
+			sourcePath,
+			destinationDirPath,
+			newPath,
+			isDirectory,
 		})
 
 		if (isDirectory) {
@@ -262,15 +271,6 @@ export const createTreeEntryActions = (
 				nextPinned,
 			)
 		}
-
-		await ctx.runtime.events.emit({
-			type: "workspace/entry-moved",
-			workspacePath,
-			sourcePath,
-			destinationDirPath,
-			newPath,
-			isDirectory,
-		})
 	},
 
 	entryImported: async ({

@@ -1,5 +1,8 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { resolve } from "pathe"
+import type { CollectionSlice } from "../../collection/collection-slice"
+import type { IndexingSlice } from "../../indexing/indexing-slice"
+import type { TabSlice } from "../../tab/tab-slice"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { buildWorkspaceState, type WorkspaceState } from "../workspace-state"
 import { getOpenTabSnapshotsForWorkspacePolicy } from "../workspace-tab-policy"
@@ -50,25 +53,26 @@ export const resetWorkspaceState = (
 			unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, workspacePath),
 		}),
 	)
-	void ctx.runtime.events
-		.emit({
-			type: "workspace/reset",
-			workspacePath,
-		})
-		.catch((error) => {
-			console.error("Failed to emit workspace reset event:", error)
-		})
+	const state = ctx.get() as Partial<CollectionSlice & IndexingSlice>
+	state.resetCollectionPath?.()
+	state.resetIndexingState?.()
 }
 
 export const closeWorkspaceTabs = async (
 	ctx: WorkspaceActionContext,
 	options?: { clearHistoryWhenNoActiveTab?: boolean },
 ) => {
-	await ctx.runtime.events.emit({
-		type: "workspace/tab-reset-requested",
-		workspacePath: ctx.get().workspacePath,
-		clearHistoryWhenNoActiveTab: Boolean(options?.clearHistoryWhenNoActiveTab),
-	})
+	const state = ctx.get() as Partial<TabSlice>
+	const openTabSnapshots = state.getOpenTabSnapshots?.() ?? []
+	const activeTabPath = state.getActiveTabPath?.() ?? null
+
+	if (activeTabPath || openTabSnapshots.length > 0) {
+		state.closeAllTabs?.()
+	}
+
+	if (openTabSnapshots.length > 0 || options?.clearHistoryWhenNoActiveTab) {
+		state.clearHistory?.()
+	}
 }
 
 export const hasUnsavedWorkspaceTabs = (ctx: WorkspaceActionContext): boolean =>
@@ -115,11 +119,12 @@ const restoreLastOpenedFileHistoryFromSettings = async (
 			return
 		}
 
-		await ctx.runtime.events.emit({
-			type: "workspace/opened-files-restore-requested",
-			workspacePath,
-			paths: restorablePaths,
-		})
+		const hydrated = await (
+			ctx.get() as Partial<TabSlice>
+		).hydrateFromOpenedFiles?.(restorablePaths)
+		if (hydrated === false) {
+			console.debug("Failed to hydrate opened file history")
+		}
 	} catch (error) {
 		console.debug("Failed to restore opened file history:", error)
 	}
@@ -175,13 +180,10 @@ const bootstrapWorkspace = async (
 			},
 		})
 		ctx.set({ isTreeLoading: false })
-		void ctx.runtime.events
-			.emit({
-				type: "workspace/loaded",
-				workspacePath,
-			})
-			.catch((error) => {
-				console.error("Failed to emit workspace loaded event:", error)
+		void (ctx.get() as Partial<IndexingSlice>)
+			.getIndexingConfig?.(workspacePath)
+			?.catch((error) => {
+				console.error("Failed to preload indexing config:", error)
 			})
 
 		if (options?.restoreLastOpenedFiles) {

@@ -1,3 +1,4 @@
+import type { CollectionSlice } from "../../collection/collection-slice"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { findEntryByPath } from "./domain/entry-tree"
@@ -36,19 +37,10 @@ export const createTreeActions = (
 				? entriesOrAction(ctx.get().entries)
 				: entriesOrAction
 		ctx.set({ entries })
-		const workspacePath = ctx.get().workspacePath
-		if (!workspacePath || options?.emitEvent === false) {
+		if (options?.emitEvent === false) {
 			return
 		}
-
-		void ctx.runtime.events
-			.emit({
-				type: "workspace/entries-replaced",
-				workspacePath,
-			})
-			.catch((error) => {
-				console.error("Failed to emit workspace entries replaced event:", error)
-			})
+		;(ctx.get() as Partial<CollectionSlice>).refreshCollectionEntries?.()
 	},
 
 	refreshWorkspaceEntries: async () => {

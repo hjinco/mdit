@@ -87,8 +87,8 @@ describe("fs-structure-actions", () => {
 		expect(createNote).toHaveBeenCalledWith("/ws/folder", { openTab: true })
 	})
 
-	it("createNote emits note-created when tab opening is requested", async () => {
-		const { context, events, getState, setState } = createActionTestContext()
+	it("createNote opens the created tab directly when requested", async () => {
+		const { context, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryCreated = vi.fn().mockResolvedValue(undefined)
 		setState({ workspacePath: "/ws" })
@@ -96,11 +96,7 @@ describe("fs-structure-actions", () => {
 		const createdPath = await actions.createNote("/ws", { openTab: true })
 
 		expect(createdPath).toBe("/ws/Untitled.md")
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/note-created",
-			workspacePath: "/ws",
-			path: "/ws/Untitled.md",
-		})
+		expect(getState().openTab).toHaveBeenCalledWith("/ws/Untitled.md")
 		expect(getState().selectedEntryPaths).toEqual(new Set(["/ws/Untitled.md"]))
 		expect(getState().selectionAnchorPath).toBe("/ws/Untitled.md")
 	})
@@ -235,8 +231,7 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
-		const { context, deps, events, setState, getState } =
-			createActionTestContext()
+		const { context, deps, setState, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({ isEditMode: true, workspacePath: "/ws" })
@@ -255,19 +250,22 @@ describe("fs-structure-actions", () => {
 			"/ws/old.md",
 			"/ws/new.md",
 		)
-		expect(events.emit).toHaveBeenCalledWith({
-			type: "workspace/tab-path-renamed",
-			workspacePath: "/ws",
-			oldPath: "/ws/old.md",
-			newPath: "/ws/new.md",
-			clearSyncedName: true,
-		})
+		expect(getState().renameTab).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/new.md",
+			{
+				clearSyncedName: true,
+			},
+		)
+		expect(getState().updateHistoryPath).toHaveBeenCalledWith(
+			"/ws/old.md",
+			"/ws/new.md",
+		)
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
 	it("renameEntry rejects in edit mode without workspace", async () => {
-		const { context, deps, events, setState, getState } =
-			createActionTestContext()
+		const { context, deps, setState, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({ isEditMode: true, workspacePath: null })
@@ -284,7 +282,7 @@ describe("fs-structure-actions", () => {
 		).rejects.toThrow("Workspace path is not set")
 
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
-		expect(events.emit).not.toHaveBeenCalled()
+		expect(getState().renameTab).not.toHaveBeenCalled()
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
