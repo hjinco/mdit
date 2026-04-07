@@ -78,6 +78,10 @@ export function createActionTestContext() {
 		prune: vi.fn(),
 		clearWorkspace: vi.fn(),
 	}
+	const events = {
+		emit: vi.fn().mockResolvedValue(undefined),
+		subscribe: vi.fn(),
+	}
 
 	let state: any
 	const getOpenTabSnapshotsFromState = () => {
@@ -131,10 +135,6 @@ export function createActionTestContext() {
 			onEntryMoved: vi.fn(),
 			resetCollectionPath: vi.fn(),
 			getCurrentCollectionPath: vi.fn(() => state.currentCollectionPath),
-		},
-		indexing: {
-			resetIndexingState: vi.fn(),
-			getIndexingConfig: vi.fn().mockResolvedValue(null),
 		},
 	}
 
@@ -208,6 +208,7 @@ export function createActionTestContext() {
 		ports: ports as any,
 		runtime: {
 			originJournal: originJournal as any,
+			events: events as any,
 		},
 	}
 	const directoryUiActions = createDirectoryUiActions(context)
@@ -237,6 +238,7 @@ export function createActionTestContext() {
 		context,
 		deps,
 		ports,
+		events,
 		originJournal,
 		getState: () => state,
 		setState: (patch: Record<string, unknown>) => {

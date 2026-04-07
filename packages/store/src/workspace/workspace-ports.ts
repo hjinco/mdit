@@ -1,5 +1,4 @@
 import type { CollectionSlice } from "../collection/collection-slice"
-import type { IndexingSlice } from "../indexing/indexing-slice"
 import type { TabSlice } from "../tab/tab-slice"
 
 export type WorkspacePorts = {
@@ -28,10 +27,9 @@ export type WorkspacePorts = {
 		| "resetCollectionPath"
 		| "getCurrentCollectionPath"
 	>
-	indexing: Pick<IndexingSlice, "resetIndexingState" | "getIndexingConfig">
 }
 
-type WorkspacePortSource = TabSlice & CollectionSlice & IndexingSlice
+type WorkspacePortSource = TabSlice & CollectionSlice
 
 export const createWorkspacePorts = (
 	get: () => WorkspacePortSource,
@@ -60,9 +58,5 @@ export const createWorkspacePorts = (
 		onEntryMoved: (...args) => get().onEntryMoved(...args),
 		resetCollectionPath: (...args) => get().resetCollectionPath(...args),
 		getCurrentCollectionPath: () => get().getCurrentCollectionPath(),
-	},
-	indexing: {
-		resetIndexingState: () => get().resetIndexingState(),
-		getIndexingConfig: (...args) => get().getIndexingConfig(...args),
 	},
 })
