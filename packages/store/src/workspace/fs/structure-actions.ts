@@ -224,6 +224,11 @@ export const createFsStructureActions = (
 			return entry.path
 		}
 
+		const { workspacePath, isEditMode } = ctx.get()
+		if (!workspacePath) {
+			throw new Error("Workspace path is not set")
+		}
+
 		await ctx.deps.fileSystemRepository.rename(entry.path, nextPath)
 		const scope = entry.isDirectory ? "subtree" : "exact"
 		ctx.get().registerLocalMutation([
@@ -233,16 +238,7 @@ export const createFsStructureActions = (
 		const clearSyncedName =
 			!entry.isDirectory && !options?.preserveActiveTabSyncedName
 
-		if (ctx.get().isEditMode) {
-			const { workspacePath } = ctx.get()
-			if (!workspacePath) {
-				await ctx.ports.tab.renameTab(entry.path, nextPath, {
-					clearSyncedName,
-				})
-				ctx.ports.tab.updateHistoryPath(entry.path, nextPath)
-				return nextPath
-			}
-
+		if (isEditMode) {
 			await ctx.runtime.events.emit({
 				type: "workspace/tab-path-renamed",
 				workspacePath,

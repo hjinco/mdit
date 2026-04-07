@@ -89,9 +89,10 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry sanitizes separators from newName", async () => {
-		const { context, deps, getState } = createActionTestContext()
+		const { context, deps, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
 
 		const renamedPath = await actions.renameEntry(
 			{
@@ -116,10 +117,11 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry allows case-only path changes when destination exists", async () => {
-		const { context, deps, getState } = createActionTestContext()
+		const { context, deps, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		deps.fileSystemRepository.exists.mockResolvedValueOnce(true)
+		setState({ workspacePath: "/ws" })
 
 		const renamedPath = await actions.renameEntry(
 			{
@@ -188,6 +190,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
+			workspacePath: "/ws",
 			aiLockedEntryPaths: new Set(["/ws/folder/note.md"]),
 		})
 
@@ -246,38 +249,27 @@ describe("fs-structure-actions", () => {
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
-	it("renameEntry falls back to direct tab rename in edit mode without workspace", async () => {
+	it("renameEntry rejects in edit mode without workspace", async () => {
 		const { context, deps, events, ports, setState, getState } =
 			createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({ isEditMode: true, workspacePath: null })
 
-		const renamedPath = await actions.renameEntry(
-			{
-				path: "/tmp/old.md",
-				name: "old.md",
-				isDirectory: false,
-			},
-			"new.md",
-		)
+		await expect(
+			actions.renameEntry(
+				{
+					path: "/tmp/old.md",
+					name: "old.md",
+					isDirectory: false,
+				},
+				"new.md",
+			),
+		).rejects.toThrow("Workspace path is not set")
 
-		expect(renamedPath).toBe("/tmp/new.md")
-		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
-			"/tmp/old.md",
-			"/tmp/new.md",
-		)
-		expect(ports.tab.renameTab).toHaveBeenCalledWith(
-			"/tmp/old.md",
-			"/tmp/new.md",
-			{
-				clearSyncedName: true,
-			},
-		)
-		expect(ports.tab.updateHistoryPath).toHaveBeenCalledWith(
-			"/tmp/old.md",
-			"/tmp/new.md",
-		)
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+		expect(ports.tab.renameTab).not.toHaveBeenCalled()
+		expect(ports.tab.updateHistoryPath).not.toHaveBeenCalled()
 		expect(events.emit).not.toHaveBeenCalled()
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
@@ -287,6 +279,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
+			workspacePath: "/ws",
 			tabs: [
 				{
 					id: 1,
@@ -322,6 +315,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
+			workspacePath: "/ws",
 			tabs: [
 				{
 					id: 1,
@@ -363,6 +357,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
+			workspacePath: "/ws",
 			tabs: [
 				{
 					id: 1,
@@ -399,6 +394,7 @@ describe("fs-structure-actions", () => {
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
 		setState({
+			workspacePath: "/ws",
 			openTabSnapshots: [{ path: "/ws/folder/note.md", isSaved: false }],
 		})
 
