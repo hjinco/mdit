@@ -25,6 +25,7 @@ import {
 	type IndexingSliceDependencies,
 	prepareIndexingSlice,
 } from "./indexing/indexing-slice"
+import { registerCollectionIntegration } from "./integrations/register-collection-integration"
 import { registerGitSyncWorkspaceIntegration } from "./integrations/register-git-sync-workspace-integration"
 import { registerIndexingIntegration } from "./integrations/register-indexing-integration"
 import { createStoreEventHub } from "./integrations/store-events"
@@ -91,6 +92,7 @@ export const createMditStore = (
 		...createUISlice(...args),
 	}))
 
+	registerCollectionIntegration(store, events)
 	registerIndexingIntegration(store, events)
 	registerGitSyncWorkspaceIntegration(store, events)
 

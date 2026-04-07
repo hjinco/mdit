@@ -1,10 +1,207 @@
 import { describe, expect, it, vi } from "vitest"
+import { createStore } from "zustand/vanilla"
 import type { MditStore } from ".."
+import { prepareCollectionSlice } from "../collection/collection-slice"
+import { registerCollectionIntegration } from "./register-collection-integration"
 import { registerGitSyncWorkspaceIntegration } from "./register-git-sync-workspace-integration"
 import { registerIndexingIntegration } from "./register-indexing-integration"
 import { createStoreEventHub } from "./store-events"
 
+type EntryLike = {
+	path: string
+	name: string
+	isDirectory: boolean
+	children?: EntryLike[]
+}
+
+const makeFile = (path: string, name: string): EntryLike => ({
+	path,
+	name,
+	isDirectory: false,
+})
+
+const makeDir = (
+	path: string,
+	name: string,
+	children: EntryLike[] = [],
+): EntryLike => ({
+	path,
+	name,
+	isDirectory: true,
+	children,
+})
+
+const createCollectionIntegrationStore = () => {
+	const createSlice = prepareCollectionSlice()
+
+	return createStore<any>()((set, get, api) => ({
+		workspacePath: "/ws",
+		entries: [],
+		...createSlice(set, get, api),
+	}))
+}
+
 describe("store integrations", () => {
+	it("refreshes collection entries when workspace entries are replaced", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/folder",
+			entries: [
+				makeDir("/ws/folder", "folder", [
+					makeFile("/ws/folder/note.md", "note.md"),
+				]),
+			],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entries-replaced",
+			workspacePath: "/ws",
+		})
+
+		expect(store.getState().collectionEntries).toEqual([
+			makeFile("/ws/folder/note.md", "note.md"),
+		])
+	})
+
+	it("refreshes collection entries when workspace creates an entry", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/folder",
+			entries: [
+				makeDir("/ws/folder", "folder", [
+					makeFile("/ws/folder/new.md", "new.md"),
+				]),
+			],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entry-created",
+			workspacePath: "/ws",
+			parentPath: "/ws/folder",
+			entry: makeFile("/ws/folder/new.md", "new.md"),
+		})
+
+		expect(store.getState().collectionEntries).toEqual([
+			makeFile("/ws/folder/new.md", "new.md"),
+		])
+	})
+
+	it("clears collection paths when deleted entries remove the active collection", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/folder/child",
+			lastCollectionPath: "/ws/folder/other",
+			entries: [makeDir("/ws/another", "another")],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entries-deleted",
+			workspacePath: "/ws",
+			paths: ["/ws/folder"],
+		})
+
+		expect(store.getState().currentCollectionPath).toBeNull()
+		expect(store.getState().lastCollectionPath).toBeNull()
+		expect(store.getState().collectionEntries).toEqual([])
+	})
+
+	it("rewrites collection paths when directories are renamed", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/old/child",
+			lastCollectionPath: "/ws/old/other",
+			entries: [makeDir("/ws/new", "new")],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entry-renamed",
+			workspacePath: "/ws",
+			oldPath: "/ws/old",
+			newPath: "/ws/new",
+			isDirectory: true,
+			newName: "new",
+		})
+
+		expect(store.getState().currentCollectionPath).toBe("/ws/new/child")
+		expect(store.getState().lastCollectionPath).toBe("/ws/new/other")
+	})
+
+	it("refreshes collection entries when files are renamed", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/folder",
+			entries: [
+				makeDir("/ws/folder", "folder", [
+					makeFile("/ws/folder/new.md", "new.md"),
+				]),
+			],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entry-renamed",
+			workspacePath: "/ws",
+			oldPath: "/ws/folder/old.md",
+			newPath: "/ws/folder/new.md",
+			isDirectory: false,
+			newName: "new.md",
+		})
+
+		expect(store.getState().collectionEntries).toEqual([
+			makeFile("/ws/folder/new.md", "new.md"),
+		])
+	})
+
+	it("rewrites collection paths when directories are moved", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			currentCollectionPath: "/ws/src/child",
+			lastCollectionPath: "/ws/src/other",
+			entries: [makeDir("/ws/dest", "dest")],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entry-moved",
+			workspacePath: "/ws",
+			sourcePath: "/ws/src",
+			destinationDirPath: "/ws",
+			newPath: "/ws/dest",
+			isDirectory: true,
+		})
+
+		expect(store.getState().currentCollectionPath).toBe("/ws/dest/child")
+		expect(store.getState().lastCollectionPath).toBe("/ws/dest/other")
+	})
+
+	it("ignores collection events for a different workspace", async () => {
+		const events = createStoreEventHub()
+		const store = createCollectionIntegrationStore()
+		store.setState({
+			workspacePath: "/other",
+			currentCollectionPath: "/other/folder",
+			entries: [makeDir("/other/folder", "folder")],
+		})
+
+		registerCollectionIntegration(store as unknown as MditStore, events)
+		await events.emit({
+			type: "workspace/entries-replaced",
+			workspacePath: "/ws",
+		})
+
+		expect(store.getState().collectionEntries).toEqual([])
+	})
+
 	it("resets indexing state when workspace resets", async () => {
 		const events = createStoreEventHub()
 		const state = {

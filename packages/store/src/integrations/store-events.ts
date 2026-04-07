@@ -1,6 +1,38 @@
+import type { WorkspaceEntry } from "../workspace/workspace-state"
+
 export type StoreEvent =
 	| { type: "workspace/reset"; workspacePath: string | null }
 	| { type: "workspace/loaded"; workspacePath: string }
+	| { type: "workspace/entries-replaced"; workspacePath: string }
+	| {
+			type: "workspace/entry-created"
+			workspacePath: string
+			parentPath: string
+			entry: WorkspaceEntry
+			expandParent?: boolean
+			expandNewDirectory?: boolean
+	  }
+	| {
+			type: "workspace/entries-deleted"
+			workspacePath: string
+			paths: string[]
+	  }
+	| {
+			type: "workspace/entry-renamed"
+			workspacePath: string
+			oldPath: string
+			newPath: string
+			isDirectory: boolean
+			newName: string
+	  }
+	| {
+			type: "workspace/entry-moved"
+			workspacePath: string
+			sourcePath: string
+			destinationDirPath: string
+			newPath: string
+			isDirectory: boolean
+	  }
 	| { type: "git-sync/pulled-changes"; workspacePath: string }
 
 export type StoreEventListener = (event: StoreEvent) => void | Promise<void>
