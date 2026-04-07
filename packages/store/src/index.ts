@@ -4,8 +4,6 @@ import {
 	type AISettingsSliceDependencies,
 	prepareAISettingsSlice,
 } from "./ai-settings/ai-settings-slice"
-import type { CollectionSlice } from "./collection/collection-slice"
-import { prepareCollectionSlice } from "./collection/collection-slice"
 import type { EditorSlice } from "./editor/editor-slice"
 import { prepareEditorSlice } from "./editor/editor-slice"
 import type { GitSyncSlice } from "./git-sync/git-sync-slice"
@@ -35,7 +33,6 @@ import { prepareWorkspaceSlice } from "./workspace/workspace-slice"
 
 export type StoreState = WorkspaceSlice &
 	TabSlice &
-	CollectionSlice &
 	AISettingsSlice &
 	EditorSlice &
 	GitSyncSlice &
@@ -59,7 +56,6 @@ export type MditStore = UseBoundStore<StoreApi<StoreState>>
 export const createMditStore = (
 	dependencies: MditStoreDependencies,
 ): MditStore => {
-	const createCollectionSlice = prepareCollectionSlice()
 	const createEditorSlice = prepareEditorSlice()
 	const createImageEditSlice = prepareImageEditSlice()
 	const createAISettingsSlice = prepareAISettingsSlice(dependencies.aiSettings)
@@ -71,7 +67,6 @@ export const createMditStore = (
 	const createWorkspaceSlice = prepareWorkspaceSlice(dependencies.workspace)
 
 	return create<StoreState>()((...args) => ({
-		...createCollectionSlice(...args),
 		...createTabSlice(...args),
 		...createWorkspaceSlice(...args),
 		...createAISettingsSlice(...args),

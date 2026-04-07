@@ -1,4 +1,3 @@
-import type { CollectionSlice } from "../../collection/collection-slice"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { findEntryByPath } from "./domain/entry-tree"
@@ -40,7 +39,7 @@ export const createTreeActions = (
 		if (options?.emitEvent === false) {
 			return
 		}
-		;(ctx.get() as Partial<CollectionSlice>).refreshCollectionEntries?.()
+		ctx.get().refreshCollectionEntries()
 	},
 
 	refreshWorkspaceEntries: async () => {

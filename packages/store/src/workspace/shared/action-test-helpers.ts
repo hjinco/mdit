@@ -117,15 +117,11 @@ export function createActionTestContext() {
 				return activeTab?.path ?? null
 			}),
 		},
-		collection: {
-			getCurrentCollectionPath: vi.fn(() => state.currentCollectionPath),
-		},
 	}
 
 	state = {
 		...buildWorkspaceState(),
 		openTabSnapshots: [],
-		currentCollectionPath: null,
 		chatConfig: null,
 		refreshCodexOAuthForTarget: vi.fn().mockResolvedValue(undefined),
 		getEntryByPath: vi.fn((path: string) =>

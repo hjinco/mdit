@@ -1,5 +1,5 @@
 import { findEntryByPath } from "../../workspace/tree/domain/entry-tree"
-import type { WorkspaceEntry } from "../../workspace/workspace-slice"
+import type { WorkspaceEntry } from "../../workspace/workspace-state"
 
 /**
  * Computes collection entries (markdown files) for a given collection path.

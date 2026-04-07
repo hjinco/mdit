@@ -33,6 +33,11 @@ describe("lifecycle-actions", () => {
 			workspacePath: "/old",
 			recentWorkspacePaths: ["/old"],
 			unwatchFn: unwatch,
+			currentCollectionPath: "/old/folder",
+			lastCollectionPath: "/old/folder",
+			collectionEntries: [
+				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
+			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
 			"/new",
@@ -44,9 +49,11 @@ describe("lifecycle-actions", () => {
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.touchWorkspace).toHaveBeenCalledWith("/new")
 		expect(deps.historyRepository.listWorkspacePaths).toHaveBeenCalled()
-		expect(getState().resetCollectionPath).toHaveBeenCalled()
 		expect(getState().resetIndexingState).toHaveBeenCalled()
 		expect(getState().getIndexingConfig).toHaveBeenCalledWith("/new")
+		expect(getState().currentCollectionPath).toBeNull()
+		expect(getState().lastCollectionPath).toBeNull()
+		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -118,6 +125,11 @@ describe("lifecycle-actions", () => {
 			workspacePath: "/old",
 			recentWorkspacePaths: ["/old", "/other"],
 			unwatchFn: unwatch,
+			currentCollectionPath: "/old/folder",
+			lastCollectionPath: "/old/folder",
+			collectionEntries: [
+				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
+			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/other"])
 
@@ -125,8 +137,10 @@ describe("lifecycle-actions", () => {
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith("/old")
-		expect(getState().resetCollectionPath).toHaveBeenCalled()
 		expect(getState().resetIndexingState).toHaveBeenCalled()
+		expect(getState().currentCollectionPath).toBeNull()
+		expect(getState().lastCollectionPath).toBeNull()
+		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -181,6 +195,11 @@ describe("lifecycle-actions", () => {
 		setState({
 			workspacePath: "/old",
 			unwatchFn: unwatch,
+			currentCollectionPath: "/old/folder",
+			lastCollectionPath: "/old/folder",
+			collectionEntries: [
+				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
+			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/new"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
@@ -188,9 +207,11 @@ describe("lifecycle-actions", () => {
 		await bootstrapWorkspace(actions)
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
-		expect(getState().resetCollectionPath).toHaveBeenCalled()
 		expect(getState().resetIndexingState).toHaveBeenCalled()
 		expect(getState().getIndexingConfig).toHaveBeenCalledWith("/new")
+		expect(getState().currentCollectionPath).toBeNull()
+		expect(getState().lastCollectionPath).toBeNull()
+		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
