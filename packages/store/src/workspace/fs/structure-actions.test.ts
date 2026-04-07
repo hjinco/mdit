@@ -47,7 +47,7 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("createAndOpenNote delegates tab opening to createNote", async () => {
-		const { context, getState, ports, setState } = createActionTestContext()
+		const { context, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		const createNote = vi.fn().mockResolvedValue("/ws/Untitled.md")
 
@@ -59,7 +59,6 @@ describe("fs-structure-actions", () => {
 		await actions.createAndOpenNote()
 
 		expect(createNote).toHaveBeenCalledWith("/ws", { openTab: true })
-		expect(ports.tab.openTab).not.toHaveBeenCalled()
 		expect(getState().createNote).toBe(createNote)
 	})
 
@@ -86,6 +85,24 @@ describe("fs-structure-actions", () => {
 		await actions.createAndOpenNote()
 
 		expect(createNote).toHaveBeenCalledWith("/ws/folder", { openTab: true })
+	})
+
+	it("createNote emits note-created when tab opening is requested", async () => {
+		const { context, events, getState, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryCreated = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		const createdPath = await actions.createNote("/ws", { openTab: true })
+
+		expect(createdPath).toBe("/ws/Untitled.md")
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/note-created",
+			workspacePath: "/ws",
+			path: "/ws/Untitled.md",
+		})
+		expect(getState().selectedEntryPaths).toEqual(new Set(["/ws/Untitled.md"]))
+		expect(getState().selectionAnchorPath).toBe("/ws/Untitled.md")
 	})
 
 	it("renameEntry sanitizes separators from newName", async () => {
@@ -218,7 +235,7 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry updates tab path in edit mode without entryRenamed", async () => {
-		const { context, deps, events, ports, setState, getState } =
+		const { context, deps, events, setState, getState } =
 			createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
@@ -238,7 +255,6 @@ describe("fs-structure-actions", () => {
 			"/ws/old.md",
 			"/ws/new.md",
 		)
-		expect(ports.tab.renameTab).not.toHaveBeenCalled()
 		expect(events.emit).toHaveBeenCalledWith({
 			type: "workspace/tab-path-renamed",
 			workspacePath: "/ws",
@@ -250,7 +266,7 @@ describe("fs-structure-actions", () => {
 	})
 
 	it("renameEntry rejects in edit mode without workspace", async () => {
-		const { context, deps, events, ports, setState, getState } =
+		const { context, deps, events, setState, getState } =
 			createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
@@ -268,8 +284,6 @@ describe("fs-structure-actions", () => {
 		).rejects.toThrow("Workspace path is not set")
 
 		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
-		expect(ports.tab.renameTab).not.toHaveBeenCalled()
-		expect(ports.tab.updateHistoryPath).not.toHaveBeenCalled()
 		expect(events.emit).not.toHaveBeenCalled()
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})

@@ -105,16 +105,6 @@ export function createActionTestContext() {
 
 	const ports = {
 		tab: {
-			hydrateFromOpenedFiles: vi.fn().mockResolvedValue(true),
-			openTab: vi.fn().mockResolvedValue(undefined),
-			closeTab: vi.fn(),
-			closeAllTabs: vi.fn(),
-			renameTab: vi.fn().mockResolvedValue(undefined),
-			clearActiveTabSyncedName: vi.fn(),
-			refreshTabFromExternalContent: vi.fn(),
-			updateHistoryPath: vi.fn(),
-			removePathsFromHistory: vi.fn(),
-			clearHistory: vi.fn(),
 			getOpenTabSnapshots: vi.fn(() => getOpenTabSnapshotsFromState()),
 			getActiveTabPath: vi.fn(() => {
 				const activeTabId =
@@ -128,7 +118,6 @@ export function createActionTestContext() {
 			}),
 		},
 		collection: {
-			resetCollectionPath: vi.fn(),
 			getCurrentCollectionPath: vi.fn(() => state.currentCollectionPath),
 		},
 	}

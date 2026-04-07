@@ -141,7 +141,11 @@ export const createFsStructureActions = (
 		})
 
 		if (options?.openTab) {
-			await ctx.ports.tab.openTab(filePath)
+			await ctx.runtime.events.emit({
+				type: "workspace/note-created",
+				workspacePath: ctx.get().workspacePath,
+				path: filePath,
+			})
 			ctx.get().setEntrySelection(createSingleEntrySelection(filePath))
 		}
 

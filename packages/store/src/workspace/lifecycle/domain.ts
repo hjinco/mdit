@@ -2,10 +2,7 @@ import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { resolve } from "pathe"
 import type { WorkspaceActionContext } from "../workspace-action-context"
 import { buildWorkspaceState, type WorkspaceState } from "../workspace-state"
-import {
-	getActiveTabPathForWorkspacePolicy,
-	getOpenTabSnapshotsForWorkspacePolicy,
-} from "../workspace-tab-policy"
+import { getOpenTabSnapshotsForWorkspacePolicy } from "../workspace-tab-policy"
 
 const MAX_RESTORED_LAST_OPENED_FILE_PATHS = 5
 
@@ -53,7 +50,6 @@ export const resetWorkspaceState = (
 			unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, workspacePath),
 		}),
 	)
-	ctx.ports.collection.resetCollectionPath()
 	void ctx.runtime.events
 		.emit({
 			type: "workspace/reset",
@@ -64,20 +60,15 @@ export const resetWorkspaceState = (
 		})
 }
 
-export const closeWorkspaceTabs = (
+export const closeWorkspaceTabs = async (
 	ctx: WorkspaceActionContext,
 	options?: { clearHistoryWhenNoActiveTab?: boolean },
 ) => {
-	const openTabSnapshots = getOpenTabSnapshotsForWorkspacePolicy(ctx)
-	const activeTabPath = getActiveTabPathForWorkspacePolicy(ctx)
-
-	if (activeTabPath || openTabSnapshots.length > 0) {
-		ctx.ports.tab.closeAllTabs()
-	}
-
-	if (openTabSnapshots.length > 0 || options?.clearHistoryWhenNoActiveTab) {
-		ctx.ports.tab.clearHistory()
-	}
+	await ctx.runtime.events.emit({
+		type: "workspace/tab-reset-requested",
+		workspacePath: ctx.get().workspacePath,
+		clearHistoryWhenNoActiveTab: Boolean(options?.clearHistoryWhenNoActiveTab),
+	})
 }
 
 export const hasUnsavedWorkspaceTabs = (ctx: WorkspaceActionContext): boolean =>
@@ -124,10 +115,11 @@ const restoreLastOpenedFileHistoryFromSettings = async (
 			return
 		}
 
-		const hydrated = await ctx.ports.tab.hydrateFromOpenedFiles(restorablePaths)
-		if (!hydrated) {
-			console.debug("Failed to hydrate opened file history")
-		}
+		await ctx.runtime.events.emit({
+			type: "workspace/opened-files-restore-requested",
+			workspacePath,
+			paths: restorablePaths,
+		})
 	} catch (error) {
 		console.debug("Failed to restore opened file history:", error)
 	}

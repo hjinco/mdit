@@ -3,7 +3,24 @@ import type { WorkspaceEntry } from "../workspace/workspace-state"
 export type StoreEvent =
 	| { type: "workspace/reset"; workspacePath: string | null }
 	| { type: "workspace/loaded"; workspacePath: string }
+	| {
+			type: "workspace/tab-reset-requested"
+			workspacePath: string | null
+			clearHistoryWhenNoActiveTab: boolean
+	  }
 	| { type: "workspace/entries-replaced"; workspacePath: string }
+	| {
+			type: "workspace/opened-files-restore-requested"
+			workspacePath: string
+			paths: string[]
+	  }
+	| {
+			type: "workspace/tab-content-refresh-requested"
+			workspacePath: string
+			path: string
+			content: string
+			preserveSelection: boolean
+	  }
 	| {
 			type: "workspace/tab-paths-removed"
 			workspacePath: string
@@ -30,6 +47,11 @@ export type StoreEvent =
 			entry: WorkspaceEntry
 			expandParent?: boolean
 			expandNewDirectory?: boolean
+	  }
+	| {
+			type: "workspace/note-created"
+			workspacePath: string | null
+			path: string
 	  }
 	| {
 			type: "workspace/entries-deleted"
