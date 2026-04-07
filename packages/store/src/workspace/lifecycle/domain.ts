@@ -44,7 +44,6 @@ export const resetWorkspaceState = (
 ) => {
 	const workspacePath = options.workspacePath ?? null
 
-	ctx.ports.indexing.resetIndexingState()
 	ctx.set(
 		buildWorkspaceState({
 			workspacePath,
@@ -55,6 +54,14 @@ export const resetWorkspaceState = (
 		}),
 	)
 	ctx.ports.collection.resetCollectionPath()
+	void ctx.runtime.events
+		.emit({
+			type: "workspace/reset",
+			workspacePath,
+		})
+		.catch((error) => {
+			console.error("Failed to emit workspace reset event:", error)
+		})
 }
 
 export const closeWorkspaceTabs = (
@@ -176,9 +183,14 @@ const bootstrapWorkspace = async (
 			},
 		})
 		ctx.set({ isTreeLoading: false })
-		void ctx.ports.indexing.getIndexingConfig(workspacePath).catch((error) => {
-			console.error("Failed to preload indexing config:", error)
-		})
+		void ctx.runtime.events
+			.emit({
+				type: "workspace/loaded",
+				workspacePath,
+			})
+			.catch((error) => {
+				console.error("Failed to emit workspace loaded event:", error)
+			})
 
 		if (options?.restoreLastOpenedFiles) {
 			await restoreLastOpenedFileHistoryFromSettings(

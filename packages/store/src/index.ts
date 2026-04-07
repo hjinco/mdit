@@ -25,6 +25,9 @@ import {
 	type IndexingSliceDependencies,
 	prepareIndexingSlice,
 } from "./indexing/indexing-slice"
+import { registerGitSyncWorkspaceIntegration } from "./integrations/register-git-sync-workspace-integration"
+import { registerIndexingIntegration } from "./integrations/register-indexing-integration"
+import { createStoreEventHub } from "./integrations/store-events"
 import type { TabSlice } from "./tab/tab-slice"
 import { prepareTabSlice, type TabSliceDependencies } from "./tab/tab-slice"
 import type { UISlice } from "./ui/ui-slice"
@@ -59,18 +62,23 @@ export type MditStore = UseBoundStore<StoreApi<StoreState>>
 export const createMditStore = (
 	dependencies: MditStoreDependencies,
 ): MditStore => {
+	const events = createStoreEventHub()
 	const createCollectionSlice = prepareCollectionSlice()
 	const createEditorSlice = prepareEditorSlice()
 	const createImageEditSlice = prepareImageEditSlice()
 	const createAISettingsSlice = prepareAISettingsSlice(dependencies.aiSettings)
-	const createGitSyncSlice = prepareGitSyncSlice(dependencies.gitSync)
+	const createGitSyncSlice = prepareGitSyncSlice(dependencies.gitSync, {
+		events,
+	})
 	const createHotkeysSlice = prepareHotkeysSlice(dependencies.hotkeys)
 	const createIndexingSlice = prepareIndexingSlice(dependencies.indexing)
 	const createTabSlice = prepareTabSlice(dependencies.tab)
 	const createUISlice = prepareUISlice(dependencies.ui)
-	const createWorkspaceSlice = prepareWorkspaceSlice(dependencies.workspace)
+	const createWorkspaceSlice = prepareWorkspaceSlice(dependencies.workspace, {
+		events,
+	})
 
-	return create<StoreState>()((...args) => ({
+	const store = create<StoreState>()((...args) => ({
 		...createCollectionSlice(...args),
 		...createTabSlice(...args),
 		...createWorkspaceSlice(...args),
@@ -82,4 +90,9 @@ export const createMditStore = (
 		...createHotkeysSlice(...args),
 		...createUISlice(...args),
 	}))
+
+	registerIndexingIntegration(store, events)
+	registerGitSyncWorkspaceIntegration(store, events)
+
+	return store
 }

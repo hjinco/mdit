@@ -1,7 +1,7 @@
 import type { GitSyncCore, GitSyncStatus, SyncConfig } from "@mdit/git-sync"
 import type { StateCreator } from "zustand"
+import type { StoreEventHub } from "../integrations/store-events"
 import type { WorkspaceSettings } from "../workspace/workspace-settings"
-import type { WorkspaceSlice } from "../workspace/workspace-slice"
 
 export type { SyncConfig } from "@mdit/git-sync"
 
@@ -56,16 +56,10 @@ const buildInitialGitSyncState = (): GitSyncState => ({
 })
 
 export const prepareGitSyncSlice =
-	({
-		loadSettings,
-		saveSettings,
-		createGitSyncCore,
-	}: GitSyncSliceDependencies): StateCreator<
-		GitSyncSlice & WorkspaceSlice,
-		[],
-		[],
-		GitSyncSlice
-	> =>
+	(
+		{ loadSettings, saveSettings, createGitSyncCore }: GitSyncSliceDependencies,
+		{ events }: { events: StoreEventHub },
+	): StateCreator<GitSyncSlice, [], [], GitSyncSlice> =>
 	(set, get) => {
 		const gitSyncCore = createGitSyncCore()
 
@@ -204,9 +198,11 @@ export const prepareGitSyncSlice =
 						},
 					}))
 
-					// Refresh workspace entries if pull merged changes
 					if (result.pulledChanges) {
-						await get().refreshWorkspaceEntries()
+						await events.emit({
+							type: "git-sync/pulled-changes",
+							workspacePath,
+						})
 					}
 				} catch (error) {
 					const message =

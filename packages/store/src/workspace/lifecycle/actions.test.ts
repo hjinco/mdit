@@ -26,7 +26,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("setWorkspace unwatches existing watcher when workspace path changes", async () => {
-		const { context, deps, ports, setState, getState } =
+		const { context, deps, events, setState, getState } =
 			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
@@ -45,8 +45,14 @@ describe("lifecycle-actions", () => {
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.touchWorkspace).toHaveBeenCalledWith("/new")
 		expect(deps.historyRepository.listWorkspacePaths).toHaveBeenCalled()
-		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
-		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/new")
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/reset",
+			workspacePath: "/new",
+		})
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/loaded",
+			workspacePath: "/new",
+		})
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -110,7 +116,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("clearWorkspace unwatches existing watcher", async () => {
-		const { context, deps, ports, setState, getState } =
+		const { context, deps, events, setState, getState } =
 			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
@@ -125,7 +131,10 @@ describe("lifecycle-actions", () => {
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
 		expect(deps.historyRepository.removeWorkspace).toHaveBeenCalledWith("/old")
-		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/reset",
+			workspacePath: null,
+		})
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -174,7 +183,7 @@ describe("lifecycle-actions", () => {
 	})
 
 	it("bootstrapWorkspace unwatches existing watcher when workspace path changes", async () => {
-		const { context, deps, ports, setState, getState } =
+		const { context, deps, events, setState, getState } =
 			createActionTestContext()
 		const actions = createLifecycleActions(context)
 		const unwatch = vi.fn()
@@ -188,34 +197,33 @@ describe("lifecycle-actions", () => {
 		await bootstrapWorkspace(actions)
 
 		expect(unwatch).toHaveBeenCalledTimes(1)
-		expect(ports.indexing.resetIndexingState).toHaveBeenCalledTimes(1)
-		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/new")
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/reset",
+			workspacePath: "/new",
+		})
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/loaded",
+			workspacePath: "/new",
+		})
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
 
-	it("bootstrapWorkspace does not fail when indexing preload fails", async () => {
-		const { context, deps, ports, getState } = createActionTestContext()
+	it("bootstrapWorkspace emits a loaded event for indexing preload integration", async () => {
+		const { context, deps, events, getState } = createActionTestContext()
 		const actions = createLifecycleActions(context)
-		const preloadError = new Error("preload failed")
 
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/ws"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
-		ports.indexing.getIndexingConfig.mockRejectedValue(preloadError)
-
-		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		await bootstrapWorkspace(actions)
 
 		expect(getState().workspacePath).toBe("/ws")
 		expect(getState().isTreeLoading).toBe(false)
-		expect(ports.indexing.getIndexingConfig).toHaveBeenCalledWith("/ws")
-		expect(errorSpy).toHaveBeenCalledWith(
-			"Failed to preload indexing config:",
-			preloadError,
-		)
-
-		errorSpy.mockRestore()
+		expect(events.emit).toHaveBeenCalledWith({
+			type: "workspace/loaded",
+			workspacePath: "/ws",
+		})
 	})
 
 	it("bootstrapWorkspace preserves watcher when workspace path is unchanged", async () => {
