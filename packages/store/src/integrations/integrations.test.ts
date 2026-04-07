@@ -286,9 +286,10 @@ describe("store integrations", () => {
 	it("moves open tabs and history paths when a tab path is moved", async () => {
 		const events = createStoreEventHub()
 		const { store, readTextFile } = createTabIntegrationStore()
+		const readTextFileMock = vi.mocked(readTextFile)
 
 		await store.getState().openTab("/ws/folder/note.md")
-		readTextFile.mockClear()
+		readTextFileMock.mockClear()
 
 		registerTabPathIntegration(store as unknown as MditStore, events)
 		await events.emit({
@@ -305,7 +306,7 @@ describe("store integrations", () => {
 		expect(store.getState().history.map((entry) => entry.path)).toEqual([
 			"/ws/archive/folder/note.md",
 		])
-		expect(readTextFile).not.toHaveBeenCalled()
+		expect(readTextFileMock).not.toHaveBeenCalled()
 	})
 
 	it("ignores tab path events for a different workspace", async () => {
