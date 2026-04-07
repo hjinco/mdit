@@ -24,8 +24,11 @@ export const createStoreEventHub = (): StoreEventHub => {
 			})
 
 			const settled = await Promise.allSettled(pending)
-			const rejected = settled.find((result) => result.status === "rejected")
-			if (rejected?.status === "rejected") {
+			const rejected = settled.find(
+				(result): result is PromiseRejectedResult =>
+					result.status === "rejected",
+			)
+			if (rejected) {
 				throw rejected.reason
 			}
 		},

@@ -59,7 +59,6 @@ describe("store integrations", () => {
 			type: "workspace/loaded",
 			workspacePath: "/ws",
 		})
-		await Promise.resolve()
 
 		expect(errorSpy).toHaveBeenCalledWith(
 			"Failed to preload indexing config:",

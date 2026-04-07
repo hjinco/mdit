@@ -14,8 +14,11 @@ export const registerIndexingIntegration = (
 		}
 
 		if (event.type === "workspace/loaded") {
-			void state.getIndexingConfig(event.workspacePath).catch((error) => {
-				console.error("Failed to preload indexing config:", error)
-			})
+			return state
+				.getIndexingConfig(event.workspacePath)
+				.then(() => undefined)
+				.catch((error) => {
+					console.error("Failed to preload indexing config:", error)
+				})
 		}
 	})
