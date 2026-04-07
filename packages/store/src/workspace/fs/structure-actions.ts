@@ -239,6 +239,7 @@ export const createFsStructureActions = (
 				await ctx.ports.tab.renameTab(entry.path, nextPath, {
 					clearSyncedName,
 				})
+				ctx.ports.tab.updateHistoryPath(entry.path, nextPath)
 				return nextPath
 			}
 

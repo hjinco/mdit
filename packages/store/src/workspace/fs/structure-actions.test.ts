@@ -274,6 +274,10 @@ describe("fs-structure-actions", () => {
 				clearSyncedName: true,
 			},
 		)
+		expect(ports.tab.updateHistoryPath).toHaveBeenCalledWith(
+			"/tmp/old.md",
+			"/tmp/new.md",
+		)
 		expect(events.emit).not.toHaveBeenCalled()
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
