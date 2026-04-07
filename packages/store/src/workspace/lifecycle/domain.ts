@@ -1,6 +1,5 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { resolve } from "pathe"
-import type { CollectionSlice } from "../../collection/collection-slice"
 import type { IndexingSlice } from "../../indexing/indexing-slice"
 import type { TabSlice } from "../../tab/tab-slice"
 import type { WorkspaceActionContext } from "../workspace-action-context"
@@ -53,9 +52,7 @@ export const resetWorkspaceState = (
 			unwatchFn: resolveUnwatchFnForWorkspaceTransition(ctx, workspacePath),
 		}),
 	)
-	const state = ctx.get() as Partial<CollectionSlice & IndexingSlice>
-	state.resetCollectionPath?.()
-	state.resetIndexingState?.()
+	;(ctx.get() as Partial<IndexingSlice>).resetIndexingState?.()
 }
 
 export const closeWorkspaceTabs = async (

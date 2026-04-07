@@ -1,3 +1,8 @@
+import {
+	buildWorkspaceCollectionState,
+	type WorkspaceCollectionState,
+} from "./collection"
+
 type UnwatchFn = () => void | Promise<void>
 
 export type WorkspaceEntry = {
@@ -14,7 +19,7 @@ export type WorkspaceEntrySelection = {
 	anchorId: string | null
 }
 
-export type WorkspaceState = {
+export type WorkspaceState = WorkspaceCollectionState & {
 	isLoading: boolean
 	isEditMode: boolean
 	workspacePath: string | null
@@ -33,6 +38,7 @@ export type WorkspaceState = {
 export const buildWorkspaceState = (
 	overrides?: Partial<WorkspaceState>,
 ): WorkspaceState => ({
+	...buildWorkspaceCollectionState(),
 	isLoading: false,
 	isEditMode: false,
 	workspacePath: null,

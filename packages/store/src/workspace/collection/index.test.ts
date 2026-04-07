@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { createStore } from "zustand/vanilla"
-import { prepareCollectionSlice } from "../collection-slice"
+import {
+	buildWorkspaceCollectionState,
+	createWorkspaceCollectionActions,
+} from "./index"
 
 type EntryLike = {
 	path: string
@@ -8,12 +11,6 @@ type EntryLike = {
 	isDirectory: boolean
 	children?: EntryLike[]
 }
-
-// const makeFile = (path: string, name: string): EntryLike => ({
-// 	path,
-// 	name,
-// 	isDirectory: false,
-// })
 
 const makeDir = (
 	path: string,
@@ -26,15 +23,14 @@ const makeDir = (
 	children,
 })
 
-const createCollectionTestStore = () => {
-	const createSlice = prepareCollectionSlice()
-	return createStore<any>()((set, get, api) => ({
+const createCollectionTestStore = () =>
+	createStore<any>()((set, get) => ({
+		...buildWorkspaceCollectionState(),
 		entries: [],
-		...createSlice(set, get, api),
+		...createWorkspaceCollectionActions(set, get),
 	}))
-}
 
-describe("collection-slice event handlers", () => {
+describe("workspace collection event handlers", () => {
 	it("onEntriesDeleted clears current and last paths when affected", () => {
 		const store = createCollectionTestStore()
 		store.setState({

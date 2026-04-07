@@ -155,8 +155,7 @@ export const createFsStructureActions = (
 			return
 		}
 
-		const currentCollectionPath =
-			ctx.ports.collection.getCurrentCollectionPath()
+		const { currentCollectionPath } = ctx.get()
 		const activeTabPath = getActiveTabPathForWorkspacePolicy(ctx)
 		let targetDirectory = workspacePath
 

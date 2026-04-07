@@ -1,15 +1,60 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
-import type { StateCreator } from "zustand"
-import type {
-	WorkspaceEntry,
-	WorkspaceSlice,
-} from "../workspace/workspace-slice"
-import { computeCollectionEntries } from "./helpers/collection-entries"
+import type { StoreApi } from "zustand"
+import { computeCollectionEntries } from "../../collection/helpers/collection-entries"
+import type { WorkspaceEntry } from "../workspace-state"
 
-type EntryCreatedInput = Parameters<WorkspaceSlice["entryCreated"]>[0]
-type EntriesDeletedInput = Parameters<WorkspaceSlice["entriesDeleted"]>[0]
-type EntryRenamedInput = Parameters<WorkspaceSlice["entryRenamed"]>[0]
-type EntryMovedInput = Parameters<WorkspaceSlice["entryMoved"]>[0]
+type EntryCreatedInput = {
+	parentPath: string
+	entry: WorkspaceEntry
+	expandParent?: boolean
+	expandNewDirectory?: boolean
+}
+
+type EntriesDeletedInput = {
+	paths: string[]
+}
+
+type EntryRenamedInput = {
+	oldPath: string
+	newPath: string
+	isDirectory: boolean
+	newName: string
+	clearSyncedName?: boolean
+}
+
+type EntryMovedInput = {
+	sourcePath: string
+	destinationDirPath: string
+	newPath: string
+	isDirectory: boolean
+	refreshContent?: boolean
+}
+
+export type WorkspaceCollectionState = {
+	currentCollectionPath: string | null
+	lastCollectionPath: string | null
+	collectionEntries: WorkspaceEntry[]
+}
+
+export type WorkspaceCollectionActions = {
+	setCurrentCollectionPath: (
+		path: string | null | ((prev: string | null) => string | null),
+	) => void
+	resetCollectionPath: () => void
+	toggleCollectionView: () => void
+	refreshCollectionEntries: () => void
+	onEntryCreated: (input: EntryCreatedInput) => void
+	onEntriesDeleted: (input: EntriesDeletedInput) => void
+	onEntryRenamed: (input: EntryRenamedInput) => void
+	onEntryMoved: (input: EntryMovedInput) => void
+}
+
+export type WorkspaceCollectionSlice = WorkspaceCollectionState &
+	WorkspaceCollectionActions
+
+type CollectionStoreState = WorkspaceCollectionState & {
+	entries: WorkspaceEntry[]
+}
 
 const replacePathPrefixIfDescendant = (
 	path: string | null,
@@ -27,33 +72,36 @@ const replacePathPrefixIfDescendant = (
 	return `${newPath}${path.slice(oldPath.length)}`
 }
 
-export type CollectionSlice = {
-	currentCollectionPath: string | null
-	lastCollectionPath: string | null
-	collectionEntries: WorkspaceEntry[]
-	setCurrentCollectionPath: (
-		path: string | null | ((prev: string | null) => string | null),
-	) => void
-	clearLastCollectionPath: () => void
-	resetCollectionPath: () => void
-	toggleCollectionView: () => void
-	getCurrentCollectionPath: () => string | null
-	refreshCollectionEntries: () => void
-	onEntryCreated: (input: EntryCreatedInput) => void
-	onEntriesDeleted: (input: EntriesDeletedInput) => void
-	onEntryRenamed: (input: EntryRenamedInput) => void
-	onEntryMoved: (input: EntryMovedInput) => void
-}
+export const buildWorkspaceCollectionState = (
+	overrides?: Partial<WorkspaceCollectionState>,
+): WorkspaceCollectionState => ({
+	currentCollectionPath: null,
+	lastCollectionPath: null,
+	collectionEntries: [],
+	...overrides,
+})
 
-export const prepareCollectionSlice =
-	(): StateCreator<CollectionSlice & WorkspaceSlice, [], [], CollectionSlice> =>
-	(set, get) => ({
-		currentCollectionPath: null,
-		lastCollectionPath: null,
-		collectionEntries: [],
+export const createWorkspaceCollectionActions = <
+	TStoreState extends CollectionStoreState,
+>(
+	set: StoreApi<TStoreState>["setState"],
+	get: StoreApi<TStoreState>["getState"],
+): WorkspaceCollectionActions => {
+	const setCollectionState = (
+		partial:
+			| Partial<WorkspaceCollectionState>
+			| ((state: TStoreState) => Partial<WorkspaceCollectionState>),
+	) => {
+		set(
+			partial as
+				| Partial<TStoreState>
+				| ((state: TStoreState) => Partial<TStoreState>),
+		)
+	}
 
+	return {
 		setCurrentCollectionPath: (path) => {
-			set((state) => {
+			setCollectionState((state) => {
 				const nextPath =
 					typeof path === "function" ? path(state.currentCollectionPath) : path
 				return {
@@ -65,28 +113,19 @@ export const prepareCollectionSlice =
 			})
 		},
 
-		clearLastCollectionPath: () => {
-			set({
-				lastCollectionPath: null,
-			})
-		},
-
 		resetCollectionPath: () => {
-			set({
-				currentCollectionPath: null,
-				lastCollectionPath: null,
-				collectionEntries: [],
-			})
+			setCollectionState(buildWorkspaceCollectionState())
 		},
 
 		toggleCollectionView: () => {
 			const { currentCollectionPath, lastCollectionPath } = get()
 			if (currentCollectionPath !== null) {
-				// Close the view
-				set({ currentCollectionPath: null, collectionEntries: [] })
+				setCollectionState({
+					currentCollectionPath: null,
+					collectionEntries: [],
+				})
 			} else if (lastCollectionPath !== null) {
-				// Restore the last opened path
-				set({
+				setCollectionState({
 					currentCollectionPath: lastCollectionPath,
 					collectionEntries: computeCollectionEntries(
 						lastCollectionPath,
@@ -96,10 +135,8 @@ export const prepareCollectionSlice =
 			}
 		},
 
-		getCurrentCollectionPath: () => get().currentCollectionPath,
-
 		refreshCollectionEntries: () => {
-			set((state) => ({
+			setCollectionState((state) => ({
 				collectionEntries: computeCollectionEntries(
 					state.currentCollectionPath,
 					get().entries,
@@ -107,8 +144,8 @@ export const prepareCollectionSlice =
 			}))
 		},
 
-		onEntryCreated: () => {
-			set((state) => ({
+		onEntryCreated: (_input) => {
+			setCollectionState((state) => ({
 				collectionEntries: computeCollectionEntries(
 					state.currentCollectionPath,
 					get().entries,
@@ -117,7 +154,7 @@ export const prepareCollectionSlice =
 		},
 
 		onEntriesDeleted: ({ paths }) => {
-			set((state) => {
+			setCollectionState((state) => {
 				const { currentCollectionPath, lastCollectionPath } = state
 				const shouldClearCurrentCollectionPath =
 					currentCollectionPath !== null &&
@@ -149,7 +186,7 @@ export const prepareCollectionSlice =
 		},
 
 		onEntryRenamed: ({ oldPath, newPath, isDirectory }) => {
-			set((state) => {
+			setCollectionState((state) => {
 				const nextCurrentCollectionPath = isDirectory
 					? replacePathPrefixIfDescendant(
 							state.currentCollectionPath,
@@ -177,7 +214,7 @@ export const prepareCollectionSlice =
 		},
 
 		onEntryMoved: ({ sourcePath, newPath, isDirectory }) => {
-			set((state) => {
+			setCollectionState((state) => {
 				const nextCurrentCollectionPath = isDirectory
 					? replacePathPrefixIfDescendant(
 							state.currentCollectionPath,
@@ -203,6 +240,5 @@ export const prepareCollectionSlice =
 				}
 			})
 		},
-	})
-
-export const createCollectionSlice = prepareCollectionSlice()
+	}
+}

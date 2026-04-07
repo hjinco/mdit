@@ -3,8 +3,11 @@ import {
 	DEFAULT_LOCAL_MUTATION_TTL_MS,
 } from "@mdit/local-fs-origin"
 import type { StateCreator } from "zustand"
-import type { CollectionSlice } from "../collection/collection-slice"
 import type { TabSlice } from "../tab/tab-slice"
+import {
+	createWorkspaceCollectionActions,
+	type WorkspaceCollectionSlice,
+} from "./collection"
 import {
 	createDirectoryUiActions,
 	type WorkspaceDirectoryUiActions,
@@ -35,9 +38,11 @@ export type WorkspaceActions = WorkspaceTreeActions &
 	WorkspaceEntrySessionActions &
 	WorkspaceWatchActions
 
-export type WorkspaceSlice = WorkspaceState & WorkspaceActions
+export type WorkspaceSlice = WorkspaceState &
+	WorkspaceCollectionSlice &
+	WorkspaceActions
 
-type WorkspaceSliceStoreState = WorkspaceSlice & TabSlice & CollectionSlice
+type WorkspaceSliceStoreState = WorkspaceSlice & TabSlice
 
 export const prepareWorkspaceSlice =
 	(
@@ -59,6 +64,7 @@ export const prepareWorkspaceSlice =
 
 		return {
 			...buildWorkspaceState({ isLoading: true }),
+			...createWorkspaceCollectionActions(set, get),
 			...createTreeActions(actionContext),
 			...createDirectoryUiActions(actionContext),
 			...createLifecycleActions(actionContext),

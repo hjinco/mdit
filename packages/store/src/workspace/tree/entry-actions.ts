@@ -1,4 +1,3 @@
-import type { CollectionSlice } from "../../collection/collection-slice"
 import type { TabSlice } from "../../tab/tab-slice"
 import {
 	addExpandedDirectories,
@@ -14,6 +13,7 @@ import {
 	persistPinnedDirectoriesIfChanged,
 } from "../directory-ui/runtime/persistence"
 import type { WorkspaceActionContext } from "../workspace-action-context"
+import type { WorkspaceSlice } from "../workspace-slice"
 import type { WorkspaceEntry } from "../workspace-state"
 import {
 	addEntryToState,
@@ -24,18 +24,7 @@ import {
 	updateEntryMetadata,
 } from "./domain/entry-tree"
 
-type WorkspaceTreeStoreState = Partial<TabSlice & CollectionSlice> & {
-	workspacePath: string | null
-	entries: WorkspaceEntry[]
-	expandedDirectories: string[]
-	pinnedDirectories: string[]
-	updateEntries: (
-		entries:
-			| WorkspaceEntry[]
-			| ((entries: WorkspaceEntry[]) => WorkspaceEntry[]),
-		options?: { emitEvent?: boolean },
-	) => void
-}
+type WorkspaceTreeStoreState = WorkspaceSlice & Partial<TabSlice>
 
 export type WorkspaceTreeEntryActions = {
 	entryCreated: (input: {
@@ -86,7 +75,7 @@ export const createTreeEntryActions = (
 				: addEntryToState(entries, parentPath, entry)
 
 		store.updateEntries(nextEntries, { emitEvent: false })
-		;(store as typeof store & Partial<CollectionSlice>).onEntryCreated?.({
+		store.onEntryCreated({
 			parentPath,
 			entry,
 			expandParent,
@@ -120,7 +109,7 @@ export const createTreeEntryActions = (
 			emitEvent: false,
 		})
 		;(store as typeof store & Partial<TabSlice>).removePathsFromHistory?.(paths)
-		;(store as typeof store & Partial<CollectionSlice>).onEntriesDeleted?.({
+		store.onEntriesDeleted({
 			paths,
 		})
 
@@ -170,7 +159,7 @@ export const createTreeEntryActions = (
 			oldPath,
 			newPath,
 		)
-		;(store as typeof store & Partial<CollectionSlice>).onEntryRenamed?.({
+		store.onEntryRenamed({
 			oldPath,
 			newPath,
 			isDirectory,
@@ -239,7 +228,7 @@ export const createTreeEntryActions = (
 			sourcePath,
 			newPath,
 		)
-		;(store as typeof store & Partial<CollectionSlice>).onEntryMoved?.({
+		store.onEntryMoved({
 			sourcePath,
 			destinationDirPath,
 			newPath,
