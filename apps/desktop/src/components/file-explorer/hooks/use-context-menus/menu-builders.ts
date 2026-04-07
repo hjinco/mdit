@@ -348,7 +348,18 @@ export const showDirectoryContextMenu = async ({
 					accelerator: "CmdOrCtrl+V",
 					action: async () => {
 						for (const filePath of clipboardFiles) {
-							await copyEntry(filePath, directoryPath)
+							try {
+								await copyEntry(filePath, directoryPath)
+							} catch (error) {
+								console.error("Failed to paste file:", error)
+								toast.error(
+									`Failed to paste file: ${
+										normalizePathSeparators(filePath).split("/").pop() ??
+										filePath
+									}`,
+									{ position: "bottom-left" },
+								)
+							}
 						}
 					},
 				}),

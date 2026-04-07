@@ -1,3 +1,4 @@
+import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { type MouseEvent, useCallback } from "react"
 import { useShallow } from "zustand/shallow"
 import type { WorkspaceEntry } from "@/store"
@@ -132,7 +133,9 @@ export const useFileExplorerMenus = ({
 			showDirectoryMenu(
 				{
 					path: workspacePath,
-					name: workspacePath.split("/").pop() ?? "Workspace",
+					name:
+						normalizePathSeparators(workspacePath).split("/").pop() ??
+						"Workspace",
 					isDirectory: true,
 					children: entries,
 				},
