@@ -43,7 +43,6 @@ describe("workspace collection event handlers", () => {
 
 		expect(store.getState().currentCollectionPath).toBeNull()
 		expect(store.getState().lastCollectionPath).toBeNull()
-		expect(store.getState().collectionEntries).toEqual([])
 	})
 
 	it("onEntryRenamed rewrites descendant current and last paths", () => {
@@ -55,10 +54,9 @@ describe("workspace collection event handlers", () => {
 		})
 
 		store.getState().onEntryRenamed({
-			oldPath: "/ws/old",
-			newPath: "/ws/new",
+			sourcePath: "/ws/old",
+			targetPath: "/ws/new",
 			isDirectory: true,
-			newName: "new",
 		})
 
 		expect(store.getState().currentCollectionPath).toBe("/ws/new/child")
@@ -75,8 +73,7 @@ describe("workspace collection event handlers", () => {
 
 		store.getState().onEntryMoved({
 			sourcePath: "/ws/src",
-			destinationDirPath: "/ws",
-			newPath: "/ws/dest",
+			targetPath: "/ws/dest",
 			isDirectory: true,
 		})
 
@@ -93,10 +90,9 @@ describe("workspace collection event handlers", () => {
 		})
 
 		store.getState().onEntryRenamed({
-			oldPath: "/ws/other",
-			newPath: "/ws/new-other",
+			sourcePath: "/ws/other",
+			targetPath: "/ws/new-other",
 			isDirectory: true,
-			newName: "new-other",
 		})
 
 		expect(store.getState().currentCollectionPath).toBe("/ws/keep/current")

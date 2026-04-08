@@ -201,11 +201,8 @@ export function createActionTestContext() {
 				...state,
 				currentCollectionPath: null,
 				lastCollectionPath: null,
-				collectionEntries: [],
 			}
 		}),
-		refreshCollectionEntries: vi.fn(),
-		onEntryCreated: vi.fn(),
 		onEntriesDeleted: vi.fn(),
 		onEntryRenamed: vi.fn(),
 		onEntryMoved: vi.fn(),

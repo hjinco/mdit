@@ -75,12 +75,6 @@ export const createTreeEntryActions = (
 				: addEntryToState(entries, parentPath, entry)
 
 		store.updateEntries(nextEntries, { emitEvent: false })
-		store.onEntryCreated({
-			parentPath,
-			entry,
-			expandParent,
-			expandNewDirectory,
-		})
 
 		if (!expandParent && !expandNewDirectory) {
 			return
@@ -160,10 +154,9 @@ export const createTreeEntryActions = (
 			newPath,
 		)
 		store.onEntryRenamed({
-			oldPath,
-			newPath,
+			sourcePath: oldPath,
+			targetPath: newPath,
 			isDirectory,
-			newName,
 		})
 
 		if (!isDirectory) {
@@ -230,8 +223,7 @@ export const createTreeEntryActions = (
 		)
 		store.onEntryMoved({
 			sourcePath,
-			destinationDirPath,
-			newPath,
+			targetPath: newPath,
 			isDirectory,
 		})
 
