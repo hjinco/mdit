@@ -37,6 +37,7 @@ type BaseMenuOptions = {
 type EntryMenuOptions = BaseMenuOptions & {
 	entry: WorkspaceEntry
 	selectionPaths: string[]
+	openTabInNewTab: (path: string) => Promise<void>
 	canRenameNoteWithAI: boolean
 	renameNotesWithAI: (entries: WorkspaceEntry[]) => Promise<void>
 	canMoveNotesWithAI: boolean
@@ -75,6 +76,7 @@ const separator = () =>
 export const showEntryContextMenu = async ({
 	entry,
 	selectionPaths,
+	openTabInNewTab,
 	canRenameNoteWithAI,
 	renameNotesWithAI,
 	canMoveNotesWithAI,
@@ -135,6 +137,13 @@ export const showEntryContextMenu = async ({
 
 		if (entry.name.toLowerCase().endsWith(".md")) {
 			itemPromises.push(
+				MenuItem.new({
+					id: `open-new-tab-${entry.path}`,
+					text: "Open in New Tab",
+					action: async () => {
+						await openTabInNewTab(entry.path)
+					},
+				}),
 				MenuItem.new({
 					id: `save-as-template-${entry.path}`,
 					text: "Save as Template",

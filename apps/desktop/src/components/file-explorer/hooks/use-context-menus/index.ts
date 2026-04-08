@@ -28,10 +28,11 @@ export const useFileExplorerMenus = ({
 	pinDirectory,
 	unpinDirectory,
 }: UseFileExplorerMenusProps) => {
-	const { openImageEdit, copyEntry } = useStore(
+	const { openImageEdit, copyEntry, openTabInNewTab } = useStore(
 		useShallow((state) => ({
 			openImageEdit: state.openImageEdit,
 			copyEntry: state.copyEntry,
+			openTabInNewTab: state.openTabInNewTab,
 		})),
 	)
 
@@ -40,6 +41,7 @@ export const useFileExplorerMenus = ({
 			await showEntryContextMenu({
 				entry,
 				selectionPaths,
+				openTabInNewTab,
 				canRenameNoteWithAI,
 				renameNotesWithAI,
 				canMoveNotesWithAI,
@@ -60,6 +62,7 @@ export const useFileExplorerMenus = ({
 			renameNotesWithAI,
 			canMoveNotesWithAI,
 			moveNotesWithAI,
+			openTabInNewTab,
 			lookupEntryByPath,
 			openImageEdit,
 			workspacePath,

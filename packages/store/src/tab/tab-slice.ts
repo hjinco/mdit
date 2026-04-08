@@ -103,6 +103,7 @@ export type TabSlice = {
 		force?: boolean,
 		options?: OpenTabOptions,
 	) => Promise<void>
+	openTabInNewTab: (path: string, options?: OpenTabOptions) => Promise<void>
 	closeActiveTab: () => void
 	closeTab: (path: string) => void
 	closeTabById: (tabId: number) => void
@@ -274,6 +275,44 @@ export const prepareTabSlice =
 
 			appendVisitToTabHistory(activatedTab.id, activatedTab.path)
 			lastOpenedFileHistoryPersistence.enqueueSafely()
+		}
+
+		const loadTabDraft = async (
+			path: string,
+			options?: OpenTabOptions,
+		): Promise<Pick<Tab, "path" | "name" | "content"> | null> => {
+			const content =
+				options?.initialContent !== undefined
+					? options.initialContent
+					: await readTextFile(path)
+			const name = getFileNameWithoutExtension(path)
+
+			if (!name) {
+				return null
+			}
+
+			return {
+				path,
+				name,
+				content,
+			}
+		}
+
+		const appendTabAndActivate = async (
+			tabDraft: Pick<Tab, "path" | "name" | "content">,
+		) => {
+			const nextTab = buildTab(tabDraft)
+			set((currentState) => {
+				return {
+					tabs: [...currentState.tabs, nextTab],
+					activeTabId: nextTab.id,
+					tabSaveStates: {
+						...currentState.tabSaveStates,
+						[nextTab.id]: true,
+					},
+				}
+			})
+			await persistLastOpenedTabs()
 		}
 
 		const updateActiveTab = (
@@ -639,42 +678,16 @@ export const prepareTabSlice =
 				}
 
 				if (!activeTab) {
-					const content =
-						options?.initialContent !== undefined
-							? options.initialContent
-							: await readTextFile(path)
-					const name = getFileNameWithoutExtension(path)
-
-					if (!name) {
+					const tabDraft = await loadTabDraft(path, options)
+					if (!tabDraft) {
 						return
 					}
-
-					const nextTab = buildTab({
-						path,
-						name,
-						content,
-					})
-					set((currentState) => {
-						return {
-							tabs: [...currentState.tabs, nextTab],
-							activeTabId: nextTab.id,
-							tabSaveStates: {
-								...currentState.tabSaveStates,
-								[nextTab.id]: true,
-							},
-						}
-					})
-					await persistLastOpenedTabs()
+					await appendTabAndActivate(tabDraft)
 					return
 				}
 
-				const content =
-					options?.initialContent !== undefined
-						? options.initialContent
-						: await readTextFile(path)
-				const name = getFileNameWithoutExtension(path)
-
-				if (!name) {
+				const tabDraft = await loadTabDraft(path, options)
+				if (!tabDraft) {
 					return
 				}
 
@@ -708,9 +721,9 @@ export const prepareTabSlice =
 					const nextTab = {
 						...currentTab,
 						id: nextTabId,
-						path,
-						name,
-						content,
+						path: tabDraft.path,
+						name: tabDraft.name,
+						content: tabDraft.content,
 						syncedName: null,
 						history: nextHistoryState.history,
 						historyIndex: nextHistoryState.historyIndex,
@@ -739,6 +752,56 @@ export const prepareTabSlice =
 				})
 
 				await persistLastOpenedTabs()
+			},
+			openTabInNewTab: async (path, options) => {
+				if (!path.endsWith(".md")) {
+					return
+				}
+
+				if (!options?.skipSelectionCapture) {
+					commitCurrentHistorySelection()
+				}
+
+				const state = get()
+				const activeTab = getActiveTabFromState(state)
+				if (!activeTab) {
+					const tabDraft = await loadTabDraft(path, options)
+					if (!tabDraft) {
+						return
+					}
+					await appendTabAndActivate(tabDraft)
+					return
+				}
+
+				const existingTabIndex = findTabIndexByPath(state, path)
+				if (existingTabIndex !== -1) {
+					const existingTab = state.tabs[existingTabIndex]
+					if (!existingTab || state.activeTabId === existingTab.id) {
+						return
+					}
+
+					activateTabAndTrack(existingTabIndex)
+					return
+				}
+
+				const tabDraft = await loadTabDraft(path, options)
+				if (!tabDraft) {
+					return
+				}
+
+				const nextState = get()
+				const duplicateTabIndex = findTabIndexByPath(nextState, path)
+				if (duplicateTabIndex !== -1) {
+					const duplicateTab = nextState.tabs[duplicateTabIndex]
+					if (!duplicateTab || nextState.activeTabId === duplicateTab.id) {
+						return
+					}
+
+					activateTabAndTrack(duplicateTabIndex)
+					return
+				}
+
+				await appendTabAndActivate(tabDraft)
 			},
 			closeActiveTab: () => {
 				const activeTab = getActiveTabFromState(get())

@@ -381,6 +381,49 @@ describe("tab-slice history selection", () => {
 		})
 	})
 
+	it("opens the first note in a new tab when there is no active tab", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTabInNewTab("/notes/a.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [{ path: "/notes/a.md", selection: null }],
+			historyIndex: 0,
+		})
+	})
+
+	it("appends a note as a new tab without replacing the current tab", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		const firstTabId = store.getState().getActiveTab()?.id
+
+		await store.getState().openTabInNewTab("/notes/b.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
+		])
+		expect(getOpenTabByPath(store, "/notes/a.md")?.id).toBe(firstTabId)
+		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
+			expect.objectContaining({
+				history: [{ path: "/notes/a.md", selection: null }],
+				historyIndex: 0,
+			}),
+		)
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+		expect(getOpenTabByPath(store, "/notes/b.md")).toEqual(
+			expect.objectContaining({
+				history: [{ path: "/notes/b.md", selection: null }],
+				historyIndex: 0,
+			}),
+		)
+	})
+
 	it("reuses the current tab when opening a note that is already open elsewhere", async () => {
 		const { store } = createTabStore()
 
@@ -400,6 +443,47 @@ describe("tab-slice history selection", () => {
 				{ path: "/notes/a.md", selection: null },
 			],
 			historyIndex: 1,
+		})
+	})
+
+	it("activates an existing tab instead of creating a duplicate new tab", async () => {
+		const { store, readTextFile } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
+
+		vi.mocked(readTextFile).mockClear()
+
+		await store.getState().openTabInNewTab("/notes/a.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
+			expect.objectContaining({
+				history: [
+					{ path: "/notes/a.md", selection: null },
+					{ path: "/notes/a.md", selection: null },
+				],
+				historyIndex: 1,
+			}),
+		)
+		expect(vi.mocked(readTextFile)).not.toHaveBeenCalled()
+	})
+
+	it("persists appended tabs when opening a note in a new tab", async () => {
+		const { store, saveSettings } = createTabStore()
+		store.setState({ workspacePath: "/workspace" })
+
+		await store.getState().openTab("/workspace/1.md")
+		await store.getState().openTabInNewTab("/workspace/2.md")
+		await store.getState().openTabInNewTab("/workspace/3.md")
+
+		expect(saveSettings).toHaveBeenLastCalledWith("/workspace", {
+			lastOpenedFilePaths: ["1.md", "2.md", "3.md"],
 		})
 	})
 
