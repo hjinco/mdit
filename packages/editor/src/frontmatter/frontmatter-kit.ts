@@ -2,6 +2,7 @@ import { PointApi } from "platejs"
 import { createPlatePlugin } from "platejs/react"
 import { createElement } from "react"
 import type { LinkWorkspaceState } from "../link/link-kit-types"
+import { getNextBlockInsertIndexAfterFrontmatter } from "./frontmatter-block-navigation"
 import { requestFrontmatterFocus } from "./frontmatter-focus"
 import { FrontmatterElement } from "./node-frontmatter"
 
@@ -55,11 +56,11 @@ export function createFrontmatterPlugin({
 				const [, path] = blockEntry
 				if (path.length !== 1) return
 
-				const frontmatterNode = editor.children[1]
-				const hasFrontmatter = frontmatterNode?.type === FRONTMATTER_KEY
-				const bodyStartIndex = hasFrontmatter ? 2 : 1
+				const bodyStartIndex = getNextBlockInsertIndexAfterFrontmatter(
+					editor.children,
+				)
 
-				if (path[0] !== bodyStartIndex) return
+				if (bodyStartIndex === null || path[0] !== bodyStartIndex) return
 
 				const start = editor.api.start(path)
 				if (!start) return
@@ -68,8 +69,6 @@ export function createFrontmatterPlugin({
 					!PointApi.equals(selection.focus, start)
 				)
 					return
-
-				if (!hasFrontmatter) return
 
 				event.preventDefault()
 				event.stopPropagation()

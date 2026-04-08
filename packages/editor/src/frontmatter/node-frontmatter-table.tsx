@@ -36,6 +36,7 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import { PlusIcon } from "lucide-react"
+import { KEYS } from "platejs"
 import { useEditorRef } from "platejs/react"
 import {
 	type ComponentPropsWithoutRef,
@@ -51,6 +52,11 @@ import {
 } from "react"
 import type { LinkWorkspaceState } from "../link/link-kit-types"
 import { flattenWorkspaceFiles } from "../link/link-toolbar-utils"
+import {
+	getNextBlockIndexAfterFrontmatter,
+	getNextBlockInsertIndexAfterFrontmatter,
+	getPreviousBlockIndexBeforeFrontmatter,
+} from "./frontmatter-block-navigation"
 import {
 	FRONTMATTER_FOCUS_EVENT,
 	type FrontmatterFocusTarget,
@@ -897,10 +903,34 @@ export function FrontmatterTable({
 		return true
 	}, [])
 
-	const focusEditorSecondElement = useCallback(() => {
-		if (!editor || editor.children.length < 2) return false
+	const focusPreviousEditorBlock = useCallback(() => {
+		const previousIndex = getPreviousBlockIndexBeforeFrontmatter(
+			editor.children,
+		)
+		if (previousIndex === null) return false
 		keyboardNavFlagRef.current = true
-		editor.tf.select([1], { edge: "start" })
+		editor.tf.select([previousIndex], { edge: "end" })
+		editor.tf.focus()
+		return true
+	}, [editor])
+
+	const focusNextEditorBlock = useCallback(() => {
+		const nextIndex = getNextBlockIndexAfterFrontmatter(editor.children)
+		if (nextIndex !== null) {
+			keyboardNavFlagRef.current = true
+			editor.tf.select([nextIndex], { edge: "start" })
+			editor.tf.focus()
+			return true
+		}
+
+		const insertIndex = getNextBlockInsertIndexAfterFrontmatter(editor.children)
+		if (insertIndex === null) return false
+
+		keyboardNavFlagRef.current = true
+		editor.tf.insertNodes(editor.api.create.block({ type: KEYS.p }), {
+			at: [insertIndex],
+			select: true,
+		})
 		editor.tf.focus()
 		return true
 	}, [editor])
@@ -1007,6 +1037,13 @@ export function FrontmatterTable({
 				return
 			}
 
+			if (key === "ArrowUp" && current.rowIndex === 0) {
+				event.preventDefault()
+				event.stopPropagation()
+				focusPreviousEditorBlock()
+				return
+			}
+
 			let nextRowIndex = current.rowIndex
 			let nextColIndex = current.colIndex
 
@@ -1031,7 +1068,12 @@ export function FrontmatterTable({
 			keyboardNavFlagRef.current = true
 			focusCellByIndex(nextRowIndex, nextColIndex)
 		},
-		[focusAddButton, focusCellByIndex, getCellPosition],
+		[
+			focusAddButton,
+			focusCellByIndex,
+			focusPreviousEditorBlock,
+			getCellPosition,
+		],
 	)
 
 	const handleKeyDownCapture = useCallback((event: React.KeyboardEvent) => {
@@ -1095,7 +1137,7 @@ export function FrontmatterTable({
 				return
 			}
 			if (event.key === "Tab" && !event.shiftKey) {
-				const moved = focusEditorSecondElement()
+				const moved = focusNextEditorBlock()
 				if (moved) {
 					event.preventDefault()
 					event.stopPropagation()
@@ -1103,14 +1145,14 @@ export function FrontmatterTable({
 				return
 			}
 			if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-				const moved = focusEditorSecondElement()
+				const moved = focusNextEditorBlock()
 				if (moved) {
 					event.preventDefault()
 					event.stopPropagation()
 				}
 			}
 		},
-		[focusEditorSecondElement, focusLastRowEnd, focusLastRowStart],
+		[focusLastRowEnd, focusLastRowStart, focusNextEditorBlock],
 	)
 
 	const addRow = () => {

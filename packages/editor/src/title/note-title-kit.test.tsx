@@ -1,5 +1,6 @@
 import { KEYS, type Value } from "platejs"
 import { describe, expect, it, vi } from "vitest"
+import * as frontmatterFocus from "../frontmatter/frontmatter-focus"
 import {
 	createNoteTitleBlock,
 	createNoteTitlePlugin,
@@ -183,5 +184,46 @@ describe("note-title-kit", () => {
 
 		expect(preventDefault).toHaveBeenCalledTimes(1)
 		expect(stopPropagation).toHaveBeenCalledTimes(1)
+	})
+
+	it("moves focus to the frontmatter when pressing arrow down in the title", () => {
+		const preventDefault = vi.fn()
+		const stopPropagation = vi.fn()
+		const onExitTitle = vi.fn()
+		const requestFrontmatterFocusSpy = vi.spyOn(
+			frontmatterFocus,
+			"requestFrontmatterFocus",
+		)
+		const editor = {
+			id: "editor-1",
+			children: [
+				{ type: NOTE_TITLE_KEY, children: [{ text: "Title" }] },
+				{ type: "frontmatter", children: [{ text: "" }] },
+				{ type: KEYS.p, children: [{ text: "" }] },
+			],
+			api: {
+				block: vi.fn().mockReturnValue([{ type: NOTE_TITLE_KEY }, [0]]),
+			},
+		} as any
+		const event = {
+			key: "ArrowDown",
+			preventDefault,
+			stopPropagation,
+		} as any
+
+		createNoteTitlePlugin({ onExitTitle }).handlers.onKeyDown?.({
+			editor,
+			event,
+		} as any)
+
+		expect(preventDefault).toHaveBeenCalledTimes(1)
+		expect(stopPropagation).toHaveBeenCalledTimes(1)
+		expect(requestFrontmatterFocusSpy).toHaveBeenCalledWith(
+			"editor-1",
+			"firstCell",
+		)
+		expect(onExitTitle).toHaveBeenCalledTimes(1)
+
+		requestFrontmatterFocusSpy.mockRestore()
 	})
 })

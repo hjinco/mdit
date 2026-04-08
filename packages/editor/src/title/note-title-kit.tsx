@@ -12,6 +12,7 @@ import {
 	useState,
 } from "react"
 import { HeadingElement } from "../basic/node-heading"
+import { requestFrontmatterFocus } from "../frontmatter/frontmatter-focus"
 
 const FRONTMATTER_KEY = "frontmatter"
 const NOTE_TITLE_INVALID_CHAR_REGEX = /[/\\:*?"<>|]/
@@ -152,6 +153,15 @@ function isSelectionInTitle(editor: PlateEditor) {
 
 function getBodyStartPath(editor: PlateEditor): [number] {
 	return editor.children[1]?.type === FRONTMATTER_KEY ? [2] : [1]
+}
+
+function focusNextBlockFromTitle(editor: PlateEditor) {
+	if (editor.children[1]?.type === FRONTMATTER_KEY) {
+		requestFrontmatterFocus(editor.id, "firstCell")
+		return
+	}
+
+	focusOrCreateBodyBlock(editor)
 }
 
 function focusOrCreateBodyBlock(editor: PlateEditor) {
@@ -328,7 +338,15 @@ export function createNoteTitlePlugin({
 					return
 				}
 
-				if (event.key === "Tab" || event.key === "ArrowDown") {
+				if (event.key === "ArrowDown") {
+					event.preventDefault()
+					event.stopPropagation()
+					focusNextBlockFromTitle(editor)
+					onExitTitle?.()
+					return
+				}
+
+				if (event.key === "Tab") {
 					onExitTitle?.()
 				}
 
