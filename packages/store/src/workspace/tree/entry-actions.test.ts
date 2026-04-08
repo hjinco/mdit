@@ -3,7 +3,7 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createTreeEntryActions } from "./entry-actions"
 
 describe("tree/entry-actions", () => {
-	it("entryCreated syncs collection state directly", async () => {
+	it("entryCreated updates entries without emitting a tree event", async () => {
 		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
@@ -22,16 +22,16 @@ describe("tree/entry-actions", () => {
 			expandParent: true,
 		})
 
-		expect(getState().onEntryCreated).toHaveBeenCalledWith({
-			parentPath: "/ws",
-			entry: {
-				path: "/ws/a.md",
-				name: "a.md",
-				isDirectory: false,
-			},
-			expandParent: true,
-			expandNewDirectory: false,
-		})
+		expect(getState().updateEntries).toHaveBeenCalledWith(
+			[
+				{
+					path: "/ws/a.md",
+					name: "a.md",
+					isDirectory: false,
+				},
+			],
+			{ emitEvent: false },
+		)
 	})
 
 	it("entriesDeleted syncs tabs and collection before persistence", async () => {
@@ -89,10 +89,9 @@ describe("tree/entry-actions", () => {
 			"/ws/renamed",
 		)
 		expect(getState().onEntryRenamed).toHaveBeenCalledWith({
-			oldPath: "/ws/folder",
-			newPath: "/ws/renamed",
+			sourcePath: "/ws/folder",
+			targetPath: "/ws/renamed",
 			isDirectory: true,
-			newName: "renamed",
 		})
 	})
 
@@ -126,8 +125,7 @@ describe("tree/entry-actions", () => {
 		)
 		expect(getState().onEntryMoved).toHaveBeenCalledWith({
 			sourcePath: "/ws/folder",
-			destinationDirPath: "/ws/archive",
-			newPath: "/ws/archive/folder",
+			targetPath: "/ws/archive/folder",
 			isDirectory: true,
 		})
 	})

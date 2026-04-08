@@ -21,6 +21,7 @@ export type {
 } from "./ai-settings/credentials"
 export type { OllamaModels } from "./ai-settings/ollama-types"
 export type { BrowserStorageLike } from "./browser-storage"
+export { computeCollectionEntries } from "./collection/helpers/collection-entries"
 export type { EditorSlice } from "./editor/editor-slice"
 export { prepareEditorSlice } from "./editor/editor-slice"
 export type {

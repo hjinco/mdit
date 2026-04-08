@@ -39,7 +39,6 @@ export const createTreeActions = (
 		if (options?.emitEvent === false) {
 			return
 		}
-		ctx.get().refreshCollectionEntries()
 	},
 
 	refreshWorkspaceEntries: async () => {

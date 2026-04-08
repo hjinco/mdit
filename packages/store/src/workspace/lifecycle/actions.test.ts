@@ -35,9 +35,6 @@ describe("lifecycle-actions", () => {
 			unwatchFn: unwatch,
 			currentCollectionPath: "/old/folder",
 			lastCollectionPath: "/old/folder",
-			collectionEntries: [
-				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
-			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue([
 			"/new",
@@ -53,7 +50,6 @@ describe("lifecycle-actions", () => {
 		expect(getState().getIndexingConfig).toHaveBeenCalledWith("/new")
 		expect(getState().currentCollectionPath).toBeNull()
 		expect(getState().lastCollectionPath).toBeNull()
-		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -127,9 +123,6 @@ describe("lifecycle-actions", () => {
 			unwatchFn: unwatch,
 			currentCollectionPath: "/old/folder",
 			lastCollectionPath: "/old/folder",
-			collectionEntries: [
-				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
-			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/other"])
 
@@ -140,7 +133,6 @@ describe("lifecycle-actions", () => {
 		expect(getState().resetIndexingState).toHaveBeenCalled()
 		expect(getState().currentCollectionPath).toBeNull()
 		expect(getState().lastCollectionPath).toBeNull()
-		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBeNull()
 		expect(getState().unwatchFn).toBeNull()
 	})
@@ -197,9 +189,6 @@ describe("lifecycle-actions", () => {
 			unwatchFn: unwatch,
 			currentCollectionPath: "/old/folder",
 			lastCollectionPath: "/old/folder",
-			collectionEntries: [
-				{ path: "/old/folder/note.md", name: "note.md", isDirectory: false },
-			],
 		})
 		deps.historyRepository.listWorkspacePaths.mockResolvedValue(["/new"])
 		deps.fileSystemRepository.isExistingDirectory.mockResolvedValue(true)
@@ -211,7 +200,6 @@ describe("lifecycle-actions", () => {
 		expect(getState().getIndexingConfig).toHaveBeenCalledWith("/new")
 		expect(getState().currentCollectionPath).toBeNull()
 		expect(getState().lastCollectionPath).toBeNull()
-		expect(getState().collectionEntries).toEqual([])
 		expect(getState().workspacePath).toBe("/new")
 		expect(getState().unwatchFn).toBeNull()
 	})

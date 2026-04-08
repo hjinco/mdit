@@ -9,7 +9,7 @@ import { type MouseEvent, useCallback, useMemo, useRef } from "react"
 import { useShallow } from "zustand/shallow"
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
-import { useStore } from "@/store"
+import { computeCollectionEntries, useStore } from "@/store"
 import { isMac } from "@/utils/platform"
 import { useCollectionContextMenu } from "./hooks/use-collection-context-menu"
 import { useCollectionRename } from "./hooks/use-collection-rename"
@@ -28,7 +28,7 @@ export function CollectionView() {
 		isFileExplorerOpen,
 		currentCollectionPath,
 		setCurrentCollectionPath,
-		collectionEntries,
+		entries,
 		tab,
 		openTab,
 		activeTabSaved,
@@ -41,7 +41,7 @@ export function CollectionView() {
 			isFileExplorerOpen: state.isFileExplorerOpen,
 			currentCollectionPath: state.currentCollectionPath,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			collectionEntries: state.collectionEntries,
+			entries: state.entries,
 			tab: state.getActiveTab(),
 			openTab: state.openTab,
 			activeTabSaved: state.getIsSaved(),
@@ -66,6 +66,10 @@ export function CollectionView() {
 	const displayName = currentCollectionPath
 		? getFolderNameFromPath(currentCollectionPath)
 		: undefined
+	const collectionEntries = useMemo(
+		() => computeCollectionEntries(currentCollectionPath, entries),
+		[currentCollectionPath, entries],
+	)
 
 	const {
 		sortedEntries,

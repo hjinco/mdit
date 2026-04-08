@@ -1,39 +1,25 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import type { StoreApi } from "zustand"
-import { computeCollectionEntries } from "../../collection/helpers/collection-entries"
-import type { WorkspaceEntry } from "../workspace-state"
-
-type EntryCreatedInput = {
-	parentPath: string
-	entry: WorkspaceEntry
-	expandParent?: boolean
-	expandNewDirectory?: boolean
-}
 
 type EntriesDeletedInput = {
 	paths: string[]
 }
 
 type EntryRenamedInput = {
-	oldPath: string
-	newPath: string
+	sourcePath: string
+	targetPath: string
 	isDirectory: boolean
-	newName: string
-	clearSyncedName?: boolean
 }
 
 type EntryMovedInput = {
 	sourcePath: string
-	destinationDirPath: string
-	newPath: string
+	targetPath: string
 	isDirectory: boolean
-	refreshContent?: boolean
 }
 
 export type WorkspaceCollectionState = {
 	currentCollectionPath: string | null
 	lastCollectionPath: string | null
-	collectionEntries: WorkspaceEntry[]
 }
 
 export type WorkspaceCollectionActions = {
@@ -42,8 +28,6 @@ export type WorkspaceCollectionActions = {
 	) => void
 	resetCollectionPath: () => void
 	toggleCollectionView: () => void
-	refreshCollectionEntries: () => void
-	onEntryCreated: (input: EntryCreatedInput) => void
 	onEntriesDeleted: (input: EntriesDeletedInput) => void
 	onEntryRenamed: (input: EntryRenamedInput) => void
 	onEntryMoved: (input: EntryMovedInput) => void
@@ -52,24 +36,46 @@ export type WorkspaceCollectionActions = {
 export type WorkspaceCollectionSlice = WorkspaceCollectionState &
 	WorkspaceCollectionActions
 
-type CollectionStoreState = WorkspaceCollectionState & {
-	entries: WorkspaceEntry[]
-}
+type CollectionStoreState = WorkspaceCollectionState
 
 const replacePathPrefixIfDescendant = (
 	path: string | null,
-	oldPath: string,
-	newPath: string,
+	sourcePath: string,
+	targetPath: string,
 ): string | null => {
-	if (!path || !isPathEqualOrDescendant(path, oldPath)) {
+	if (!path || !isPathEqualOrDescendant(path, sourcePath)) {
 		return path
 	}
 
-	if (path === oldPath) {
-		return newPath
+	if (path === sourcePath) {
+		return targetPath
 	}
 
-	return `${newPath}${path.slice(oldPath.length)}`
+	return `${targetPath}${path.slice(sourcePath.length)}`
+}
+
+const rebaseCollectionPaths = (
+	state: WorkspaceCollectionState,
+	sourcePath: string,
+	targetPath: string,
+	isDirectory: boolean,
+): WorkspaceCollectionState => {
+	if (!isDirectory) {
+		return state
+	}
+
+	return {
+		currentCollectionPath: replacePathPrefixIfDescendant(
+			state.currentCollectionPath,
+			sourcePath,
+			targetPath,
+		),
+		lastCollectionPath: replacePathPrefixIfDescendant(
+			state.lastCollectionPath,
+			sourcePath,
+			targetPath,
+		),
+	}
 }
 
 export const buildWorkspaceCollectionState = (
@@ -77,7 +83,6 @@ export const buildWorkspaceCollectionState = (
 ): WorkspaceCollectionState => ({
 	currentCollectionPath: null,
 	lastCollectionPath: null,
-	collectionEntries: [],
 	...overrides,
 })
 
@@ -108,7 +113,6 @@ export const createWorkspaceCollectionActions = <
 					currentCollectionPath: nextPath,
 					lastCollectionPath:
 						nextPath !== null ? nextPath : state.lastCollectionPath,
-					collectionEntries: computeCollectionEntries(nextPath, get().entries),
 				}
 			})
 		},
@@ -122,35 +126,12 @@ export const createWorkspaceCollectionActions = <
 			if (currentCollectionPath !== null) {
 				setCollectionState({
 					currentCollectionPath: null,
-					collectionEntries: [],
 				})
 			} else if (lastCollectionPath !== null) {
 				setCollectionState({
 					currentCollectionPath: lastCollectionPath,
-					collectionEntries: computeCollectionEntries(
-						lastCollectionPath,
-						get().entries,
-					),
 				})
 			}
-		},
-
-		refreshCollectionEntries: () => {
-			setCollectionState((state) => ({
-				collectionEntries: computeCollectionEntries(
-					state.currentCollectionPath,
-					get().entries,
-				),
-			}))
-		},
-
-		onEntryCreated: (_input) => {
-			setCollectionState((state) => ({
-				collectionEntries: computeCollectionEntries(
-					state.currentCollectionPath,
-					get().entries,
-				),
-			}))
 		},
 
 		onEntriesDeleted: ({ paths }) => {
@@ -177,68 +158,20 @@ export const createWorkspaceCollectionActions = <
 				return {
 					currentCollectionPath: nextCurrentCollectionPath,
 					lastCollectionPath: nextLastCollectionPath,
-					collectionEntries: computeCollectionEntries(
-						nextCurrentCollectionPath,
-						get().entries,
-					),
 				}
 			})
 		},
 
-		onEntryRenamed: ({ oldPath, newPath, isDirectory }) => {
-			setCollectionState((state) => {
-				const nextCurrentCollectionPath = isDirectory
-					? replacePathPrefixIfDescendant(
-							state.currentCollectionPath,
-							oldPath,
-							newPath,
-						)
-					: state.currentCollectionPath
-				const nextLastCollectionPath = isDirectory
-					? replacePathPrefixIfDescendant(
-							state.lastCollectionPath,
-							oldPath,
-							newPath,
-						)
-					: state.lastCollectionPath
-
-				return {
-					currentCollectionPath: nextCurrentCollectionPath,
-					lastCollectionPath: nextLastCollectionPath,
-					collectionEntries: computeCollectionEntries(
-						nextCurrentCollectionPath,
-						get().entries,
-					),
-				}
-			})
+		onEntryRenamed: ({ sourcePath, targetPath, isDirectory }) => {
+			setCollectionState((state) =>
+				rebaseCollectionPaths(state, sourcePath, targetPath, isDirectory),
+			)
 		},
 
-		onEntryMoved: ({ sourcePath, newPath, isDirectory }) => {
-			setCollectionState((state) => {
-				const nextCurrentCollectionPath = isDirectory
-					? replacePathPrefixIfDescendant(
-							state.currentCollectionPath,
-							sourcePath,
-							newPath,
-						)
-					: state.currentCollectionPath
-				const nextLastCollectionPath = isDirectory
-					? replacePathPrefixIfDescendant(
-							state.lastCollectionPath,
-							sourcePath,
-							newPath,
-						)
-					: state.lastCollectionPath
-
-				return {
-					currentCollectionPath: nextCurrentCollectionPath,
-					lastCollectionPath: nextLastCollectionPath,
-					collectionEntries: computeCollectionEntries(
-						nextCurrentCollectionPath,
-						get().entries,
-					),
-				}
-			})
+		onEntryMoved: ({ sourcePath, targetPath, isDirectory }) => {
+			setCollectionState((state) =>
+				rebaseCollectionPaths(state, sourcePath, targetPath, isDirectory),
+			)
 		},
 	}
 }
