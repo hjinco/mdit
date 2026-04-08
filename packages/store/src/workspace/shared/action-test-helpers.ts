@@ -144,25 +144,19 @@ export function createActionTestContext() {
 		entryImported: vi.fn(),
 		setWorkspace: vi.fn(),
 		openTab: vi.fn().mockResolvedValue(undefined),
+		activateTabById: vi.fn(),
 		getOpenTabSnapshots: vi.fn(() => ports.tab.getOpenTabSnapshots()),
 		getActiveTabPath: vi.fn(() => ports.tab.getActiveTabPath()),
+		closeTabById: vi.fn(),
 		closeAllTabs: vi.fn(() => {
 			state = {
 				...state,
 				tabs: [],
 				activeTabId: null,
 				tabSaveStates: {},
-				history: [],
-				historyIndex: -1,
 			}
 		}),
-		clearHistory: vi.fn(() => {
-			state = {
-				...state,
-				history: [],
-				historyIndex: -1,
-			}
-		}),
+		clearHistory: vi.fn(),
 		hydrateFromOpenedFiles: vi.fn().mockResolvedValue(true),
 		renameTab: vi.fn().mockResolvedValue(undefined),
 		updateHistoryPath: vi.fn(),

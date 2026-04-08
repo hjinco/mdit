@@ -1,194 +1,99 @@
 import { cn } from "@mdit/ui/lib/utils"
-import {
-	getFileNameFromPath,
-	getFileNameWithoutExtension,
-} from "@mdit/utils/path-utils"
-import { SquarePenIcon } from "lucide-react"
-import {
-	type ChangeEvent,
-	type KeyboardEvent,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react"
-import { toast } from "sonner"
+import { XIcon } from "lucide-react"
+import { type MouseEvent, useCallback } from "react"
 import { useShallow } from "zustand/shallow"
-import type { WorkspaceEntry } from "@/store"
 import { useStore } from "@/store"
 
-export function Tab() {
-	const { tab, renameEntry } = useStore(
+export function TabStrip() {
+	const { tabs, activeTabId, activateTabById, closeTabById } = useStore(
 		useShallow((s) => ({
-			tab: s.getActiveTab(),
-			renameEntry: s.renameEntry,
+			tabs: s.tabs,
+			activeTabId: s.activeTabId,
+			activateTabById: s.activateTabById,
+			closeTabById: s.closeTabById,
 		})),
 	)
-	const [isEditing, setIsEditing] = useState(false)
-	const displayName = tab?.syncedName ?? tab?.name ?? ""
-	const [draftName, setDraftName] = useState(displayName)
-	const [isRenaming, setIsRenaming] = useState(false)
-	const inputRef = useRef<HTMLInputElement>(null)
 
-	const entry = useMemo<WorkspaceEntry | null>(() => {
-		if (!tab) return null
-		const name = getFileNameFromPath(tab.path)
-		if (!name) return null
-		return {
-			path: tab.path,
-			name,
-			isDirectory: false,
-		}
-	}, [tab])
-
-	useEffect(() => {
-		if (!isEditing && displayName) {
-			setDraftName(displayName)
-		}
-	}, [displayName, isEditing])
-
-	useEffect(() => {
-		if (!tab?.path) {
-			return
-		}
-
-		// Cancel edits when the active tab changes to avoid renaming the wrong file.
-		setIsEditing(false)
-		setDraftName(tab.syncedName ?? getFileNameWithoutExtension(tab.path))
-	}, [tab?.syncedName, tab?.path])
-
-	useEffect(() => {
-		if (!isEditing) return
-		const element = inputRef.current
-		if (!element) return
-		element.focus()
-		element.select()
-	}, [isEditing])
-
-	const handleStartEditing = useCallback(() => {
-		if (!tab) return
-		setDraftName(displayName)
-		setIsEditing(true)
-	}, [displayName, tab])
-
-	const handleCancelEditing = useCallback(() => {
-		if (tab) {
-			setDraftName(displayName)
-		}
-		setIsEditing(false)
-	}, [displayName, tab])
-
-	const handleRename = useCallback(async () => {
-		if (isRenaming) {
-			return
-		}
-
-		if (!tab || !entry) {
-			setIsEditing(false)
-			return
-		}
-
-		const trimmed = draftName.trim()
-
-		if (!trimmed) {
-			handleCancelEditing()
-			return
-		}
-
-		const extension = getExtension(entry.name)
-		const nextFileName = extension ? `${trimmed}${extension}` : trimmed
-
-		if (nextFileName === entry.name) {
-			setIsEditing(false)
-			return
-		}
-
-		try {
-			setIsRenaming(true)
-			const renamedPath = await renameEntry(entry, nextFileName)
-			if (!renamedPath) {
-				throw new Error("Rename rejected")
-			}
-		} catch (error) {
-			console.error("Failed to rename tab entry:", error)
-			toast.error("Failed to rename tab.")
-			handleCancelEditing()
-			return
-		} finally {
-			setIsRenaming(false)
-		}
-
-		setIsEditing(false)
-	}, [draftName, entry, handleCancelEditing, isRenaming, renameEntry, tab])
-
-	const handleBlur = useCallback(() => {
-		if (!isEditing || isRenaming) return
-		handleRename().catch(console.error)
-	}, [handleRename, isEditing, isRenaming])
-
-	const handleKeyDown = useCallback(
-		(event: KeyboardEvent<HTMLInputElement>) => {
-			if (event.key === "Enter") {
-				event.preventDefault()
-				handleRename().catch(console.error)
-			} else if (event.key === "Escape") {
-				event.preventDefault()
-				handleCancelEditing()
-			}
+	const handleActivate = useCallback(
+		(tabId: number) => {
+			activateTabById(tabId)
 		},
-		[handleCancelEditing, handleRename],
+		[activateTabById],
 	)
 
-	const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-		setDraftName(event.currentTarget.value)
-	}, [])
+	const handleClose = useCallback(
+		(tabId: number) => {
+			closeTabById(tabId)
+		},
+		[closeTabById],
+	)
 
-	if (!tab) return null
+	if (tabs.length === 0) {
+		return null
+	}
 
 	return (
-		<div className="group relative flex cursor-default items-center py-2 px-2 text-sm text-muted-foreground">
-			<div className="relative w-full">
-				<div
-					aria-hidden={isEditing}
-					className={cn("max-w-sm truncate", isEditing && "hidden")}
-				>
-					{displayName}
-				</div>
-				<input
-					ref={inputRef}
-					type="text"
-					value={draftName}
-					onChange={handleChange}
-					onBlur={handleBlur}
-					onKeyDown={handleKeyDown}
-					autoComplete="off"
-					spellCheck={false}
-					className={cn(
-						"bg-transparent text-foreground text-center outline-none transition-opacity caret-foreground",
-						"focus-visible:outline-none focus-visible:ring-0",
-						isEditing ? "flex" : "hidden",
-					)}
-				/>
+		<div className="min-w-0 flex-1">
+			<div className="flex items-center gap-1 overflow-x-auto py-1.5">
+				{tabs.map((tab) => {
+					const isActive = tab.id === activeTabId
+					const displayName = tab.syncedName ?? tab.name
+
+					return (
+						<div
+							key={tab.id}
+							role="tab"
+							aria-selected={isActive}
+							tabIndex={0}
+							onClick={() => handleActivate(tab.id)}
+							onKeyDown={(event) => {
+								if (event.key !== "Enter" && event.key !== " ") {
+									return
+								}
+								event.preventDefault()
+								handleActivate(tab.id)
+							}}
+							onAuxClick={(event) => {
+								if (event.button !== 1) {
+									return
+								}
+								event.stopPropagation()
+								handleClose(tab.id)
+							}}
+							className={cn(
+								"group/tab relative flex h-8 w-48 shrink-0 items-center rounded-md text-sm transition-colors",
+								"text-muted-foreground hover:bg-muted",
+								isActive && "bg-muted text-foreground",
+							)}
+						>
+							<div className="flex-1 truncate text-left pl-2 pr-1">
+								{displayName}
+							</div>
+							<div
+								className={cn(
+									"absolute right-0 flex h-full w-14 items-center justify-end rounded-r-md pr-1.5",
+									"opacity-0 group-hover/tab:opacity-100 transition-opacity",
+									"bg-linear-to-r from-transparent via-muted to-muted",
+								)}
+							>
+								<button
+									type="button"
+									onClick={(event: MouseEvent<HTMLButtonElement>) => {
+										event.stopPropagation()
+										handleClose(tab.id)
+									}}
+									className={cn(
+										"flex size-5 shrink-0 items-center justify-center transition-colors text-muted-foreground hover:text-foreground",
+									)}
+								>
+									<XIcon className="size-3.5" aria-hidden />
+									<span className="sr-only">Close tab</span>
+								</button>
+							</div>
+						</div>
+					)
+				})}
 			</div>
-			{!isEditing && (
-				<button
-					type="button"
-					onClick={handleStartEditing}
-					className={cn(
-						"absolute -right-4 top-1/2 opacity-0 will-change-transform -translate-y-1/2 items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:opacity-100 group-hover:opacity-100 transition-opacity",
-					)}
-				>
-					<SquarePenIcon className="h-3.5 w-3.5" aria-hidden />
-					<span className="sr-only">edit</span>
-				</button>
-			)}
 		</div>
 	)
-}
-
-function getExtension(fileName: string) {
-	const index = fileName.lastIndexOf(".")
-	if (index <= 0) return ""
-	return fileName.slice(index)
 }

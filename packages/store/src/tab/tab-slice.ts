@@ -14,9 +14,11 @@ import {
 } from "./tab-session"
 import {
 	buildEmptyTabState,
+	buildInitialTabHistory,
 	dedupePathsPreservingLastOccurrence,
 	findTabIndexByPath,
 	getActiveTabFromState,
+	getActiveTabHistoryFromState,
 	getActiveTabSavedFromState,
 	getTabSavedFromState,
 	removeTabSaveState,
@@ -26,7 +28,6 @@ import type {
 	OpenTabSnapshot,
 	PendingHistorySelectionRestoreResult,
 	Tab,
-	TabHistoryEntry,
 	TabHistorySelection,
 	TabSaveStateMap,
 } from "./tab-types"
@@ -79,8 +80,10 @@ export type TabSlice = {
 	tabs: Tab[]
 	activeTabId: number | null
 	tabSaveStates: TabSaveStateMap
-	history: TabHistoryEntry[]
-	historyIndex: number
+	activateTab: (path: string) => void
+	activateTabById: (tabId: number) => void
+	activateNextTab: () => void
+	activatePreviousTab: () => void
 	setHistorySelectionProvider: (
 		provider: (() => TabHistorySelection) | null,
 	) => void
@@ -100,7 +103,9 @@ export type TabSlice = {
 		force?: boolean,
 		options?: OpenTabOptions,
 	) => Promise<void>
+	closeActiveTab: () => void
 	closeTab: (path: string) => void
+	closeTabById: (tabId: number) => void
 	closeAllTabs: () => void
 	renameTab: (
 		oldPath: string,
@@ -145,7 +150,6 @@ export const prepareTabSlice =
 						workspacePath: state.workspacePath,
 						tabs: state.tabs,
 						activeTabId: state.activeTabId,
-						history: state.history,
 					}
 				},
 				saveSettings,
@@ -154,44 +158,33 @@ export const prepareTabSlice =
 				},
 			})
 
-		const updateCurrentHistorySelection = (selection: TabHistorySelection) => {
-			set((state) => {
-				const nextHistory = updateHistorySelection(
-					{
-						history: state.history,
-						historyIndex: state.historyIndex,
-					},
-					selection,
-				)
-				if (!nextHistory) {
-					return {}
-				}
+		const findTabIndexById = (tabs: Tab[], tabId: number): number =>
+			tabs.findIndex((tab) => tab.id === tabId)
 
-				return {
-					history: nextHistory,
-				}
-			})
-		}
+		const buildTab = ({
+			path,
+			name,
+			content,
+		}: Pick<Tab, "path" | "name" | "content">): Tab => ({
+			id: ++tabIdCounter,
+			path,
+			name,
+			content,
+			...buildInitialTabHistory(path),
+		})
 
-		const commitCurrentHistorySelection = () => {
-			updateCurrentHistorySelection(historySession.readCurrentSelection())
-		}
-
-		const updateActiveTab = (
+		const updateTabById = (
+			state: Pick<TabSlice, "tabs">,
+			tabId: number,
 			updater: (tab: Tab) => Tab | null,
 		): Pick<TabSlice, "tabs"> | {} => {
-			const state = get()
-			const activeTab = getActiveTabFromState(state)
-			if (!activeTab) {
-				return {}
-			}
-
-			const tabIndex = findTabIndexByPath(state, activeTab.path)
+			const tabIndex = findTabIndexById(state.tabs, tabId)
 			if (tabIndex === -1) {
 				return {}
 			}
 
-			const nextTab = updater(activeTab)
+			const currentTab = state.tabs[tabIndex]
+			const nextTab = updater(currentTab)
 			if (!nextTab) {
 				return {}
 			}
@@ -203,27 +196,123 @@ export const prepareTabSlice =
 			}
 		}
 
-		const updateHistoryForOpenedTab = (path: string) => {
-			const state = get()
-			const nextHistoryState = appendHistoryEntry(
-				state.history,
-				state.historyIndex,
-				{
-					path,
-					selection: null,
-				},
-				MAX_HISTORY_LENGTH,
-			)
+		const updateCurrentHistorySelection = (selection: TabHistorySelection) => {
+			set((state) => {
+				const activeTab = getActiveTabFromState(state)
+				if (!activeTab) {
+					return {}
+				}
 
-			if (!nextHistoryState.didChange) {
+				const nextHistory = updateHistorySelection(activeTab, selection)
+				if (!nextHistory) {
+					return {}
+				}
+
+				return updateTabById(state, activeTab.id, (tab) => ({
+					...tab,
+					history: nextHistory,
+				}))
+			})
+		}
+
+		const commitCurrentHistorySelection = () => {
+			updateCurrentHistorySelection(historySession.readCurrentSelection())
+		}
+
+		const appendVisitToTabHistory = (tabId: number, path: string) => {
+			set((state) =>
+				updateTabById(state, tabId, (tab) => {
+					const nextHistoryState = appendHistoryEntry(
+						tab.history,
+						tab.historyIndex,
+						{
+							path,
+							selection: null,
+						},
+						MAX_HISTORY_LENGTH,
+						{
+							allowDuplicatePath: true,
+						},
+					)
+
+					if (!nextHistoryState.didChange) {
+						return null
+					}
+
+					return {
+						...tab,
+						history: nextHistoryState.history,
+						historyIndex: nextHistoryState.historyIndex,
+					}
+				}),
+			)
+		}
+
+		const activateTabByIndex = (tabIndex: number): Tab | null => {
+			let activatedTab: Tab | null = null
+
+			set((state) => {
+				const targetTab = state.tabs[tabIndex]
+				if (!targetTab || state.activeTabId === targetTab.id) {
+					return {}
+				}
+
+				activatedTab = targetTab
+				return {
+					activeTabId: targetTab.id,
+				}
+			})
+
+			return activatedTab
+		}
+
+		const activateTabAndTrack = (tabIndex: number) => {
+			const activatedTab = activateTabByIndex(tabIndex)
+			if (!activatedTab) {
 				return
 			}
 
-			set({
-				history: nextHistoryState.history,
-				historyIndex: nextHistoryState.historyIndex,
-			})
+			appendVisitToTabHistory(activatedTab.id, activatedTab.path)
+			lastOpenedFileHistoryPersistence.enqueueSafely()
 		}
+
+		const updateActiveTab = (
+			updater: (tab: Tab) => Tab | null,
+		): Pick<TabSlice, "tabs"> | {} => {
+			const state = get()
+			const activeTab = getActiveTabFromState(state)
+			if (!activeTab) {
+				return {}
+			}
+
+			return updateTabById(state, activeTab.id, updater)
+		}
+
+		const closeTabByIdInternal = (tabId: number): boolean =>
+			setAndPersistLastOpenedFileHistory((state) => {
+				const tabIndex = findTabIndexById(state.tabs, tabId)
+				if (tabIndex === -1) {
+					return {}
+				}
+
+				const tab = state.tabs[tabIndex]
+				externalReloadSaveSkipTracker.remove(tab.id)
+				const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
+				const nextActiveTabId =
+					state.activeTabId === tab.id
+						? selectFallbackActiveTabId(nextTabs, tabIndex)
+						: state.activeTabId
+				const nextTabSaveStates = removeTabSaveState(
+					state.tabSaveStates,
+					tab.id,
+				)
+
+				return {
+					tabs: nextTabs,
+					activeTabId: nextActiveTabId,
+					tabSaveStates: nextTabSaveStates,
+				}
+			})
 
 		const setAndPersistLastOpenedFileHistory = (
 			updater: (state: TabSlice) => Partial<TabSlice> | {},
@@ -243,13 +332,38 @@ export const prepareTabSlice =
 			return didChange
 		}
 
-		const trackOpenedTab = async (path: string, skipHistory: boolean) => {
-			if (skipHistory) {
-				return
-			}
-
-			updateHistoryForOpenedTab(path)
+		const persistLastOpenedTabs = async () => {
 			await lastOpenedFileHistoryPersistence.enqueue()
+		}
+
+		const remountActiveTabForHistoryRestore = () => {
+			set((state) => {
+				const activeTab = getActiveTabFromState(state)
+				if (!activeTab) {
+					return {}
+				}
+
+				const activeTabIndex = findTabIndexById(state.tabs, activeTab.id)
+				if (activeTabIndex === -1) {
+					return {}
+				}
+
+				const nextTabId = ++tabIdCounter
+				const nextTabs = [...state.tabs]
+				nextTabs[activeTabIndex] = {
+					...activeTab,
+					id: nextTabId,
+				}
+
+				return {
+					tabs: nextTabs,
+					activeTabId: nextTabId,
+					tabSaveStates: {
+						...removeTabSaveState(state.tabSaveStates, activeTab.id),
+						[nextTabId]: getTabSavedFromState(state, activeTab.id),
+					},
+				}
+			})
 		}
 
 		const navigateHistory = async (
@@ -257,9 +371,14 @@ export const prepareTabSlice =
 			direction: "back" | "forward",
 		): Promise<boolean> => {
 			const state = get()
+			const activeTab = getActiveTabFromState(state)
+			if (!activeTab) {
+				return false
+			}
+
 			const navigationTarget = getHistoryNavigationTarget(
-				state.history,
-				state.historyIndex,
+				activeTab.history,
+				activeTab.historyIndex,
 				delta,
 			)
 
@@ -273,9 +392,19 @@ export const prepareTabSlice =
 				navigationTarget.targetEntry.selection,
 			)
 
-			set({ historyIndex: navigationTarget.historyIndex })
+			set((currentState) =>
+				updateTabById(currentState, activeTab.id, (tab) => ({
+					...tab,
+					historyIndex: navigationTarget.historyIndex,
+				})),
+			)
 
 			try {
+				if (navigationTarget.targetEntry.path === activeTab.path) {
+					remountActiveTabForHistoryRestore()
+					return true
+				}
+
 				await get().openTab(navigationTarget.targetEntry.path, true, false, {
 					skipSelectionCapture: true,
 				})
@@ -289,8 +418,62 @@ export const prepareTabSlice =
 
 		return {
 			...buildEmptyTabState(),
-			history: [],
-			historyIndex: -1,
+			activateTab: (path) => {
+				commitCurrentHistorySelection()
+
+				const tabIndex = findTabIndexByPath(get(), path)
+				if (tabIndex === -1) {
+					return
+				}
+
+				activateTabAndTrack(tabIndex)
+			},
+			activateTabById: (tabId) => {
+				commitCurrentHistorySelection()
+
+				const tabIndex = findTabIndexById(get().tabs, tabId)
+				if (tabIndex === -1) {
+					return
+				}
+
+				activateTabAndTrack(tabIndex)
+			},
+			activateNextTab: () => {
+				commitCurrentHistorySelection()
+
+				const state = get()
+				if (state.tabs.length <= 1) {
+					return
+				}
+
+				const activeTabIndex = state.tabs.findIndex(
+					(tab) => tab.id === state.activeTabId,
+				)
+				if (activeTabIndex === -1) {
+					return
+				}
+
+				activateTabAndTrack((activeTabIndex + 1) % state.tabs.length)
+			},
+			activatePreviousTab: () => {
+				commitCurrentHistorySelection()
+
+				const state = get()
+				if (state.tabs.length <= 1) {
+					return
+				}
+
+				const activeTabIndex = state.tabs.findIndex(
+					(tab) => tab.id === state.activeTabId,
+				)
+				if (activeTabIndex === -1) {
+					return
+				}
+
+				activateTabAndTrack(
+					(activeTabIndex - 1 + state.tabs.length) % state.tabs.length,
+				)
+			},
 			setHistorySelectionProvider: (provider) => {
 				historySession.setSelectionProvider(provider)
 			},
@@ -386,12 +569,8 @@ export const prepareTabSlice =
 					return false
 				}
 
-				const limitedHistory = validPaths.map<TabHistoryEntry>((path) => ({
-					path,
-					selection: null,
-				}))
 				const uniquePaths = dedupePathsPreservingLastOccurrence(validPaths)
-				const activePath = limitedHistory[limitedHistory.length - 1]?.path
+				const activePath = validPaths[validPaths.length - 1]
 				if (!activePath) {
 					return false
 				}
@@ -405,14 +584,12 @@ export const prepareTabSlice =
 									return null
 								}
 
-								const nextTabId = ++tabIdCounter
 								const content = await readTextFile(currentPath)
-								return {
-									id: nextTabId,
+								return buildTab({
 									path: currentPath,
 									name,
 									content,
-								}
+								})
 							}),
 						)
 					).filter((tab): tab is Tab => tab !== null)
@@ -423,7 +600,6 @@ export const prepareTabSlice =
 					}
 
 					externalReloadSaveSkipTracker.clear()
-					const activeIndex = limitedHistory.length - 1
 					const tabSaveStates = Object.fromEntries(
 						tabs.map((tab) => [tab.id, true]),
 					) as TabSaveStateMap
@@ -432,8 +608,6 @@ export const prepareTabSlice =
 						tabs,
 						activeTabId: activeTab.id,
 						tabSaveStates,
-						history: limitedHistory,
-						historyIndex: activeIndex,
 					})
 
 					return true
@@ -458,64 +632,29 @@ export const prepareTabSlice =
 
 				const state = get()
 				const activeTab = getActiveTabFromState(state)
-				const existingIndex = findTabIndexByPath(state, path)
 
 				// If opening the same tab, don't do anything (unless force is true)
 				if (!force && activeTab?.path === path) {
 					return
 				}
 
-				if (existingIndex !== -1 && !force) {
-					set((currentState) => {
-						const currentIndex = findTabIndexByPath(currentState, path)
-						if (currentIndex === -1) {
-							return {}
-						}
+				if (!activeTab) {
+					const content =
+						options?.initialContent !== undefined
+							? options.initialContent
+							: await readTextFile(path)
+					const name = getFileNameWithoutExtension(path)
 
-						const currentTab = currentState.tabs[currentIndex]
-						return {
-							activeTabId: currentTab.id,
-						}
-					})
+					if (!name) {
+						return
+					}
 
-					await trackOpenedTab(path, skipHistory)
-					return
-				}
-
-				const content =
-					options?.initialContent !== undefined
-						? options.initialContent
-						: await readTextFile(path)
-				const name = getFileNameWithoutExtension(path)
-
-				if (name) {
-					const nextTab = {
-						id: ++tabIdCounter,
+					const nextTab = buildTab({
 						path,
 						name,
 						content,
-					}
+					})
 					set((currentState) => {
-						const currentIndex = findTabIndexByPath(currentState, path)
-						if (currentIndex !== -1) {
-							const currentTab = currentState.tabs[currentIndex]
-							const nextTabs = [...currentState.tabs]
-							nextTabs[currentIndex] = nextTab
-							const nextTabSaveStates = {
-								...removeTabSaveState(
-									currentState.tabSaveStates,
-									currentTab.id,
-								),
-								[nextTab.id]: true,
-							}
-
-							return {
-								tabs: nextTabs,
-								activeTabId: nextTab.id,
-								tabSaveStates: nextTabSaveStates,
-							}
-						}
-
 						return {
 							tabs: [...currentState.tabs, nextTab],
 							activeTabId: nextTab.id,
@@ -525,35 +664,100 @@ export const prepareTabSlice =
 							},
 						}
 					})
-
-					await trackOpenedTab(path, skipHistory)
+					await persistLastOpenedTabs()
+					return
 				}
-			},
-			closeTab: (path) => {
-				setAndPersistLastOpenedFileHistory((state) => {
-					const tabIndex = findTabIndexByPath(state, path)
-					if (tabIndex === -1) {
+
+				const content =
+					options?.initialContent !== undefined
+						? options.initialContent
+						: await readTextFile(path)
+				const name = getFileNameWithoutExtension(path)
+
+				if (!name) {
+					return
+				}
+
+				set((currentState) => {
+					const currentIndex = findTabIndexById(currentState.tabs, activeTab.id)
+					if (currentIndex === -1) {
 						return {}
 					}
 
-					const tab = state.tabs[tabIndex]
-					externalReloadSaveSkipTracker.remove(tab.id)
-					const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
-					const nextActiveTabId =
-						state.activeTabId === tab.id
-							? selectFallbackActiveTabId(nextTabs, tabIndex)
-							: state.activeTabId
-					const nextTabSaveStates = removeTabSaveState(
-						state.tabSaveStates,
-						tab.id,
+					const currentTab = currentState.tabs[currentIndex]
+					const duplicateTab = currentState.tabs.find(
+						(tab) => tab.id !== activeTab.id && tab.path === path,
 					)
+					const nextHistoryState = skipHistory
+						? {
+								history: currentTab.history,
+								historyIndex: currentTab.historyIndex,
+							}
+						: appendHistoryEntry(
+								currentTab.history,
+								currentTab.historyIndex,
+								{
+									path,
+									selection: null,
+								},
+								MAX_HISTORY_LENGTH,
+							)
+
+					const nextTabId = ++tabIdCounter
+					const nextTabs = [...currentState.tabs]
+					const nextTab = {
+						...currentTab,
+						id: nextTabId,
+						path,
+						name,
+						content,
+						syncedName: null,
+						history: nextHistoryState.history,
+						historyIndex: nextHistoryState.historyIndex,
+					}
+					nextTabs[currentIndex] = nextTab
+
+					const dedupedTabs = duplicateTab
+						? nextTabs.filter((tab) => tab.id !== duplicateTab.id)
+						: nextTabs
+					const nextTabSaveStates = removeTabSaveState(
+						currentState.tabSaveStates,
+						activeTab.id,
+					)
+					if (duplicateTab) {
+						delete nextTabSaveStates[duplicateTab.id]
+					}
 
 					return {
-						tabs: nextTabs,
-						activeTabId: nextActiveTabId,
-						tabSaveStates: nextTabSaveStates,
+						tabs: dedupedTabs,
+						activeTabId: nextTabId,
+						tabSaveStates: {
+							...nextTabSaveStates,
+							[nextTabId]: true,
+						},
 					}
 				})
+
+				await persistLastOpenedTabs()
+			},
+			closeActiveTab: () => {
+				const activeTab = getActiveTabFromState(get())
+				if (!activeTab) {
+					return
+				}
+
+				get().closeTab(activeTab.path)
+			},
+			closeTab: (path) => {
+				const tab = get().tabs.find((currentTab) => currentTab.path === path)
+				if (!tab) {
+					return
+				}
+
+				closeTabByIdInternal(tab.id)
+			},
+			closeTabById: (tabId) => {
+				closeTabByIdInternal(tabId)
 			},
 			closeAllTabs: () => {
 				externalReloadSaveSkipTracker.clear()
@@ -641,6 +845,11 @@ export const prepareTabSlice =
 								path: nextPath,
 								name: nextName,
 								content: nextContent,
+								history: replaceHistoryPath(
+									currentTab.history,
+									oldPath,
+									newPath,
+								),
 								syncedName:
 									shouldClearSyncedName && currentTab.path === oldPath
 										? null
@@ -702,13 +911,10 @@ export const prepareTabSlice =
 			},
 			goBack: async () => navigateHistory(-1, "back"),
 			goForward: async () => navigateHistory(1, "forward"),
-			canGoBack: () => {
-				const state = get()
-				return state.historyIndex > 0
-			},
+			canGoBack: () => getActiveTabHistoryFromState(get()).historyIndex > 0,
 			canGoForward: () => {
-				const state = get()
-				return state.historyIndex < state.history.length - 1
+				const { history, historyIndex } = getActiveTabHistoryFromState(get())
+				return historyIndex < history.length - 1
 			},
 			getActiveTab: () => getActiveTabFromState(get()),
 			getOpenTabSnapshots: () => {
@@ -722,40 +928,45 @@ export const prepareTabSlice =
 			getIsSaved: () => getActiveTabSavedFromState(get()),
 			updateHistoryPath: (oldPath: string, newPath: string) => {
 				setAndPersistLastOpenedFileHistory((state) => ({
-					history: replaceHistoryPath(state.history, oldPath, newPath),
+					tabs: state.tabs.map((tab) => ({
+						...tab,
+						history: replaceHistoryPath(tab.history, oldPath, newPath),
+					})),
 				}))
 			},
 			removePathsFromHistory: (paths) => {
 				const state = get()
-				const { history, historyIndex } = removePathsFromHistoryEntries(
-					state.history,
-					state.historyIndex,
-					paths,
-				)
 				const removedTabs = state.tabs.filter((tab) =>
 					paths.some((path) => isPathEqualOrDescendant(tab.path, path)),
 				)
 				const removedTabIds = new Set(removedTabs.map((tab) => tab.id))
-				const activeTab = getActiveTabFromState(state)
-				const isCurrentTabDeleted =
-					!!activeTab && removedTabIds.has(activeTab.id)
-
-				if (removedTabs.length === 0) {
-					set({
-						history,
-						historyIndex,
-					})
-					return
-				}
 
 				for (const removedTab of removedTabs) {
 					externalReloadSaveSkipTracker.remove(removedTab.id)
 				}
 
 				setAndPersistLastOpenedFileHistory((currentState) => {
-					const nextTabs = currentState.tabs.filter(
-						(tab) => !removedTabIds.has(tab.id),
-					)
+					const nextTabs = currentState.tabs
+						.filter((tab) => !removedTabIds.has(tab.id))
+						.map((tab) => {
+							const nextHistoryState = removePathsFromHistoryEntries(
+								tab.history,
+								tab.historyIndex,
+								paths,
+							)
+							if (nextHistoryState.history.length === 0) {
+								return {
+									...tab,
+									...buildInitialTabHistory(tab.path),
+								}
+							}
+
+							return {
+								...tab,
+								history: nextHistoryState.history,
+								historyIndex: nextHistoryState.historyIndex,
+							}
+						})
 					let nextActiveTabId = currentState.activeTabId
 					if (
 						currentState.activeTabId !== null &&
@@ -777,34 +988,17 @@ export const prepareTabSlice =
 						tabs: nextTabs,
 						activeTabId: nextActiveTabId,
 						tabSaveStates: nextTabSaveStates,
-						history,
-						historyIndex: history.length > 0 ? historyIndex : -1,
 					}
 				})
-
-				if (!isCurrentTabDeleted || history.length === 0) {
-					return
-				}
-
-				const targetPath = history[historyIndex]?.path
-				if (!targetPath) {
-					return
-				}
-
-				get()
-					.openTab(targetPath, true, false, {
-						skipSelectionCapture: true,
-					})
-					.catch((error) => {
-						console.error("Failed to navigate after deletion:", error)
-					})
 			},
 			clearHistory: () => {
 				historySession.clearPendingRestore()
-				set({
-					history: [],
-					historyIndex: -1,
-				})
+				set((state) => ({
+					tabs: state.tabs.map((tab) => ({
+						...tab,
+						...buildInitialTabHistory(tab.path),
+					})),
+				}))
 			},
 		}
 	}

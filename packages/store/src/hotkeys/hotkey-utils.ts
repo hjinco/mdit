@@ -2,7 +2,10 @@ import { getModifierKey } from "@mdit/utils/keyboard-shortcut"
 
 export type AppHotkeyActionId =
 	| "create-note"
+	| "close-tab"
 	| "open-folder"
+	| "previous-tab"
+	| "next-tab"
 	| "open-command-menu"
 	| "toggle-graph-view"
 	| "toggle-file-explorer"
@@ -35,10 +38,28 @@ export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 		defaultBinding: "Mod+N",
 	},
 	{
+		id: "close-tab",
+		label: "Close Tab",
+		category: "file",
+		defaultBinding: "Mod+W",
+	},
+	{
 		id: "open-folder",
 		label: "Open Folder",
 		category: "file",
 		defaultBinding: "Mod+O",
+	},
+	{
+		id: "previous-tab",
+		label: "Previous Tab",
+		category: "file",
+		defaultBinding: "Mod+Shift+[",
+	},
+	{
+		id: "next-tab",
+		label: "Next Tab",
+		category: "file",
+		defaultBinding: "Mod+Shift+]",
 	},
 	{
 		id: "open-command-menu",

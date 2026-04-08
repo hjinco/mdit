@@ -87,8 +87,23 @@ function createTabStore(overrides: Partial<TabSliceDependencies> = {}) {
 	}
 }
 
+const getActiveTabHistoryState = (
+	store: ReturnType<typeof createTabStore>["store"],
+) => {
+	const activeTab = store.getState().getActiveTab()
+	return {
+		history: activeTab?.history ?? [],
+		historyIndex: activeTab?.historyIndex ?? -1,
+	}
+}
+
+const getOpenTabByPath = (
+	store: ReturnType<typeof createTabStore>["store"],
+	path: string,
+) => store.getState().tabs.find((tab) => tab.path === path) ?? null
+
 describe("tab-slice history selection", () => {
-	it("stores the current tab selection when opening another tab", async () => {
+	it("stores the current tab selection when opening another note in the same tab", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
 		store.getState().setHistorySelectionProvider(() => currentSelection)
@@ -100,14 +115,19 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/b.md")
 
-		expect(store.getState().history).toEqual([
-			{ path: "/notes/a.md", selection: selectionInA },
-			{ path: "/notes/b.md", selection: null },
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/b.md",
 		])
-		expect(store.getState().historyIndex).toBe(1)
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: selectionInA },
+				{ path: "/notes/b.md", selection: null },
+			],
+			historyIndex: 1,
+		})
 	})
 
-	it("captures current selection on goBack and queues restore for target entry", async () => {
+	it("captures selection on goBack and restores the previous note in the same tab", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
 		store.getState().setHistorySelectionProvider(() => currentSelection)
@@ -124,24 +144,22 @@ describe("tab-slice history selection", () => {
 		expect(moved).toBe(true)
 
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
-		expect(store.getState().historyIndex).toBe(0)
-		expect(store.getState().history).toEqual([
-			{ path: "/notes/a.md", selection: selectionInA },
-			{ path: "/notes/b.md", selection: selectionInB },
-		])
-
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: selectionInA },
+				{ path: "/notes/b.md", selection: selectionInB },
+			],
+			historyIndex: 0,
+		})
 		expect(
 			store.getState().consumePendingHistorySelectionRestore("/notes/b.md"),
 		).toEqual({ found: false })
 		expect(
 			store.getState().consumePendingHistorySelectionRestore("/notes/a.md"),
 		).toEqual({ found: true, selection: selectionInA })
-		expect(
-			store.getState().consumePendingHistorySelectionRestore("/notes/a.md"),
-		).toEqual({ found: false })
 	})
 
-	it("captures current selection on goForward and restores target entry selection", async () => {
+	it("captures selection on goForward and restores the target note selection", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
 		store.getState().setHistorySelectionProvider(() => currentSelection)
@@ -163,13 +181,39 @@ describe("tab-slice history selection", () => {
 		const movedForward = await store.getState().goForward()
 
 		expect(movedForward).toBe(true)
-		expect(store.getState().history).toEqual([
-			{ path: "/notes/a.md", selection: selectionInAAfterBack },
-			{ path: "/notes/b.md", selection: selectionInB },
-		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: selectionInAAfterBack },
+				{ path: "/notes/b.md", selection: selectionInB },
+			],
+			historyIndex: 1,
+		})
 		expect(
 			store.getState().consumePendingHistorySelectionRestore("/notes/b.md"),
 		).toEqual({ found: true, selection: selectionInB })
+	})
+
+	it("marks the destination tab as saved after skipHistory navigation", async () => {
+		const { store } = createTabStore()
+		let currentSelection: TabHistorySelection = null
+		store.getState().setHistorySelectionProvider(() => currentSelection)
+
+		await store.getState().openTab("/notes/a.md")
+		currentSelection = createSelection([1, 0], 2)
+		await store.getState().openTab("/notes/b.md")
+
+		const activeTabId = store.getState().getActiveTab()?.id
+		expect(activeTabId).toBeTypeOf("number")
+
+		store.getState().setTabSaved(activeTabId as number, false)
+		expect(store.getState().getIsSaved()).toBe(false)
+
+		const movedBack = await store.getState().goBack()
+
+		expect(movedBack).toBe(true)
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(store.getState().getIsSaved()).toBe(true)
 	})
 
 	it("navigates history even when selection provider throws", async () => {
@@ -194,17 +238,17 @@ describe("tab-slice history selection", () => {
 		const movedBack = await store.getState().goBack()
 
 		expect(movedBack).toBe(true)
-		expect(store.getState().historyIndex).toBe(0)
-		expect(store.getState().history).toEqual([
-			{ path: "/notes/a.md", selection: selectionInA },
-			{ path: "/notes/b.md", selection: null },
-		])
-		expect(
-			store.getState().consumePendingHistorySelectionRestore("/notes/a.md"),
-		).toEqual({ found: true, selection: selectionInA })
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: selectionInA },
+				{ path: "/notes/b.md", selection: null },
+			],
+			historyIndex: 0,
+		})
 	})
 
-	it("persists up to five recently opened file paths as relative paths", async () => {
+	it("persists only the currently open tabs as relative paths", async () => {
 		const { store, saveSettings } = createTabStore()
 		store.setState({ workspacePath: "/workspace" })
 
@@ -216,11 +260,11 @@ describe("tab-slice history selection", () => {
 		await store.getState().openTab("/workspace/6.md")
 
 		expect(saveSettings).toHaveBeenLastCalledWith("/workspace", {
-			lastOpenedFilePaths: ["2.md", "3.md", "4.md", "5.md", "6.md"],
+			lastOpenedFilePaths: ["6.md"],
 		})
 	})
 
-	it("does not persist opened file history without a workspace", async () => {
+	it("does not persist opened file state without a workspace", async () => {
 		const { store, saveSettings } = createTabStore()
 
 		await store.getState().openTab("/notes/a.md")
@@ -229,13 +273,17 @@ describe("tab-slice history selection", () => {
 		expect(saveSettings).not.toHaveBeenCalled()
 	})
 
-	it("persists the remaining open tabs when one tab closes", async () => {
+	it("persists the remaining restored tabs when one tab closes", async () => {
 		const { store, saveSettings } = createTabStore()
 		store.setState({ workspacePath: "/workspace" })
 
-		await store.getState().openTab("/workspace/a.md")
-		await store.getState().openTab("/workspace/b.md")
-		await store.getState().openTab("/workspace/c.md")
+		await store
+			.getState()
+			.hydrateFromOpenedFiles([
+				"/workspace/a.md",
+				"/workspace/b.md",
+				"/workspace/c.md",
+			])
 
 		store.getState().closeTab("/workspace/b.md")
 
@@ -255,8 +303,9 @@ describe("tab-slice history selection", () => {
 		const { store } = createTabStore({ saveSettings })
 		store.setState({ workspacePath: "/workspace" })
 
-		await store.getState().openTab("/workspace/a.md")
-		await store.getState().openTab("/workspace/b.md")
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/workspace/a.md", "/workspace/b.md"])
 
 		saveSettings.mockReset()
 		saveSettings
@@ -282,7 +331,7 @@ describe("tab-slice history selection", () => {
 		await flushMicrotasks()
 	})
 
-	it("hydrates history and sets the most recent file as active", async () => {
+	it("hydrates opened files as tabs with fresh per-tab history", async () => {
 		const { store } = createTabStore()
 
 		const hydrated = await store
@@ -290,44 +339,155 @@ describe("tab-slice history selection", () => {
 			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
 
 		expect(hydrated).toBe(true)
-		expect(store.getState().history).toEqual([
-			{ path: "/notes/a.md", selection: null },
-			{ path: "/notes/b.md", selection: null },
-			{ path: "/notes/c.md", selection: null },
-		])
-		expect(store.getState().historyIndex).toBe(2)
-		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
 		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
 			"/notes/a.md",
 			"/notes/b.md",
 			"/notes/c.md",
 		])
-		expect(store.getState().activeTabId).toBe(
-			store.getState().getActiveTab()?.id ?? null,
+		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
+			expect.objectContaining({
+				history: [{ path: "/notes/a.md", selection: null }],
+				historyIndex: 0,
+			}),
 		)
+		expect(getOpenTabByPath(store, "/notes/b.md")).toEqual(
+			expect.objectContaining({
+				history: [{ path: "/notes/b.md", selection: null }],
+				historyIndex: 0,
+			}),
+		)
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
 	})
 
-	it("activates an already open tab instead of replacing other open tabs", async () => {
+	it("replaces the active tab instead of appending a new tab when opening a note", async () => {
 		const { store } = createTabStore()
 
 		await store.getState().openTab("/notes/a.md")
 		const firstTabId = store.getState().getActiveTab()?.id
+
 		await store.getState().openTab("/notes/b.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/b.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+		expect(store.getState().getActiveTab()?.id).not.toBe(firstTabId)
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: null },
+				{ path: "/notes/b.md", selection: null },
+			],
+			historyIndex: 1,
+		})
+	})
+
+	it("reuses the current tab when opening a note that is already open elsewhere", async () => {
+		const { store } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
+
 		await store.getState().openTab("/notes/a.md")
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/b.md", selection: null },
+				{ path: "/notes/a.md", selection: null },
+			],
+			historyIndex: 1,
+		})
+	})
+
+	it("activates an existing restored tab without rewriting the tab list", async () => {
+		const { store } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
+
+		const targetTabId = getOpenTabByPath(store, "/notes/a.md")?.id
+		expect(targetTabId).toBeTypeOf("number")
+
+		store.getState().activateTabById(targetTabId as number)
 
 		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
 			"/notes/a.md",
 			"/notes/b.md",
 		])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
-		expect(store.getState().getActiveTab()?.id).toBe(firstTabId)
+		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
+			expect.objectContaining({
+				history: [
+					{ path: "/notes/a.md", selection: null },
+					{ path: "/notes/a.md", selection: null },
+				],
+				historyIndex: 1,
+			}),
+		)
 	})
 
-	it("removes deleted tabs while preserving unrelated open tabs", async () => {
+	it("cycles to the next and previous restored tab", async () => {
 		const { store } = createTabStore()
 
-		await store.getState().openTab("/notes/a.md")
-		await store.getState().openTab("/notes/b.md")
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
+
+		store.getState().activatePreviousTab()
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+
+		store.getState().activateNextTab()
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
+
+		store.getState().activateNextTab()
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+	})
+
+	it("persists restored tab order after activating an existing tab", async () => {
+		const { store, saveSettings } = createTabStore()
+		store.setState({ workspacePath: "/workspace" })
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/workspace/a.md", "/workspace/b.md"])
+
+		const targetTabId = getOpenTabByPath(store, "/workspace/a.md")?.id
+		store.getState().activateTabById(targetTabId as number)
+
+		await waitForAssertion(() =>
+			expect(saveSettings).toHaveBeenLastCalledWith("/workspace", {
+				lastOpenedFilePaths: ["b.md", "a.md"],
+			}),
+		)
+	})
+
+	it("closes the active restored tab and falls back to a neighbor", async () => {
+		const { store } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
+
+		store.getState().closeActiveTab()
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+	})
+
+	it("removes deleted tabs while preserving unrelated restored tabs", async () => {
+		const { store } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
 
 		store.getState().removePathsFromHistory(["/notes/b.md"])
 
@@ -337,39 +497,34 @@ describe("tab-slice history selection", () => {
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 	})
 
-	it("preserves unrelated open tabs when reopening fallback history fails", async () => {
-		const readTextFile = vi.fn(async (path: string) => `content:${path}`)
-		const { store } = createTabStore({ readTextFile })
-		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-
-		await store.getState().openTab("/notes/a.md")
-		await store.getState().openTab("/notes/b.md")
-		await store.getState().openTab("/notes/c.md")
-		store.getState().closeTab("/notes/b.md")
-		readTextFile.mockImplementation(async (path: string) => {
-			if (path === "/notes/b.md") {
-				throw new Error("missing fallback note")
-			}
-
-			return `content:${path}`
-		})
-
-		store.getState().removePathsFromHistory(["/notes/c.md"])
-		await flushMicrotasks()
-
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-		])
-		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
-
-		consoleError.mockRestore()
-	})
-
-	it("renames inactive open tabs without disturbing the active tab", async () => {
+	it("removes deleted paths from the current tab history without closing the tab", async () => {
 		const { store } = createTabStore()
 
 		await store.getState().openTab("/notes/a.md")
 		await store.getState().openTab("/notes/b.md")
+		await store.getState().openTab("/notes/c.md")
+
+		store.getState().removePathsFromHistory(["/notes/b.md"])
+
+		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+			"/notes/c.md",
+		])
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{ path: "/notes/a.md", selection: null },
+				{ path: "/notes/c.md", selection: null },
+			],
+			historyIndex: 1,
+		})
+	})
+
+	it("renames inactive restored tabs without disturbing the active tab", async () => {
+		const { store } = createTabStore()
+
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
 
 		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md")
 
@@ -378,6 +533,12 @@ describe("tab-slice history selection", () => {
 			"/notes/b.md",
 		])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
+		expect(getOpenTabByPath(store, "/notes/a-renamed.md")).toEqual(
+			expect.objectContaining({
+				history: [{ path: "/notes/a-renamed.md", selection: null }],
+				historyIndex: 0,
+			}),
+		)
 	})
 
 	it("can clear the renamed tab synced name without disturbing others", async () => {
@@ -385,7 +546,9 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/a.md")
 		store.getState().setActiveTabSyncedName("Title A")
-		await store.getState().openTab("/notes/b.md")
+		await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
 		store.getState().setActiveTabSyncedName("Title B")
 
 		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md", {
@@ -418,20 +581,25 @@ describe("tab-slice history selection", () => {
 				preserveSelection: true,
 			})
 
-		expect(store.getState().getActiveTab()).toEqual({
-			id: expect.any(Number),
-			path: "/notes/a.md",
-			name: "a",
-			content: "external-content",
-		})
+		expect(store.getState().getActiveTab()).toEqual(
+			expect.objectContaining({
+				id: expect.any(Number),
+				path: "/notes/a.md",
+				name: "a",
+				content: "external-content",
+			}),
+		)
 		expect(store.getState().getActiveTab()?.id).not.toBe(initialTabId)
 		expect(store.getState().getIsSaved()).toBe(true)
-		expect(store.getState().history).toEqual([
-			{
-				path: "/notes/a.md",
-				selection: selectionInA,
-			},
-		])
+		expect(getActiveTabHistoryState(store)).toEqual({
+			history: [
+				{
+					path: "/notes/a.md",
+					selection: selectionInA,
+				},
+			],
+			historyIndex: 0,
+		})
 		expect(
 			store.getState().consumePendingHistorySelectionRestore("/notes/a.md"),
 		).toEqual({ found: true, selection: selectionInA })

@@ -1,12 +1,18 @@
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import { useShallow } from "zustand/shallow"
+import { closeTabOrHideWindow } from "@/lib/close-tab-or-hide-window"
 import { useStore } from "@/store"
 import { installWindowMenu } from "./menu"
 
 export function WindowMenu() {
 	const {
 		createAndOpenNote,
+		activeTabId,
+		isEditMode,
+		closeActiveTab,
 		openFolderPicker,
+		activatePreviousTab,
+		activateNextTab,
 		workspacePath,
 		toggleCollectionView,
 		goBack,
@@ -14,13 +20,26 @@ export function WindowMenu() {
 	} = useStore(
 		useShallow((s) => ({
 			createAndOpenNote: s.createAndOpenNote,
+			activeTabId: s.activeTabId,
+			isEditMode: s.isEditMode,
+			closeActiveTab: s.closeActiveTab,
 			openFolderPicker: s.openFolderPicker,
+			activatePreviousTab: s.activatePreviousTab,
+			activateNextTab: s.activateNextTab,
 			workspacePath: s.workspacePath,
 			toggleCollectionView: s.toggleCollectionView,
 			goBack: s.goBack,
 			goForward: s.goForward,
 		})),
 	)
+
+	const handleCloseTab = useCallback(() => {
+		void closeTabOrHideWindow({
+			isEditMode,
+			hasActiveTab: activeTabId !== null,
+			closeActiveTab,
+		})
+	}, [activeTabId, closeActiveTab, isEditMode])
 
 	const {
 		toggleFileExplorer,
@@ -53,7 +72,10 @@ export function WindowMenu() {
 	useEffect(() => {
 		installWindowMenu({
 			createNote: createAndOpenNote,
+			closeTabOrHideWindow: handleCloseTab,
 			openWorkspace: () => openFolderPicker(),
+			activatePreviousTab,
+			activateNextTab,
 			toggleFileExplorer,
 			toggleCollectionView,
 			toggleChatPanel: toggleChatPanelOpen,
@@ -75,7 +97,10 @@ export function WindowMenu() {
 		})
 	}, [
 		createAndOpenNote,
+		handleCloseTab,
 		openFolderPicker,
+		activatePreviousTab,
+		activateNextTab,
 		workspacePath,
 		toggleFileExplorer,
 		toggleCollectionView,

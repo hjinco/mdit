@@ -3,8 +3,9 @@ import {
 	type AppHotkeyActionId,
 } from "@mdit/store/hotkeys"
 import { useHotkey } from "@tanstack/react-hotkeys"
-import { useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
+import { closeTabOrHideWindow } from "@/lib/close-tab-or-hide-window"
 import { useStore } from "@/store"
 
 const HOTKEY_OPTIONS = { preventDefault: true } as const
@@ -27,7 +28,12 @@ export function Hotkeys() {
 	const {
 		hotkeys,
 		createAndOpenNote,
+		activeTabId,
+		isEditMode,
+		closeActiveTab,
 		openFolderPicker,
+		activatePreviousTab,
+		activateNextTab,
 		workspacePath,
 		toggleCollectionView,
 		goBack,
@@ -47,7 +53,12 @@ export function Hotkeys() {
 		useShallow((s) => ({
 			hotkeys: s.hotkeys,
 			createAndOpenNote: s.createAndOpenNote,
+			activeTabId: s.activeTabId,
+			isEditMode: s.isEditMode,
+			closeActiveTab: s.closeActiveTab,
 			openFolderPicker: s.openFolderPicker,
+			activatePreviousTab: s.activatePreviousTab,
+			activateNextTab: s.activateNextTab,
 			workspacePath: s.workspacePath,
 			toggleCollectionView: s.toggleCollectionView,
 			goBack: s.goBack,
@@ -66,13 +77,28 @@ export function Hotkeys() {
 		})),
 	)
 
+	const handleCloseTab = useCallback(() => {
+		void closeTabOrHideWindow({
+			isEditMode,
+			hasActiveTab: activeTabId !== null,
+			closeActiveTab,
+		})
+	}, [activeTabId, closeActiveTab, isEditMode])
+
 	const actionHandlers = useMemo<Record<AppHotkeyActionId, () => void>>(
 		() => ({
 			"create-note": () => {
 				void createAndOpenNote()
 			},
+			"close-tab": handleCloseTab,
 			"open-folder": () => {
 				void openFolderPicker()
+			},
+			"previous-tab": () => {
+				activatePreviousTab()
+			},
+			"next-tab": () => {
+				activateNextTab()
 			},
 			"open-command-menu": () => {
 				toggleCommandMenu()
@@ -120,7 +146,10 @@ export function Hotkeys() {
 		}),
 		[
 			createAndOpenNote,
+			handleCloseTab,
 			openFolderPicker,
+			activatePreviousTab,
+			activateNextTab,
 			toggleCommandMenu,
 			workspacePath,
 			isGraphViewDialogOpen,

@@ -60,7 +60,7 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 
 	return (
 		<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
-			<Header />
+			<Header hideNavigation={destroyOnClose} />
 			<EditorContent
 				key={tab.id}
 				tabId={tab.id}

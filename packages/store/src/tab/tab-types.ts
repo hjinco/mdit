@@ -1,11 +1,3 @@
-export type Tab = {
-	id: number
-	path: string
-	name: string
-	content: string
-	syncedName?: string | null
-}
-
 export type TabHistoryPoint = {
 	path: number[]
 	offset: number
@@ -19,6 +11,19 @@ export type TabHistorySelection = {
 export type TabHistoryEntry = {
 	path: string
 	selection: TabHistorySelection
+}
+
+export type TabNavigationState = {
+	history: TabHistoryEntry[]
+	historyIndex: number
+}
+
+export type Tab = TabNavigationState & {
+	id: number
+	path: string
+	name: string
+	content: string
+	syncedName?: string | null
 }
 
 export type PendingHistorySelectionRestoreResult =

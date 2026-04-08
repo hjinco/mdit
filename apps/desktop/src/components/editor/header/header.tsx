@@ -7,9 +7,13 @@ import { useStore } from "@/store"
 import { isMac } from "@/utils/platform"
 import { HistoryNavigation } from "./history-navigation"
 import { InfoButton } from "./info-button"
-import { Tab } from "./tab"
+import { TabStrip } from "./tab"
 
-export function Header() {
+export function Header({
+	hideNavigation = false,
+}: {
+	hideNavigation?: boolean
+}) {
 	const {
 		isFileExplorerOpen,
 		isFocusMode,
@@ -30,30 +34,25 @@ export function Header() {
 	const windowLabel = useCurrentWindowLabel()
 	const showPin =
 		windowLabel?.startsWith("edit-") || windowLabel?.startsWith("quick-note-")
+	const showEditorNavigation = !hideNavigation && !isEditMode
 
 	return (
 		<div
 			className={cn(
-				"relative h-12 shrink-0 flex items-center justify-center transition-opacity duration-600",
+				"relative h-12 shrink-0 flex items-center transition-opacity duration-600 gap-2 pr-2",
+				!isFileExplorerOpen && !isCollectionViewOpen
+					? isMac() && !isFullscreen
+						? "pl-30"
+						: "pl-12"
+					: "pl-2",
+				!workspacePath && (isMac() && !isFullscreen ? "pl-20" : "pl-2"),
 				isFocusMode && "pointer-events-none opacity-0",
 			)}
 			{...(isMac() && { "data-tauri-drag-region": "" })}
 		>
-			<div
-				className={cn(
-					"absolute",
-					!isFileExplorerOpen && !isCollectionViewOpen
-						? isMac() && !isFullscreen
-							? "left-30"
-							: "left-12"
-						: "left-2",
-					!workspacePath && (isMac() && !isFullscreen ? "left-20" : "left-2"),
-				)}
-			>
-				{!isEditMode && <HistoryNavigation />}
-			</div>
-			<Tab />
-			<div className="absolute right-2 flex items-center gap-0.5">
+			{showEditorNavigation && <HistoryNavigation />}
+			{showEditorNavigation && <TabStrip />}
+			<div className="flex items-center gap-0.5 ml-auto">
 				{showPin && <WindowPinButton />}
 				<InfoButton />
 			</div>

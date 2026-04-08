@@ -1,4 +1,4 @@
-import type { Tab, TabHistoryEntry, TabSaveStateMap } from "./tab-types"
+import type { Tab, TabNavigationState, TabSaveStateMap } from "./tab-types"
 
 type TabStateWithActive = {
 	tabs: Tab[]
@@ -7,10 +7,6 @@ type TabStateWithActive = {
 
 type TabStateWithSaveMap = {
 	tabSaveStates: TabSaveStateMap
-}
-
-type TabStateWithHistory = TabStateWithActive & {
-	history: TabHistoryEntry[]
 }
 
 export type EmptyTabState = {
@@ -32,6 +28,35 @@ export const getActiveTabFromState = (
 	}
 
 	return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+}
+
+export const buildInitialTabHistory = (
+	path: string,
+): Pick<TabNavigationState, "history" | "historyIndex"> => ({
+	history: [
+		{
+			path,
+			selection: null,
+		},
+	],
+	historyIndex: 0,
+})
+
+export const getActiveTabHistoryFromState = (
+	state: TabStateWithActive,
+): TabNavigationState => {
+	const activeTab = getActiveTabFromState(state)
+	if (!activeTab) {
+		return {
+			history: [],
+			historyIndex: -1,
+		}
+	}
+
+	return {
+		history: activeTab.history,
+		historyIndex: activeTab.historyIndex,
+	}
 }
 
 export const getActiveTabSavedFromState = (
@@ -104,7 +129,7 @@ export const dedupePathsPreservingLastOccurrence = (
 }
 
 export const buildPersistedLastOpenedFilePaths = (
-	state: TabStateWithHistory,
+	state: TabStateWithActive,
 	maxPersistedPaths: number,
 ): string[] => {
 	if (state.tabs.length === 0) {
@@ -112,22 +137,13 @@ export const buildPersistedLastOpenedFilePaths = (
 	}
 
 	const openTabPaths = state.tabs.map((tab) => tab.path)
-	const openTabPathSet = new Set(openTabPaths)
-	const historyPaths = dedupePathsPreservingLastOccurrence(
-		state.history
-			.map((entry) => entry.path)
-			.filter((path) => openTabPathSet.has(path)),
-	)
 	const activeTabPath = getActiveTabFromState(state)?.path ?? null
-	const fallbackPaths = activeTabPath
-		? [...openTabPaths.filter((path) => path !== activeTabPath), activeTabPath]
-		: openTabPaths
-
-	for (const path of fallbackPaths) {
-		if (!historyPaths.includes(path)) {
-			historyPaths.push(path)
-		}
-	}
-
-	return historyPaths.slice(-maxPersistedPaths)
+	return (
+		activeTabPath
+			? [
+					...openTabPaths.filter((path) => path !== activeTabPath),
+					activeTabPath,
+				]
+			: openTabPaths
+	).slice(-maxPersistedPaths)
 }

@@ -20,8 +20,8 @@ export function HistoryNavigation() {
 		goForwardHotkey,
 	} = useStore(
 		useShallow((s) => ({
-			canGoBack: s.historyIndex > 0,
-			canGoForward: s.historyIndex < s.history.length - 1,
+			canGoBack: s.canGoBack(),
+			canGoForward: s.canGoForward(),
 			goBack: s.goBack,
 			goForward: s.goForward,
 			goBackHotkey: s.hotkeys["go-back"],

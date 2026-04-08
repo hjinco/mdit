@@ -10,7 +10,10 @@ import { createWindowMenu } from "./window-menu"
 
 export async function installWindowMenu({
 	createNote,
+	closeTabOrHideWindow,
 	openWorkspace,
+	activatePreviousTab,
+	activateNextTab,
 	toggleFileExplorer,
 	toggleCollectionView,
 	toggleChatPanel,
@@ -26,7 +29,10 @@ export async function installWindowMenu({
 	hotkeys,
 }: {
 	createNote: () => void | Promise<void>
+	closeTabOrHideWindow: () => void
 	openWorkspace: () => void | Promise<void>
+	activatePreviousTab: () => void
+	activateNextTab: () => void
 	toggleFileExplorer: () => void
 	toggleCollectionView: () => void
 	toggleChatPanel: () => void
@@ -46,6 +52,7 @@ export async function installWindowMenu({
 			await createMditMenu({ toggleSettings, hotkeys }),
 			await createFileMenu({
 				createNote,
+				closeTabOrHideWindow,
 				openWorkspace,
 				hotkeys,
 			}),
@@ -67,7 +74,11 @@ export async function installWindowMenu({
 				goForward,
 				hotkeys,
 			}),
-			await createWindowMenu(),
+			await createWindowMenu({
+				activatePreviousTab,
+				activateNextTab,
+				hotkeys,
+			}),
 			await createHelpMenu(),
 		],
 	})

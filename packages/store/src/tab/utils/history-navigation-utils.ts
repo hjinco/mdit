@@ -14,9 +14,14 @@ export function appendHistoryEntry<T extends HistoryEntryLike>(
 	historyIndex: number,
 	entry: T,
 	maxHistoryLength: number,
+	options?: {
+		allowDuplicatePath?: boolean
+	},
 ): { history: T[]; historyIndex: number; didChange: boolean } {
 	const isDifferentFromCurrent =
-		historyIndex === -1 || history[historyIndex]?.path !== entry.path
+		options?.allowDuplicatePath === true
+			? true
+			: historyIndex === -1 || history[historyIndex]?.path !== entry.path
 
 	if (!isDifferentFromCurrent) {
 		return {

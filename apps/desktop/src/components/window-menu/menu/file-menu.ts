@@ -3,10 +3,12 @@ import { MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
 
 export async function createFileMenu({
 	createNote,
+	closeTabOrHideWindow,
 	openWorkspace,
 	hotkeys,
 }: {
 	createNote: () => void | Promise<void>
+	closeTabOrHideWindow: () => void
 	openWorkspace: () => void | Promise<void>
 	hotkeys: AppHotkeyMap
 }) {
@@ -24,6 +26,12 @@ export async function createFileMenu({
 				text: "Open Folder...",
 				accelerator: hotkeyToMenuAccelerator(hotkeys["open-folder"]),
 				action: () => openWorkspace(),
+			}),
+			await MenuItem.new({
+				id: "close-tab",
+				text: "Close Tab",
+				accelerator: hotkeyToMenuAccelerator(hotkeys["close-tab"]),
+				action: () => closeTabOrHideWindow(),
 			}),
 			await PredefinedMenuItem.new({
 				text: "Separator",
