@@ -43,6 +43,7 @@ import {
 	getListSelectionNodes,
 } from "../selection/block-selection-linked-notes"
 import { useIsTouchDevice } from "../shared/use-is-touch-device"
+import { restoreFocusAfterBlockRemoval } from "./block-selection-delete"
 
 type Value = "askAI" | null
 
@@ -348,10 +349,21 @@ export function BlockContextMenu({
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={() => {
+							const firstPath = editor
+								.getApi(BlockSelectionPlugin)
+								.blockSelection.getNodes({ sort: true })[0]?.[1]
+
+							skipNextCloseAutoFocusRef.current = true
 							editor
 								.getTransforms(BlockSelectionPlugin)
 								.blockSelection.removeNodes()
-							editor.tf.focus()
+							editor.getApi(BlockSelectionPlugin).blockSelection.deselect()
+
+							if (firstPath) {
+								setTimeout(() => {
+									restoreFocusAfterBlockRemoval(editor, firstPath)
+								}, 0)
+							}
 						}}
 					>
 						<Trash2Icon /> Delete

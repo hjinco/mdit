@@ -6,13 +6,7 @@ import {
 	selectInsertedBlocks,
 	useSelectionArea,
 } from "@platejs/selection/react"
-import {
-	isHotkey,
-	KEYS,
-	type NodeEntry,
-	PathApi,
-	type TIdElement,
-} from "platejs"
+import { isHotkey, KEYS, type NodeEntry, type TIdElement } from "platejs"
 import {
 	type EditableSiblingComponent,
 	useEditorPlugin,
@@ -21,6 +15,7 @@ import {
 } from "platejs/react"
 import React from "react"
 import ReactDOM from "react-dom"
+import { restoreFocusAfterBlockRemoval } from "./block-selection-delete"
 
 function decodeHtmlEntities(html: string): string {
 	const textarea = document.createElement("textarea")
@@ -39,48 +34,35 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 	)
 	const selectedIds = usePluginOption(BlockSelectionPlugin, "selectedIds")
 
-	const removeSelectedBlocks = React.useCallback(
-		(options: { selectPrevious?: boolean } = {}) => {
-			const entries = [
-				...editor.api.nodes({
-					at: [],
-					match: (n) => !!n.id && selectedIds?.has(n.id as string),
-				}),
-			]
+	const removeSelectedBlocks = React.useCallback(() => {
+		const entries = [
+			...editor.api.nodes({
+				at: [],
+				match: (n) => !!n.id && selectedIds?.has(n.id as string),
+			}),
+		]
 
-			if (entries.length === 0) return null
+		if (entries.length === 0) return null
 
-			const firstPath = entries[0]![1]
+		const firstPath = entries[0]![1]
 
-			editor.tf.withoutNormalizing(() => {
-				for (const [node, path] of [...entries].reverse()) {
-					editor.tf.removeNodes({
-						at: path,
-					})
-					api.blockSelection.delete(node.id as string)
-				}
+		editor.tf.withoutNormalizing(() => {
+			for (const [node, path] of [...entries].reverse()) {
+				editor.tf.removeNodes({
+					at: path,
+				})
+				api.blockSelection.delete(node.id as string)
+			}
 
-				if (editor.children.length === 0) {
-					editor.meta._forceFocus = true
-					editor.tf.focus()
-					editor.meta._forceFocus = false
-				} else if (options.selectPrevious) {
-					const prevPath = PathApi.previous(firstPath)
+			if (editor.children.length === 0) {
+				editor.meta._forceFocus = true
+				editor.tf.focus()
+				editor.meta._forceFocus = false
+			}
+		})
 
-					if (prevPath) {
-						const prevEntry = editor.api.block({ at: prevPath })
-
-						if (prevEntry) {
-							setOption("selectedIds", new Set([prevEntry[0].id as string]))
-						}
-					}
-				}
-			})
-
-			return firstPath
-		},
-		[editor, api.blockSelection, selectedIds, setOption],
-	)
+		return firstPath
+	}, [editor, api.blockSelection, selectedIds])
 
 	const moveBlockUp = React.useCallback(() => {
 		const blockSelectionApi = editor.getApi(BlockSelectionPlugin)
@@ -249,9 +231,10 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 			// Backspace/Delete => remove selected blocks
 			if (isHotkey(["backspace", "delete"])(e) && !isReadonly) {
 				e.preventDefault()
-				removeSelectedBlocks({
-					selectPrevious: isHotkey("backspace")(e),
-				})
+				const firstPath = removeSelectedBlocks()
+				if (firstPath) {
+					restoreFocusAfterBlockRemoval(editor, firstPath)
+				}
 				return
 			}
 			// If SHIFT not pressed => arrow up/down sets new anchor
@@ -365,14 +348,15 @@ export const BlockSelectionAfterEditable: EditableSiblingComponent = () => {
 					navigator.clipboard.writeText(decoded)
 
 					if (!editor.api.isReadOnly()) {
-						editor
-							.getTransforms(BlockSelectionPlugin)
-							.blockSelection.removeNodes()
+						const firstPath = removeSelectedBlocks()
+						if (firstPath) {
+							restoreFocusAfterBlockRemoval(editor, firstPath)
+						}
 					}
 				}
 			}
 		},
-		[editor, getOption],
+		[editor, getOption, removeSelectedBlocks],
 	)
 
 	const handlePaste = React.useCallback(
