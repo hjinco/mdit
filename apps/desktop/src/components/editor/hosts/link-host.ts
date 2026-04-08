@@ -24,24 +24,6 @@ type DesktopLinkRuntimeDeps = {
 	suggestions?: Partial<LinkSuggestionPort>
 }
 
-const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () =>
-	useStore(
-		useShallow((state) => ({
-			workspacePath: state.workspacePath,
-			tab: state.getActiveTab(),
-			entries: state.entries,
-		})),
-	)
-
-const getDesktopWorkspaceSnapshot: LinkWorkspacePort["getSnapshot"] = () => {
-	const state = useStore.getState()
-	return {
-		workspacePath: state.workspacePath,
-		tab: state.getActiveTab(),
-		entries: state.entries,
-	}
-}
-
 const defaultRuntimeDeps: DesktopLinkRuntimeDeps = {
 	navigation: {
 		openExternal: openUrl,
@@ -67,8 +49,33 @@ const defaultRuntimeDeps: DesktopLinkRuntimeDeps = {
 }
 
 export const createDesktopLinkServices = (
+	tabId?: number,
 	runtimeDeps: DesktopLinkRuntimeDeps = defaultRuntimeDeps,
 ): LinkServices => {
+	const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () =>
+		useStore(
+			useShallow((state) => ({
+				workspacePath: state.workspacePath,
+				tab:
+					typeof tabId === "number"
+						? state.getTabById(tabId)
+						: state.getActiveTab(),
+				entries: state.entries,
+			})),
+		)
+
+	const getDesktopWorkspaceSnapshot: LinkWorkspacePort["getSnapshot"] = () => {
+		const state = useStore.getState()
+		return {
+			workspacePath: state.workspacePath,
+			tab:
+				typeof tabId === "number"
+					? state.getTabById(tabId)
+					: state.getActiveTab(),
+			entries: state.entries,
+		}
+	}
+
 	const getIndexingConfig: LinkSuggestionPort["getIndexingConfig"] = async (
 		workspacePath,
 	) => {

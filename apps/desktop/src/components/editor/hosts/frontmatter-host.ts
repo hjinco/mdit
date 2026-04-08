@@ -6,7 +6,7 @@ import {
 	openEditorLink,
 } from "@mdit/editor/link"
 import type { TagHostDeps } from "@mdit/editor/tag"
-import { desktopLinkServices } from "./link-host"
+import { createDesktopLinkServices, desktopLinkServices } from "./link-host"
 import { createDesktopTagHost } from "./tag-host"
 
 type DesktopFrontmatterHostRuntimeDeps = {
@@ -27,10 +27,13 @@ const defaultRuntimeDeps: DesktopFrontmatterHostRuntimeDeps = {
 }
 
 export const createDesktopFrontmatterHost = (
-	runtimeDeps: Partial<DesktopFrontmatterHostRuntimeDeps> = defaultRuntimeDeps,
+	tabId?: number,
+	runtimeDeps?: Partial<DesktopFrontmatterHostRuntimeDeps>,
 ): FrontmatterHostDeps => {
 	const deps = {
 		...defaultRuntimeDeps,
+		linkServices: createDesktopLinkServices(tabId),
+		tagHost: createDesktopTagHost(),
 		...runtimeDeps,
 	}
 

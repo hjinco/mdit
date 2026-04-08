@@ -20,6 +20,7 @@ export type TabNavigationState = {
 
 export type Tab = TabNavigationState & {
 	id: number
+	sessionEpoch: number
 	path: string
 	name: string
 	content: string

@@ -7,11 +7,19 @@ import { useStore } from "@/store"
  * When the command menu opens, saves the current selection.
  * When it closes, restores the saved selection.
  */
-export function useCommandMenuSelectionRestore(editor: PlateEditor) {
+export function useCommandMenuSelectionRestore(
+	editor: PlateEditor,
+	enabled: boolean,
+) {
 	const savedSelectionRef = useRef<typeof editor.selection>(null)
 	const isCommandMenuOpen = useStore((s) => s.isCommandMenuOpen)
 
 	useEffect(() => {
+		if (!enabled) {
+			savedSelectionRef.current = null
+			return
+		}
+
 		if (isCommandMenuOpen) {
 			// Save selection when command menu opens
 			if (editor.selection) {
@@ -33,5 +41,5 @@ export function useCommandMenuSelectionRestore(editor: PlateEditor) {
 				}
 			}, 0)
 		}
-	}, [isCommandMenuOpen, editor])
+	}, [enabled, isCommandMenuOpen, editor])
 }

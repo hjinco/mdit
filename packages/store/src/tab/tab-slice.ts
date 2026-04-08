@@ -84,10 +84,20 @@ export type TabSlice = {
 	activateTabById: (tabId: number) => void
 	activateNextTab: () => void
 	activatePreviousTab: () => void
+	getTabById: (tabId: number) => Tab | null
+	getTabPathById: (tabId: number) => string | null
 	setHistorySelectionProvider: (
 		provider: (() => TabHistorySelection) | null,
 	) => void
+	setTabHistorySelectionProvider: (
+		tabId: number,
+		provider: (() => TabHistorySelection) | null,
+	) => void
 	consumePendingHistorySelectionRestore: (
+		path: string,
+	) => PendingHistorySelectionRestoreResult
+	consumeTabPendingHistorySelectionRestore: (
+		tabId: number,
 		path: string,
 	) => PendingHistorySelectionRestoreResult
 	refreshTabFromExternalContent: (
@@ -115,7 +125,9 @@ export type TabSlice = {
 	) => Promise<void>
 	setTabSaved: (tabId: number, isSaved: boolean) => void
 	setActiveTabSyncedName: (name: string) => void
+	setTabSyncedName: (tabId: number, name: string) => void
 	clearActiveTabSyncedName: () => void
+	clearTabSyncedName: (tabId: number) => void
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
@@ -168,6 +180,7 @@ export const prepareTabSlice =
 			content,
 		}: Pick<Tab, "path" | "name" | "content">): Tab => ({
 			id: ++tabIdCounter,
+			sessionEpoch: 0,
 			path,
 			name,
 			content,
@@ -197,6 +210,15 @@ export const prepareTabSlice =
 			}
 		}
 
+		const bumpTabSessionEpoch = (
+			state: Pick<TabSlice, "tabs">,
+			tabId: number,
+		): Pick<TabSlice, "tabs"> | {} =>
+			updateTabById(state, tabId, (tab) => ({
+				...tab,
+				sessionEpoch: tab.sessionEpoch + 1,
+			}))
+
 		const updateCurrentHistorySelection = (selection: TabHistorySelection) => {
 			set((state) => {
 				const activeTab = getActiveTabFromState(state)
@@ -217,7 +239,14 @@ export const prepareTabSlice =
 		}
 
 		const commitCurrentHistorySelection = () => {
-			updateCurrentHistorySelection(historySession.readCurrentSelection())
+			const activeTabId = get().activeTabId
+			if (activeTabId === null) {
+				return
+			}
+
+			updateCurrentHistorySelection(
+				historySession.readCurrentSelection(activeTabId),
+			)
 		}
 
 		const appendVisitToTabHistory = (tabId: number, path: string) => {
@@ -315,18 +344,6 @@ export const prepareTabSlice =
 			await persistLastOpenedTabs()
 		}
 
-		const updateActiveTab = (
-			updater: (tab: Tab) => Tab | null,
-		): Pick<TabSlice, "tabs"> | {} => {
-			const state = get()
-			const activeTab = getActiveTabFromState(state)
-			if (!activeTab) {
-				return {}
-			}
-
-			return updateTabById(state, activeTab.id, updater)
-		}
-
 		const closeTabByIdInternal = (tabId: number): boolean =>
 			setAndPersistLastOpenedFileHistory((state) => {
 				const tabIndex = findTabIndexById(state.tabs, tabId)
@@ -336,6 +353,7 @@ export const prepareTabSlice =
 
 				const tab = state.tabs[tabIndex]
 				externalReloadSaveSkipTracker.remove(tab.id)
+				historySession.clear(tab.id)
 				const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
 				const nextActiveTabId =
 					state.activeTabId === tab.id
@@ -375,33 +393,14 @@ export const prepareTabSlice =
 			await lastOpenedFileHistoryPersistence.enqueue()
 		}
 
-		const remountActiveTabForHistoryRestore = () => {
+		const resetActiveTabSession = () => {
 			set((state) => {
 				const activeTab = getActiveTabFromState(state)
 				if (!activeTab) {
 					return {}
 				}
 
-				const activeTabIndex = findTabIndexById(state.tabs, activeTab.id)
-				if (activeTabIndex === -1) {
-					return {}
-				}
-
-				const nextTabId = ++tabIdCounter
-				const nextTabs = [...state.tabs]
-				nextTabs[activeTabIndex] = {
-					...activeTab,
-					id: nextTabId,
-				}
-
-				return {
-					tabs: nextTabs,
-					activeTabId: nextTabId,
-					tabSaveStates: {
-						...removeTabSaveState(state.tabSaveStates, activeTab.id),
-						[nextTabId]: getTabSavedFromState(state, activeTab.id),
-					},
-				}
+				return bumpTabSessionEpoch(state, activeTab.id)
 			})
 		}
 
@@ -427,6 +426,7 @@ export const prepareTabSlice =
 
 			commitCurrentHistorySelection()
 			historySession.queuePendingRestore(
+				activeTab.id,
 				navigationTarget.targetEntry.path,
 				navigationTarget.targetEntry.selection,
 			)
@@ -440,7 +440,7 @@ export const prepareTabSlice =
 
 			try {
 				if (navigationTarget.targetEntry.path === activeTab.path) {
-					remountActiveTabForHistoryRestore()
+					resetActiveTabSession()
 					return true
 				}
 
@@ -449,7 +449,7 @@ export const prepareTabSlice =
 				})
 				return true
 			} catch (error) {
-				historySession.clearPendingRestore()
+				historySession.clearPendingRestore(activeTab.id)
 				console.error(`Failed to go ${direction} in history:`, error)
 				return false
 			}
@@ -514,10 +514,27 @@ export const prepareTabSlice =
 				)
 			},
 			setHistorySelectionProvider: (provider) => {
-				historySession.setSelectionProvider(provider)
+				const activeTabId = get().activeTabId
+				if (activeTabId === null) {
+					return
+				}
+
+				historySession.setSelectionProvider(activeTabId, provider)
+			},
+			setTabHistorySelectionProvider: (tabId, provider) => {
+				historySession.setSelectionProvider(tabId, provider)
 			},
 			consumePendingHistorySelectionRestore: (path) =>
-				historySession.consumePendingRestore(path),
+				(() => {
+					const activeTabId = get().activeTabId
+					if (activeTabId === null) {
+						return { found: false } as const
+					}
+
+					return historySession.consumePendingRestore(activeTabId, path)
+				})(),
+			consumeTabPendingHistorySelectionRestore: (tabId, path) =>
+				historySession.consumePendingRestore(tabId, path),
 			refreshTabFromExternalContent: (path, content, options) => {
 				const state = get()
 				const tabIndex = findTabIndexByPath(state, path)
@@ -536,7 +553,7 @@ export const prepareTabSlice =
 				const isActiveTab = state.activeTabId === matchingTab.id
 				const nextSelection =
 					isActiveTab && options?.preserveSelection
-						? historySession.readCurrentSelection()
+						? historySession.readCurrentSelection(matchingTab.id)
 						: null
 				let didRefresh = false
 
@@ -556,36 +573,28 @@ export const prepareTabSlice =
 
 					didRefresh = true
 					const nextTabs = [...currentState.tabs]
-					let nextActiveTabId = currentState.activeTabId
 					let nextTabSaveStates = currentState.tabSaveStates
 
 					if (currentState.activeTabId === currentTab.id) {
 						externalReloadSaveSkipTracker.add(currentTab.id)
-						const nextTab = {
-							...currentTab,
-							id: ++tabIdCounter,
-							content,
-						}
-						nextTabs[currentIndex] = nextTab
-						nextActiveTabId = nextTab.id
-						nextTabSaveStates = {
-							...removeTabSaveState(currentState.tabSaveStates, currentTab.id),
-							[nextTab.id]: true,
-						}
-					} else {
-						nextTabs[currentIndex] = {
-							...currentTab,
-							content,
-						}
-						nextTabSaveStates = {
-							...currentState.tabSaveStates,
-							[currentTab.id]: true,
-						}
+					}
+
+					nextTabs[currentIndex] = {
+						...currentTab,
+						content,
+						sessionEpoch:
+							currentState.activeTabId === currentTab.id
+								? currentTab.sessionEpoch + 1
+								: currentTab.sessionEpoch,
+					}
+					nextTabSaveStates = {
+						...currentState.tabSaveStates,
+						[currentTab.id]: true,
 					}
 
 					return {
 						tabs: nextTabs,
-						activeTabId: nextActiveTabId,
+						activeTabId: currentState.activeTabId,
 						tabSaveStates: nextTabSaveStates,
 					}
 				})
@@ -595,7 +604,7 @@ export const prepareTabSlice =
 				}
 
 				updateCurrentHistorySelection(nextSelection)
-				historySession.queuePendingRestore(path, nextSelection)
+				historySession.queuePendingRestore(matchingTab.id, path, nextSelection)
 			},
 			consumePendingExternalReloadSaveSkip: (tabId) =>
 				externalReloadSaveSkipTracker.consume(tabId),
@@ -716,38 +725,39 @@ export const prepareTabSlice =
 								MAX_HISTORY_LENGTH,
 							)
 
-					const nextTabId = ++tabIdCounter
 					const nextTabs = [...currentState.tabs]
 					const nextTab = {
 						...currentTab,
-						id: nextTabId,
 						path: tabDraft.path,
 						name: tabDraft.name,
 						content: tabDraft.content,
 						syncedName: null,
 						history: nextHistoryState.history,
 						historyIndex: nextHistoryState.historyIndex,
+						sessionEpoch: currentTab.sessionEpoch + 1,
 					}
 					nextTabs[currentIndex] = nextTab
+
+					if (duplicateTab) {
+						externalReloadSaveSkipTracker.remove(duplicateTab.id)
+						historySession.clear(duplicateTab.id)
+					}
 
 					const dedupedTabs = duplicateTab
 						? nextTabs.filter((tab) => tab.id !== duplicateTab.id)
 						: nextTabs
-					const nextTabSaveStates = removeTabSaveState(
-						currentState.tabSaveStates,
-						activeTab.id,
-					)
+					const nextTabSaveStates = {
+						...currentState.tabSaveStates,
+						[activeTab.id]: true,
+					}
 					if (duplicateTab) {
 						delete nextTabSaveStates[duplicateTab.id]
 					}
 
 					return {
 						tabs: dedupedTabs,
-						activeTabId: nextTabId,
-						tabSaveStates: {
-							...nextTabSaveStates,
-							[nextTabId]: true,
-						},
+						activeTabId: activeTab.id,
+						tabSaveStates: nextTabSaveStates,
 					}
 				})
 
@@ -824,6 +834,9 @@ export const prepareTabSlice =
 			},
 			closeAllTabs: () => {
 				externalReloadSaveSkipTracker.clear()
+				for (const tab of get().tabs) {
+					historySession.clear(tab.id)
+				}
 				set(buildEmptyTabState())
 			},
 			renameTab: async (oldPath, newPath, options) => {
@@ -866,7 +879,6 @@ export const prepareTabSlice =
 					...(() => {
 						let didChange = false
 						const nextTabs = [...state.tabs]
-						let nextActiveTabId = state.activeTabId
 						let nextTabSaveStates = state.tabSaveStates
 
 						for (let index = 0; index < state.tabs.length; index += 1) {
@@ -884,30 +896,28 @@ export const prepareTabSlice =
 								continue
 							}
 
-							let nextId = currentTab.id
 							let nextContent = currentTab.content
 							const currentIsSaved = getTabSavedFromState(state, currentTab.id)
 
 							if (refreshContent && currentTab.path === oldPath) {
-								nextId = ++tabIdCounter
 								if (refreshedContent !== null) {
 									nextContent = refreshedContent
 								}
 								nextTabSaveStates = {
-									...removeTabSaveState(nextTabSaveStates, currentTab.id),
-									[nextId]: currentIsSaved,
-								}
-								if (nextActiveTabId === currentTab.id) {
-									nextActiveTabId = nextId
+									...nextTabSaveStates,
+									[currentTab.id]: currentIsSaved,
 								}
 							}
 
 							nextTabs[index] = {
 								...currentTab,
-								id: nextId,
 								path: nextPath,
 								name: nextName,
 								content: nextContent,
+								sessionEpoch:
+									refreshContent && currentTab.path === oldPath
+										? currentTab.sessionEpoch + 1
+										: currentTab.sessionEpoch,
 								history: replaceHistoryPath(
 									currentTab.history,
 									oldPath,
@@ -927,7 +937,7 @@ export const prepareTabSlice =
 
 						return {
 							tabs: nextTabs,
-							activeTabId: nextActiveTabId,
+							activeTabId: state.activeTabId,
 							tabSaveStates: nextTabSaveStates,
 						}
 					})(),
@@ -948,29 +958,45 @@ export const prepareTabSlice =
 					}
 				})
 			},
-			setActiveTabSyncedName: (name) => {
-				set(() =>
-					updateActiveTab((activeTab) =>
-						(activeTab.syncedName ?? null) === name
+			setTabSyncedName: (tabId, name) => {
+				set((state) =>
+					updateTabById(state, tabId, (tab) =>
+						(tab.syncedName ?? null) === name
 							? null
 							: {
-									...activeTab,
+									...tab,
 									syncedName: name,
 								},
 					),
 				)
 			},
-			clearActiveTabSyncedName: () => {
-				set(() =>
-					updateActiveTab((activeTab) =>
-						activeTab.syncedName == null
+			setActiveTabSyncedName: (name) => {
+				const activeTabId = get().activeTabId
+				if (activeTabId === null) {
+					return
+				}
+
+				get().setTabSyncedName(activeTabId, name)
+			},
+			clearTabSyncedName: (tabId) => {
+				set((state) =>
+					updateTabById(state, tabId, (tab) =>
+						tab.syncedName == null
 							? null
 							: {
-									...activeTab,
+									...tab,
 									syncedName: null,
 								},
 					),
 				)
+			},
+			clearActiveTabSyncedName: () => {
+				const activeTabId = get().activeTabId
+				if (activeTabId === null) {
+					return
+				}
+
+				get().clearTabSyncedName(activeTabId)
 			},
 			goBack: async () => navigateHistory(-1, "back"),
 			goForward: async () => navigateHistory(1, "forward"),
@@ -979,6 +1005,7 @@ export const prepareTabSlice =
 				const { history, historyIndex } = getActiveTabHistoryFromState(get())
 				return historyIndex < history.length - 1
 			},
+			getTabById: (tabId) => get().tabs.find((tab) => tab.id === tabId) ?? null,
 			getActiveTab: () => getActiveTabFromState(get()),
 			getOpenTabSnapshots: () => {
 				const { tabs, tabSaveStates } = get()
@@ -987,6 +1014,7 @@ export const prepareTabSlice =
 					isSaved: getTabSavedFromState({ tabSaveStates }, tab.id),
 				}))
 			},
+			getTabPathById: (tabId) => get().getTabById(tabId)?.path ?? null,
 			getActiveTabPath: () => getActiveTabFromState(get())?.path ?? null,
 			getIsSaved: () => getActiveTabSavedFromState(get()),
 			updateHistoryPath: (oldPath: string, newPath: string) => {
@@ -1006,6 +1034,7 @@ export const prepareTabSlice =
 
 				for (const removedTab of removedTabs) {
 					externalReloadSaveSkipTracker.remove(removedTab.id)
+					historySession.clear(removedTab.id)
 				}
 
 				setAndPersistLastOpenedFileHistory((currentState) => {
@@ -1055,7 +1084,9 @@ export const prepareTabSlice =
 				})
 			},
 			clearHistory: () => {
-				historySession.clearPendingRestore()
+				for (const tab of get().tabs) {
+					historySession.clearPendingRestore(tab.id)
+				}
 				set((state) => ({
 					tabs: state.tabs.map((tab) => ({
 						...tab,

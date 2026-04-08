@@ -102,13 +102,24 @@ const getOpenTabByPath = (
 	path: string,
 ) => store.getState().tabs.find((tab) => tab.path === path) ?? null
 
+const setActiveSelectionProvider = (
+	store: ReturnType<typeof createTabStore>["store"],
+	provider: () => TabHistorySelection,
+) => {
+	const activeTabId = store.getState().getActiveTab()?.id
+	expect(activeTabId).toBeTypeOf("number")
+	store
+		.getState()
+		.setTabHistorySelectionProvider(activeTabId as number, provider)
+}
+
 describe("tab-slice history selection", () => {
 	it("stores the current tab selection when opening another note in the same tab", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
-		store.getState().setHistorySelectionProvider(() => currentSelection)
 
 		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => currentSelection)
 
 		const selectionInA = createSelection([2, 0], 4)
 		currentSelection = selectionInA
@@ -130,9 +141,9 @@ describe("tab-slice history selection", () => {
 	it("captures selection on goBack and restores the previous note in the same tab", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
-		store.getState().setHistorySelectionProvider(() => currentSelection)
 
 		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => currentSelection)
 		const selectionInA = createSelection([0, 0], 3)
 		currentSelection = selectionInA
 		await store.getState().openTab("/notes/b.md")
@@ -162,9 +173,9 @@ describe("tab-slice history selection", () => {
 	it("captures selection on goForward and restores the target note selection", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
-		store.getState().setHistorySelectionProvider(() => currentSelection)
 
 		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => currentSelection)
 		const selectionInA = createSelection([1, 0], 1)
 		currentSelection = selectionInA
 		await store.getState().openTab("/notes/b.md")
@@ -197,9 +208,9 @@ describe("tab-slice history selection", () => {
 	it("marks the destination tab as saved after skipHistory navigation", async () => {
 		const { store } = createTabStore()
 		let currentSelection: TabHistorySelection = null
-		store.getState().setHistorySelectionProvider(() => currentSelection)
 
 		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => currentSelection)
 		currentSelection = createSelection([1, 0], 2)
 		await store.getState().openTab("/notes/b.md")
 
@@ -221,15 +232,14 @@ describe("tab-slice history selection", () => {
 		let currentSelection: TabHistorySelection = null
 		let shouldThrow = false
 
-		store.getState().setHistorySelectionProvider(() => {
+		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => {
 			if (shouldThrow) {
 				throw new Error("selection unavailable")
 			}
 
 			return currentSelection
 		})
-
-		await store.getState().openTab("/notes/a.md")
 		const selectionInA = createSelection([2, 1], 6)
 		currentSelection = selectionInA
 		await store.getState().openTab("/notes/b.md")
@@ -364,6 +374,7 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/a.md")
 		const firstTabId = store.getState().getActiveTab()?.id
+		const firstSessionEpoch = store.getState().getActiveTab()?.sessionEpoch
 
 		await store.getState().openTab("/notes/b.md")
 
@@ -371,7 +382,10 @@ describe("tab-slice history selection", () => {
 			"/notes/b.md",
 		])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
-		expect(store.getState().getActiveTab()?.id).not.toBe(firstTabId)
+		expect(store.getState().getActiveTab()?.id).toBe(firstTabId)
+		expect(store.getState().getActiveTab()?.sessionEpoch).toBe(
+			(firstSessionEpoch ?? 0) + 1,
+		)
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [
 				{ path: "/notes/a.md", selection: null },
@@ -654,11 +668,12 @@ describe("tab-slice history selection", () => {
 	it("refreshes the active tab from external content and queues selection restore", async () => {
 		const { store } = createTabStore()
 		const selectionInA = createSelection([2, 0], 4, [2, 0], 8)
-		store.getState().setHistorySelectionProvider(() => selectionInA)
 
 		await store.getState().openTab("/notes/a.md")
+		setActiveSelectionProvider(store, () => selectionInA)
 
 		const initialTabId = store.getState().getActiveTab()?.id
+		const initialSessionEpoch = store.getState().getActiveTab()?.sessionEpoch
 		store
 			.getState()
 			.refreshTabFromExternalContent("/notes/a.md", "external-content", {
@@ -673,7 +688,10 @@ describe("tab-slice history selection", () => {
 				content: "external-content",
 			}),
 		)
-		expect(store.getState().getActiveTab()?.id).not.toBe(initialTabId)
+		expect(store.getState().getActiveTab()?.id).toBe(initialTabId)
+		expect(store.getState().getActiveTab()?.sessionEpoch).toBe(
+			(initialSessionEpoch ?? 0) + 1,
+		)
 		expect(store.getState().getIsSaved()).toBe(true)
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [

@@ -73,17 +73,29 @@ const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 }
 
 export const createDesktopSlashHost = (
-	runtimeDeps: DesktopSlashHostRuntimeDeps = defaultRuntimeDeps,
+	tabId?: number,
+	runtimeDeps?: Partial<DesktopSlashHostRuntimeDeps>,
 ): SlashHostDeps => {
+	const deps: DesktopSlashHostRuntimeDeps = {
+		...defaultRuntimeDeps,
+		...runtimeDeps,
+		getTabPath:
+			runtimeDeps?.getTabPath ??
+			(() =>
+				typeof tabId === "number"
+					? useStore.getState().getTabPathById(tabId)
+					: useStore.getState().getActiveTabPath()),
+	}
+
 	const getFrontmatterDefaults = async (): Promise<KVRow[]> => {
-		const tabPath = runtimeDeps.getTabPath()
+		const tabPath = deps.getTabPath()
 		if (!tabPath) {
 			return createDefaultFrontmatterRows()
 		}
 
 		try {
 			const tabDir = dirname(tabPath)
-			const entries = await runtimeDeps.readDirectory(tabDir)
+			const entries = await deps.readDirectory(tabDir)
 			const siblingNotes = entries
 				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".md"))
 				.map((entry) => ({
@@ -100,9 +112,7 @@ export const createDesktopSlashHost = (
 			await Promise.all(
 				siblingNotes.map(async (entry) => {
 					try {
-						const content = await runtimeDeps.readMarkdownFile(
-							entry.absolutePath,
-						)
+						const content = await deps.readMarkdownFile(entry.absolutePath)
 						const source = extractFrontmatterSource(content)
 						if (!source) return
 
@@ -169,7 +179,7 @@ export const createDesktopSlashHost = (
 
 	return {
 		pickImageFile: async () => {
-			const path = await runtimeDeps.openDialog({
+			const path = await deps.openDialog({
 				multiple: false,
 				directory: false,
 				filters: [
@@ -183,9 +193,9 @@ export const createDesktopSlashHost = (
 			return typeof path === "string" ? path : null
 		},
 		resolveImageLink:
-			runtimeDeps.resolveImageLink ?? desktopImageImportHost.resolveImageLink,
+			deps.resolveImageLink ?? desktopImageImportHost.resolveImageLink,
 		onResolveImageLinkError:
-			runtimeDeps.onResolveImageLinkError ??
+			deps.onResolveImageLinkError ??
 			desktopImageImportHost.onResolveImageLinkError,
 		getFrontmatterDefaults,
 	}

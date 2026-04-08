@@ -37,17 +37,36 @@ export const updateHistorySelection = (
 }
 
 export const createTabHistorySession = () => {
-	let selectionProvider: (() => TabHistorySelection) | null = null
-	let pendingRestore: {
-		path: string
-		selection: TabHistorySelection
-	} | null = null
+	const selectionProviders = new Map<
+		number,
+		(() => TabHistorySelection) | null
+	>()
+	const pendingRestoreByTabId = new Map<
+		number,
+		{
+			path: string
+			selection: TabHistorySelection
+		}
+	>()
 
 	return {
-		setSelectionProvider: (provider: (() => TabHistorySelection) | null) => {
-			selectionProvider = provider
+		setSelectionProvider: (
+			tabId: number,
+			provider: (() => TabHistorySelection) | null,
+		) => {
+			if (provider) {
+				selectionProviders.set(tabId, provider)
+				return
+			}
+
+			selectionProviders.delete(tabId)
 		},
-		readCurrentSelection: (): TabHistorySelection => {
+		clear: (tabId: number) => {
+			selectionProviders.delete(tabId)
+			pendingRestoreByTabId.delete(tabId)
+		},
+		readCurrentSelection: (tabId: number): TabHistorySelection => {
+			const selectionProvider = selectionProviders.get(tabId)
 			if (!selectionProvider) {
 				return null
 			}
@@ -58,24 +77,30 @@ export const createTabHistorySession = () => {
 				return null
 			}
 		},
-		queuePendingRestore: (path: string, selection: TabHistorySelection) => {
-			pendingRestore = {
+		queuePendingRestore: (
+			tabId: number,
+			path: string,
+			selection: TabHistorySelection,
+		) => {
+			pendingRestoreByTabId.set(tabId, {
 				path,
 				selection: cloneHistorySelection(selection),
-			}
+			})
 		},
-		clearPendingRestore: () => {
-			pendingRestore = null
+		clearPendingRestore: (tabId: number) => {
+			pendingRestoreByTabId.delete(tabId)
 		},
 		consumePendingRestore: (
+			tabId: number,
 			path: string,
 		): PendingHistorySelectionRestoreResult => {
+			const pendingRestore = pendingRestoreByTabId.get(tabId)
 			if (!pendingRestore || pendingRestore.path !== path) {
 				return { found: false }
 			}
 
 			const selection = cloneHistorySelection(pendingRestore.selection)
-			pendingRestore = null
+			pendingRestoreByTabId.delete(tabId)
 			return { found: true, selection }
 		},
 	}

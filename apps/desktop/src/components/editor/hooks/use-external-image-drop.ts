@@ -21,6 +21,7 @@ export function useExternalImageDrop(
 	editor: PlateEditor,
 	workspacePath: string | null,
 	containerRef: RefObject<HTMLDivElement | null>,
+	enabled: boolean,
 ) {
 	const handleExternalImageDrop = useCallback(
 		async (paths: string[], event: DropEvent) => {
@@ -62,11 +63,12 @@ export function useExternalImageDrop(
 	)
 
 	const { isOver } = useDropZone({
-		id: workspacePath
-			? `editor-native-drop:${workspacePath}`
-			: "editor-native-drop",
+		id:
+			enabled && workspacePath
+				? `editor-native-drop:${workspacePath}`
+				: "editor-native-drop",
 		ref: containerRef,
-		path: workspacePath,
+		path: enabled ? workspacePath : null,
 		depth: Number.MAX_SAFE_INTEGER,
 		onDrop: handleExternalImageDrop,
 	})

@@ -3,14 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 type StoreState = {
 	workspacePath: string | null
-	getActiveTab: () => { path: string; syncedName?: string | null } | null
-	setActiveTabSyncedName: (name: string) => void
+	getTabById: (
+		tabId: number,
+	) => { path: string; syncedName?: string | null } | null
+	setTabSyncedName: (tabId: number, name: string) => void
 }
 
 let storeState: StoreState = {
 	workspacePath: "/workspace",
-	getActiveTab: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
-	setActiveTabSyncedName: vi.fn<(name: string) => void>(),
+	getTabById: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
+	setTabSyncedName: vi.fn<(tabId: number, name: string) => void>(),
 }
 
 vi.mock("@/store", () => ({
@@ -73,8 +75,8 @@ describe("tab-metadata-kit", () => {
 	beforeEach(() => {
 		storeState = {
 			workspacePath: "/workspace",
-			getActiveTab: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
-			setActiveTabSyncedName: vi.fn<(name: string) => void>(),
+			getTabById: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
+			setTabSyncedName: vi.fn<(tabId: number, name: string) => void>(),
 		}
 	})
 
@@ -121,19 +123,19 @@ describe("tab-metadata-kit", () => {
 	it("does not sync when the first block is not a heading", () => {
 		const editor = createEditor({ firstBlock: createParagraph("Title") })
 
-		expect(getNextTabSyncedName(editor, storeState)).toBeNull()
+		expect(getNextTabSyncedName(editor, 1, storeState)).toBeNull()
 	})
 
 	it("does not sync when the first heading is cleared", () => {
 		const editor = createEditor({ firstBlock: createHeading("Title") })
 
-		syncTabSyncedName(editor, storeState)
+		syncTabSyncedName(editor, 1, storeState)
 		editor.children[0] = createHeading("")
 
-		expect(getNextTabSyncedName(editor, storeState)).toBeNull()
-		syncTabSyncedName(editor, storeState)
+		expect(getNextTabSyncedName(editor, 1, storeState)).toBeNull()
+		syncTabSyncedName(editor, 1, storeState)
 
-		expect(storeState.setActiveTabSyncedName).not.toHaveBeenCalled()
+		expect(storeState.setTabSyncedName).not.toHaveBeenCalled()
 	})
 
 	it("does not sync when the tab has no synced name for the current note", () => {
@@ -141,9 +143,9 @@ describe("tab-metadata-kit", () => {
 
 		storeState = {
 			...storeState,
-			getActiveTab: () => ({ path: "/workspace/note.md", syncedName: null }),
+			getTabById: () => ({ path: "/workspace/note.md", syncedName: null }),
 		}
 
-		expect(getNextTabSyncedName(editor, storeState)).toBeNull()
+		expect(getNextTabSyncedName(editor, 1, storeState)).toBeNull()
 	})
 })

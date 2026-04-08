@@ -5,11 +5,11 @@ import { useStore } from "@/store"
 /**
  * Hook to handle auto-renaming files based on first heading after save
  */
-export function useAutoRenameOnSave(path: string) {
+export function useAutoRenameOnSave(tabId: number, path: string) {
 	const handleRenameAfterSave = useCallback(async () => {
 		// Check if we should rename based on tab.name (which may be from first heading)
 		const store = useStore.getState()
-		const tab = store.getActiveTab()
+		const tab = store.getTabById(tabId)
 		const { renameEntry } = store
 
 		if (tab && tab.path === path) {
@@ -30,7 +30,7 @@ export function useAutoRenameOnSave(path: string) {
 		}
 
 		return path
-	}, [path])
+	}, [path, tabId])
 
 	return { handleRenameAfterSave }
 }

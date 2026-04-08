@@ -9,12 +9,12 @@ import { useStore } from "@/store"
 const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 
 /**
- * Sync the active tab name to the first heading on initial load (per tab id).
+ * Sync the tab name to the first heading on initial load (per tab id).
  * Prevents resyncing after a manual rename; resets when the tab id changes.
  */
-export function useTabSyncedName(path: string, value: Value) {
+export function useTabSyncedName(tabId: number, path: string, value: Value) {
 	const hasSyncedForTab = useRef(false)
-	const setActiveTabSyncedName = useStore((s) => s.setActiveTabSyncedName)
+	const setTabSyncedName = useStore((s) => s.setTabSyncedName)
 
 	// Sync the tab name to the first heading on initial render if conditions match.
 	useEffect(() => {
@@ -32,9 +32,9 @@ export function useTabSyncedName(path: string, value: Value) {
 			return
 		}
 
-		setActiveTabSyncedName(firstHeading || name)
+		setTabSyncedName(tabId, firstHeading || name)
 		hasSyncedForTab.current = true
-	}, [path, setActiveTabSyncedName, value])
+	}, [path, setTabSyncedName, tabId, value])
 }
 
 function getFirstHeadingText(value: Value): string {

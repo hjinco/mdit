@@ -33,53 +33,62 @@ import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
 import { createDesktopFrontmatterHost } from "../hosts/frontmatter-host"
-import { desktopLinkServices } from "../hosts/link-host"
-import { desktopMediaHost } from "../hosts/media-host"
-import { desktopSlashHost } from "../hosts/slash-host"
+import { createDesktopLinkServices } from "../hosts/link-host"
+import { createDesktopMediaHost } from "../hosts/media-host"
+import { createDesktopSlashHost } from "../hosts/slash-host"
 import { createDesktopTagHost } from "../hosts/tag-host"
-import { TabMetadataKit } from "./tab-metadata-kit"
-
-const desktopTagHost = createDesktopTagHost()
-const desktopFrontmatterHost = createDesktopFrontmatterHost({
-	linkServices: desktopLinkServices,
-	tagHost: desktopTagHost,
-})
-const desktopBlockSelectionHost = createDesktopBlockSelectionHost()
+import { createTabMetadataKit } from "./tab-metadata-kit"
 
 type CreateEditorKitOptions = {
 	mdx?: boolean
+	tabId?: number
 }
 
-const createEditorKit = ({ mdx = true }: CreateEditorKitOptions = {}) => [
-	...createAIKit({ host: desktopAIMenuHost }),
-	...createFilePasteKit({ host: desktopFilePasteHost }),
-	...TabMetadataKit,
-	...AutoformatKit,
-	...BasicBlocksKit,
-	...BasicMarksKit,
-	...createBlockSelectionKit({ host: desktopBlockSelectionHost }),
-	...CalloutKit,
-	...CodeBlockKit,
-	...CodeDrawingKit,
-	...CursorOverlayKit,
-	...EmojiKit,
-	...createFrontmatterKit({ host: desktopFrontmatterHost }),
-	...DateKit,
-	...DndKit,
-	...FloatingToolbarKit,
-	...createLinkKit({ services: desktopLinkServices }),
-	...ListKit,
-	...(mdx ? MarkdownKit : MarkdownKitNoMdx),
-	...MathKit,
-	...createMediaKit({ host: desktopMediaHost }),
-	...ShortcutsKit,
-	...createSlashKit({ host: desktopSlashHost }),
-	...SuggestionKit,
-	...createTagKit({ host: desktopTagHost }),
-	...TableKit,
-	...TocKit,
-	...UtilsKit,
-]
+export const createEditorKit = ({
+	mdx = true,
+	tabId,
+}: CreateEditorKitOptions = {}) => {
+	const desktopTagHost = createDesktopTagHost()
+	const desktopLinkServices = createDesktopLinkServices(tabId)
+	const desktopFrontmatterHost = createDesktopFrontmatterHost(tabId, {
+		linkServices: desktopLinkServices,
+		tagHost: desktopTagHost,
+	})
+	const desktopBlockSelectionHost = createDesktopBlockSelectionHost(tabId)
+	const desktopMediaHost = createDesktopMediaHost(tabId)
+	const desktopSlashHost = createDesktopSlashHost(tabId)
+
+	return [
+		...createAIKit({ host: desktopAIMenuHost }),
+		...createFilePasteKit({ host: desktopFilePasteHost }),
+		...(typeof tabId === "number" ? createTabMetadataKit(tabId) : []),
+		...AutoformatKit,
+		...BasicBlocksKit,
+		...BasicMarksKit,
+		...createBlockSelectionKit({ host: desktopBlockSelectionHost }),
+		...CalloutKit,
+		...CodeBlockKit,
+		...CodeDrawingKit,
+		...CursorOverlayKit,
+		...EmojiKit,
+		...createFrontmatterKit({ host: desktopFrontmatterHost }),
+		...DateKit,
+		...DndKit,
+		...FloatingToolbarKit,
+		...createLinkKit({ services: desktopLinkServices }),
+		...ListKit,
+		...(mdx ? MarkdownKit : MarkdownKitNoMdx),
+		...MathKit,
+		...createMediaKit({ host: desktopMediaHost }),
+		...ShortcutsKit,
+		...createSlashKit({ host: desktopSlashHost }),
+		...SuggestionKit,
+		...createTagKit({ host: desktopTagHost }),
+		...TableKit,
+		...TocKit,
+		...UtilsKit,
+	]
+}
 
 export const EditorKit = createEditorKit({ mdx: true })
 export const EditorKitNoMdx = createEditorKit({ mdx: false })

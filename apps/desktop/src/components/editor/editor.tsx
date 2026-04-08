@@ -18,7 +18,11 @@ import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useExternalImageDrop } from "./hooks/use-external-image-drop"
 import { useTabSyncedName } from "./hooks/use-tab-synced-name"
-import { EditorKit, EditorKitNoMdx } from "./plugins/editor-kit"
+import {
+	createEditorKit,
+	EditorKit,
+	EditorKitNoMdx,
+} from "./plugins/editor-kit"
 import {
 	focusEditorAtDefaultSelection,
 	restoreHistorySelection,
@@ -26,8 +30,13 @@ import {
 } from "./utils/history-restore-utils"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
-	const tab = useStore((s) => s.getActiveTab())
-	const handleTypingProgress = useStore((s) => s.handleTypingProgress)
+	const { tabs, activeTabId, handleTypingProgress } = useStore(
+		useShallow((s) => ({
+			tabs: s.tabs,
+			activeTabId: s.activeTabId,
+			handleTypingProgress: s.handleTypingProgress,
+		})),
+	)
 
 	const deserializeWithFallback = useMemo(
 		() =>
@@ -38,15 +47,7 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 		[],
 	)
 
-	const value = useMemo(() => {
-		if (!tab) return
-		return deserializeWithFallback({
-			content: tab.content,
-			path: tab.path,
-		})
-	}, [tab, deserializeWithFallback])
-
-	if (!tab || !value)
+	if (tabs.length === 0 || activeTabId === null) {
 		return (
 			<div className="flex-1 h-full">
 				<div className="h-full bg-background shadow">
@@ -57,16 +58,66 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 				</div>
 			</div>
 		)
+	}
 
 	return (
 		<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
 			<Header hideNavigation={destroyOnClose} />
+			<div className="relative min-h-0 flex-1">
+				{tabs.map((tab) => (
+					<EditorPane
+						key={tab.id}
+						tabId={tab.id}
+						active={tab.id === activeTabId}
+						destroyOnClose={destroyOnClose}
+						deserializeWithFallback={deserializeWithFallback}
+						onTypingProgress={handleTypingProgress}
+					/>
+				))}
+			</div>
+		</div>
+	)
+}
+
+function EditorPane({
+	tabId,
+	active,
+	destroyOnClose,
+	deserializeWithFallback,
+	onTypingProgress,
+}: {
+	tabId: number
+	active: boolean
+	destroyOnClose?: boolean
+	deserializeWithFallback: (input: { content: string; path: string }) => Value
+	onTypingProgress: () => void
+}) {
+	const tab = useStore((s) => s.getTabById(tabId))
+
+	const value = useMemo(() => {
+		if (!tab) return
+		return deserializeWithFallback({
+			content: tab.content,
+			path: tab.path,
+		})
+	}, [deserializeWithFallback, tab])
+
+	if (!tab || !value) {
+		return null
+	}
+
+	return (
+		<div
+			className={active ? "block h-full" : "hidden h-full"}
+			aria-hidden={!active}
+		>
 			<EditorContent
-				key={tab.id}
+				key={`${tab.id}:${tab.sessionEpoch}`}
 				tabId={tab.id}
 				path={tab.path}
 				value={value}
-				onTypingProgress={handleTypingProgress}
+				active={active}
+				onTypingProgress={onTypingProgress}
 				destroyOnClose={destroyOnClose}
 			/>
 		</div>
@@ -77,12 +128,14 @@ function EditorContent({
 	tabId,
 	path,
 	value,
+	active,
 	onTypingProgress,
 	destroyOnClose,
 }: {
 	tabId: number
 	path: string
 	value: Value
+	active: boolean
 	onTypingProgress: () => void
 	destroyOnClose?: boolean
 }) {
@@ -92,16 +145,16 @@ function EditorContent({
 	const {
 		setTabSaved,
 		saveNoteContent,
-		setHistorySelectionProvider,
-		consumePendingHistorySelectionRestore,
+		setTabHistorySelectionProvider,
+		consumeTabPendingHistorySelectionRestore,
 		consumePendingExternalReloadSaveSkip,
 	} = useStore(
 		useShallow((s) => ({
 			setTabSaved: s.setTabSaved,
 			saveNoteContent: s.saveNoteContent,
-			setHistorySelectionProvider: s.setHistorySelectionProvider,
-			consumePendingHistorySelectionRestore:
-				s.consumePendingHistorySelectionRestore,
+			setTabHistorySelectionProvider: s.setTabHistorySelectionProvider,
+			consumeTabPendingHistorySelectionRestore:
+				s.consumeTabPendingHistorySelectionRestore,
 			consumePendingExternalReloadSaveSkip:
 				s.consumePendingExternalReloadSaveSkip,
 		})),
@@ -110,6 +163,7 @@ function EditorContent({
 	const isFocusMode = useStore((s) => s.isFocusMode)
 	const workspacePath = useStore((s) => s.workspacePath)
 	const editorContainerRef = useRef<HTMLDivElement | null>(null)
+	const plugins = useMemo(() => createEditorKit({ tabId }), [tabId])
 
 	const editor = usePlateEditor({
 		chunking: {
@@ -117,11 +171,11 @@ function EditorContent({
 			contentVisibilityAuto: true,
 			query: NodeApi.isEditor,
 		},
-		plugins: EditorKit,
+		plugins,
 		value,
 	})
 
-	const { handleRenameAfterSave } = useAutoRenameOnSave(path)
+	const { handleRenameAfterSave } = useAutoRenameOnSave(tabId, path)
 
 	const handleSave = useCallback(async () => {
 		if (isSaved.current) return
@@ -139,6 +193,14 @@ function EditorContent({
 	}, [editor, path, setTabSaved, handleRenameAfterSave, saveNoteContent, tabId])
 
 	useEffect(() => {
+		if (!active) {
+			return () => {
+				if (!consumePendingExternalReloadSaveSkip(tabId)) {
+					void handleSave()
+				}
+			}
+		}
+
 		const appWindow = getCurrentWindow()
 
 		const interval = setInterval(handleSave, 10_000)
@@ -159,23 +221,38 @@ function EditorContent({
 				void handleSave()
 			}
 		}
-	}, [consumePendingExternalReloadSaveSkip, destroyOnClose, handleSave, tabId])
+	}, [
+		active,
+		consumePendingExternalReloadSaveSkip,
+		destroyOnClose,
+		handleSave,
+		tabId,
+	])
 
 	useEffect(() => {
-		setHistorySelectionProvider(() => toTabHistorySelection(editor.selection))
+		setTabHistorySelectionProvider(tabId, () =>
+			toTabHistorySelection(editor.selection),
+		)
 
 		return () => {
-			setHistorySelectionProvider(null)
+			setTabHistorySelectionProvider(tabId, null)
 		}
-	}, [editor, setHistorySelectionProvider])
+	}, [editor, setTabHistorySelectionProvider, tabId])
 
 	useEffect(() => {
+		if (!active) {
+			return
+		}
+
 		const previousPath = lastPathRef.current
 		const pathDidChange = previousPath !== path
 		lastPathRef.current = path
 
 		const timeoutId = window.setTimeout(() => {
-			const pendingRestore = consumePendingHistorySelectionRestore(path)
+			const pendingRestore = consumeTabPendingHistorySelectionRestore(
+				tabId,
+				path,
+			)
 			if (pendingRestore.found) {
 				restoreHistorySelection(editor, pendingRestore.selection)
 
@@ -195,9 +272,13 @@ function EditorContent({
 		return () => {
 			window.clearTimeout(timeoutId)
 		}
-	}, [consumePendingHistorySelectionRestore, editor, path])
+	}, [active, consumeTabPendingHistorySelectionRestore, editor, path, tabId])
 
 	useEffect(() => {
+		if (!active) {
+			return
+		}
+
 		const handleMouseMove = () => {
 			resetFocusMode()
 		}
@@ -205,15 +286,16 @@ function EditorContent({
 		return () => {
 			window.removeEventListener("mousemove", handleMouseMove)
 		}
-	}, [resetFocusMode])
+	}, [active, resetFocusMode])
 
-	useCommandMenuSelectionRestore(editor)
-	useTabSyncedName(path, value)
+	useCommandMenuSelectionRestore(editor, active)
+	useTabSyncedName(tabId, path, value)
 
 	const { isExternalDropOver } = useExternalImageDrop(
 		editor,
 		workspacePath,
 		editorContainerRef,
+		active,
 	)
 
 	const handleTypingDetection = useCallback(
@@ -233,7 +315,7 @@ function EditorContent({
 	return (
 		<div
 			ref={editorContainerRef}
-			className={`overflow-hidden ${isExternalDropOver ? "bg-accent/20" : ""}`}
+			className={`h-full overflow-hidden ${isExternalDropOver ? "bg-accent/20" : ""}`}
 			data-editor-scroll-root
 		>
 			<EditorSurface

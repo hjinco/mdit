@@ -6,7 +6,9 @@ const firstBlockTextByEditor = new WeakMap<object, string | null>()
 
 type TabNameSyncStoreState = {
 	workspacePath: string | null
-	getActiveTab: () => { path: string; syncedName?: string | null } | null
+	getTabById: (
+		tabId: number,
+	) => { path: string; syncedName?: string | null } | null
 }
 
 /**
@@ -77,13 +79,14 @@ export function shouldSyncTabNameFromHeading(editor: any): string | null {
 
 export function getNextTabSyncedName(
 	editor: any,
+	tabId: number,
 	storeState: TabNameSyncStoreState,
 ) {
 	if (!storeState.workspacePath) {
 		return null
 	}
 
-	const tab = storeState.getActiveTab()
+	const tab = storeState.getTabById(tabId)
 	if (!tab || tab.syncedName == null) {
 		return null
 	}
@@ -98,25 +101,26 @@ export function getNextTabSyncedName(
 
 export function syncTabSyncedName(
 	editor: any,
+	tabId: number,
 	storeState: TabNameSyncStoreState & {
-		setActiveTabSyncedName: (name: string) => void
+		setTabSyncedName: (tabId: number, name: string) => void
 	},
 ) {
-	const firstHeading = getNextTabSyncedName(editor, storeState)
+	const firstHeading = getNextTabSyncedName(editor, tabId, storeState)
 	if (firstHeading === null) {
 		return
 	}
 
-	storeState.setActiveTabSyncedName(firstHeading)
+	storeState.setTabSyncedName(tabId, firstHeading)
 }
 
-const TabMetadataPlugin = createPlatePlugin({
-	key: "tabMetadata",
-	handlers: {
-		onChange: ({ editor }) => {
-			syncTabSyncedName(editor, useStore.getState())
+export const createTabMetadataKit = (tabId: number) => [
+	createPlatePlugin({
+		key: "tabMetadata",
+		handlers: {
+			onChange: ({ editor }) => {
+				syncTabSyncedName(editor, tabId, useStore.getState())
+			},
 		},
-	},
-})
-
-export const TabMetadataKit = [TabMetadataPlugin]
+	}),
+]

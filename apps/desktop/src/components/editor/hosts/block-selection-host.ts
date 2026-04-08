@@ -35,48 +35,65 @@ const defaultRuntimeDeps: BlockSelectionHostRuntimeDeps = {
 }
 
 export const createDesktopBlockSelectionHost = (
-	runtimeDeps: BlockSelectionHostRuntimeDeps = defaultRuntimeDeps,
-): BlockSelectionHost => ({
-	createLinkedNotesFromListItems: async (items) => {
-		if (items.length === 0) {
-			return []
-		}
+	tabId?: number,
+	runtimeDeps?: Partial<BlockSelectionHostRuntimeDeps>,
+): BlockSelectionHost => {
+	const deps: BlockSelectionHostRuntimeDeps = {
+		...defaultRuntimeDeps,
+		...runtimeDeps,
+		getCurrentTabPath:
+			runtimeDeps?.getCurrentTabPath ??
+			(() =>
+				typeof tabId === "number"
+					? useStore.getState().getTabPathById(tabId)
+					: useStore.getState().getActiveTabPath()),
+	}
 
-		const workspacePath = runtimeDeps.getWorkspacePath()
-		if (!workspacePath) {
-			return items.map(() => null)
-		}
-
-		const currentTabPath = runtimeDeps.getCurrentTabPath()
-		const targetDirectory = currentTabPath
-			? dirname(currentTabPath)
-			: workspacePath
-
-		const { createNote } = runtimeDeps
-		const results: CreateLinkedNotesFromListItemsResult[] = []
-
-		for (const rawItemText of items) {
-			const itemText = rawItemText.trim()
-			const initialName = itemText || "Untitled"
-
-			try {
-				const newPath = await createNote(targetDirectory, {
-					initialName,
-					openTab: false,
-				})
-				const wikiTarget = toWikiTargetFromAbsolutePath(workspacePath, newPath)
-				const linkText = stripMarkdownExtension(basename(newPath))
-
-				results.push({
-					wikiTarget,
-					linkText: linkText || initialName,
-				})
-			} catch (error) {
-				results.push(null)
-				runtimeDeps.onCreateFailure?.(error)
+	return {
+		createLinkedNotesFromListItems: async (items) => {
+			if (items.length === 0) {
+				return []
 			}
-		}
 
-		return results
-	},
-})
+			const workspacePath = deps.getWorkspacePath()
+			if (!workspacePath) {
+				return items.map(() => null)
+			}
+
+			const currentTabPath = deps.getCurrentTabPath()
+			const targetDirectory = currentTabPath
+				? dirname(currentTabPath)
+				: workspacePath
+
+			const { createNote } = deps
+			const results: CreateLinkedNotesFromListItemsResult[] = []
+
+			for (const rawItemText of items) {
+				const itemText = rawItemText.trim()
+				const initialName = itemText || "Untitled"
+
+				try {
+					const newPath = await createNote(targetDirectory, {
+						initialName,
+						openTab: false,
+					})
+					const wikiTarget = toWikiTargetFromAbsolutePath(
+						workspacePath,
+						newPath,
+					)
+					const linkText = stripMarkdownExtension(basename(newPath))
+
+					results.push({
+						wikiTarget,
+						linkText: linkText || initialName,
+					})
+				} catch (error) {
+					results.push(null)
+					deps.onCreateFailure?.(error)
+				}
+			}
+
+			return results
+		},
+	}
+}
