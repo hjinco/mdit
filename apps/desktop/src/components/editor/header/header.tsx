@@ -20,6 +20,7 @@ export function Header({
 		currentCollectionPath,
 		workspacePath,
 		isEditMode,
+		tabCount,
 	} = useStore(
 		useShallow((s) => ({
 			isFileExplorerOpen: s.isFileExplorerOpen,
@@ -27,6 +28,7 @@ export function Header({
 			currentCollectionPath: s.currentCollectionPath,
 			workspacePath: s.workspacePath,
 			isEditMode: s.isEditMode,
+			tabCount: s.tabs.length,
 		})),
 	)
 	const isCollectionViewOpen = currentCollectionPath !== null
@@ -35,6 +37,7 @@ export function Header({
 	const showPin =
 		windowLabel?.startsWith("edit-") || windowLabel?.startsWith("quick-note-")
 	const showEditorNavigation = !hideNavigation && !isEditMode
+	const showInfoButton = tabCount > 0
 
 	return (
 		<div
@@ -54,7 +57,7 @@ export function Header({
 			{showEditorNavigation && <TabStrip />}
 			<div className="flex items-center gap-0.5 ml-auto">
 				{showPin && <WindowPinButton />}
-				<InfoButton />
+				{showInfoButton && <InfoButton />}
 			</div>
 		</div>
 	)

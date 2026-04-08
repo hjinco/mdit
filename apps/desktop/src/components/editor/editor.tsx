@@ -63,12 +63,15 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 
 	if (tabCount === 0 || activeDocumentId === null || activeTabId === null) {
 		return (
-			<div className="flex-1 h-full">
-				<div className="h-full bg-background shadow">
-					<div
-						className="h-12 w-full"
-						{...(isMac() && { "data-tauri-drag-region": "" })}
-					/>
+			<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
+				<Header hideNavigation={destroyOnClose} />
+				<div className="relative min-h-0 flex-1">
+					<div className="h-full bg-background">
+						<div
+							className="h-full w-full"
+							{...(isMac() && { "data-tauri-drag-region": "" })}
+						/>
+					</div>
 				</div>
 			</div>
 		)
