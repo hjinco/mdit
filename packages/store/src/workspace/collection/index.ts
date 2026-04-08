@@ -64,17 +64,27 @@ const rebaseCollectionPaths = (
 		return state
 	}
 
+	const nextCurrentCollectionPath = replacePathPrefixIfDescendant(
+		state.currentCollectionPath,
+		sourcePath,
+		targetPath,
+	)
+	const nextLastCollectionPath = replacePathPrefixIfDescendant(
+		state.lastCollectionPath,
+		sourcePath,
+		targetPath,
+	)
+
+	if (
+		nextCurrentCollectionPath === state.currentCollectionPath &&
+		nextLastCollectionPath === state.lastCollectionPath
+	) {
+		return state
+	}
+
 	return {
-		currentCollectionPath: replacePathPrefixIfDescendant(
-			state.currentCollectionPath,
-			sourcePath,
-			targetPath,
-		),
-		lastCollectionPath: replacePathPrefixIfDescendant(
-			state.lastCollectionPath,
-			sourcePath,
-			targetPath,
-		),
+		currentCollectionPath: nextCurrentCollectionPath,
+		lastCollectionPath: nextLastCollectionPath,
 	}
 }
 
