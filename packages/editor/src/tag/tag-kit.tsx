@@ -1,6 +1,7 @@
 import { KEYS } from "platejs"
 import { createPlatePlugin } from "platejs/react"
 import { FRONTMATTER_KEY } from "../frontmatter"
+import { NOTE_TITLE_KEY } from "../title"
 import { createTagLeaf, type TagHostDeps } from "./node-tag"
 import { createTagDecoratedRanges } from "./tag-utils"
 
@@ -19,6 +20,7 @@ function hasBlockedAncestor(editor: any, path: number[]) {
 			editor.getType(KEYS.link),
 			editor.getType(KEYS.img),
 			FRONTMATTER_KEY,
+			NOTE_TITLE_KEY,
 		])
 		blockedAncestorTypesByEditor.set(editor, blockedTypes)
 	}

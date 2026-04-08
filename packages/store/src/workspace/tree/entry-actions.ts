@@ -39,7 +39,6 @@ export type WorkspaceTreeEntryActions = {
 		newPath: string
 		isDirectory: boolean
 		newName: string
-		clearSyncedName?: boolean
 	}) => Promise<void>
 	entryMoved: (input: {
 		sourcePath: string
@@ -124,13 +123,7 @@ export const createTreeEntryActions = (
 		)
 	},
 
-	entryRenamed: async ({
-		oldPath,
-		newPath,
-		isDirectory,
-		newName,
-		clearSyncedName = false,
-	}) => {
+	entryRenamed: async ({ oldPath, newPath, isDirectory, newName }) => {
 		const store = ctx.get() as WorkspaceTreeStoreState
 		const { workspacePath, entries, expandedDirectories, pinnedDirectories } =
 			store
@@ -145,9 +138,6 @@ export const createTreeEntryActions = (
 		await (store as typeof store & Partial<TabSlice>).renameTab?.(
 			oldPath,
 			newPath,
-			{
-				clearSyncedName,
-			},
 		)
 		;(store as typeof store & Partial<TabSlice>).updateHistoryPath?.(
 			oldPath,

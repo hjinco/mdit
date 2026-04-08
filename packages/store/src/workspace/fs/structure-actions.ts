@@ -19,7 +19,6 @@ export type CreateNoteOptions = {
 
 export type RenameEntryOptions = {
 	allowLockedSourcePath?: boolean
-	preserveActiveTabSyncedName?: boolean
 }
 
 export type WorkspaceFsStructureActions = {
@@ -142,7 +141,9 @@ export const createFsStructureActions = (
 		})
 
 		if (options?.openTab) {
-			await (ctx.get() as Partial<TabSlice>).openTab?.(filePath)
+			await (ctx.get() as Partial<TabSlice>).openTab?.(filePath, false, false, {
+				initialSelection: "title",
+			})
 			ctx.get().setEntrySelection(createSingleEntrySelection(filePath))
 		}
 
@@ -235,14 +236,9 @@ export const createFsStructureActions = (
 			{ path: entry.path, scope },
 			{ path: nextPath, scope },
 		])
-		const clearSyncedName =
-			!entry.isDirectory && !options?.preserveActiveTabSyncedName
-
 		if (isEditMode) {
 			const tabState = ctx.get() as Partial<TabSlice>
-			await tabState.renameTab?.(entry.path, nextPath, {
-				clearSyncedName,
-			})
+			await tabState.renameTab?.(entry.path, nextPath)
 			tabState.updateHistoryPath?.(entry.path, nextPath)
 			return nextPath
 		}
@@ -252,7 +248,6 @@ export const createFsStructureActions = (
 			newPath: nextPath,
 			isDirectory: entry.isDirectory,
 			newName: trimmedName,
-			clearSyncedName,
 		})
 
 		return nextPath

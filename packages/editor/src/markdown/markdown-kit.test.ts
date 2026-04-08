@@ -1,6 +1,7 @@
 import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
+import { createNoteTitleBlock } from "../title"
 import { MarkdownKit, MarkdownKitNoMdx } from "./markdown-kit"
 import { OBSIDIAN_EMBED_KEY } from "./obsidian-embed-plugin"
 
@@ -80,6 +81,20 @@ describe("markdown-kit serialization", () => {
 
 		const markdown = serializeMd(editor, { value })
 		expect(markdown).toBe("Hello\n")
+	})
+
+	it("does not serialize editor-only title blocks", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			createNoteTitleBlock("Title"),
+			{
+				type: KEYS.p,
+				children: [{ text: "Body" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toBe("Body\n")
 	})
 
 	it("serializes internal links as wiki links", async () => {

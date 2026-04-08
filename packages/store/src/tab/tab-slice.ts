@@ -75,12 +75,37 @@ export type {
 type RenameTabOptions = {
 	refreshContent?: boolean
 	renameOnFs?: boolean
-	clearSyncedName?: boolean
 }
 
 type OpenTabOptions = {
 	initialContent?: string
+	initialSelection?: "title"
 	skipSelectionCapture?: boolean
+}
+
+const getInitialSelectionForPath = (
+	path: string,
+	options?: OpenTabOptions,
+): TabHistorySelection => {
+	if (options?.initialSelection !== "title") {
+		return null
+	}
+
+	const title = getFileNameWithoutExtension(path)
+	if (!title) {
+		return null
+	}
+
+	return {
+		anchor: {
+			path: [0, 0],
+			offset: 0,
+		},
+		focus: {
+			path: [0, 0],
+			offset: title.length,
+		},
+	}
 }
 
 type RefreshTabFromExternalContentOptions = {
@@ -140,12 +165,6 @@ export type TabSlice = {
 	) => Promise<void>
 	setDocumentSaved: (documentId: number, isSaved: boolean) => void
 	setTabSaved: (tabId: number, isSaved: boolean) => void
-	setDocumentSyncedName: (documentId: number, name: string) => void
-	setActiveTabSyncedName: (name: string) => void
-	setTabSyncedName: (tabId: number, name: string) => void
-	clearDocumentSyncedName: (documentId: number) => void
-	clearActiveTabSyncedName: () => void
-	clearTabSyncedName: (tabId: number) => void
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
@@ -203,7 +222,6 @@ export const prepareTabSlice =
 			path,
 			name,
 			content,
-			syncedName: null,
 			sessionEpoch: 0,
 			isSaved: true,
 		})
@@ -435,6 +453,8 @@ export const prepareTabSlice =
 				return
 			}
 
+			let nextTabId: number | null = null
+
 			set((state) => {
 				let targetDocument = getDocumentByPathFromState(state, path)
 				let nextOpenDocuments = state.openDocuments
@@ -449,12 +469,18 @@ export const prepareTabSlice =
 				}
 
 				const nextTab = buildTab(targetDocument.id, targetDocument.path)
+				nextTabId = nextTab.id
 				return {
 					tabs: [...state.tabs, nextTab],
 					openDocuments: nextOpenDocuments,
 					activeTabId: nextTab.id,
 				}
 			})
+
+			const initialSelection = getInitialSelectionForPath(path, options)
+			if (nextTabId !== null && initialSelection) {
+				historySession.queuePendingRestore(nextTabId, path, initialSelection)
+			}
 
 			await persistLastOpenedTabs()
 		}
@@ -509,7 +535,6 @@ export const prepareTabSlice =
 									path: documentDraft.path,
 									name: documentDraft.name,
 									content: documentDraft.content,
-									syncedName: null,
 									sessionEpoch: document.sessionEpoch + 1,
 									isSaved: true,
 								},
@@ -554,6 +579,11 @@ export const prepareTabSlice =
 					activeTabId: activeTabId,
 				}
 			})
+
+			const initialSelection = getInitialSelectionForPath(path, options)
+			if (initialSelection) {
+				historySession.queuePendingRestore(activeTabId, path, initialSelection)
+			}
 
 			if (documentIdToSkipSave !== null) {
 				externalReloadSaveSkipTracker.add(documentIdToSkipSave)
@@ -964,7 +994,6 @@ export const prepareTabSlice =
 			renameTab: async (oldPath, newPath, options) => {
 				const refreshContent = options?.refreshContent ?? false
 				const shouldRenameOnFs = options?.renameOnFs ?? false
-				const shouldClearSyncedName = options?.clearSyncedName ?? false
 				const matchingDocuments = get().openDocuments.filter((document) =>
 					isPathEqualOrDescendant(document.path, oldPath),
 				)
@@ -1027,13 +1056,6 @@ export const prepareTabSlice =
 							}
 						}
 
-						if (shouldClearSyncedName && document.path === oldPath) {
-							nextDocument = {
-								...nextDocument,
-								syncedName: null,
-							}
-						}
-
 						didChange = true
 						return nextDocument
 					})
@@ -1083,62 +1105,6 @@ export const prepareTabSlice =
 				}
 
 				get().setDocumentSaved(tab.documentId, isSaved)
-			},
-			setDocumentSyncedName: (documentId, name) => {
-				set((state) =>
-					updateDocumentById(state, documentId, (document) =>
-						(document.syncedName ?? null) === name
-							? null
-							: {
-									...document,
-									syncedName: name,
-								},
-					),
-				)
-			},
-			setTabSyncedName: (tabId, name) => {
-				const tab = getTabByIdFromState(get(), tabId)
-				if (!tab) {
-					return
-				}
-
-				get().setDocumentSyncedName(tab.documentId, name)
-			},
-			setActiveTabSyncedName: (name) => {
-				const activeDocumentId = getActiveDocumentIdFromState(get())
-				if (activeDocumentId === null) {
-					return
-				}
-
-				get().setDocumentSyncedName(activeDocumentId, name)
-			},
-			clearDocumentSyncedName: (documentId) => {
-				set((state) =>
-					updateDocumentById(state, documentId, (document) =>
-						document.syncedName == null
-							? null
-							: {
-									...document,
-									syncedName: null,
-								},
-					),
-				)
-			},
-			clearTabSyncedName: (tabId) => {
-				const tab = getTabByIdFromState(get(), tabId)
-				if (!tab) {
-					return
-				}
-
-				get().clearDocumentSyncedName(tab.documentId)
-			},
-			clearActiveTabSyncedName: () => {
-				const activeDocumentId = getActiveDocumentIdFromState(get())
-				if (activeDocumentId === null) {
-					return
-				}
-
-				get().clearDocumentSyncedName(activeDocumentId)
 			},
 			goBack: async () => navigateHistory(-1, "back"),
 			goForward: async () => navigateHistory(1, "forward"),

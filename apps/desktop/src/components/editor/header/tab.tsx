@@ -31,7 +31,6 @@ export function TabStrip() {
 					path: document.path,
 					name: document.name,
 					content: document.content,
-					syncedName: document.syncedName,
 					sessionEpoch: document.sessionEpoch,
 					isSaved: document.isSaved,
 				}
@@ -62,7 +61,6 @@ export function TabStrip() {
 			<div className="flex items-center gap-1 overflow-x-auto py-1.5">
 				{tabs.map((tab) => {
 					const isActive = tab.id === activeTabId
-					const displayName = tab.syncedName ?? tab.name
 
 					return (
 						<div
@@ -92,7 +90,7 @@ export function TabStrip() {
 							)}
 						>
 							<div className="flex-1 truncate text-left pl-2 pr-1">
-								{displayName}
+								{tab.name}
 							</div>
 							<div
 								className={cn(

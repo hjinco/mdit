@@ -6,6 +6,7 @@ import { FRONTMATTER_KEY } from "../frontmatter"
 import { BlockContextMenu } from "../selection/block-context-menu"
 import { BlockSelectionAfterEditable } from "../selection/block-seleciton-after-editable"
 import { BlockSelection } from "../selection/block-selection"
+import { NOTE_TITLE_KEY } from "../title"
 import type { CreateLinkedNotesFromListItemsHandler } from "./block-selection-linked-notes"
 
 export type BlockSelectionHostDeps = {
@@ -28,6 +29,7 @@ export const createBlockSelectionKit = (
 						KEYS.codeLine,
 						KEYS.td,
 						FRONTMATTER_KEY,
+						NOTE_TITLE_KEY,
 					]).includes(element.type)
 				},
 			},

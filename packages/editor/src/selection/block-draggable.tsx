@@ -13,6 +13,7 @@ import { type MouseEvent, type PointerEvent, useCallback, useRef } from "react"
 import { FRONTMATTER_KEY } from "../frontmatter"
 import { useIsTouchDevice } from "../shared/use-is-touch-device"
 import { insertSlashMenuBelow } from "../slash/insert-slash-menu"
+import { NOTE_TITLE_KEY } from "../title"
 import { getBlockDragHandleContextMenuId } from "./block-menu-ids"
 
 const headingTopMap: Record<string, string> = {
@@ -129,7 +130,8 @@ export function Draggable(props: PlateElementProps) {
 	if (
 		!elementId ||
 		props.path.length > 1 ||
-		props.element.type === FRONTMATTER_KEY
+		props.element.type === FRONTMATTER_KEY ||
+		props.element.type === NOTE_TITLE_KEY
 	) {
 		return <>{props.children}</>
 	}

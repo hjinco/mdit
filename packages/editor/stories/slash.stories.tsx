@@ -80,6 +80,7 @@ export const InsertFrontmatterFromSlashMenu: Story = {
 		const editor = getEditable(canvasElement)
 
 		await userEvent.click(editor)
+		await userEvent.keyboard("{Enter}")
 		await userEvent.keyboard("/")
 		await userEvent.click(await overlay.findByText("Frontmatter"))
 

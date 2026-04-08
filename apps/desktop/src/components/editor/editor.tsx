@@ -1,9 +1,17 @@
 import { createMarkdownDeserializerWithFallback } from "@mdit/editor/markdown"
 import { NodeApi, usePlateEditor, type Value } from "@mdit/editor/plate"
 import { EditorSurface } from "@mdit/editor/shared"
+import {
+	getEditorTitleText,
+	injectEditorTitleBlock,
+	NOTE_TITLE_KEY,
+	normalizeEditorTitleText,
+	stripEditorTitleBlock,
+} from "@mdit/editor/title"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
 	type KeyboardEvent,
+	type MouseEvent,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -14,10 +22,8 @@ import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 import { isMac } from "@/utils/platform"
 import { Header } from "./header/header"
-import { useAutoRenameOnSave } from "./hooks/use-auto-rename-on-save"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useExternalImageDrop } from "./hooks/use-external-image-drop"
-import { useTabSyncedName } from "./hooks/use-tab-synced-name"
 import {
 	createEditorKit,
 	EditorKit,
@@ -110,10 +116,13 @@ function EditorPane({
 			return
 		}
 
-		return deserializeWithFallback({
-			content: document.content,
-			path: document.path,
-		})
+		return injectEditorTitleBlock(
+			document.path,
+			deserializeWithFallback({
+				content: document.content,
+				path: document.path,
+			}),
+		)
 	}, [deserializeWithFallback, document])
 
 	if (!document || !value) {
@@ -159,6 +168,8 @@ function EditorContent({
 	onTypingProgress: () => void
 	destroyOnClose?: boolean
 }) {
+	type SaveTrigger = "auto" | "blur" | "exit" | "title-exit"
+
 	const isSaved = useRef(documentIsSaved)
 	const isInitializing = useRef(true)
 	const lastPathRef = useRef(path)
@@ -188,7 +199,17 @@ function EditorContent({
 	const isFocusMode = useStore((s) => s.isFocusMode)
 	const workspacePath = useStore((s) => s.workspacePath)
 	const editorContainerRef = useRef<HTMLDivElement | null>(null)
-	const plugins = useMemo(() => createEditorKit({ documentId }), [documentId])
+	const titleExitHandlerRef = useRef<() => void>(() => {})
+	const plugins = useMemo(
+		() =>
+			createEditorKit({
+				documentId,
+				onTitleExit: () => {
+					titleExitHandlerRef.current()
+				},
+			}),
+		[documentId],
+	)
 
 	const editor = usePlateEditor({
 		chunking: {
@@ -200,52 +221,101 @@ function EditorContent({
 		value,
 	})
 
-	const { handleRenameAfterSave } = useAutoRenameOnSave(documentId, path)
+	const isSelectionInTitle = useCallback(() => {
+		const blockEntry = editor.api.block()
+		if (!blockEntry) {
+			return false
+		}
+
+		const [node, blockPath] = blockEntry
+		return (
+			blockPath.length === 1 &&
+			blockPath[0] === 0 &&
+			node.type === NOTE_TITLE_KEY
+		)
+	}, [editor])
+
+	const renameFromTitleIfNeeded = useCallback(async () => {
+		const store = useStore.getState()
+		const document = store.getDocumentById(documentId)
+		if (!document) {
+			return path
+		}
+
+		const nextTitle = normalizeEditorTitleText(
+			getEditorTitleText(editor.children as Value),
+		)
+
+		if (!nextTitle || nextTitle === document.name) {
+			return document.path
+		}
+
+		return store.renameEntry(
+			{ path: document.path, name: document.name, isDirectory: false },
+			`${nextTitle}.md`,
+		)
+	}, [documentId, editor, path])
 
 	useEffect(() => {
 		isSaved.current = documentIsSaved
 	}, [documentIsSaved])
 
-	const handleSave = useCallback(async () => {
-		if (isSaved.current) {
-			return
-		}
+	const handleSave = useCallback(
+		async (_trigger: SaveTrigger) => {
+			if (isSaved.current) {
+				return
+			}
 
-		await saveNoteContent(path, editor.api.markdown.serialize())
-			.then(async () => {
+			try {
+				const nextPath = await renameFromTitleIfNeeded()
+
+				await saveNoteContent(
+					nextPath,
+					editor.api.markdown.serialize({
+						value: stripEditorTitleBlock(editor.children as Value),
+					}),
+				)
+
 				isSaved.current = true
 				setDocumentSaved(documentId, true)
-				await handleRenameAfterSave()
-			})
-			.catch(() => {
+			} catch (_error) {
 				isSaved.current = false
 				setDocumentSaved(documentId, false)
 				toast.error("Failed to save note")
-			})
-	}, [
-		documentId,
-		editor,
-		handleRenameAfterSave,
-		path,
-		saveNoteContent,
-		setDocumentSaved,
-	])
+			}
+		},
+		[
+			documentId,
+			editor,
+			renameFromTitleIfNeeded,
+			saveNoteContent,
+			setDocumentSaved,
+		],
+	)
+
+	useEffect(() => {
+		titleExitHandlerRef.current = () => {
+			void handleSave("title-exit")
+		}
+	}, [handleSave])
 
 	useEffect(() => {
 		if (!active) {
 			return () => {
 				if (!consumePendingExternalReloadSaveSkip(documentId)) {
-					void handleSave()
+					void handleSave("exit")
 				}
 			}
 		}
 
 		const appWindow = getCurrentWindow()
-		const interval = setInterval(handleSave, 10_000)
+		const interval = setInterval(() => {
+			void handleSave("auto")
+		}, 10_000)
 		const closeListener = appWindow.listen(
 			"tauri://close-requested",
 			async () => {
-				await handleSave()
+				await handleSave("exit")
 				if (destroyOnClose) {
 					appWindow.destroy()
 				}
@@ -256,7 +326,7 @@ function EditorContent({
 			closeListener.then((unlisten) => unlisten())
 			clearInterval(interval)
 			if (!consumePendingExternalReloadSaveSkip(documentId)) {
-				void handleSave()
+				void handleSave("exit")
 			}
 		}
 	}, [
@@ -350,7 +420,6 @@ function EditorContent({
 	}, [active, resetFocusMode])
 
 	useCommandMenuSelectionRestore(editor, active)
-	useTabSyncedName(documentId, path, value)
 
 	const { isExternalDropOver } = useExternalImageDrop(
 		editor,
@@ -375,11 +444,32 @@ function EditorContent({
 		[onTypingProgress],
 	)
 
+	const handleEditorMouseDownCapture = useCallback(
+		(event: MouseEvent<HTMLDivElement>) => {
+			if (!isSelectionInTitle()) {
+				return
+			}
+
+			const target = event.target
+			if (!(target instanceof HTMLElement)) {
+				return
+			}
+
+			if (target.closest("[data-note-title-block='true']")) {
+				return
+			}
+
+			void handleSave("title-exit")
+		},
+		[handleSave, isSelectionInTitle],
+	)
+
 	return (
 		<div
 			ref={editorContainerRef}
 			className={`h-full overflow-hidden ${isExternalDropOver ? "bg-accent/20" : ""}`}
 			data-editor-scroll-root
+			onMouseDownCapture={handleEditorMouseDownCapture}
 		>
 			<EditorSurface
 				editor={editor}
@@ -399,7 +489,7 @@ function EditorContent({
 				}}
 				onKeyDown={handleTypingDetection}
 				onBlur={() => {
-					void handleSave()
+					void handleSave("blur")
 				}}
 			/>
 		</div>

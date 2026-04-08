@@ -96,7 +96,12 @@ describe("fs-structure-actions", () => {
 		const createdPath = await actions.createNote("/ws", { openTab: true })
 
 		expect(createdPath).toBe("/ws/Untitled.md")
-		expect(getState().openTab).toHaveBeenCalledWith("/ws/Untitled.md")
+		expect(getState().openTab).toHaveBeenCalledWith(
+			"/ws/Untitled.md",
+			false,
+			false,
+			{ initialSelection: "title" },
+		)
 		expect(getState().selectedEntryPaths).toEqual(new Set(["/ws/Untitled.md"]))
 		expect(getState().selectionAnchorPath).toBe("/ws/Untitled.md")
 	})
@@ -253,9 +258,6 @@ describe("fs-structure-actions", () => {
 		expect(getState().renameTab).toHaveBeenCalledWith(
 			"/ws/old.md",
 			"/ws/new.md",
-			{
-				clearSyncedName: true,
-			},
 		)
 		expect(getState().updateHistoryPath).toHaveBeenCalledWith(
 			"/ws/old.md",
@@ -286,23 +288,11 @@ describe("fs-structure-actions", () => {
 		expect(getState().entryRenamed).not.toHaveBeenCalled()
 	})
 
-	it("renameEntry forwards manual rename synced-name cleanup intent", async () => {
+	it("renameEntry forwards rename metadata for files", async () => {
 		const { context, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
-		setState({
-			workspacePath: "/ws",
-			tabs: [
-				{
-					id: 1,
-					path: "/ws/old.md",
-					name: "old",
-					content: "",
-					syncedName: "Title",
-				},
-			],
-			activeTabId: 1,
-		})
+		setState({ workspacePath: "/ws" })
 
 		await actions.renameEntry(
 			{
@@ -318,86 +308,6 @@ describe("fs-structure-actions", () => {
 			newPath: "/ws/new.md",
 			isDirectory: false,
 			newName: "new.md",
-			clearSyncedName: true,
-		})
-	})
-
-	it("renameEntry keeps forwarding synced-name cleanup for inactive renamed tabs", async () => {
-		const { context, getState, setState } = createActionTestContext()
-		const actions = createFsStructureActions(context)
-		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
-		setState({
-			workspacePath: "/ws",
-			tabs: [
-				{
-					id: 1,
-					path: "/ws/old.md",
-					name: "old",
-					content: "",
-					syncedName: "Title",
-				},
-				{
-					id: 2,
-					path: "/ws/other.md",
-					name: "other",
-					content: "",
-				},
-			],
-			activeTabId: 2,
-		})
-
-		await actions.renameEntry(
-			{
-				path: "/ws/old.md",
-				name: "old.md",
-				isDirectory: false,
-			},
-			"new.md",
-		)
-
-		expect(getState().entryRenamed).toHaveBeenCalledWith({
-			oldPath: "/ws/old.md",
-			newPath: "/ws/new.md",
-			isDirectory: false,
-			newName: "new.md",
-			clearSyncedName: true,
-		})
-	})
-
-	it("renameEntry can preserve the active synced name when requested", async () => {
-		const { context, getState, setState } = createActionTestContext()
-		const actions = createFsStructureActions(context)
-		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
-		setState({
-			workspacePath: "/ws",
-			tabs: [
-				{
-					id: 1,
-					path: "/ws/old.md",
-					name: "old",
-					content: "",
-					syncedName: "Title",
-				},
-			],
-			activeTabId: 1,
-		})
-
-		await actions.renameEntry(
-			{
-				path: "/ws/old.md",
-				name: "old.md",
-				isDirectory: false,
-			},
-			"new.md",
-			{ preserveActiveTabSyncedName: true },
-		)
-
-		expect(getState().entryRenamed).toHaveBeenCalledWith({
-			oldPath: "/ws/old.md",
-			newPath: "/ws/new.md",
-			isDirectory: false,
-			newName: "new.md",
-			clearSyncedName: false,
 		})
 	})
 

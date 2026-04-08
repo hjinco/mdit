@@ -22,6 +22,7 @@
 		"./suggestion": "./src/suggestion/index.ts",
 		"./tag": "./src/tag/index.ts",
 		"./table": "./src/table/index.ts",
+		"./title": "./src/title/index.ts",
 		"./toc": "./src/toc/index.ts"
 	},
 	"scripts": {

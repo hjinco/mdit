@@ -46,6 +46,21 @@ import { useIsTouchDevice } from "../shared/use-is-touch-device"
 
 type Value = "askAI" | null
 
+export function isNoteTitleContextMenuTarget(
+	target: EventTarget | null,
+): boolean {
+	if (
+		!target ||
+		typeof target !== "object" ||
+		!("closest" in target) ||
+		typeof target.closest !== "function"
+	) {
+		return false
+	}
+
+	return Boolean(target.closest("[data-note-title-block='true']"))
+}
+
 export function BlockContextMenu({
 	children,
 	onCreateLinkedNotesFromListItems,
@@ -264,6 +279,7 @@ export function BlockContextMenu({
 					// Plate block-selection prevents bubbling on focused blocks unless
 					// the event target is explicitly marked as context-menu-allowed.
 					const target = event.target
+					if (isNoteTitleContextMenuTarget(target)) return
 					if (!(target instanceof HTMLElement)) return
 					if (target.dataset.plateOpenContextMenu !== undefined) return
 
@@ -273,6 +289,8 @@ export function BlockContextMenu({
 					}, 0)
 				}}
 				onContextMenu={(event) => {
+					if (isNoteTitleContextMenuTarget(event.target)) return
+
 					const dataset = (event.target as HTMLElement).dataset
 					const disabled =
 						dataset?.slateEditor === "true" ||

@@ -15,6 +15,7 @@ import { KEYS } from "platejs"
 import { applyPreviousCodeBlockLanguage } from "../code/code-block-language"
 import { WIKI_LINK_PLACEHOLDER_TEXT } from "../link/wiki-link-constants"
 import { KATEX_ENVIRONMENTS } from "../math/katex"
+import { NOTE_TITLE_KEY } from "../title"
 
 const autoformatMarks: AutoformatRule[] = [
 	{
@@ -286,7 +287,9 @@ export const AutoformatKit = [
 					...rule,
 					query: (editor) =>
 						!editor.api.some({
-							match: { type: editor.getType(KEYS.codeBlock) },
+							match: (node) =>
+								node.type === editor.getType(KEYS.codeBlock) ||
+								node.type === NOTE_TITLE_KEY,
 						}),
 				}),
 			),

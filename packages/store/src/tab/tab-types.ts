@@ -23,7 +23,6 @@ export type OpenDocument = {
 	path: string
 	name: string
 	content: string
-	syncedName?: string | null
 	sessionEpoch: number
 	isSaved: boolean
 }
@@ -36,7 +35,7 @@ export type Tab = TabNavigationState & {
 export type ResolvedTab = TabNavigationState &
 	Pick<
 		OpenDocument,
-		"content" | "isSaved" | "name" | "path" | "sessionEpoch" | "syncedName"
+		"content" | "isSaved" | "name" | "path" | "sessionEpoch"
 	> & {
 		id: number
 		documentId: number

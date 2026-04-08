@@ -80,9 +80,6 @@ describe("tree/entry-actions", () => {
 		expect(getState().renameTab).toHaveBeenCalledWith(
 			"/ws/folder",
 			"/ws/renamed",
-			{
-				clearSyncedName: false,
-			},
 		)
 		expect(getState().updateHistoryPath).toHaveBeenCalledWith(
 			"/ws/folder",
@@ -130,7 +127,7 @@ describe("tree/entry-actions", () => {
 		})
 	})
 
-	it("entryRenamed forwards clearSyncedName to direct tab sync", async () => {
+	it("entryRenamed forwards direct tab rename", async () => {
 		const { context, getState, setState } = createActionTestContext()
 		setState({
 			workspacePath: "/ws",
@@ -144,15 +141,11 @@ describe("tree/entry-actions", () => {
 			newPath: "/ws/new.md",
 			isDirectory: false,
 			newName: "new.md",
-			clearSyncedName: true,
 		})
 
 		expect(getState().renameTab).toHaveBeenCalledWith(
 			"/ws/old.md",
 			"/ws/new.md",
-			{
-				clearSyncedName: true,
-			},
 		)
 	})
 

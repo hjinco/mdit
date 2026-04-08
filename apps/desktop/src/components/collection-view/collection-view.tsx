@@ -128,7 +128,6 @@ export function CollectionView() {
 		return {
 			path: document.path,
 			name: document.name,
-			syncedName: document.syncedName,
 		}
 	}, [activeTabId, openDocuments, tabs])
 	const activeTabPath = activeTab?.path ?? null
@@ -278,11 +277,7 @@ export function CollectionView() {
 								<NoteEntry
 									key={entry.path}
 									entry={entry}
-									name={
-										isActive
-											? (activeTab?.syncedName ?? activeTab?.name ?? "")
-											: entry.name
-									}
+									name={isActive ? (activeTab?.name ?? "") : entry.name}
 									isActive={isActive}
 									isSelected={isSelected}
 									onClick={handleClick}

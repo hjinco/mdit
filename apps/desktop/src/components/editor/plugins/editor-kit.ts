@@ -28,7 +28,9 @@ import { createSlashKit } from "@mdit/editor/slash"
 import { SuggestionKit } from "@mdit/editor/suggestion"
 import { TableKit } from "@mdit/editor/table"
 import { createTagKit } from "@mdit/editor/tag"
+import { createNoteTitleKit } from "@mdit/editor/title"
 import { TocKit } from "@mdit/editor/toc"
+import { toast } from "sonner"
 import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
@@ -37,16 +39,17 @@ import { createDesktopLinkServices } from "../hosts/link-host"
 import { createDesktopMediaHost } from "../hosts/media-host"
 import { createDesktopSlashHost } from "../hosts/slash-host"
 import { createDesktopTagHost } from "../hosts/tag-host"
-import { createTabMetadataKit } from "./tab-metadata-kit"
 
 type CreateEditorKitOptions = {
 	mdx?: boolean
 	documentId?: number
+	onTitleExit?: () => void
 }
 
 export const createEditorKit = ({
 	mdx = true,
 	documentId,
+	onTitleExit,
 }: CreateEditorKitOptions = {}) => {
 	const desktopTagHost = createDesktopTagHost()
 	const desktopLinkServices = createDesktopLinkServices(documentId)
@@ -61,7 +64,14 @@ export const createEditorKit = ({
 	return [
 		...createAIKit({ host: desktopAIMenuHost }),
 		...createFilePasteKit({ host: desktopFilePasteHost }),
-		...(typeof documentId === "number" ? createTabMetadataKit(documentId) : []),
+		...createNoteTitleKit({
+			onInvalidInput: () => {
+				toast.error(
+					"Title contains characters that cannot be used in file names.",
+				)
+			},
+			onExitTitle: onTitleExit,
+		}),
 		...AutoformatKit,
 		...BasicBlocksKit,
 		...BasicMarksKit,

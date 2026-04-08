@@ -407,6 +407,24 @@ describe("tab-slice history selection", () => {
 		})
 	})
 
+	it("queues title selection when opening a note with title initial selection", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		await store.getState().openTab("/notes/My Note.md", false, false, {
+			initialSelection: "title",
+		})
+
+		expect(
+			store
+				.getState()
+				.consumePendingHistorySelectionRestore("/notes/My Note.md"),
+		).toEqual({
+			found: true,
+			selection: createSelection([0, 0], 0, [0, 0], "My Note".length),
+		})
+	})
+
 	it("opens the first note in a new tab when there is no active tab", async () => {
 		const { store } = createTabStore()
 
@@ -668,32 +686,6 @@ describe("tab-slice history selection", () => {
 		)
 	})
 
-	it("can clear the renamed tab synced name without disturbing others", async () => {
-		const { store } = createTabStore()
-
-		await store.getState().openTab("/notes/a.md")
-		store.getState().setActiveTabSyncedName("Title A")
-		await store
-			.getState()
-			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
-		store.getState().setActiveTabSyncedName("Title B")
-
-		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md", {
-			clearSyncedName: true,
-		})
-
-		expect(store.getState().openDocuments).toEqual([
-			expect.objectContaining({
-				path: "/notes/a-renamed.md",
-				syncedName: null,
-			}),
-			expect.objectContaining({
-				path: "/notes/b.md",
-				syncedName: "Title B",
-			}),
-		])
-	})
-
 	it("refreshes the active tab from external content and queues selection restore", async () => {
 		const { store } = createTabStore()
 		const selectionInA = createSelection([2, 0], 4, [2, 0], 8)
@@ -750,7 +742,7 @@ describe("tab-slice history selection", () => {
 		])
 	})
 
-	it("shares saved and synced-name state across duplicate aliases", async () => {
+	it("shares saved state across duplicate aliases", async () => {
 		const { store } = createTabStore()
 
 		await store.getState().openTab("/notes/a.md")
@@ -759,20 +751,17 @@ describe("tab-slice history selection", () => {
 		const secondTabId = store.getState().getActiveTab()?.id
 
 		store.getState().setTabSaved(firstTabId as number, false)
-		store.getState().setTabSyncedName(secondTabId as number, "Shared Title")
 
 		expect(store.getState().getResolvedTabs()).toEqual([
 			expect.objectContaining({
 				id: firstTabId,
 				path: "/notes/a.md",
 				isSaved: false,
-				syncedName: "Shared Title",
 			}),
 			expect.objectContaining({
 				id: secondTabId,
 				path: "/notes/a.md",
 				isSaved: false,
-				syncedName: "Shared Title",
 			}),
 		])
 		expect(store.getState().getOpenDocumentSnapshots()).toEqual([

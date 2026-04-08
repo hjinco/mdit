@@ -2,6 +2,7 @@ import { MarkdownPlugin } from "@platejs/markdown"
 import { BlockSelectionPlugin } from "@platejs/selection/react"
 import { PointApi } from "platejs"
 import { createPlatePlugin, type PlateEditor } from "platejs/react"
+import { NOTE_TITLE_KEY } from "../title"
 
 function decodeHtmlEntities(html: string): string {
 	const textarea = document.createElement("textarea")
@@ -68,6 +69,43 @@ function copyOrCutSelection(editor: PlateEditor, action: "copy" | "cut") {
 	// Use the logic for current selection or block
 	const sel = editor.selection
 	if (!sel) return
+
+	const startEntry = editor.api.above({
+		at: sel.anchor,
+		match: editor.api.isBlock,
+		mode: "highest",
+	})
+	const endEntry = editor.api.above({
+		at: sel.focus,
+		match: editor.api.isBlock,
+		mode: "highest",
+	})
+
+	if (
+		startEntry &&
+		endEntry &&
+		startEntry[0].type === NOTE_TITLE_KEY &&
+		endEntry[0].type === NOTE_TITLE_KEY
+	) {
+		const [, path] = startEntry
+		const selectedText = PointApi.equals(sel.anchor, sel.focus)
+			? editor.api.string(path)
+			: editor.api.string(sel)
+
+		navigator.clipboard.writeText(selectedText)
+
+		if (action === "cut") {
+			if (PointApi.equals(sel.anchor, sel.focus)) {
+				editor.tf.replaceNodes(
+					{ type: NOTE_TITLE_KEY, children: [{ text: "" }] } as any,
+					{ at: path },
+				)
+			} else {
+				editor.tf.deleteFragment()
+			}
+		}
+		return
+	}
 
 	// If the selection is expanded, copy/cut the exact fragment
 	if (!PointApi.equals(sel.anchor, sel.focus)) {

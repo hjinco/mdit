@@ -27,6 +27,7 @@ import {
 	FRONTMATTER_KEY,
 } from "../frontmatter"
 import { hasParentTraversal, WINDOWS_ABSOLUTE_REGEX } from "../link/link-utils"
+import { NOTE_TITLE_KEY } from "../title"
 import { getPlainText } from "./markdown-utils"
 import {
 	calloutMarkdownRule,
@@ -257,6 +258,9 @@ export const createMarkdownKit = ({
 					},
 				},
 				rules: {
+					[NOTE_TITLE_KEY]: {
+						serialize: () => null,
+					},
 					[FRONTMATTER_KEY]: {
 						serialize: (node: { data?: KVRow[] | Record<string, unknown> }) => {
 							const record = rowsToRecord(node?.data)

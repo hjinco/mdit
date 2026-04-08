@@ -51,7 +51,7 @@ export function FrontmatterElement(
 	)
 
 	return (
-		<PlateElement {...props} className="mb-4">
+		<PlateElement {...props} className="mt-8 mb-4">
 			<div
 				className="flex flex-col select-none text-muted-foreground overflow-x-auto p-0.5"
 				contentEditable={false}

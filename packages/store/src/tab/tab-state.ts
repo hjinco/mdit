@@ -47,7 +47,6 @@ export const resolveTabFromState = (
 		path: document.path,
 		name: document.name,
 		content: document.content,
-		syncedName: document.syncedName,
 		sessionEpoch: document.sessionEpoch,
 		isSaved: document.isSaved,
 	}

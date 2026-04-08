@@ -53,7 +53,13 @@ export function createFrontmatterPlugin({
 				const blockEntry = editor.api.block()
 				if (!blockEntry) return
 				const [, path] = blockEntry
-				if (path.length !== 1 || path[0] !== 1) return
+				if (path.length !== 1) return
+
+				const frontmatterNode = editor.children[1]
+				const hasFrontmatter = frontmatterNode?.type === FRONTMATTER_KEY
+				const bodyStartIndex = hasFrontmatter ? 2 : 1
+
+				if (path[0] !== bodyStartIndex) return
 
 				const start = editor.api.start(path)
 				if (!start) return
@@ -63,8 +69,7 @@ export function createFrontmatterPlugin({
 				)
 					return
 
-				const firstNode = editor.children[0]
-				if (!firstNode || firstNode.type !== FRONTMATTER_KEY) return
+				if (!hasFrontmatter) return
 
 				event.preventDefault()
 				event.stopPropagation()

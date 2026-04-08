@@ -1,3 +1,4 @@
+import { NOTE_TITLE_KEY } from "@mdit/editor/title"
 import type { TabHistorySelection } from "@/store"
 
 type SelectionPoint = {
@@ -14,6 +15,10 @@ type HistoryRestoreEditor = {
 		select(...args: [unknown, ...unknown[]]): void
 		focus(): void
 	}
+}
+
+type BlockLike = {
+	type?: unknown
 }
 
 const isSelectionPoint = (value: unknown): value is SelectionPoint => {
@@ -61,7 +66,10 @@ export function focusEditorAtDefaultSelection(
 	editor: HistoryRestoreEditor,
 ): void {
 	const targetIndex = editor.children.findIndex(
-		(element) => element && !editor.api.isVoid(element),
+		(element) =>
+			element &&
+			!editor.api.isVoid(element) &&
+			(element as BlockLike).type !== NOTE_TITLE_KEY,
 	)
 	const finalIndex = targetIndex === -1 ? 0 : targetIndex
 

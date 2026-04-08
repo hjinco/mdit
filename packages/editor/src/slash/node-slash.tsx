@@ -53,6 +53,7 @@ import {
 	insertBlock,
 	insertInlineElement,
 } from "../slash/transforms"
+import { NOTE_TITLE_KEY } from "../title"
 
 async function insertImageNode(
 	editor: PlateEditor,
@@ -94,10 +95,12 @@ function createSlashGroups(host: SlashHostDeps): Group[] {
 					match: { type: FRONTMATTER_KEY },
 				})
 				const currentBlock = editor.api.node({ block: true, mode: "lowest" })
-				const isInFirstTopLevelBlock = currentBlock
-					? currentBlock[1][0] === 0
-					: false
-				const canInsertFrontmatter = isInFirstTopLevelBlock && !hasFrontmatter
+				const currentTopLevelIndex = currentBlock?.[1][0] ?? -1
+				const canInsertFrontmatter =
+					!hasFrontmatter &&
+					(currentTopLevelIndex === 1 ||
+						(currentTopLevelIndex === 0 &&
+							currentBlock?.[0].type === NOTE_TITLE_KEY))
 				return !canInsertFrontmatter
 			},
 			items: [
@@ -124,7 +127,7 @@ function createSlashGroups(host: SlashHostDeps): Group[] {
 								data: defaults,
 								children: [{ text: "" }],
 							},
-							{ at: [0] },
+							{ at: [1] },
 						)
 						requestFrontmatterFocus(editor.id, "firstCell")
 					},

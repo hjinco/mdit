@@ -16,6 +16,7 @@ import {
 } from "platejs/react"
 
 import { Toolbar } from "../shared/toolbar"
+import { NOTE_TITLE_KEY } from "../title"
 
 export function FloatingToolbar({
 	children,
@@ -35,13 +36,22 @@ export function FloatingToolbar({
 			match: { type: editor.getType(KEYS.codeBlock) },
 		})
 	}, [])
+	const hideInTitle = useEditorSelector((editor) => {
+		if (!editor.selection) return false
+
+		return editor.api.some({
+			at: editor.selection,
+			match: { type: NOTE_TITLE_KEY },
+		})
+	}, [])
 	const isFloatingLinkOpen = !!usePluginOption({ key: KEYS.link }, "mode")
 	const isAIChatOpen = usePluginOption({ key: KEYS.aiChat }, "open")
 
 	const floatingToolbarState = useFloatingToolbarState({
 		editorId,
 		focusedEditorId,
-		hideToolbar: isFloatingLinkOpen || isAIChatOpen || hideInCodeBlock,
+		hideToolbar:
+			isFloatingLinkOpen || isAIChatOpen || hideInCodeBlock || hideInTitle,
 		...state,
 		floatingOptions: {
 			middleware: [
