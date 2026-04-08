@@ -1,4 +1,5 @@
 import { cn } from "@mdit/ui/lib/utils"
+import { isMac } from "@mdit/utils/platform"
 import { XIcon } from "lucide-react"
 import { type MouseEvent, useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
@@ -57,9 +58,11 @@ export function TabStrip() {
 	}
 
 	return (
-		<div className="min-w-0 flex-1">
-			<div className="flex items-center gap-1 overflow-x-auto py-1.5">
-				{tabs.map((tab) => {
+		<div
+			className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1.5"
+			{...(isMac() && { "data-tauri-drag-region": "" })}
+		>
+			{tabs.map((tab) => {
 					const isActive = tab.id === activeTabId
 
 					return (
@@ -84,7 +87,7 @@ export function TabStrip() {
 								handleClose(tab.id)
 							}}
 							className={cn(
-								"group/tab relative flex h-8 w-48 shrink-0 items-center rounded-md text-sm transition-colors",
+								"group/tab relative flex h-8 min-w-12 max-w-48 flex-1 basis-0 items-center rounded-md text-sm transition-colors",
 								"text-muted-foreground hover:bg-muted",
 								isActive && "bg-muted text-foreground",
 							)}
@@ -116,7 +119,6 @@ export function TabStrip() {
 						</div>
 					)
 				})}
-			</div>
 		</div>
 	)
 }
