@@ -18,14 +18,29 @@ export type TabNavigationState = {
 	historyIndex: number
 }
 
-export type Tab = TabNavigationState & {
+export type OpenDocument = {
 	id: number
-	sessionEpoch: number
 	path: string
 	name: string
 	content: string
 	syncedName?: string | null
+	sessionEpoch: number
+	isSaved: boolean
 }
+
+export type Tab = TabNavigationState & {
+	id: number
+	documentId: number
+}
+
+export type ResolvedTab = TabNavigationState &
+	Pick<
+		OpenDocument,
+		"content" | "isSaved" | "name" | "path" | "sessionEpoch" | "syncedName"
+	> & {
+		id: number
+		documentId: number
+	}
 
 export type PendingHistorySelectionRestoreResult =
 	| {
@@ -36,9 +51,13 @@ export type PendingHistorySelectionRestoreResult =
 			selection: TabHistorySelection
 	  }
 
-export type OpenTabSnapshot = {
+export type OpenDocumentSnapshot = {
+	documentId: number
 	path: string
 	isSaved: boolean
 }
 
-export type TabSaveStateMap = Record<number, boolean>
+export type OpenTabSnapshot = {
+	path: string
+	isSaved: boolean
+}

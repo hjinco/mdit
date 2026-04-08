@@ -1,13 +1,14 @@
 import { relative } from "pathe"
 import type { WorkspaceSettings } from "../workspace/workspace-settings"
 import { buildPersistedLastOpenedFilePaths } from "./tab-state"
-import type { Tab } from "./tab-types"
+import type { OpenDocument, Tab } from "./tab-types"
 
 const MAX_PERSISTED_LAST_OPENED_FILE_PATHS = 5
 
 type PersistedLastOpenedFileState = {
 	workspacePath: string | null
 	tabs: Tab[]
+	openDocuments: OpenDocument[]
 	activeTabId: number | null
 }
 
@@ -42,6 +43,7 @@ export const createLastOpenedFileHistoryPersistence = ({
 			lastOpenedFilePaths: buildPersistedLastOpenedFilePaths(
 				{
 					tabs: state.tabs,
+					openDocuments: state.openDocuments,
 					activeTabId: state.activeTabId,
 				},
 				MAX_PERSISTED_LAST_OPENED_FILE_PATHS,

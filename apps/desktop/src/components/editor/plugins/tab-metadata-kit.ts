@@ -6,8 +6,8 @@ const firstBlockTextByEditor = new WeakMap<object, string | null>()
 
 type TabNameSyncStoreState = {
 	workspacePath: string | null
-	getTabById: (
-		tabId: number,
+	getDocumentById: (
+		documentId: number,
 	) => { path: string; syncedName?: string | null } | null
 }
 
@@ -79,20 +79,20 @@ export function shouldSyncTabNameFromHeading(editor: any): string | null {
 
 export function getNextTabSyncedName(
 	editor: any,
-	tabId: number,
+	documentId: number,
 	storeState: TabNameSyncStoreState,
 ) {
 	if (!storeState.workspacePath) {
 		return null
 	}
 
-	const tab = storeState.getTabById(tabId)
-	if (!tab || tab.syncedName == null) {
+	const document = storeState.getDocumentById(documentId)
+	if (!document || document.syncedName == null) {
 		return null
 	}
 
 	const firstHeading = shouldSyncTabNameFromHeading(editor)
-	if (firstHeading === null || firstHeading === tab.syncedName) {
+	if (firstHeading === null || firstHeading === document.syncedName) {
 		return null
 	}
 
@@ -101,25 +101,25 @@ export function getNextTabSyncedName(
 
 export function syncTabSyncedName(
 	editor: any,
-	tabId: number,
+	documentId: number,
 	storeState: TabNameSyncStoreState & {
-		setTabSyncedName: (tabId: number, name: string) => void
+		setDocumentSyncedName: (documentId: number, name: string) => void
 	},
 ) {
-	const firstHeading = getNextTabSyncedName(editor, tabId, storeState)
+	const firstHeading = getNextTabSyncedName(editor, documentId, storeState)
 	if (firstHeading === null) {
 		return
 	}
 
-	storeState.setTabSyncedName(tabId, firstHeading)
+	storeState.setDocumentSyncedName(documentId, firstHeading)
 }
 
-export const createTabMetadataKit = (tabId: number) => [
+export const createTabMetadataKit = (documentId: number) => [
 	createPlatePlugin({
 		key: "tabMetadata",
 		handlers: {
 			onChange: ({ editor }) => {
-				syncTabSyncedName(editor, tabId, useStore.getState())
+				syncTabSyncedName(editor, documentId, useStore.getState())
 			},
 		},
 	}),

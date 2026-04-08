@@ -89,15 +89,41 @@ export function createActionTestContext() {
 			return state.openTabSnapshots
 		}
 
+		if (Array.isArray(state.openDocuments)) {
+			return state.openDocuments.map(
+				(document: { path: string; isSaved: boolean }) => ({
+					path: document.path,
+					isSaved: document.isSaved ?? true,
+				}),
+			)
+		}
+
 		if (Array.isArray(state.tabs)) {
-			const tabSaveStates =
-				state.tabSaveStates && typeof state.tabSaveStates === "object"
-					? state.tabSaveStates
-					: {}
-			return state.tabs.map((tab: { id: number; path: string }) => ({
-				path: tab.path,
-				isSaved: tabSaveStates[tab.id] ?? true,
-			}))
+			const openDocumentsById: Map<
+				number,
+				{ path: string; isSaved?: boolean }
+			> = Array.isArray(state.openDocuments)
+				? new Map(
+						state.openDocuments.map(
+							(document: { id: number; path: string; isSaved?: boolean }) => [
+								document.id,
+								document,
+							],
+						),
+					)
+				: new Map<number, { path: string; isSaved?: boolean }>()
+			return state.tabs
+				.map((tab: { documentId?: number; id: number; path?: string }) => {
+					const document =
+						typeof tab.documentId === "number"
+							? openDocumentsById.get(tab.documentId)
+							: null
+					return {
+						path: document?.path ?? tab.path ?? "",
+						isSaved: document?.isSaved ?? true,
+					}
+				})
+				.filter((tab: { path: string }) => tab.path.length > 0)
 		}
 
 		return []
@@ -111,10 +137,28 @@ export function createActionTestContext() {
 					typeof state.activeTabId === "number" ? state.activeTabId : null
 				const activeTab = Array.isArray(state.tabs)
 					? state.tabs.find(
-							(tab: { id: number; path: string }) => tab.id === activeTabId,
+							(tab: { id: number; documentId?: number; path?: string }) =>
+								tab.id === activeTabId,
 						)
 					: null
-				return activeTab?.path ?? null
+				if (!activeTab) {
+					return null
+				}
+
+				if (typeof activeTab.path === "string") {
+					return activeTab.path
+				}
+
+				if (!Array.isArray(state.openDocuments)) {
+					return null
+				}
+
+				return (
+					state.openDocuments.find(
+						(document: { id: number; path: string }) =>
+							document.id === activeTab.documentId,
+					)?.path ?? null
+				)
 			}),
 		},
 	}
@@ -152,8 +196,8 @@ export function createActionTestContext() {
 			state = {
 				...state,
 				tabs: [],
+				openDocuments: [],
 				activeTabId: null,
-				tabSaveStates: {},
 			}
 		}),
 		clearHistory: vi.fn(),

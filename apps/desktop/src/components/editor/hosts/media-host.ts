@@ -12,7 +12,7 @@ const defaultRuntimeDeps: DesktopMediaHostRuntimeDeps = {
 }
 
 export const createDesktopMediaHost = (
-	tabId?: number,
+	documentId?: number,
 	runtimeDeps: DesktopMediaHostRuntimeDeps = defaultRuntimeDeps,
 ): MediaHostDeps => ({
 	useWorkspaceState:
@@ -21,8 +21,8 @@ export const createDesktopMediaHost = (
 			useStore(
 				useShallow((state) => ({
 					tabPath:
-						typeof tabId === "number"
-							? state.getTabPathById(tabId)
+						typeof documentId === "number"
+							? (state.getDocumentById(documentId)?.path ?? null)
 							: state.getActiveTabPath(),
 					workspacePath: state.workspacePath,
 				})),

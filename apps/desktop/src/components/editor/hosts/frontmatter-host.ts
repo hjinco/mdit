@@ -27,12 +27,12 @@ const defaultRuntimeDeps: DesktopFrontmatterHostRuntimeDeps = {
 }
 
 export const createDesktopFrontmatterHost = (
-	tabId?: number,
+	documentId?: number,
 	runtimeDeps?: Partial<DesktopFrontmatterHostRuntimeDeps>,
 ): FrontmatterHostDeps => {
 	const deps = {
 		...defaultRuntimeDeps,
-		linkServices: createDesktopLinkServices(tabId),
+		linkServices: createDesktopLinkServices(documentId),
 		tagHost: createDesktopTagHost(),
 		...runtimeDeps,
 	}

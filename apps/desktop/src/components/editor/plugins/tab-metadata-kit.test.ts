@@ -3,16 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 type StoreState = {
 	workspacePath: string | null
-	getTabById: (
-		tabId: number,
+	getDocumentById: (
+		documentId: number,
 	) => { path: string; syncedName?: string | null } | null
-	setTabSyncedName: (tabId: number, name: string) => void
+	setDocumentSyncedName: (documentId: number, name: string) => void
 }
 
 let storeState: StoreState = {
 	workspacePath: "/workspace",
-	getTabById: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
-	setTabSyncedName: vi.fn<(tabId: number, name: string) => void>(),
+	getDocumentById: () => ({
+		path: "/workspace/note.md",
+		syncedName: "Title",
+	}),
+	setDocumentSyncedName: vi.fn<(documentId: number, name: string) => void>(),
 }
 
 vi.mock("@/store", () => ({
@@ -75,8 +78,12 @@ describe("tab-metadata-kit", () => {
 	beforeEach(() => {
 		storeState = {
 			workspacePath: "/workspace",
-			getTabById: () => ({ path: "/workspace/note.md", syncedName: "Title" }),
-			setTabSyncedName: vi.fn<(tabId: number, name: string) => void>(),
+			getDocumentById: () => ({
+				path: "/workspace/note.md",
+				syncedName: "Title",
+			}),
+			setDocumentSyncedName:
+				vi.fn<(documentId: number, name: string) => void>(),
 		}
 	})
 
@@ -135,7 +142,7 @@ describe("tab-metadata-kit", () => {
 		expect(getNextTabSyncedName(editor, 1, storeState)).toBeNull()
 		syncTabSyncedName(editor, 1, storeState)
 
-		expect(storeState.setTabSyncedName).not.toHaveBeenCalled()
+		expect(storeState.setDocumentSyncedName).not.toHaveBeenCalled()
 	})
 
 	it("does not sync when the tab has no synced name for the current note", () => {
@@ -143,7 +150,7 @@ describe("tab-metadata-kit", () => {
 
 		storeState = {
 			...storeState,
-			getTabById: () => ({ path: "/workspace/note.md", syncedName: null }),
+			getDocumentById: () => ({ path: "/workspace/note.md", syncedName: null }),
 		}
 
 		expect(getNextTabSyncedName(editor, 1, storeState)).toBeNull()

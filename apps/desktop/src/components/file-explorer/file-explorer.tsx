@@ -27,12 +27,14 @@ import { WorkspaceDropdown } from "./ui/workspace-dropdown"
 
 export function FileExplorer() {
 	const fileExplorerRef = useRef<HTMLElement | null>(null)
+
 	const { isFileExplorerOpen, setFileExplorerOpen } = useStore(
 		useShallow((state) => ({
 			isFileExplorerOpen: state.isFileExplorerOpen,
 			setFileExplorerOpen: state.setFileExplorerOpen,
 		})),
 	)
+
 	const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
 		storageKey: "file-explorer-width",
 		defaultWidth: 256,
@@ -58,7 +60,7 @@ export function FileExplorer() {
 		deleteEntries,
 		renameEntry,
 		setCurrentCollectionPath,
-		tab,
+		activeTabPath,
 		openTab,
 		aiLockedEntryPaths,
 		selectedEntryPaths,
@@ -86,7 +88,7 @@ export function FileExplorer() {
 			deleteEntries: state.deleteEntries,
 			renameEntry: state.renameEntry,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			tab: state.getActiveTab(),
+			activeTabPath: state.getActiveTabPath(),
 			openTab: state.openTab,
 			aiLockedEntryPaths: state.aiLockedEntryPaths,
 			selectedEntryPaths: state.selectedEntryPaths,
@@ -115,7 +117,7 @@ export function FileExplorer() {
 			renamingEntryPath,
 			pendingNewFolderPath,
 			aiLockedEntryPaths,
-			activeTabPath: tab?.path ?? null,
+			activeTabPath,
 			setExpandedDirectories,
 			setEntrySelection,
 		})

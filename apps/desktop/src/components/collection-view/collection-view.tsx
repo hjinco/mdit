@@ -29,7 +29,9 @@ export function CollectionView() {
 		currentCollectionPath,
 		setCurrentCollectionPath,
 		entries,
-		tab,
+		activeTabId,
+		tabs,
+		openDocuments,
 		openTab,
 		activeTabSaved,
 		deleteEntries,
@@ -42,7 +44,9 @@ export function CollectionView() {
 			currentCollectionPath: state.currentCollectionPath,
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			entries: state.entries,
-			tab: state.getActiveTab(),
+			activeTabId: state.activeTabId,
+			tabs: state.tabs,
+			openDocuments: state.openDocuments,
 			openTab: state.openTab,
 			activeTabSaved: state.getIsSaved(),
 			deleteEntries: state.deleteEntries,
@@ -108,10 +112,30 @@ export function CollectionView() {
 		() => new Map(sortedEntries.map((entry) => [entry.path, entry])),
 		[sortedEntries],
 	)
+	const activeTab = useMemo(() => {
+		const activeTab = tabs.find((tab) => tab.id === activeTabId)
+		if (!activeTab) {
+			return null
+		}
+
+		const document = openDocuments.find(
+			(document) => document.id === activeTab.documentId,
+		)
+		if (!document) {
+			return null
+		}
+
+		return {
+			path: document.path,
+			name: document.name,
+			syncedName: document.syncedName,
+		}
+	}, [activeTabId, openDocuments, tabs])
+	const activeTabPath = activeTab?.path ?? null
 
 	// Update entry metadata (preview and modified date) when the same file is saved (not when switching files)
 	useEntryUpdateOnSave(
-		tab?.path,
+		activeTabPath,
 		activeTabSaved,
 		invalidatePreview,
 		updateEntryModifiedDate,
@@ -172,7 +196,7 @@ export function CollectionView() {
 	useScrollToNewEntry({
 		currentCollectionPath,
 		sortedEntries,
-		tabPath: tab?.path,
+		tabPath: activeTabPath ?? undefined,
 		virtualizer,
 	})
 
@@ -235,7 +259,7 @@ export function CollectionView() {
 					>
 						{virtualizer.getVirtualItems().map((virtualItem) => {
 							const entry = sortedEntries[virtualItem.index]
-							const isActive = tab?.path === entry.path
+							const isActive = activeTabPath === entry.path
 							const isSelected = selectedEntryPaths.has(entry.path)
 
 							const handleClick = (event: MouseEvent<HTMLLIElement>) => {
@@ -255,7 +279,9 @@ export function CollectionView() {
 									key={entry.path}
 									entry={entry}
 									name={
-										isActive ? (tab?.syncedName ?? tab?.name ?? "") : entry.name
+										isActive
+											? (activeTab?.syncedName ?? activeTab?.name ?? "")
+											: entry.name
 									}
 									isActive={isActive}
 									isSelected={isSelected}

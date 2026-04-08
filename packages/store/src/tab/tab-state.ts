@@ -1,33 +1,104 @@
-import type { Tab, TabNavigationState, TabSaveStateMap } from "./tab-types"
+import type {
+	OpenDocument,
+	OpenDocumentSnapshot,
+	ResolvedTab,
+	Tab,
+	TabNavigationState,
+} from "./tab-types"
 
-type TabStateWithActive = {
+type TabStateWithDocuments = {
 	tabs: Tab[]
-	activeTabId: number | null
+	openDocuments: OpenDocument[]
 }
 
-type TabStateWithSaveMap = {
-	tabSaveStates: TabSaveStateMap
+type TabStateWithActive = TabStateWithDocuments & {
+	activeTabId: number | null
 }
 
 export type EmptyTabState = {
 	tabs: Tab[]
+	openDocuments: OpenDocument[]
 	activeTabId: number | null
-	tabSaveStates: TabSaveStateMap
 }
 
-export const getTabSavedFromState = (
-	state: TabStateWithSaveMap,
+export const getDocumentByIdFromState = (
+	state: Pick<TabStateWithDocuments, "openDocuments">,
+	documentId: number,
+): OpenDocument | null =>
+	state.openDocuments.find((document) => document.id === documentId) ?? null
+
+export const getDocumentByPathFromState = (
+	state: Pick<TabStateWithDocuments, "openDocuments">,
+	path: string,
+): OpenDocument | null =>
+	state.openDocuments.find((document) => document.path === path) ?? null
+
+export const resolveTabFromState = (
+	state: TabStateWithDocuments,
+	tab: Tab,
+): ResolvedTab | null => {
+	const document = getDocumentByIdFromState(state, tab.documentId)
+	if (!document) {
+		return null
+	}
+
+	return {
+		...tab,
+		path: document.path,
+		name: document.name,
+		content: document.content,
+		syncedName: document.syncedName,
+		sessionEpoch: document.sessionEpoch,
+		isSaved: document.isSaved,
+	}
+}
+
+export const getResolvedTabsFromState = (
+	state: TabStateWithDocuments,
+): ResolvedTab[] =>
+	state.tabs
+		.map((tab) => resolveTabFromState(state, tab))
+		.filter((tab): tab is ResolvedTab => tab !== null)
+
+export const getTabByIdFromState = (
+	state: TabStateWithDocuments,
 	tabId: number,
-): boolean => state.tabSaveStates[tabId] ?? true
+): Tab | null => state.tabs.find((tab) => tab.id === tabId) ?? null
+
+export const getResolvedTabByIdFromState = (
+	state: TabStateWithDocuments,
+	tabId: number,
+): ResolvedTab | null => {
+	const tab = getTabByIdFromState(state, tabId)
+	return tab ? resolveTabFromState(state, tab) : null
+}
 
 export const getActiveTabFromState = (
 	state: TabStateWithActive,
-): Tab | null => {
+): ResolvedTab | null => {
 	if (state.activeTabId === null) {
 		return null
 	}
 
-	return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+	return getResolvedTabByIdFromState(state, state.activeTabId)
+}
+
+export const getActiveDocumentFromState = (
+	state: TabStateWithActive,
+): OpenDocument | null => {
+	const activeTab = getTabByIdFromState(state, state.activeTabId ?? -1)
+	if (!activeTab) {
+		return null
+	}
+
+	return getDocumentByIdFromState(state, activeTab.documentId)
+}
+
+export const getActiveDocumentIdFromState = (
+	state: TabStateWithActive,
+): number | null => {
+	const activeTab = getTabByIdFromState(state, state.activeTabId ?? -1)
+	return activeTab?.documentId ?? null
 }
 
 export const buildInitialTabHistory = (
@@ -45,7 +116,7 @@ export const buildInitialTabHistory = (
 export const getActiveTabHistoryFromState = (
 	state: TabStateWithActive,
 ): TabNavigationState => {
-	const activeTab = getActiveTabFromState(state)
+	const activeTab = getTabByIdFromState(state, state.activeTabId ?? -1)
 	if (!activeTab) {
 		return {
 			history: [],
@@ -60,39 +131,28 @@ export const getActiveTabHistoryFromState = (
 }
 
 export const getActiveTabSavedFromState = (
-	state: TabStateWithActive & TabStateWithSaveMap,
-): boolean => {
-	const activeTab = getActiveTabFromState(state)
-	if (!activeTab) {
-		return true
-	}
-
-	return getTabSavedFromState(state, activeTab.id)
-}
+	state: TabStateWithActive,
+): boolean => getActiveDocumentFromState(state)?.isSaved ?? true
 
 export const buildEmptyTabState = (): EmptyTabState => ({
 	tabs: [],
+	openDocuments: [],
 	activeTabId: null,
-	tabSaveStates: {},
 })
 
 export const findTabIndexByPath = (
-	state: Pick<TabStateWithActive, "tabs">,
+	state: TabStateWithDocuments,
 	path: string,
-): number => state.tabs.findIndex((tab) => tab.path === path)
+): number =>
+	state.tabs.findIndex((tab) => {
+		const document = getDocumentByIdFromState(state, tab.documentId)
+		return document?.path === path
+	})
 
-export const removeTabSaveState = (
-	tabSaveStates: TabSaveStateMap,
-	tabId: number,
-): TabSaveStateMap => {
-	if (!Object.hasOwn(tabSaveStates, tabId)) {
-		return tabSaveStates
-	}
-
-	const nextTabSaveStates = { ...tabSaveStates }
-	delete nextTabSaveStates[tabId]
-	return nextTabSaveStates
-}
+export const findDocumentIndexByPath = (
+	state: Pick<TabStateWithDocuments, "openDocuments">,
+	path: string,
+): number => state.openDocuments.findIndex((document) => document.path === path)
 
 export const selectFallbackActiveTabId = (
 	tabs: readonly Tab[],
@@ -109,25 +169,6 @@ export const selectFallbackActiveTabId = (
 	return tabs[fallbackIndex]?.id ?? null
 }
 
-export const dedupePathsPreservingLastOccurrence = (
-	paths: readonly string[],
-): string[] => {
-	const seen = new Set<string>()
-	const uniquePaths: string[] = []
-
-	for (let index = paths.length - 1; index >= 0; index -= 1) {
-		const path = paths[index]
-		if (seen.has(path)) {
-			continue
-		}
-
-		seen.add(path)
-		uniquePaths.unshift(path)
-	}
-
-	return uniquePaths
-}
-
 export const buildPersistedLastOpenedFilePaths = (
 	state: TabStateWithActive,
 	maxPersistedPaths: number,
@@ -136,14 +177,29 @@ export const buildPersistedLastOpenedFilePaths = (
 		return []
 	}
 
-	const openTabPaths = state.tabs.map((tab) => tab.path)
-	const activeTabPath = getActiveTabFromState(state)?.path ?? null
-	return (
-		activeTabPath
-			? [
-					...openTabPaths.filter((path) => path !== activeTabPath),
-					activeTabPath,
+	const activeTabIndex = state.tabs.findIndex(
+		(tab) => tab.id === state.activeTabId,
+	)
+	const orderedTabs =
+		activeTabIndex === -1
+			? state.tabs
+			: [
+					...state.tabs.slice(0, activeTabIndex),
+					...state.tabs.slice(activeTabIndex + 1),
+					state.tabs[activeTabIndex],
 				]
-			: openTabPaths
-	).slice(-maxPersistedPaths)
+
+	return orderedTabs
+		.map((tab) => getDocumentByIdFromState(state, tab.documentId)?.path ?? null)
+		.filter((path): path is string => path !== null)
+		.slice(-maxPersistedPaths)
 }
+
+export const getOpenDocumentSnapshotsFromState = (
+	state: Pick<TabStateWithDocuments, "openDocuments">,
+): OpenDocumentSnapshot[] =>
+	state.openDocuments.map((document) => ({
+		documentId: document.id,
+		path: document.path,
+		isSaved: document.isSaved,
+	}))

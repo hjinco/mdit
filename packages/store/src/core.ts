@@ -70,7 +70,10 @@ export type {
 	WorkspaceIndexSummary,
 } from "./indexing/indexing-types"
 export type {
+	OpenDocument,
+	OpenDocumentSnapshot,
 	PendingHistorySelectionRestoreResult,
+	ResolvedTab,
 	Tab,
 	TabHistoryEntry,
 	TabHistoryPoint,

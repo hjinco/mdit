@@ -97,10 +97,27 @@ const getActiveTabHistoryState = (
 	}
 }
 
+const getOpenTabPaths = (store: ReturnType<typeof createTabStore>["store"]) =>
+	store
+		.getState()
+		.getResolvedTabs()
+		.map((tab) => tab.path)
+
 const getOpenTabByPath = (
 	store: ReturnType<typeof createTabStore>["store"],
 	path: string,
-) => store.getState().tabs.find((tab) => tab.path === path) ?? null
+) =>
+	store
+		.getState()
+		.getResolvedTabs()
+		.find((tab) => tab.path === path) ?? null
+
+const getOpenDocumentByPath = (
+	store: ReturnType<typeof createTabStore>["store"],
+	path: string,
+) =>
+	store.getState().openDocuments.find((document) => document.path === path) ??
+	null
 
 const setActiveSelectionProvider = (
 	store: ReturnType<typeof createTabStore>["store"],
@@ -126,9 +143,7 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/b.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/b.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/b.md"])
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [
 				{ path: "/notes/a.md", selection: selectionInA },
@@ -349,7 +364,7 @@ describe("tab-slice history selection", () => {
 			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/c.md"])
 
 		expect(hydrated).toBe(true)
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+		expect(getOpenTabPaths(store)).toEqual([
 			"/notes/a.md",
 			"/notes/b.md",
 			"/notes/c.md",
@@ -374,18 +389,15 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/a.md")
 		const firstTabId = store.getState().getActiveTab()?.id
-		const firstSessionEpoch = store.getState().getActiveTab()?.sessionEpoch
+		const firstDocumentId = store.getState().getActiveDocumentId()
 
 		await store.getState().openTab("/notes/b.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/b.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/b.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
 		expect(store.getState().getActiveTab()?.id).toBe(firstTabId)
-		expect(store.getState().getActiveTab()?.sessionEpoch).toBe(
-			(firstSessionEpoch ?? 0) + 1,
-		)
+		expect(store.getState().getActiveDocumentId()).not.toBe(firstDocumentId)
+		expect(store.getState().getActiveTab()?.sessionEpoch).toBe(0)
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [
 				{ path: "/notes/a.md", selection: null },
@@ -400,9 +412,7 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTabInNewTab("/notes/a.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [{ path: "/notes/a.md", selection: null }],
@@ -418,10 +428,7 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTabInNewTab("/notes/b.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-			"/notes/b.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md", "/notes/b.md"])
 		expect(getOpenTabByPath(store, "/notes/a.md")?.id).toBe(firstTabId)
 		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
 			expect.objectContaining({
@@ -438,19 +445,27 @@ describe("tab-slice history selection", () => {
 		)
 	})
 
-	it("reuses the current tab when opening a note that is already open elsewhere", async () => {
+	it("rebinds the active tab to a shared document without closing existing aliases", async () => {
 		const { store } = createTabStore()
 
 		await store
 			.getState()
 			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md"])
 
+		const existingDocumentId = getOpenDocumentByPath(store, "/notes/a.md")?.id
+		const previousActiveTabId = store.getState().getActiveTab()?.id
+
 		await store.getState().openTab("/notes/a.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md", "/notes/a.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
+		expect(store.getState().getActiveTab()?.id).toBe(previousActiveTabId)
+		expect(store.getState().openDocuments).toHaveLength(1)
+		expect(store.getState().getActiveDocumentId()).toBe(existingDocumentId)
+		expect(store.getState().tabs.map((tab) => tab.documentId)).toEqual([
+			existingDocumentId,
+			existingDocumentId,
+		])
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [
 				{ path: "/notes/b.md", selection: null },
@@ -460,7 +475,7 @@ describe("tab-slice history selection", () => {
 		})
 	})
 
-	it("activates an existing tab instead of creating a duplicate new tab", async () => {
+	it("creates a duplicate alias tab that reuses the existing document", async () => {
 		const { store, readTextFile } = createTabStore()
 
 		await store
@@ -471,21 +486,45 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTabInNewTab("/notes/a.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+		expect(getOpenTabPaths(store)).toEqual([
 			"/notes/a.md",
 			"/notes/b.md",
+			"/notes/a.md",
 		])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
-		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
+		expect(store.getState().tabs).toHaveLength(3)
+		expect(store.getState().tabs[0]?.documentId).toBe(
+			store.getState().tabs[2]?.documentId,
+		)
+		expect(store.getState().openDocuments).toHaveLength(2)
+		expect(store.getState().getActiveTab()).toEqual(
 			expect.objectContaining({
-				history: [
-					{ path: "/notes/a.md", selection: null },
-					{ path: "/notes/a.md", selection: null },
-				],
-				historyIndex: 1,
+				history: [{ path: "/notes/a.md", selection: null }],
+				historyIndex: 0,
 			}),
 		)
 		expect(vi.mocked(readTextFile)).not.toHaveBeenCalled()
+	})
+
+	it("hydrates duplicate paths as alias tabs pointing to one document", async () => {
+		const { store } = createTabStore()
+
+		const hydrated = await store
+			.getState()
+			.hydrateFromOpenedFiles(["/notes/a.md", "/notes/b.md", "/notes/a.md"])
+
+		expect(hydrated).toBe(true)
+		expect(getOpenTabPaths(store)).toEqual([
+			"/notes/a.md",
+			"/notes/b.md",
+			"/notes/a.md",
+		])
+		expect(store.getState().tabs).toHaveLength(3)
+		expect(store.getState().openDocuments).toHaveLength(2)
+		expect(store.getState().tabs[0]?.documentId).toBe(
+			store.getState().tabs[2]?.documentId,
+		)
+		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 	})
 
 	it("persists appended tabs when opening a note in a new tab", async () => {
@@ -513,10 +552,7 @@ describe("tab-slice history selection", () => {
 
 		store.getState().activateTabById(targetTabId as number)
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-			"/notes/b.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md", "/notes/b.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 		expect(getOpenTabByPath(store, "/notes/a.md")).toEqual(
 			expect.objectContaining({
@@ -573,10 +609,7 @@ describe("tab-slice history selection", () => {
 
 		store.getState().closeActiveTab()
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-			"/notes/b.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md", "/notes/b.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/b.md")
 	})
 
@@ -589,9 +622,7 @@ describe("tab-slice history selection", () => {
 
 		store.getState().removePathsFromHistory(["/notes/b.md"])
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/a.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/a.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/a.md")
 	})
 
@@ -604,9 +635,7 @@ describe("tab-slice history selection", () => {
 
 		store.getState().removePathsFromHistory(["/notes/b.md"])
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
-			"/notes/c.md",
-		])
+		expect(getOpenTabPaths(store)).toEqual(["/notes/c.md"])
 		expect(store.getState().getActiveTab()?.path).toBe("/notes/c.md")
 		expect(getActiveTabHistoryState(store)).toEqual({
 			history: [
@@ -626,7 +655,7 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().renameTab("/notes/a.md", "/notes/a-renamed.md")
 
-		expect(store.getState().tabs.map((tab) => tab.path)).toEqual([
+		expect(getOpenTabPaths(store)).toEqual([
 			"/notes/a-renamed.md",
 			"/notes/b.md",
 		])
@@ -653,7 +682,7 @@ describe("tab-slice history selection", () => {
 			clearSyncedName: true,
 		})
 
-		expect(store.getState().tabs).toEqual([
+		expect(store.getState().openDocuments).toEqual([
 			expect.objectContaining({
 				path: "/notes/a-renamed.md",
 				syncedName: null,
@@ -715,9 +744,42 @@ describe("tab-slice history selection", () => {
 		expect(activeTabId).toBeTypeOf("number")
 		store.getState().setTabSaved(activeTabId as number, false)
 		expect(store.getState().getIsSaved()).toBe(false)
-		expect(store.getState().tabSaveStates[activeTabId as number]).toBe(false)
+		expect(getOpenDocumentByPath(store, "/notes/a.md")?.isSaved).toBe(false)
 		expect(store.getState().getOpenTabSnapshots()).toEqual([
 			{ path: "/notes/a.md", isSaved: false },
+		])
+	})
+
+	it("shares saved and synced-name state across duplicate aliases", async () => {
+		const { store } = createTabStore()
+
+		await store.getState().openTab("/notes/a.md")
+		const firstTabId = store.getState().getActiveTab()?.id
+		await store.getState().openTabInNewTab("/notes/a.md")
+		const secondTabId = store.getState().getActiveTab()?.id
+
+		store.getState().setTabSaved(firstTabId as number, false)
+		store.getState().setTabSyncedName(secondTabId as number, "Shared Title")
+
+		expect(store.getState().getResolvedTabs()).toEqual([
+			expect.objectContaining({
+				id: firstTabId,
+				path: "/notes/a.md",
+				isSaved: false,
+				syncedName: "Shared Title",
+			}),
+			expect.objectContaining({
+				id: secondTabId,
+				path: "/notes/a.md",
+				isSaved: false,
+				syncedName: "Shared Title",
+			}),
+		])
+		expect(store.getState().getOpenDocumentSnapshots()).toEqual([
+			expect.objectContaining({
+				path: "/notes/a.md",
+				isSaved: false,
+			}),
 		])
 	})
 
@@ -726,8 +788,8 @@ describe("tab-slice history selection", () => {
 
 		await store.getState().openTab("/notes/a.md")
 
-		const initialTabId = store.getState().getActiveTab()?.id
-		expect(initialTabId).toBeTypeOf("number")
+		const initialDocumentId = store.getState().getActiveDocumentId()
+		expect(initialDocumentId).toBeTypeOf("number")
 
 		store
 			.getState()
@@ -736,18 +798,18 @@ describe("tab-slice history selection", () => {
 		expect(
 			store
 				.getState()
-				.consumePendingExternalReloadSaveSkip(initialTabId as number),
+				.consumePendingExternalReloadSaveSkip(initialDocumentId as number),
 		).toBe(true)
 		expect(
 			store
 				.getState()
-				.consumePendingExternalReloadSaveSkip(initialTabId as number),
+				.consumePendingExternalReloadSaveSkip(initialDocumentId as number),
 		).toBe(false)
 		expect(
 			store
 				.getState()
 				.consumePendingExternalReloadSaveSkip(
-					store.getState().getActiveTab()!.id,
+					store.getState().getActiveDocumentId()!,
 				),
 		).toBe(false)
 	})

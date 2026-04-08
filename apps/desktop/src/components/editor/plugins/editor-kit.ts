@@ -41,27 +41,27 @@ import { createTabMetadataKit } from "./tab-metadata-kit"
 
 type CreateEditorKitOptions = {
 	mdx?: boolean
-	tabId?: number
+	documentId?: number
 }
 
 export const createEditorKit = ({
 	mdx = true,
-	tabId,
+	documentId,
 }: CreateEditorKitOptions = {}) => {
 	const desktopTagHost = createDesktopTagHost()
-	const desktopLinkServices = createDesktopLinkServices(tabId)
-	const desktopFrontmatterHost = createDesktopFrontmatterHost(tabId, {
+	const desktopLinkServices = createDesktopLinkServices(documentId)
+	const desktopFrontmatterHost = createDesktopFrontmatterHost(documentId, {
 		linkServices: desktopLinkServices,
 		tagHost: desktopTagHost,
 	})
-	const desktopBlockSelectionHost = createDesktopBlockSelectionHost(tabId)
-	const desktopMediaHost = createDesktopMediaHost(tabId)
-	const desktopSlashHost = createDesktopSlashHost(tabId)
+	const desktopBlockSelectionHost = createDesktopBlockSelectionHost(documentId)
+	const desktopMediaHost = createDesktopMediaHost(documentId)
+	const desktopSlashHost = createDesktopSlashHost(documentId)
 
 	return [
 		...createAIKit({ host: desktopAIMenuHost }),
 		...createFilePasteKit({ host: desktopFilePasteHost }),
-		...(typeof tabId === "number" ? createTabMetadataKit(tabId) : []),
+		...(typeof documentId === "number" ? createTabMetadataKit(documentId) : []),
 		...AutoformatKit,
 		...BasicBlocksKit,
 		...BasicMarksKit,

@@ -35,16 +35,21 @@ export function InfoButton() {
 	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
 	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
 
-	const { tab, workspacePath, openTab, isNoteInfoOpen, setNoteInfoOpen } =
-		useStore(
-			useShallow((s) => ({
-				tab: s.getActiveTab(),
-				workspacePath: s.workspacePath,
-				openTab: s.openTab,
-				isNoteInfoOpen: s.isNoteInfoOpen,
-				setNoteInfoOpen: s.setNoteInfoOpen,
-			})),
-		)
+	const {
+		activeTabPath,
+		workspacePath,
+		openTab,
+		isNoteInfoOpen,
+		setNoteInfoOpen,
+	} = useStore(
+		useShallow((s) => ({
+			activeTabPath: s.getActiveTabPath(),
+			workspacePath: s.workspacePath,
+			openTab: s.openTab,
+			isNoteInfoOpen: s.isNoteInfoOpen,
+			setNoteInfoOpen: s.setNoteInfoOpen,
+		})),
+	)
 	const indexingConfig = useStore((s) => s.config)
 	const hasEmbeddingConfig = Boolean(
 		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
@@ -67,14 +72,14 @@ export function InfoButton() {
 	}, [editor, isNoteInfoOpen])
 
 	useEffect(() => {
-		if (!isNoteInfoOpen || !workspacePath || !tab?.path) {
+		if (!isNoteInfoOpen || !workspacePath || !activeTabPath) {
 			return
 		}
 
 		let cancelled = false
 		invoke<BacklinkEntry[]>("get_backlinks_command", {
 			workspacePath,
-			filePath: tab.path,
+			filePath: activeTabPath,
 		})
 			.then((entries) => {
 				if (!cancelled) setBacklinks(entries)
@@ -87,14 +92,14 @@ export function InfoButton() {
 		return () => {
 			cancelled = true
 		}
-	}, [isNoteInfoOpen, workspacePath, tab?.path])
+	}, [activeTabPath, isNoteInfoOpen, workspacePath])
 
 	useEffect(() => {
 		setRelatedNotes([])
-	}, [tab?.path])
+	}, [activeTabPath])
 
 	useEffect(() => {
-		if (!workspacePath || !tab?.path || !hasEmbeddingConfig) {
+		if (!workspacePath || !activeTabPath || !hasEmbeddingConfig) {
 			setRelatedNotes([])
 			return
 		}
@@ -102,7 +107,7 @@ export function InfoButton() {
 		let cancelled = false
 		invoke<RelatedNoteEntry[]>("get_related_notes_command", {
 			workspacePath,
-			filePath: tab.path,
+			filePath: activeTabPath,
 			limit: RELATED_NOTES_LIMIT,
 		})
 			.then((entries) => {
@@ -116,7 +121,7 @@ export function InfoButton() {
 		return () => {
 			cancelled = true
 		}
-	}, [workspacePath, tab?.path, hasEmbeddingConfig])
+	}, [activeTabPath, workspacePath, hasEmbeddingConfig])
 
 	const handleNoteClick = (relPath: string) => {
 		if (!workspacePath) return

@@ -9,12 +9,16 @@ import { useStore } from "@/store"
 const UNTITLED_PATTERN = /^Untitled( \d+)?$/
 
 /**
- * Sync the tab name to the first heading on initial load (per tab id).
- * Prevents resyncing after a manual rename; resets when the tab id changes.
+ * Sync the shared document name to the first heading on initial load.
+ * Prevents resyncing after a manual rename; resets when the document id changes.
  */
-export function useTabSyncedName(tabId: number, path: string, value: Value) {
+export function useTabSyncedName(
+	documentId: number,
+	path: string,
+	value: Value,
+) {
 	const hasSyncedForTab = useRef(false)
-	const setTabSyncedName = useStore((s) => s.setTabSyncedName)
+	const setDocumentSyncedName = useStore((s) => s.setDocumentSyncedName)
 
 	// Sync the tab name to the first heading on initial render if conditions match.
 	useEffect(() => {
@@ -32,9 +36,9 @@ export function useTabSyncedName(tabId: number, path: string, value: Value) {
 			return
 		}
 
-		setTabSyncedName(tabId, firstHeading || name)
+		setDocumentSyncedName(documentId, firstHeading || name)
 		hasSyncedForTab.current = true
-	}, [path, setTabSyncedName, tabId, value])
+	}, [documentId, path, setDocumentSyncedName, value])
 }
 
 function getFirstHeadingText(value: Value): string {

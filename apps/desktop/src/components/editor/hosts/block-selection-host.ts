@@ -35,7 +35,7 @@ const defaultRuntimeDeps: BlockSelectionHostRuntimeDeps = {
 }
 
 export const createDesktopBlockSelectionHost = (
-	tabId?: number,
+	documentId?: number,
 	runtimeDeps?: Partial<BlockSelectionHostRuntimeDeps>,
 ): BlockSelectionHost => {
 	const deps: BlockSelectionHostRuntimeDeps = {
@@ -44,8 +44,8 @@ export const createDesktopBlockSelectionHost = (
 		getCurrentTabPath:
 			runtimeDeps?.getCurrentTabPath ??
 			(() =>
-				typeof tabId === "number"
-					? useStore.getState().getTabPathById(tabId)
+				typeof documentId === "number"
+					? (useStore.getState().getDocumentById(documentId)?.path ?? null)
 					: useStore.getState().getActiveTabPath()),
 	}
 

@@ -1,18 +1,43 @@
 import { cn } from "@mdit/ui/lib/utils"
 import { XIcon } from "lucide-react"
-import { type MouseEvent, useCallback } from "react"
+import { type MouseEvent, useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
 export function TabStrip() {
-	const { tabs, activeTabId, activateTabById, closeTabById } = useStore(
-		useShallow((s) => ({
-			tabs: s.tabs,
-			activeTabId: s.activeTabId,
-			activateTabById: s.activateTabById,
-			closeTabById: s.closeTabById,
-		})),
-	)
+	const { rawTabs, openDocuments, activeTabId, activateTabById, closeTabById } =
+		useStore(
+			useShallow((s) => ({
+				rawTabs: s.tabs,
+				openDocuments: s.openDocuments,
+				activeTabId: s.activeTabId,
+				activateTabById: s.activateTabById,
+				closeTabById: s.closeTabById,
+			})),
+		)
+	const tabs = useMemo(() => {
+		const documentsById = new Map(
+			openDocuments.map((document) => [document.id, document]),
+		)
+		return rawTabs
+			.map((tab) => {
+				const document = documentsById.get(tab.documentId)
+				if (!document) {
+					return null
+				}
+
+				return {
+					...tab,
+					path: document.path,
+					name: document.name,
+					content: document.content,
+					syncedName: document.syncedName,
+					sessionEpoch: document.sessionEpoch,
+					isSaved: document.isSaved,
+				}
+			})
+			.filter((tab) => tab !== null)
+	}, [openDocuments, rawTabs])
 
 	const handleActivate = useCallback(
 		(tabId: number) => {

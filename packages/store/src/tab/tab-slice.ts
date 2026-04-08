@@ -15,21 +15,29 @@ import {
 import {
 	buildEmptyTabState,
 	buildInitialTabHistory,
-	dedupePathsPreservingLastOccurrence,
+	findDocumentIndexByPath,
 	findTabIndexByPath,
+	getActiveDocumentIdFromState,
 	getActiveTabFromState,
 	getActiveTabHistoryFromState,
 	getActiveTabSavedFromState,
-	getTabSavedFromState,
-	removeTabSaveState,
+	getDocumentByIdFromState,
+	getDocumentByPathFromState,
+	getOpenDocumentSnapshotsFromState,
+	getResolvedTabByIdFromState,
+	getResolvedTabsFromState,
+	getTabByIdFromState,
+	resolveTabFromState,
 	selectFallbackActiveTabId,
 } from "./tab-state"
 import type {
+	OpenDocument,
+	OpenDocumentSnapshot,
 	OpenTabSnapshot,
 	PendingHistorySelectionRestoreResult,
+	ResolvedTab,
 	Tab,
 	TabHistorySelection,
-	TabSaveStateMap,
 } from "./tab-types"
 import {
 	appendHistoryEntry,
@@ -39,6 +47,7 @@ import {
 import { removePathsFromHistory as removePathsFromHistoryEntries } from "./utils/history-utils"
 
 let tabIdCounter = 0
+let documentIdCounter = 0
 
 const MAX_HISTORY_LENGTH = 50
 
@@ -52,13 +61,15 @@ export type TabSliceDependencies = {
 }
 
 export type {
+	OpenDocument,
+	OpenDocumentSnapshot,
 	OpenTabSnapshot,
 	PendingHistorySelectionRestoreResult,
+	ResolvedTab,
 	Tab,
 	TabHistoryEntry,
 	TabHistoryPoint,
 	TabHistorySelection,
-	TabSaveStateMap,
 } from "./tab-types"
 
 type RenameTabOptions = {
@@ -78,14 +89,18 @@ type RefreshTabFromExternalContentOptions = {
 
 export type TabSlice = {
 	tabs: Tab[]
+	openDocuments: OpenDocument[]
 	activeTabId: number | null
-	tabSaveStates: TabSaveStateMap
 	activateTab: (path: string) => void
 	activateTabById: (tabId: number) => void
 	activateNextTab: () => void
 	activatePreviousTab: () => void
-	getTabById: (tabId: number) => Tab | null
+	getResolvedTabs: () => ResolvedTab[]
+	getTabById: (tabId: number) => ResolvedTab | null
+	getDocumentById: (documentId: number) => OpenDocument | null
+	getActiveDocumentId: () => number | null
 	getTabPathById: (tabId: number) => string | null
+	getDocumentPathByTabId: (tabId: number) => string | null
 	setHistorySelectionProvider: (
 		provider: (() => TabHistorySelection) | null,
 	) => void
@@ -105,7 +120,7 @@ export type TabSlice = {
 		content: string,
 		options?: RefreshTabFromExternalContentOptions,
 	) => void
-	consumePendingExternalReloadSaveSkip: (tabId: number) => boolean
+	consumePendingExternalReloadSaveSkip: (documentId: number) => boolean
 	hydrateFromOpenedFiles: (paths: string[]) => Promise<boolean>
 	openTab: (
 		path: string,
@@ -123,16 +138,20 @@ export type TabSlice = {
 		newPath: string,
 		options?: RenameTabOptions,
 	) => Promise<void>
+	setDocumentSaved: (documentId: number, isSaved: boolean) => void
 	setTabSaved: (tabId: number, isSaved: boolean) => void
+	setDocumentSyncedName: (documentId: number, name: string) => void
 	setActiveTabSyncedName: (name: string) => void
 	setTabSyncedName: (tabId: number, name: string) => void
+	clearDocumentSyncedName: (documentId: number) => void
 	clearActiveTabSyncedName: () => void
 	clearTabSyncedName: (tabId: number) => void
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
 	canGoBack: () => boolean
 	canGoForward: () => boolean
-	getActiveTab: () => Tab | null
+	getActiveTab: () => ResolvedTab | null
+	getOpenDocumentSnapshots: () => OpenDocumentSnapshot[]
 	getOpenTabSnapshots: () => OpenTabSnapshot[]
 	getActiveTabPath: () => string | null
 	getIsSaved: () => boolean
@@ -162,6 +181,7 @@ export const prepareTabSlice =
 					return {
 						workspacePath: state.workspacePath,
 						tabs: state.tabs,
+						openDocuments: state.openDocuments,
 						activeTabId: state.activeTabId,
 					}
 				},
@@ -174,16 +194,23 @@ export const prepareTabSlice =
 		const findTabIndexById = (tabs: Tab[], tabId: number): number =>
 			tabs.findIndex((tab) => tab.id === tabId)
 
-		const buildTab = ({
+		const buildDocument = ({
 			path,
 			name,
 			content,
-		}: Pick<Tab, "path" | "name" | "content">): Tab => ({
-			id: ++tabIdCounter,
+		}: Pick<OpenDocument, "path" | "name" | "content">): OpenDocument => ({
+			id: ++documentIdCounter,
+			path,
+			name,
+			content,
+			syncedName: null,
 			sessionEpoch: 0,
-			path,
-			name,
-			content,
+			isSaved: true,
+		})
+
+		const buildTab = (documentId: number, path: string): Tab => ({
+			id: ++tabIdCounter,
+			documentId,
 			...buildInitialTabHistory(path),
 		})
 
@@ -210,18 +237,79 @@ export const prepareTabSlice =
 			}
 		}
 
-		const bumpTabSessionEpoch = (
-			state: Pick<TabSlice, "tabs">,
-			tabId: number,
-		): Pick<TabSlice, "tabs"> | {} =>
-			updateTabById(state, tabId, (tab) => ({
-				...tab,
-				sessionEpoch: tab.sessionEpoch + 1,
-			}))
+		const updateDocumentById = (
+			state: Pick<TabSlice, "openDocuments">,
+			documentId: number,
+			updater: (document: OpenDocument) => OpenDocument | null,
+		): Pick<TabSlice, "openDocuments"> | {} => {
+			const documentIndex = state.openDocuments.findIndex(
+				(document) => document.id === documentId,
+			)
+			if (documentIndex === -1) {
+				return {}
+			}
+
+			const currentDocument = state.openDocuments[documentIndex]
+			const nextDocument = updater(currentDocument)
+			if (!nextDocument) {
+				return {}
+			}
+
+			const nextOpenDocuments = [...state.openDocuments]
+			nextOpenDocuments[documentIndex] = nextDocument
+			return {
+				openDocuments: nextOpenDocuments,
+			}
+		}
+
+		const pruneOrphanedDocuments = (
+			tabs: readonly Tab[],
+			openDocuments: readonly OpenDocument[],
+		): {
+			nextOpenDocuments: OpenDocument[]
+			removedDocumentIds: number[]
+		} => {
+			const referencedDocumentIds = new Set(tabs.map((tab) => tab.documentId))
+			const removedDocumentIds: number[] = []
+			const nextOpenDocuments = openDocuments.filter((document) => {
+				if (referencedDocumentIds.has(document.id)) {
+					return true
+				}
+
+				removedDocumentIds.push(document.id)
+				return false
+			})
+
+			return {
+				nextOpenDocuments,
+				removedDocumentIds,
+			}
+		}
+
+		const loadDocumentDraft = async (
+			path: string,
+			options?: OpenTabOptions,
+		): Promise<Pick<OpenDocument, "path" | "name" | "content"> | null> => {
+			const content =
+				options?.initialContent !== undefined
+					? options.initialContent
+					: await readTextFile(path)
+			const name = getFileNameWithoutExtension(path)
+
+			if (!name) {
+				return null
+			}
+
+			return {
+				path,
+				name,
+				content,
+			}
+		}
 
 		const updateCurrentHistorySelection = (selection: TabHistorySelection) => {
 			set((state) => {
-				const activeTab = getActiveTabFromState(state)
+				const activeTab = getTabByIdFromState(state, state.activeTabId ?? -1)
 				if (!activeTab) {
 					return {}
 				}
@@ -278,8 +366,8 @@ export const prepareTabSlice =
 			)
 		}
 
-		const activateTabByIndex = (tabIndex: number): Tab | null => {
-			let activatedTab: Tab | null = null
+		const activateTabByIndex = (tabIndex: number): ResolvedTab | null => {
+			let activatedTab: ResolvedTab | null = null
 
 			set((state) => {
 				const targetTab = state.tabs[tabIndex]
@@ -287,7 +375,7 @@ export const prepareTabSlice =
 					return {}
 				}
 
-				activatedTab = targetTab
+				activatedTab = resolveTabFromState(state, targetTab)
 				return {
 					activeTabId: targetTab.id,
 				}
@@ -306,70 +394,16 @@ export const prepareTabSlice =
 			lastOpenedFileHistoryPersistence.enqueueSafely()
 		}
 
-		const loadTabDraft = async (
-			path: string,
-			options?: OpenTabOptions,
-		): Promise<Pick<Tab, "path" | "name" | "content"> | null> => {
-			const content =
-				options?.initialContent !== undefined
-					? options.initialContent
-					: await readTextFile(path)
-			const name = getFileNameWithoutExtension(path)
-
-			if (!name) {
-				return null
-			}
-
-			return {
-				path,
-				name,
-				content,
-			}
-		}
-
-		const appendTabAndActivate = async (
-			tabDraft: Pick<Tab, "path" | "name" | "content">,
-		) => {
-			const nextTab = buildTab(tabDraft)
-			set((currentState) => {
-				return {
-					tabs: [...currentState.tabs, nextTab],
-					activeTabId: nextTab.id,
-					tabSaveStates: {
-						...currentState.tabSaveStates,
-						[nextTab.id]: true,
-					},
-				}
-			})
-			await persistLastOpenedTabs()
-		}
-
-		const closeTabByIdInternal = (tabId: number): boolean =>
-			setAndPersistLastOpenedFileHistory((state) => {
-				const tabIndex = findTabIndexById(state.tabs, tabId)
-				if (tabIndex === -1) {
-					return {}
-				}
-
-				const tab = state.tabs[tabIndex]
-				externalReloadSaveSkipTracker.remove(tab.id)
+		const clearRuntimeState = () => {
+			externalReloadSaveSkipTracker.clear()
+			for (const tab of get().tabs) {
 				historySession.clear(tab.id)
-				const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
-				const nextActiveTabId =
-					state.activeTabId === tab.id
-						? selectFallbackActiveTabId(nextTabs, tabIndex)
-						: state.activeTabId
-				const nextTabSaveStates = removeTabSaveState(
-					state.tabSaveStates,
-					tab.id,
-				)
+			}
+		}
 
-				return {
-					tabs: nextTabs,
-					activeTabId: nextActiveTabId,
-					tabSaveStates: nextTabSaveStates,
-				}
-			})
+		const persistLastOpenedTabs = async () => {
+			await lastOpenedFileHistoryPersistence.enqueue()
+		}
 
 		const setAndPersistLastOpenedFileHistory = (
 			updater: (state: TabSlice) => Partial<TabSlice> | {},
@@ -389,18 +423,198 @@ export const prepareTabSlice =
 			return didChange
 		}
 
-		const persistLastOpenedTabs = async () => {
-			await lastOpenedFileHistoryPersistence.enqueue()
+		const appendTabForPath = async (
+			path: string,
+			options?: OpenTabOptions,
+		): Promise<void> => {
+			const existingDocument = getDocumentByPathFromState(get(), path)
+			const documentDraft = existingDocument
+				? null
+				: await loadDocumentDraft(path, options)
+			if (!existingDocument && !documentDraft) {
+				return
+			}
+
+			set((state) => {
+				let targetDocument = getDocumentByPathFromState(state, path)
+				let nextOpenDocuments = state.openDocuments
+
+				if (!targetDocument) {
+					if (!documentDraft) {
+						return {}
+					}
+
+					targetDocument = buildDocument(documentDraft)
+					nextOpenDocuments = [...state.openDocuments, targetDocument]
+				}
+
+				const nextTab = buildTab(targetDocument.id, targetDocument.path)
+				return {
+					tabs: [...state.tabs, nextTab],
+					openDocuments: nextOpenDocuments,
+					activeTabId: nextTab.id,
+				}
+			})
+
+			await persistLastOpenedTabs()
 		}
 
-		const resetActiveTabSession = () => {
+		const rebindActiveTabToPath = async (
+			activeTabId: number,
+			path: string,
+			skipHistory: boolean,
+			force: boolean,
+			options?: OpenTabOptions,
+		): Promise<void> => {
+			const shouldLoadDocument =
+				force || findDocumentIndexByPath(get(), path) === -1
+			const documentDraft = shouldLoadDocument
+				? await loadDocumentDraft(path, options)
+				: null
+			if (shouldLoadDocument && !documentDraft) {
+				return
+			}
+
+			let removedDocumentIds: number[] = []
+			let documentIdToSkipSave: number | null = null
+
 			set((state) => {
-				const activeTab = getActiveTabFromState(state)
-				if (!activeTab) {
+				const currentIndex = findTabIndexById(state.tabs, activeTabId)
+				if (currentIndex === -1) {
 					return {}
 				}
 
-				return bumpTabSessionEpoch(state, activeTab.id)
+				const currentTab = state.tabs[currentIndex]
+				let targetDocument = getDocumentByPathFromState(state, path)
+				let nextOpenDocuments = state.openDocuments
+
+				if (!targetDocument) {
+					if (!documentDraft) {
+						return {}
+					}
+
+					targetDocument = buildDocument(documentDraft)
+					nextOpenDocuments = [...state.openDocuments, targetDocument]
+				} else if (documentDraft) {
+					const targetDocumentId = targetDocument.id
+					documentIdToSkipSave =
+						getActiveDocumentIdFromState(state) === targetDocumentId
+							? targetDocumentId
+							: null
+					nextOpenDocuments = state.openDocuments.map((document) =>
+						document.id !== targetDocumentId
+							? document
+							: {
+									...document,
+									path: documentDraft.path,
+									name: documentDraft.name,
+									content: documentDraft.content,
+									syncedName: null,
+									sessionEpoch: document.sessionEpoch + 1,
+									isSaved: true,
+								},
+					)
+					targetDocument = nextOpenDocuments.find(
+						(document) => document.id === targetDocumentId,
+					)!
+				}
+
+				const nextHistoryState = skipHistory
+					? {
+							history: currentTab.history,
+							historyIndex: currentTab.historyIndex,
+						}
+					: appendHistoryEntry(
+							currentTab.history,
+							currentTab.historyIndex,
+							{
+								path,
+								selection: null,
+							},
+							MAX_HISTORY_LENGTH,
+						)
+
+				const nextTabs = [...state.tabs]
+				nextTabs[currentIndex] = {
+					...currentTab,
+					documentId: targetDocument.id,
+					history: nextHistoryState.history,
+					historyIndex: nextHistoryState.historyIndex,
+				}
+
+				const prunedDocuments = pruneOrphanedDocuments(
+					nextTabs,
+					nextOpenDocuments,
+				)
+				removedDocumentIds = prunedDocuments.removedDocumentIds
+
+				return {
+					tabs: nextTabs,
+					openDocuments: prunedDocuments.nextOpenDocuments,
+					activeTabId: activeTabId,
+				}
+			})
+
+			if (documentIdToSkipSave !== null) {
+				externalReloadSaveSkipTracker.add(documentIdToSkipSave)
+			}
+
+			for (const removedDocumentId of removedDocumentIds) {
+				externalReloadSaveSkipTracker.remove(removedDocumentId)
+			}
+
+			await persistLastOpenedTabs()
+		}
+
+		const closeTabByIdInternal = (tabId: number): boolean => {
+			let removedDocumentIds: number[] = []
+
+			const didChange = setAndPersistLastOpenedFileHistory((state) => {
+				const tabIndex = findTabIndexById(state.tabs, tabId)
+				if (tabIndex === -1) {
+					return {}
+				}
+
+				const nextTabs = state.tabs.filter((_, index) => index !== tabIndex)
+				const nextActiveTabId =
+					state.activeTabId === tabId
+						? selectFallbackActiveTabId(nextTabs, tabIndex)
+						: state.activeTabId
+				const prunedDocuments = pruneOrphanedDocuments(
+					nextTabs,
+					state.openDocuments,
+				)
+				removedDocumentIds = prunedDocuments.removedDocumentIds
+
+				historySession.clear(tabId)
+
+				return {
+					tabs: nextTabs,
+					openDocuments: prunedDocuments.nextOpenDocuments,
+					activeTabId: nextActiveTabId,
+				}
+			})
+
+			if (didChange) {
+				for (const removedDocumentId of removedDocumentIds) {
+					externalReloadSaveSkipTracker.remove(removedDocumentId)
+				}
+			}
+
+			return didChange
+		}
+
+		const resetActiveDocumentSession = () => {
+			set((state) => {
+				const activeDocumentId = getActiveDocumentIdFromState(state)
+				if (activeDocumentId === null) {
+					return {}
+				}
+
+				return updateDocumentById(state, activeDocumentId, (document) => ({
+					...document,
+					sessionEpoch: document.sessionEpoch + 1,
+				}))
 			})
 		}
 
@@ -419,7 +633,6 @@ export const prepareTabSlice =
 				activeTab.historyIndex,
 				delta,
 			)
-
 			if (!navigationTarget) {
 				return false
 			}
@@ -440,7 +653,7 @@ export const prepareTabSlice =
 
 			try {
 				if (navigationTarget.targetEntry.path === activeTab.path) {
-					resetActiveTabSession()
+					resetActiveDocumentSession()
 					return true
 				}
 
@@ -513,6 +726,15 @@ export const prepareTabSlice =
 					(activeTabIndex - 1 + state.tabs.length) % state.tabs.length,
 				)
 			},
+			getResolvedTabs: () => getResolvedTabsFromState(get()),
+			getTabById: (tabId) => getResolvedTabByIdFromState(get(), tabId),
+			getDocumentById: (documentId) =>
+				getDocumentByIdFromState(get(), documentId),
+			getActiveDocumentId: () => getActiveDocumentIdFromState(get()),
+			getTabPathById: (tabId) =>
+				getResolvedTabByIdFromState(get(), tabId)?.path ?? null,
+			getDocumentPathByTabId: (tabId) =>
+				getResolvedTabByIdFromState(get(), tabId)?.path ?? null,
 			setHistorySelectionProvider: (provider) => {
 				const activeTabId = get().activeTabId
 				if (activeTabId === null) {
@@ -537,77 +759,68 @@ export const prepareTabSlice =
 				historySession.consumePendingRestore(tabId, path),
 			refreshTabFromExternalContent: (path, content, options) => {
 				const state = get()
-				const tabIndex = findTabIndexByPath(state, path)
-				if (tabIndex === -1) {
+				const matchingDocument = getDocumentByPathFromState(state, path)
+				if (!matchingDocument) {
 					return
 				}
 
-				const matchingTab = state.tabs[tabIndex]
-				if (
-					matchingTab.content === content ||
-					!getTabSavedFromState(state, matchingTab.id)
-				) {
+				if (matchingDocument.content === content || !matchingDocument.isSaved) {
 					return
 				}
 
-				const isActiveTab = state.activeTabId === matchingTab.id
+				const activeTabId = state.activeTabId
+				const isActiveDocument =
+					activeTabId !== null &&
+					getActiveDocumentIdFromState(state) === matchingDocument.id
 				const nextSelection =
-					isActiveTab && options?.preserveSelection
-						? historySession.readCurrentSelection(matchingTab.id)
+					isActiveDocument && options?.preserveSelection && activeTabId !== null
+						? historySession.readCurrentSelection(activeTabId)
 						: null
 				let didRefresh = false
 
 				set((currentState) => {
-					const currentIndex = findTabIndexByPath(currentState, path)
-					if (currentIndex === -1) {
+					const currentDocument = getDocumentByPathFromState(currentState, path)
+					if (!currentDocument) {
 						return {}
 					}
 
-					const currentTab = currentState.tabs[currentIndex]
-					if (
-						currentTab.content === content ||
-						!getTabSavedFromState(currentState, currentTab.id)
-					) {
+					if (currentDocument.content === content || !currentDocument.isSaved) {
 						return {}
 					}
 
 					didRefresh = true
-					const nextTabs = [...currentState.tabs]
-					let nextTabSaveStates = currentState.tabSaveStates
-
-					if (currentState.activeTabId === currentTab.id) {
-						externalReloadSaveSkipTracker.add(currentTab.id)
+					if (
+						getActiveDocumentIdFromState(currentState) === currentDocument.id
+					) {
+						externalReloadSaveSkipTracker.add(currentDocument.id)
 					}
 
-					nextTabs[currentIndex] = {
-						...currentTab,
-						content,
-						sessionEpoch:
-							currentState.activeTabId === currentTab.id
-								? currentTab.sessionEpoch + 1
-								: currentTab.sessionEpoch,
-					}
-					nextTabSaveStates = {
-						...currentState.tabSaveStates,
-						[currentTab.id]: true,
-					}
-
-					return {
-						tabs: nextTabs,
-						activeTabId: currentState.activeTabId,
-						tabSaveStates: nextTabSaveStates,
-					}
+					return updateDocumentById(
+						currentState,
+						currentDocument.id,
+						(document) => ({
+							...document,
+							content,
+							sessionEpoch: document.sessionEpoch + 1,
+							isSaved: true,
+						}),
+					)
 				})
 
-				if (!didRefresh || !isActiveTab || !options?.preserveSelection) {
+				if (
+					!didRefresh ||
+					!isActiveDocument ||
+					!options?.preserveSelection ||
+					activeTabId === null
+				) {
 					return
 				}
 
 				updateCurrentHistorySelection(nextSelection)
-				historySession.queuePendingRestore(matchingTab.id, path, nextSelection)
+				historySession.queuePendingRestore(activeTabId, path, nextSelection)
 			},
-			consumePendingExternalReloadSaveSkip: (tabId) =>
-				externalReloadSaveSkipTracker.consume(tabId),
+			consumePendingExternalReloadSaveSkip: (documentId) =>
+				externalReloadSaveSkipTracker.consume(documentId),
 			hydrateFromOpenedFiles: async (paths: string[]) => {
 				const validPaths = paths
 					.filter((path) => path.endsWith(".md"))
@@ -617,45 +830,59 @@ export const prepareTabSlice =
 					return false
 				}
 
-				const uniquePaths = dedupePathsPreservingLastOccurrence(validPaths)
-				const activePath = validPaths[validPaths.length - 1]
-				if (!activePath) {
-					return false
-				}
+				const uniquePaths = Array.from(new Set(validPaths))
 
 				try {
-					const tabs = (
-						await Promise.all(
-							uniquePaths.map(async (currentPath) => {
-								const name = getFileNameWithoutExtension(currentPath)
-								if (!name) {
-									return null
-								}
+					const documentDrafts = new Map<
+						string,
+						Pick<OpenDocument, "path" | "name" | "content">
+					>()
 
-								const content = await readTextFile(currentPath)
-								return buildTab({
-									path: currentPath,
-									name,
-									content,
-								})
-							}),
+					for (const currentPath of uniquePaths) {
+						const draft = await loadDocumentDraft(currentPath)
+						if (!draft) {
+							continue
+						}
+
+						documentDrafts.set(currentPath, draft)
+					}
+
+					const openDocuments = uniquePaths
+						.map((path) => documentDrafts.get(path))
+						.filter(
+							(
+								document,
+							): document is Pick<OpenDocument, "path" | "name" | "content"> =>
+								document !== undefined,
 						)
-					).filter((tab): tab is Tab => tab !== null)
+						.map((document) => buildDocument(document))
+					if (openDocuments.length === 0) {
+						return false
+					}
 
-					const activeTab = tabs.find((tab) => tab.path === activePath)
+					const documentIdByPath = new Map(
+						openDocuments.map((document) => [document.path, document.id]),
+					)
+					const tabs = validPaths
+						.map((path) => {
+							const documentId = documentIdByPath.get(path)
+							if (documentId === undefined) {
+								return null
+							}
+
+							return buildTab(documentId, path)
+						})
+						.filter((tab): tab is Tab => tab !== null)
+					const activeTab = tabs[tabs.length - 1]
 					if (!activeTab) {
 						return false
 					}
 
-					externalReloadSaveSkipTracker.clear()
-					const tabSaveStates = Object.fromEntries(
-						tabs.map((tab) => [tab.id, true]),
-					) as TabSaveStateMap
-
+					clearRuntimeState()
 					set({
 						tabs,
+						openDocuments,
 						activeTabId: activeTab.id,
-						tabSaveStates,
 					})
 
 					return true
@@ -681,87 +908,22 @@ export const prepareTabSlice =
 				const state = get()
 				const activeTab = getActiveTabFromState(state)
 
-				// If opening the same tab, don't do anything (unless force is true)
 				if (!force && activeTab?.path === path) {
 					return
 				}
 
 				if (!activeTab) {
-					const tabDraft = await loadTabDraft(path, options)
-					if (!tabDraft) {
-						return
-					}
-					await appendTabAndActivate(tabDraft)
+					await appendTabForPath(path, options)
 					return
 				}
 
-				const tabDraft = await loadTabDraft(path, options)
-				if (!tabDraft) {
-					return
-				}
-
-				set((currentState) => {
-					const currentIndex = findTabIndexById(currentState.tabs, activeTab.id)
-					if (currentIndex === -1) {
-						return {}
-					}
-
-					const currentTab = currentState.tabs[currentIndex]
-					const duplicateTab = currentState.tabs.find(
-						(tab) => tab.id !== activeTab.id && tab.path === path,
-					)
-					const nextHistoryState = skipHistory
-						? {
-								history: currentTab.history,
-								historyIndex: currentTab.historyIndex,
-							}
-						: appendHistoryEntry(
-								currentTab.history,
-								currentTab.historyIndex,
-								{
-									path,
-									selection: null,
-								},
-								MAX_HISTORY_LENGTH,
-							)
-
-					const nextTabs = [...currentState.tabs]
-					const nextTab = {
-						...currentTab,
-						path: tabDraft.path,
-						name: tabDraft.name,
-						content: tabDraft.content,
-						syncedName: null,
-						history: nextHistoryState.history,
-						historyIndex: nextHistoryState.historyIndex,
-						sessionEpoch: currentTab.sessionEpoch + 1,
-					}
-					nextTabs[currentIndex] = nextTab
-
-					if (duplicateTab) {
-						externalReloadSaveSkipTracker.remove(duplicateTab.id)
-						historySession.clear(duplicateTab.id)
-					}
-
-					const dedupedTabs = duplicateTab
-						? nextTabs.filter((tab) => tab.id !== duplicateTab.id)
-						: nextTabs
-					const nextTabSaveStates = {
-						...currentState.tabSaveStates,
-						[activeTab.id]: true,
-					}
-					if (duplicateTab) {
-						delete nextTabSaveStates[duplicateTab.id]
-					}
-
-					return {
-						tabs: dedupedTabs,
-						activeTabId: activeTab.id,
-						tabSaveStates: nextTabSaveStates,
-					}
-				})
-
-				await persistLastOpenedTabs()
+				await rebindActiveTabToPath(
+					activeTab.id,
+					path,
+					skipHistory,
+					force,
+					options,
+				)
 			},
 			openTabInNewTab: async (path, options) => {
 				if (!path.endsWith(".md")) {
@@ -772,57 +934,20 @@ export const prepareTabSlice =
 					commitCurrentHistorySelection()
 				}
 
-				const state = get()
-				const activeTab = getActiveTabFromState(state)
-				if (!activeTab) {
-					const tabDraft = await loadTabDraft(path, options)
-					if (!tabDraft) {
-						return
-					}
-					await appendTabAndActivate(tabDraft)
-					return
-				}
-
-				const existingTabIndex = findTabIndexByPath(state, path)
-				if (existingTabIndex !== -1) {
-					const existingTab = state.tabs[existingTabIndex]
-					if (!existingTab || state.activeTabId === existingTab.id) {
-						return
-					}
-
-					activateTabAndTrack(existingTabIndex)
-					return
-				}
-
-				const tabDraft = await loadTabDraft(path, options)
-				if (!tabDraft) {
-					return
-				}
-
-				const nextState = get()
-				const duplicateTabIndex = findTabIndexByPath(nextState, path)
-				if (duplicateTabIndex !== -1) {
-					const duplicateTab = nextState.tabs[duplicateTabIndex]
-					if (!duplicateTab || nextState.activeTabId === duplicateTab.id) {
-						return
-					}
-
-					activateTabAndTrack(duplicateTabIndex)
-					return
-				}
-
-				await appendTabAndActivate(tabDraft)
+				await appendTabForPath(path, options)
 			},
 			closeActiveTab: () => {
-				const activeTab = getActiveTabFromState(get())
-				if (!activeTab) {
+				const activeTabId = get().activeTabId
+				if (activeTabId === null) {
 					return
 				}
 
-				get().closeTab(activeTab.path)
+				closeTabByIdInternal(activeTabId)
 			},
 			closeTab: (path) => {
-				const tab = get().tabs.find((currentTab) => currentTab.path === path)
+				const tab = getResolvedTabsFromState(get()).find(
+					(currentTab) => currentTab.path === path,
+				)
 				if (!tab) {
 					return
 				}
@@ -833,21 +958,18 @@ export const prepareTabSlice =
 				closeTabByIdInternal(tabId)
 			},
 			closeAllTabs: () => {
-				externalReloadSaveSkipTracker.clear()
-				for (const tab of get().tabs) {
-					historySession.clear(tab.id)
-				}
+				clearRuntimeState()
 				set(buildEmptyTabState())
 			},
 			renameTab: async (oldPath, newPath, options) => {
 				const refreshContent = options?.refreshContent ?? false
 				const shouldRenameOnFs = options?.renameOnFs ?? false
 				const shouldClearSyncedName = options?.clearSyncedName ?? false
-				const matchingTabs = get().tabs.filter((tab) =>
-					isPathEqualOrDescendant(tab.path, oldPath),
+				const matchingDocuments = get().openDocuments.filter((document) =>
+					isPathEqualOrDescendant(document.path, oldPath),
 				)
 
-				if (matchingTabs.length === 0) {
+				if (matchingDocuments.length === 0) {
 					return
 				}
 
@@ -861,142 +983,162 @@ export const prepareTabSlice =
 				}
 
 				let refreshedContent: string | null = null
-
-				if (refreshContent) {
-					if (newPath.endsWith(".md")) {
-						try {
-							refreshedContent = await readTextFile(newPath)
-						} catch (error) {
-							console.error(
-								"Failed to refresh tab content after rename:",
-								error,
-							)
-						}
+				if (refreshContent && newPath.endsWith(".md")) {
+					try {
+						refreshedContent = await readTextFile(newPath)
+					} catch (error) {
+						console.error("Failed to refresh tab content after rename:", error)
 					}
 				}
 
-				set((state) => ({
-					...(() => {
-						let didChange = false
-						const nextTabs = [...state.tabs]
-						let nextTabSaveStates = state.tabSaveStates
-
-						for (let index = 0; index < state.tabs.length; index += 1) {
-							const currentTab = state.tabs[index]
-							if (!isPathEqualOrDescendant(currentTab.path, oldPath)) {
-								continue
-							}
-
-							const nextPath =
-								currentTab.path === oldPath
-									? newPath
-									: resolve(newPath, relative(oldPath, currentTab.path))
-							const nextName = getFileNameWithoutExtension(nextPath)
-							if (!nextName) {
-								continue
-							}
-
-							let nextContent = currentTab.content
-							const currentIsSaved = getTabSavedFromState(state, currentTab.id)
-
-							if (refreshContent && currentTab.path === oldPath) {
-								if (refreshedContent !== null) {
-									nextContent = refreshedContent
-								}
-								nextTabSaveStates = {
-									...nextTabSaveStates,
-									[currentTab.id]: currentIsSaved,
-								}
-							}
-
-							nextTabs[index] = {
-								...currentTab,
-								path: nextPath,
-								name: nextName,
-								content: nextContent,
-								sessionEpoch:
-									refreshContent && currentTab.path === oldPath
-										? currentTab.sessionEpoch + 1
-										: currentTab.sessionEpoch,
-								history: replaceHistoryPath(
-									currentTab.history,
-									oldPath,
-									newPath,
-								),
-								syncedName:
-									shouldClearSyncedName && currentTab.path === oldPath
-										? null
-										: currentTab.syncedName,
-							}
-							didChange = true
-						}
-
-						if (!didChange) {
-							return {}
-						}
-
-						return {
-							tabs: nextTabs,
-							activeTabId: state.activeTabId,
-							tabSaveStates: nextTabSaveStates,
-						}
-					})(),
-				}))
-			},
-			setTabSaved: (tabId, isSaved) => {
 				set((state) => {
-					const hasTab = state.tabs.some((tab) => tab.id === tabId)
-					if (!hasTab) {
+					let didChange = false
+					const activeDocumentId = getActiveDocumentIdFromState(state)
+					const nextOpenDocuments = state.openDocuments.map((document) => {
+						if (!isPathEqualOrDescendant(document.path, oldPath)) {
+							return document
+						}
+
+						const nextPath =
+							document.path === oldPath
+								? newPath
+								: resolve(newPath, relative(oldPath, document.path))
+						const nextName = getFileNameWithoutExtension(nextPath)
+						if (!nextName) {
+							return document
+						}
+
+						let nextDocument = {
+							...document,
+							path: nextPath,
+							name: nextName,
+						}
+
+						if (refreshContent && document.path === oldPath) {
+							if (refreshedContent !== null) {
+								nextDocument = {
+									...nextDocument,
+									content: refreshedContent,
+									sessionEpoch: document.sessionEpoch + 1,
+								}
+								if (activeDocumentId === document.id) {
+									externalReloadSaveSkipTracker.add(document.id)
+								}
+							}
+						}
+
+						if (shouldClearSyncedName && document.path === oldPath) {
+							nextDocument = {
+								...nextDocument,
+								syncedName: null,
+							}
+						}
+
+						didChange = true
+						return nextDocument
+					})
+
+					if (!didChange) {
 						return {}
 					}
 
+					const nextTabs = state.tabs.map((tab) => {
+						const resolvedTab = resolveTabFromState(state, tab)
+						if (
+							!resolvedTab ||
+							!isPathEqualOrDescendant(resolvedTab.path, oldPath)
+						) {
+							return tab
+						}
+
+						return {
+							...tab,
+							history: replaceHistoryPath(tab.history, oldPath, newPath),
+						}
+					})
+
 					return {
-						tabSaveStates: {
-							...state.tabSaveStates,
-							[tabId]: isSaved,
-						},
+						tabs: nextTabs,
+						openDocuments: nextOpenDocuments,
+						activeTabId: state.activeTabId,
 					}
 				})
 			},
-			setTabSyncedName: (tabId, name) => {
+			setDocumentSaved: (documentId, isSaved) => {
 				set((state) =>
-					updateTabById(state, tabId, (tab) =>
-						(tab.syncedName ?? null) === name
+					updateDocumentById(state, documentId, (document) =>
+						document.isSaved === isSaved
 							? null
 							: {
-									...tab,
+									...document,
+									isSaved,
+								},
+					),
+				)
+			},
+			setTabSaved: (tabId, isSaved) => {
+				const tab = getTabByIdFromState(get(), tabId)
+				if (!tab) {
+					return
+				}
+
+				get().setDocumentSaved(tab.documentId, isSaved)
+			},
+			setDocumentSyncedName: (documentId, name) => {
+				set((state) =>
+					updateDocumentById(state, documentId, (document) =>
+						(document.syncedName ?? null) === name
+							? null
+							: {
+									...document,
 									syncedName: name,
 								},
 					),
 				)
 			},
-			setActiveTabSyncedName: (name) => {
-				const activeTabId = get().activeTabId
-				if (activeTabId === null) {
+			setTabSyncedName: (tabId, name) => {
+				const tab = getTabByIdFromState(get(), tabId)
+				if (!tab) {
 					return
 				}
 
-				get().setTabSyncedName(activeTabId, name)
+				get().setDocumentSyncedName(tab.documentId, name)
 			},
-			clearTabSyncedName: (tabId) => {
+			setActiveTabSyncedName: (name) => {
+				const activeDocumentId = getActiveDocumentIdFromState(get())
+				if (activeDocumentId === null) {
+					return
+				}
+
+				get().setDocumentSyncedName(activeDocumentId, name)
+			},
+			clearDocumentSyncedName: (documentId) => {
 				set((state) =>
-					updateTabById(state, tabId, (tab) =>
-						tab.syncedName == null
+					updateDocumentById(state, documentId, (document) =>
+						document.syncedName == null
 							? null
 							: {
-									...tab,
+									...document,
 									syncedName: null,
 								},
 					),
 				)
 			},
-			clearActiveTabSyncedName: () => {
-				const activeTabId = get().activeTabId
-				if (activeTabId === null) {
+			clearTabSyncedName: (tabId) => {
+				const tab = getTabByIdFromState(get(), tabId)
+				if (!tab) {
 					return
 				}
 
-				get().clearTabSyncedName(activeTabId)
+				get().clearDocumentSyncedName(tab.documentId)
+			},
+			clearActiveTabSyncedName: () => {
+				const activeDocumentId = getActiveDocumentIdFromState(get())
+				if (activeDocumentId === null) {
+					return
+				}
+
+				get().clearDocumentSyncedName(activeDocumentId)
 			},
 			goBack: async () => navigateHistory(-1, "back"),
 			goForward: async () => navigateHistory(1, "forward"),
@@ -1005,16 +1147,13 @@ export const prepareTabSlice =
 				const { history, historyIndex } = getActiveTabHistoryFromState(get())
 				return historyIndex < history.length - 1
 			},
-			getTabById: (tabId) => get().tabs.find((tab) => tab.id === tabId) ?? null,
 			getActiveTab: () => getActiveTabFromState(get()),
-			getOpenTabSnapshots: () => {
-				const { tabs, tabSaveStates } = get()
-				return tabs.map((tab) => ({
-					path: tab.path,
-					isSaved: getTabSavedFromState({ tabSaveStates }, tab.id),
-				}))
-			},
-			getTabPathById: (tabId) => get().getTabById(tabId)?.path ?? null,
+			getOpenDocumentSnapshots: () => getOpenDocumentSnapshotsFromState(get()),
+			getOpenTabSnapshots: () =>
+				getOpenDocumentSnapshotsFromState(get()).map((document) => ({
+					path: document.path,
+					isSaved: document.isSaved,
+				})),
 			getActiveTabPath: () => getActiveTabFromState(get())?.path ?? null,
 			getIsSaved: () => getActiveTabSavedFromState(get()),
 			updateHistoryPath: (oldPath: string, newPath: string) => {
@@ -1027,19 +1166,28 @@ export const prepareTabSlice =
 			},
 			removePathsFromHistory: (paths) => {
 				const state = get()
-				const removedTabs = state.tabs.filter((tab) =>
-					paths.some((path) => isPathEqualOrDescendant(tab.path, path)),
+				const removedDocumentIds = new Set(
+					state.openDocuments
+						.filter((document) =>
+							paths.some((path) =>
+								isPathEqualOrDescendant(document.path, path),
+							),
+						)
+						.map((document) => document.id),
 				)
-				const removedTabIds = new Set(removedTabs.map((tab) => tab.id))
-
-				for (const removedTab of removedTabs) {
-					externalReloadSaveSkipTracker.remove(removedTab.id)
-					historySession.clear(removedTab.id)
+				for (const documentId of removedDocumentIds) {
+					externalReloadSaveSkipTracker.remove(documentId)
+				}
+				for (const tab of state.tabs) {
+					if (removedDocumentIds.has(tab.documentId)) {
+						historySession.clear(tab.id)
+					}
 				}
 
 				setAndPersistLastOpenedFileHistory((currentState) => {
+					let didChange = removedDocumentIds.size > 0
 					const nextTabs = currentState.tabs
-						.filter((tab) => !removedTabIds.has(tab.id))
+						.filter((tab) => !removedDocumentIds.has(tab.documentId))
 						.map((tab) => {
 							const nextHistoryState = removePathsFromHistoryEntries(
 								tab.history,
@@ -1047,22 +1195,39 @@ export const prepareTabSlice =
 								paths,
 							)
 							if (nextHistoryState.history.length === 0) {
+								const path =
+									getDocumentByIdFromState(currentState, tab.documentId)
+										?.path ??
+									tab.history[tab.historyIndex]?.path ??
+									tab.history[0]?.path
+								if (!path) {
+									return tab
+								}
+
+								didChange = true
 								return {
 									...tab,
-									...buildInitialTabHistory(tab.path),
+									...buildInitialTabHistory(path),
 								}
 							}
 
+							if (
+								nextHistoryState.history !== tab.history ||
+								nextHistoryState.historyIndex !== tab.historyIndex
+							) {
+								didChange = true
+							}
 							return {
 								...tab,
 								history: nextHistoryState.history,
 								historyIndex: nextHistoryState.historyIndex,
 							}
 						})
+
 					let nextActiveTabId = currentState.activeTabId
 					if (
 						currentState.activeTabId !== null &&
-						removedTabIds.has(currentState.activeTabId)
+						!nextTabs.some((tab) => tab.id === currentState.activeTabId)
 					) {
 						const removedIndex = currentState.tabs.findIndex(
 							(tab) => tab.id === currentState.activeTabId,
@@ -1070,16 +1235,16 @@ export const prepareTabSlice =
 						nextActiveTabId = selectFallbackActiveTabId(nextTabs, removedIndex)
 					}
 
-					const nextTabSaveStates = Object.fromEntries(
-						Object.entries(currentState.tabSaveStates).filter(
-							([tabId]) => !removedTabIds.has(Number(tabId)),
-						),
-					) as TabSaveStateMap
+					if (!didChange) {
+						return {}
+					}
 
 					return {
 						tabs: nextTabs,
+						openDocuments: currentState.openDocuments.filter(
+							(document) => !removedDocumentIds.has(document.id),
+						),
 						activeTabId: nextActiveTabId,
-						tabSaveStates: nextTabSaveStates,
 					}
 				})
 			},
@@ -1088,10 +1253,17 @@ export const prepareTabSlice =
 					historySession.clearPendingRestore(tab.id)
 				}
 				set((state) => ({
-					tabs: state.tabs.map((tab) => ({
-						...tab,
-						...buildInitialTabHistory(tab.path),
-					})),
+					tabs: state.tabs.map((tab) => {
+						const path = getDocumentByIdFromState(state, tab.documentId)?.path
+						if (!path) {
+							return tab
+						}
+
+						return {
+							...tab,
+							...buildInitialTabHistory(path),
+						}
+					}),
 				}))
 			},
 		}

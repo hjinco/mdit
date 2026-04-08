@@ -8,6 +8,7 @@ import { stripFileExtensionForDisplay } from "@mdit/editor/link"
 import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { resolve } from "pathe"
+import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { useStore } from "@/store"
 
@@ -49,29 +50,60 @@ const defaultRuntimeDeps: DesktopLinkRuntimeDeps = {
 }
 
 export const createDesktopLinkServices = (
-	tabId?: number,
+	documentId?: number,
 	runtimeDeps: DesktopLinkRuntimeDeps = defaultRuntimeDeps,
 ): LinkServices => {
-	const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () =>
-		useStore(
-			useShallow((state) => ({
-				workspacePath: state.workspacePath,
-				tab:
-					typeof tabId === "number"
-						? state.getTabById(tabId)
-						: state.getActiveTab(),
-				entries: state.entries,
-			})),
-		)
+	const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () => {
+		const { workspacePath, entries, activeTabId, tabs, openDocuments } =
+			useStore(
+				useShallow((state) => ({
+					workspacePath: state.workspacePath,
+					entries: state.entries,
+					activeTabId: state.activeTabId,
+					tabs: state.tabs,
+					openDocuments: state.openDocuments,
+				})),
+			)
+		const tab = useMemo(() => {
+			if (typeof documentId === "number") {
+				return (
+					openDocuments.find((document) => document.id === documentId) ?? null
+				)
+			}
+
+			const activeTab = tabs.find((tab) => tab.id === activeTabId)
+			if (!activeTab) {
+				return null
+			}
+
+			return (
+				openDocuments.find(
+					(document) => document.id === activeTab.documentId,
+				) ?? null
+			)
+		}, [activeTabId, openDocuments, tabs])
+
+		return {
+			workspacePath,
+			tab,
+			entries,
+		}
+	}
 
 	const getDesktopWorkspaceSnapshot: LinkWorkspacePort["getSnapshot"] = () => {
 		const state = useStore.getState()
+		const activeTab =
+			typeof documentId === "number"
+				? null
+				: state.tabs.find((tab) => tab.id === state.activeTabId)
 		return {
 			workspacePath: state.workspacePath,
 			tab:
-				typeof tabId === "number"
-					? state.getTabById(tabId)
-					: state.getActiveTab(),
+				typeof documentId === "number"
+					? state.getDocumentById(documentId)
+					: activeTab
+						? state.getDocumentById(activeTab.documentId)
+						: null,
 			entries: state.entries,
 		}
 	}

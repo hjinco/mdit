@@ -73,7 +73,7 @@ const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 }
 
 export const createDesktopSlashHost = (
-	tabId?: number,
+	documentId?: number,
 	runtimeDeps?: Partial<DesktopSlashHostRuntimeDeps>,
 ): SlashHostDeps => {
 	const deps: DesktopSlashHostRuntimeDeps = {
@@ -82,8 +82,8 @@ export const createDesktopSlashHost = (
 		getTabPath:
 			runtimeDeps?.getTabPath ??
 			(() =>
-				typeof tabId === "number"
-					? useStore.getState().getTabPathById(tabId)
+				typeof documentId === "number"
+					? (useStore.getState().getDocumentById(documentId)?.path ?? null)
 					: useStore.getState().getActiveTabPath()),
 	}
 
