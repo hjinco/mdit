@@ -1,9 +1,14 @@
 import { cn } from "@mdit/ui/lib/utils"
 import { ChevronRight } from "lucide-react"
+import type { FileEntryDragData } from "./dnd-types"
 
 type ExplorerDragOverlayProps = {
 	name: string
 	isDirectory: boolean
+}
+
+export function getExplorerDragOverlayName(data: FileEntryDragData): string {
+	return data.displayName ?? data.name ?? ""
 }
 
 function getExplorerDragOverlayClassName(isDirectory: boolean) {

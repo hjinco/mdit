@@ -12,6 +12,7 @@ export type FileEntryDragData = {
 	path?: string
 	isDirectory?: boolean
 	name?: string
+	displayName?: string
 }
 
 export type EditorDragData = {
@@ -80,15 +81,15 @@ export function isFileEntryDragData(data: unknown): data is FileEntryDragData {
 	}
 
 	const hasKnownKey = "path" in data || "isDirectory" in data || "name" in data
-	if (!hasKnownKey) {
+	if (!hasKnownKey && !("displayName" in data)) {
 		return false
 	}
-
-	const { path, isDirectory, name } = data
+	const { path, isDirectory, name, displayName } = data
 	return (
 		(path === undefined || typeof path === "string") &&
 		(isDirectory === undefined || typeof isDirectory === "boolean") &&
-		(name === undefined || typeof name === "string")
+		(name === undefined || typeof name === "string") &&
+		(displayName === undefined || typeof displayName === "string")
 	)
 }
 
