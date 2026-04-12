@@ -43,7 +43,6 @@ export function Hotkeys() {
 		isEditMode,
 		closeActiveTab,
 		openFolderPicker,
-		tabs,
 		activateTabById,
 		activatePreviousTab,
 		activateNextTab,
@@ -70,7 +69,6 @@ export function Hotkeys() {
 			isEditMode: s.isEditMode,
 			closeActiveTab: s.closeActiveTab,
 			openFolderPicker: s.openFolderPicker,
-			tabs: s.tabs,
 			activateTabById: s.activateTabById,
 			activatePreviousTab: s.activatePreviousTab,
 			activateNextTab: s.activateNextTab,
@@ -102,14 +100,17 @@ export function Hotkeys() {
 
 	const handleActivateTabByNumber = useCallback(
 		(digit: number) => {
-			const targetTabId = getTabIdForNumberShortcut(tabs, digit)
+			const targetTabId = getTabIdForNumberShortcut(
+				useStore.getState().tabs,
+				digit,
+			)
 			if (targetTabId === null) {
 				return
 			}
 
 			activateTabById(targetTabId)
 		},
-		[activateTabById, tabs],
+		[activateTabById],
 	)
 
 	const actionHandlers = useMemo<Record<AppHotkeyActionId, () => void>>(
