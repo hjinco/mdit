@@ -45,12 +45,12 @@ export function FileTreeNode({
 	}, [entry.isDirectory, entry.name])
 
 	const baseName = useMemo(() => {
-		if (entry.isDirectory || !extension) {
+		if (!extension) {
 			return entry.name
 		}
 
-		return entry.name.slice(0, entry.name.length - extension.length)
-	}, [entry.isDirectory, entry.name, extension])
+		return entry.name.slice(0, -extension.length)
+	}, [entry.name, extension])
 
 	const isMarkdown = useMemo(
 		() => !entry.isDirectory && extension.toLowerCase() === ".md",

@@ -13,7 +13,10 @@ import { handleEditorDrop } from "./editor-drop-handler"
 import { EditorDropLine } from "./editor-drop-indicator"
 import { isPoint } from "./editor-drop-indicator.helpers"
 import { EditorDropOwnershipProvider } from "./editor-drop-ownership"
-import { ExplorerDragOverlay } from "./explorer-drag-overlay"
+import {
+	ExplorerDragOverlay,
+	getExplorerDragOverlayName,
+} from "./explorer-drag-overlay"
 import {
 	EMPTY_DRAGGED_EXPLORER_PATHS,
 	ExplorerDragPathsProvider,
@@ -61,7 +64,7 @@ function renderDragOverlay(source: DragOverlaySource) {
 	if (isFileEntryDragData(source.data) && source.data.name) {
 		return (
 			<ExplorerDragOverlay
-				name={source.data.name}
+				name={getExplorerDragOverlayName(source.data)}
 				isDirectory={Boolean(source.data.isDirectory)}
 			/>
 		)

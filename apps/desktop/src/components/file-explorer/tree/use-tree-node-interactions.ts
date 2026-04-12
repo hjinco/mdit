@@ -1,8 +1,10 @@
 import { useDraggable } from "@dnd-kit/react"
 import type { FileTreeRenderNode } from "@mdit/file-tree"
 import { useCallback } from "react"
+import type { FileEntryDragData } from "@/components/dnd/dnd-types"
 import { useDraggedExplorerPaths } from "@/components/dnd/explorer-drag-state"
 import type { WorkspaceEntry } from "@/store"
+import { getExplorerEntryDisplayName } from "../utils/display-name"
 
 type UseTreeNodeInteractionsParams = {
 	node: FileTreeRenderNode<WorkspaceEntry>
@@ -11,6 +13,15 @@ type UseTreeNodeInteractionsParams = {
 		event: React.MouseEvent<HTMLButtonElement>,
 	) => void
 	onEntryContextMenu: (entry: WorkspaceEntry) => void | Promise<void>
+}
+
+export function getExplorerDragData(entry: WorkspaceEntry): FileEntryDragData {
+	return {
+		path: entry.path,
+		isDirectory: entry.isDirectory,
+		name: entry.name,
+		displayName: getExplorerEntryDisplayName(entry.name, entry.isDirectory),
+	}
 }
 
 export function useTreeNodeInteractions({
@@ -27,11 +38,7 @@ export function useTreeNodeInteractions({
 
 	const { ref: draggableRef, isDragging: isSourceDragging } = useDraggable({
 		id: entry.path,
-		data: {
-			path: entry.path,
-			isDirectory: entry.isDirectory,
-			name: entry.name,
-		},
+		data: getExplorerDragData(entry),
 		disabled: isBusy,
 	})
 	const isDragging = isSourceDragging || draggedExplorerPaths.has(entry.path)
