@@ -1,6 +1,6 @@
 ---
 name: review-then-pr
-description: Gate local publication on a review pass. Use when Codex should inspect the current branch, diff, staged changes, or working tree with `code-review-triad` first, and only when that review returns zero actionable findings continue to branch setup, commit, push, and GitHub pull request creation.
+description: Gate local publication on a review pass. Use when Codex should inspect the current branch, diff, staged changes, or working tree first, and only when that review returns zero actionable findings continue to branch setup, commit, push, and GitHub pull request creation.
 ---
 
 # Review Then PR
@@ -8,12 +8,12 @@ description: Gate local publication on a review pass. Use when Codex should insp
 ## Overview
 
 Run a review-first publish workflow.
-Use `code-review-triad` as the gate. If it returns any actionable finding, stop and report it. If it returns no findings, publish the reviewed change as a PR.
+Use this skill's review gate before any publish action. If the review finds any actionable issue, stop and report it. If it returns no actionable findings, publish the reviewed change as a PR.
 
 ## Workflow
 
 1. Define the publish scope.
-2. Review that exact scope with `code-review-triad`.
+2. Review that exact scope with an explicit local review gate.
 3. Stop immediately when the review finds anything actionable.
 4. Publish only the reviewed scope when the finding set is empty.
 
@@ -32,7 +32,14 @@ Do not stage unrelated user changes.
 
 ## Step 2: Run The Review Gate
 
-Invoke `code-review-triad` on the exact artifact chosen in Step 1.
+Review the exact artifact chosen in Step 1.
+
+Cover these lenses before publishing:
+- bugs and behavioral regressions
+- maintainability risks that could cause near-term defects
+- security or trust-boundary issues
+
+Keep the review local to the chosen scope. Do not silently widen the review to the entire repository.
 
 Keep the normal review contract:
 - prioritize actionable findings over summary

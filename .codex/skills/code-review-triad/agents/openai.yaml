@@ -1,4 +1,0 @@
-interface:
-  display_name: "Code Review Triad"
-  short_description: "Three-agent code review for bugs, maintenance, security"
-  default_prompt: "Use $code-review-triad to review this change with bug, maintenance, and security subagents."
