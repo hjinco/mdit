@@ -1,7 +1,6 @@
 import { cn } from "@mdit/ui/lib/utils"
 import { useMemo } from "react"
 import { useInlineEditableInput } from "../hooks/use-inline-editable-input"
-import { getExplorerEntryDisplayName } from "../utils/display-name"
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 import type { TreeNodeProps } from "./tree-node.types"
 import { TreeNodeRenameInput } from "./tree-node-rename-input"
@@ -50,8 +49,8 @@ export function FileTreeNode({
 			return entry.name
 		}
 
-		return getExplorerEntryDisplayName(entry.name, entry.isDirectory)
-	}, [entry.isDirectory, entry.name, extension])
+		return entry.name.slice(0, -extension.length)
+	}, [entry.name, extension])
 
 	const isMarkdown = useMemo(
 		() => !entry.isDirectory && extension.toLowerCase() === ".md",
