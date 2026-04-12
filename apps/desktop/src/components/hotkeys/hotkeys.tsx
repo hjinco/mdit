@@ -1,6 +1,7 @@
 import {
 	APP_HOTKEY_DEFINITIONS,
 	type AppHotkeyActionId,
+	FIXED_TAB_SHORTCUT_DIGITS,
 } from "@mdit/store/hotkeys"
 import { useHotkey } from "@tanstack/react-hotkeys"
 import { useCallback, useMemo } from "react"
@@ -9,7 +10,6 @@ import { closeTabOrHideWindow } from "@/lib/close-tab-or-hide-window"
 import { useStore } from "@/store"
 
 const HOTKEY_OPTIONS = { preventDefault: true } as const
-
 type HotkeyBindingProps = {
 	binding: string
 	onTrigger: () => void
@@ -24,6 +24,17 @@ function HotkeyBinding({ binding, onTrigger }: HotkeyBindingProps) {
 	return null
 }
 
+export function getTabIdForNumberShortcut<T extends { id: number }>(
+	tabs: readonly T[],
+	digit: number,
+): number | null {
+	if (!Number.isInteger(digit) || digit < 1 || digit > 9) {
+		return null
+	}
+
+	return tabs[digit - 1]?.id ?? null
+}
+
 export function Hotkeys() {
 	const {
 		hotkeys,
@@ -32,6 +43,8 @@ export function Hotkeys() {
 		isEditMode,
 		closeActiveTab,
 		openFolderPicker,
+		tabs,
+		activateTabById,
 		activatePreviousTab,
 		activateNextTab,
 		workspacePath,
@@ -57,6 +70,8 @@ export function Hotkeys() {
 			isEditMode: s.isEditMode,
 			closeActiveTab: s.closeActiveTab,
 			openFolderPicker: s.openFolderPicker,
+			tabs: s.tabs,
+			activateTabById: s.activateTabById,
 			activatePreviousTab: s.activatePreviousTab,
 			activateNextTab: s.activateNextTab,
 			workspacePath: s.workspacePath,
@@ -84,6 +99,18 @@ export function Hotkeys() {
 			closeActiveTab,
 		})
 	}, [activeTabId, closeActiveTab, isEditMode])
+
+	const handleActivateTabByNumber = useCallback(
+		(digit: number) => {
+			const targetTabId = getTabIdForNumberShortcut(tabs, digit)
+			if (targetTabId === null) {
+				return
+			}
+
+			activateTabById(targetTabId)
+		},
+		[activateTabById, tabs],
+	)
 
 	const actionHandlers = useMemo<Record<AppHotkeyActionId, () => void>>(
 		() => ({
@@ -183,6 +210,13 @@ export function Hotkeys() {
 					/>
 				)
 			})}
+			{FIXED_TAB_SHORTCUT_DIGITS.map((digit) => (
+				<HotkeyBinding
+					key={`fixed-tab-shortcut-${digit}`}
+					binding={`Mod+${digit}`}
+					onTrigger={() => handleActivateTabByNumber(digit)}
+				/>
+			))}
 		</>
 	)
 }

@@ -5,6 +5,7 @@ import {
 	type AppHotkeyMap,
 	createDefaultAppHotkeys,
 	findHotkeyConflict,
+	isReservedAppHotkeyBinding,
 	normalizeHotkeyBinding,
 } from "./hotkey-utils"
 
@@ -72,6 +73,13 @@ export const prepareHotkeysSlice =
 					return {
 						success: false,
 						error: validationResult.errors[0] ?? "Invalid hotkey format",
+					}
+				}
+
+				if (isReservedAppHotkeyBinding(normalizedBinding)) {
+					return {
+						success: false,
+						error: "Shortcut is reserved for tab switching",
 					}
 				}
 			}

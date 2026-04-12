@@ -81,6 +81,18 @@ describe("hotkeys-slice", () => {
 		expect(storage.save).not.toHaveBeenCalled()
 	})
 
+	it("rejects fixed tab shortcut bindings", async () => {
+		const store = createHotkeysStore(storage)
+
+		const result = await store
+			.getState()
+			.setHotkeyBinding("create-note", "mod+1")
+
+		expect(result.success).toBe(false)
+		expect(result.error).toBe("Shortcut is reserved for tab switching")
+		expect(storage.save).not.toHaveBeenCalled()
+	})
+
 	it("allows unassigned hotkeys", async () => {
 		const store = createHotkeysStore(storage)
 
