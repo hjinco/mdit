@@ -90,7 +90,7 @@ export function TabStrip() {
 								handleClose(tab.id)
 							}}
 							className={cn(
-								"group/tab relative flex h-8 min-w-12 max-w-48 flex-1 basis-0 items-center rounded-md text-sm transition-colors",
+								"group/tab relative flex h-8 min-w-12 max-w-48 flex-1 basis-0 cursor-pointer items-center rounded-md text-sm transition-colors",
 								"origin-center overflow-hidden will-change-transform",
 								"text-muted-foreground hover:bg-muted",
 								isActive && "bg-muted text-foreground",
@@ -136,7 +136,7 @@ export function TabStrip() {
 										handleClose(tab.id)
 									}}
 									className={cn(
-										"flex size-5 shrink-0 items-center justify-center transition-colors text-muted-foreground hover:text-foreground",
+										"flex size-5 shrink-0 cursor-default items-center justify-center transition-colors text-muted-foreground hover:text-foreground",
 									)}
 								>
 									<XIcon className="size-3.5" aria-hidden />
