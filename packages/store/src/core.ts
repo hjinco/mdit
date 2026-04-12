@@ -40,10 +40,12 @@ export {
 	APP_HOTKEY_CATEGORY_LABELS,
 	APP_HOTKEY_DEFINITIONS,
 	createDefaultAppHotkeys,
+	FIXED_TAB_SHORTCUT_DIGITS,
 	findHotkeyConflict,
 	hotkeyToDisplayTokens,
 	hotkeyToMenuAccelerator,
 	isAppHotkeyActionId,
+	isReservedAppHotkeyBinding,
 	mergeWithDefaultHotkeys,
 	normalizeHotkeyBinding,
 } from "./hotkeys/hotkey-utils"

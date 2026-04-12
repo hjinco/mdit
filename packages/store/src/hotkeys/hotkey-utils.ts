@@ -30,6 +30,8 @@ export type AppHotkeyDefinition = {
 
 export type AppHotkeyMap = Record<AppHotkeyActionId, string>
 
+export const FIXED_TAB_SHORTCUT_DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
+
 export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 	{
 		id: "create-note",
@@ -250,6 +252,17 @@ export function findHotkeyConflict(
 	}
 
 	return null
+}
+
+export function isReservedAppHotkeyBinding(binding: string): boolean {
+	const normalizedBinding = normalizeHotkeyBinding(binding)
+	if (!normalizedBinding) {
+		return false
+	}
+
+	return FIXED_TAB_SHORTCUT_DIGITS.some(
+		(digit) => normalizedBinding === `Mod+${digit}`,
+	)
 }
 
 export function hotkeyToMenuAccelerator(binding: string): string | undefined {
