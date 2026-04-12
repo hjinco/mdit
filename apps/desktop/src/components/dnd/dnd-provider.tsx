@@ -66,6 +66,7 @@ function renderDragOverlay(source: DragOverlaySource) {
 			<ExplorerDragOverlay
 				name={getExplorerDragOverlayName(source.data)}
 				isDirectory={Boolean(source.data.isDirectory)}
+				sourceElement={source.element}
 			/>
 		)
 	}
