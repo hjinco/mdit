@@ -34,6 +34,7 @@ import {
 	restoreHistorySelection,
 	toTabHistorySelection,
 } from "./utils/history-restore-utils"
+import { restoreSelectionOnEditorActivate } from "./utils/restore-selection-on-activate"
 
 export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 	const {
@@ -366,34 +367,29 @@ function EditorContent({
 			return
 		}
 
-		const pathDidChange = lastPathRef.current !== path
-		lastPathRef.current = path
 		const isAliasSwitch =
 			previous.active &&
 			previous.tabId !== null &&
 			previous.tabId !== activeTabId &&
 			previous.path === path
 		if (isAliasSwitch) {
+			lastPathRef.current = path
 			return
 		}
 
+		const pathDidChange = lastPathRef.current !== path
+		lastPathRef.current = path
 		const timeoutId = window.setTimeout(() => {
-			const pendingRestore = consumeTabPendingHistorySelectionRestore(
-				activeTabId,
-				path,
-			)
-			if (pendingRestore.found) {
-				restoreHistorySelection(editor, pendingRestore.selection)
-				return
-			}
-
-			// Keep the current selection when only the backing file path changes.
-			if (pathDidChange) {
-				return
-			}
-
-			focusEditorAtDefaultSelection(editor)
-			editor.tf.focus()
+			restoreSelectionOnEditorActivate({
+				editor,
+				pathDidChange,
+				pendingRestore: consumeTabPendingHistorySelectionRestore(
+					activeTabId,
+					path,
+				),
+				restoreHistorySelection,
+				focusEditorAtDefaultSelection,
+			})
 		}, 0)
 
 		return () => {
