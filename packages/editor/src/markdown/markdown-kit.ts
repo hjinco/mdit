@@ -10,6 +10,7 @@ import {
 } from "@platejs/markdown"
 import remarkCallout from "@r4ai/remark-callout"
 import { phrasing } from "mdast-util-phrasing"
+import { extname } from "pathe"
 import {
 	type Descendant,
 	getPluginType,
@@ -41,6 +42,22 @@ import {
 
 const EQUATION_ENVIRONMENT_REGEX =
 	/^\\begin\{([^}]+)\}[\r\n]+([\s\S]*?)[\r\n]+\\end\{\1\}\s*$/
+const IMAGE_EMBED_EXTENSIONS = new Set([
+	".apng",
+	".avif",
+	".bmp",
+	".gif",
+	".heic",
+	".heif",
+	".ico",
+	".jpeg",
+	".jpg",
+	".png",
+	".svg",
+	".tif",
+	".tiff",
+	".webp",
+])
 
 type MdastRoot = {
 	type: "root"
@@ -118,6 +135,24 @@ function safelyDecodeUri(url: string): string {
 		}
 		throw error
 	}
+}
+
+function isImageEmbedSource(value: unknown): boolean {
+	if (typeof value !== "string") {
+		return false
+	}
+
+	const decoded = safelyDecodeUri(value.trim())
+	if (!decoded) {
+		return false
+	}
+
+	const pathPart = decoded.split("#", 1)[0]?.split("?", 1)[0] ?? ""
+	if (!pathPart) {
+		return false
+	}
+
+	return IMAGE_EMBED_EXTENSIONS.has(extname(pathPart).toLowerCase())
 }
 
 function normalizeWikiTarget(url: string): string {
@@ -426,8 +461,12 @@ export const createMarkdownKit = ({
 							const hProperties = mdastNode.data?.hProperties ?? {}
 							const url = hProperties.src || mdastNode.data?.path || target
 							const { width, height } = getEmbedDimensions(mdastNode)
+							const shouldDeserializeAsImage =
+								hName === "img" ||
+								isImageEmbedSource(target) ||
+								isImageEmbedSource(url)
 
-							if (hName === "img") {
+							if (shouldDeserializeAsImage) {
 								const altText =
 									typeof hProperties.alt === "string" ? hProperties.alt : ""
 

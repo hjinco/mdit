@@ -481,6 +481,28 @@ describe("markdown-kit deserialization", () => {
 		expect(imageNode?.height).toBeUndefined()
 	})
 
+	it("deserializes uppercase image embeds into image nodes", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "![[assets/PIC.PNG]]")
+		const imageNode = findNodeByType(value as any[], KEYS.img)
+
+		expect(imageNode).toMatchObject({
+			url: "assets/PIC.PNG",
+			embedTarget: "assets/PIC.PNG",
+		})
+	})
+
+	it("deserializes heic image embeds into image nodes", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(editor, "![[assets/photo.heic]]")
+		const imageNode = findNodeByType(value as any[], KEYS.img)
+
+		expect(imageNode).toMatchObject({
+			url: "assets/photo.heic",
+			embedTarget: "assets/photo.heic",
+		})
+	})
+
 	it("round-trips width-only image embeds", async () => {
 		const editor = createMarkdownEditor()
 		const initialValue = [
