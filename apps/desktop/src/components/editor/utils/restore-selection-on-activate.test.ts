@@ -55,7 +55,6 @@ describe("restoreSelectionOnEditorActivate", () => {
 			pathDidChange: true,
 			pendingRestore: {
 				found: false,
-				selection: null,
 			},
 			restoreHistorySelection,
 			focusEditorAtDefaultSelection,
@@ -85,7 +84,6 @@ describe("restoreSelectionOnEditorActivate", () => {
 			pathDidChange: false,
 			pendingRestore: {
 				found: false,
-				selection: null,
 			},
 			restoreHistorySelection,
 			focusEditorAtDefaultSelection,
