@@ -62,6 +62,7 @@ export function FileExplorer() {
 		setCurrentCollectionPath,
 		activeTabPath,
 		openTab,
+		openTabInNewTab,
 		aiLockedEntryPaths,
 		selectedEntryPaths,
 		selectionAnchorPath,
@@ -90,6 +91,7 @@ export function FileExplorer() {
 			setCurrentCollectionPath: state.setCurrentCollectionPath,
 			activeTabPath: state.getActiveTabPath(),
 			openTab: state.openTab,
+			openTabInNewTab: state.openTabInNewTab,
 			aiLockedEntryPaths: state.aiLockedEntryPaths,
 			selectedEntryPaths: state.selectedEntryPaths,
 			selectionAnchorPath: state.selectionAnchorPath,
@@ -292,6 +294,7 @@ export function FileExplorer() {
 	const handleEntryPrimaryAction = useEntryPrimaryAction({
 		handleItemPress,
 		openTab,
+		openTabInNewTab,
 		openImagePreview,
 		toggleExpanded,
 	})

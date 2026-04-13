@@ -25,7 +25,7 @@ export function getSelectionMode(
 		return "range"
 	}
 
-	if (modifiers?.metaKey || modifiers?.ctrlKey) {
+	if (modifiers?.altKey) {
 		return "toggle"
 	}
 

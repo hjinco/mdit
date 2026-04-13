@@ -115,7 +115,7 @@ describe("getRangeIds", () => {
 })
 
 describe("selectFileTreeItems", () => {
-	it("preserves existing selection on toggle selection", () => {
+	it("preserves existing selection on alt toggle selection", () => {
 		const visibleIds = [
 			"/workspace/docs",
 			"/workspace/docs/a.md",
@@ -129,7 +129,7 @@ describe("selectFileTreeItems", () => {
 			selectedIds: new Set(["/workspace/docs/a.md"]),
 			anchorId: "/workspace/docs/a.md",
 			modifiers: {
-				metaKey: true,
+				altKey: true,
 			},
 		})
 

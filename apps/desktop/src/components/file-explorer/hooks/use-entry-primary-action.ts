@@ -7,41 +7,119 @@ import { isImageFile } from "@/utils/file-icon"
 type UseEntryPrimaryActionParams = {
 	handleItemPress: (id: string, modifiers?: FileTreeSelectionModifiers) => void
 	openTab: (path: string) => void
+	openTabInNewTab: (path: string) => void
 	openImagePreview: (path: string) => void
 	toggleExpanded: (path: string) => void
+}
+
+type EntryPrimaryActionDeps = UseEntryPrimaryActionParams
+
+type EntryPrimaryActionEvent = Pick<
+	MouseEvent<HTMLButtonElement>,
+	"altKey" | "ctrlKey" | "metaKey" | "shiftKey" | "stopPropagation"
+>
+
+function getSelectionModifiers(
+	entry: WorkspaceEntry,
+	event: EntryPrimaryActionEvent,
+	isPrimaryModifier: boolean,
+): FileTreeSelectionModifiers {
+	const modifiers: FileTreeSelectionModifiers = {
+		shiftKey: event.shiftKey,
+		metaKey: event.metaKey,
+		ctrlKey: event.ctrlKey,
+		altKey: event.altKey,
+	}
+
+	if (
+		entry.name.endsWith(".md") &&
+		isPrimaryModifier &&
+		!event.shiftKey &&
+		!event.altKey
+	) {
+		modifiers.metaKey = false
+		modifiers.ctrlKey = false
+	}
+
+	return modifiers
+}
+
+export function handleExplorerEntryPrimaryAction(
+	entry: WorkspaceEntry,
+	event: EntryPrimaryActionEvent,
+	{
+		handleItemPress,
+		openTab,
+		openTabInNewTab,
+		openImagePreview,
+		toggleExpanded,
+	}: EntryPrimaryActionDeps,
+) {
+	event.stopPropagation()
+
+	const isPrimaryModifier = event.metaKey || event.ctrlKey
+	const isRange = event.shiftKey
+	const isToggleModifier = event.altKey
+	const isMarkdownNote = entry.name.endsWith(".md")
+	handleItemPress(
+		entry.path,
+		getSelectionModifiers(entry, event, isPrimaryModifier),
+	)
+
+	if (isRange || isToggleModifier) {
+		return
+	}
+
+	if (entry.isDirectory) {
+		if (!isPrimaryModifier) {
+			toggleExpanded(entry.path)
+		}
+		return
+	}
+
+	if (isMarkdownNote) {
+		if (isPrimaryModifier) {
+			openTabInNewTab(entry.path)
+			return
+		}
+
+		openTab(entry.path)
+		return
+	}
+
+	if (!isPrimaryModifier && isImageFile(entry.name)) {
+		openImagePreview(entry.path)
+		return
+	}
+
+	if (!isPrimaryModifier) {
+		revealInFileManager(entry.path, entry.isDirectory)
+	}
 }
 
 export const useEntryPrimaryAction = ({
 	handleItemPress,
 	openTab,
+	openTabInNewTab,
 	openImagePreview,
 	toggleExpanded,
 }: UseEntryPrimaryActionParams) => {
 	return useCallback(
 		(entry: WorkspaceEntry, event: MouseEvent<HTMLButtonElement>) => {
-			event.stopPropagation()
-			const isMulti = event.metaKey || event.ctrlKey
-			const isRange = event.shiftKey
-
-			handleItemPress(entry.path, {
-				shiftKey: event.shiftKey,
-				metaKey: event.metaKey,
-				ctrlKey: event.ctrlKey,
-				altKey: event.altKey,
+			handleExplorerEntryPrimaryAction(entry, event, {
+				handleItemPress,
+				openTab,
+				openTabInNewTab,
+				openImagePreview,
+				toggleExpanded,
 			})
-
-			if (!isRange && !isMulti) {
-				if (entry.isDirectory) {
-					toggleExpanded(entry.path)
-				} else if (entry.name.endsWith(".md")) {
-					openTab(entry.path)
-				} else if (isImageFile(entry.name)) {
-					openImagePreview(entry.path)
-				} else {
-					revealInFileManager(entry.path, entry.isDirectory)
-				}
-			}
 		},
-		[handleItemPress, openTab, openImagePreview, toggleExpanded],
+		[
+			handleItemPress,
+			openTab,
+			openTabInNewTab,
+			openImagePreview,
+			toggleExpanded,
+		],
 	)
 }
