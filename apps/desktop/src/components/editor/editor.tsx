@@ -7,6 +7,7 @@ import {
 	NOTE_TITLE_KEY,
 	stripEditorTitleBlock,
 } from "@mdit/editor/title"
+import { getFileNameFromPath } from "@mdit/utils/path-utils"
 import { getPortableNoteTitleValidationError } from "@mdit/utils/portable-filename"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
@@ -247,8 +248,9 @@ function EditorContent({
 		}
 
 		const rawTitle = getEditorTitleText(editor.children as Value)
+		const currentFileName = getFileNameFromPath(document.path)
 		const nextFileName = `${rawTitle}.md`
-		if (!rawTitle || nextFileName === document.name) {
+		if (!rawTitle || nextFileName === currentFileName) {
 			return document.path
 		}
 
@@ -259,7 +261,7 @@ function EditorContent({
 
 		try {
 			const renamedPath = await store.renameEntry(
-				{ path: document.path, name: document.name, isDirectory: false },
+				{ path: document.path, name: currentFileName, isDirectory: false },
 				nextFileName,
 			)
 
