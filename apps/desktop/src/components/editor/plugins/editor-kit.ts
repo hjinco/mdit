@@ -30,7 +30,7 @@ import { TableKit } from "@mdit/editor/table"
 import { createTagKit } from "@mdit/editor/tag"
 import { createNoteTitleKit } from "@mdit/editor/title"
 import { TocKit } from "@mdit/editor/toc"
-import { toast } from "sonner"
+import { getPortableNoteTitleValidationError } from "@mdit/utils/portable-filename"
 import { desktopAIMenuHost } from "../hosts/ai-menu-host"
 import { createDesktopBlockSelectionHost } from "../hosts/block-selection-host"
 import { desktopFilePasteHost } from "../hosts/file-paste-host"
@@ -65,12 +65,10 @@ export const createEditorKit = ({
 		...createAIKit({ host: desktopAIMenuHost }),
 		...createFilePasteKit({ host: desktopFilePasteHost }),
 		...createNoteTitleKit({
-			onInvalidInput: () => {
-				toast.error(
-					"Title contains characters that cannot be used in file names.",
-				)
-			},
 			onExitTitle: onTitleExit,
+			titleInputPolicy: {
+				getValidationError: getPortableNoteTitleValidationError,
+			},
 		}),
 		...AutoformatKit,
 		...BasicBlocksKit,

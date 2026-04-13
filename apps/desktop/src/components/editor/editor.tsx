@@ -5,9 +5,9 @@ import {
 	getEditorTitleText,
 	injectEditorTitleBlock,
 	NOTE_TITLE_KEY,
-	normalizeEditorTitleText,
 	stripEditorTitleBlock,
 } from "@mdit/editor/title"
+import { getPortableNoteTitleValidationError } from "@mdit/utils/portable-filename"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
 	type KeyboardEvent,
@@ -246,18 +246,34 @@ function EditorContent({
 			return path
 		}
 
-		const nextTitle = normalizeEditorTitleText(
-			getEditorTitleText(editor.children as Value),
-		)
-
-		if (!nextTitle || nextTitle === document.name) {
+		const rawTitle = getEditorTitleText(editor.children as Value)
+		const nextFileName = `${rawTitle}.md`
+		if (!rawTitle || nextFileName === document.name) {
 			return document.path
 		}
 
-		return store.renameEntry(
-			{ path: document.path, name: document.name, isDirectory: false },
-			`${nextTitle}.md`,
-		)
+		const validationError = getPortableNoteTitleValidationError(rawTitle)
+		if (validationError) {
+			return document.path
+		}
+
+		try {
+			const renamedPath = await store.renameEntry(
+				{ path: document.path, name: document.name, isDirectory: false },
+				nextFileName,
+			)
+
+			if (renamedPath === document.path) {
+				toast.error("Failed to rename note.")
+			}
+
+			return renamedPath
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to rename note.",
+			)
+			return document.path
+		}
 	}, [documentId, editor, path])
 
 	useEffect(() => {
@@ -267,7 +283,7 @@ function EditorContent({
 	const handleSave = useCallback(
 		async (_trigger: SaveTrigger) => {
 			if (isSaved.current) {
-				return
+				return true
 			}
 
 			try {
@@ -282,10 +298,14 @@ function EditorContent({
 
 				isSaved.current = true
 				setDocumentSaved(documentId, true)
-			} catch (_error) {
+				return true
+			} catch (error) {
 				isSaved.current = false
 				setDocumentSaved(documentId, false)
-				toast.error("Failed to save note")
+				toast.error(
+					error instanceof Error ? error.message : "Failed to save note",
+				)
+				return false
 			}
 		},
 		[
@@ -319,8 +339,8 @@ function EditorContent({
 		const closeListener = appWindow.listen(
 			"tauri://close-requested",
 			async () => {
-				await handleSave("exit")
-				if (destroyOnClose) {
+				const didSave = await handleSave("exit")
+				if (destroyOnClose && didSave) {
 					appWindow.destroy()
 				}
 			},

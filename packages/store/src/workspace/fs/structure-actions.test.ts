@@ -3,18 +3,18 @@ import { createActionTestContext } from "../shared/action-test-helpers"
 import { createFsStructureActions } from "./structure-actions"
 
 describe("fs-structure-actions", () => {
-	it("createFolder sanitizes separators and delegates entry creation", async () => {
+	it("createFolder sanitizes names with the portable filename policy", async () => {
 		const { context, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryCreated = vi.fn().mockResolvedValue(undefined)
 
 		const createdPath = await actions.createFolder("/ws", "  a/b\\c  ")
 
-		expect(createdPath).toBe("/ws/abc")
+		expect(createdPath).toBe("/ws/  a b c")
 		expect(getState().entryCreated).toHaveBeenCalled()
 	})
 
-	it("createNote sanitizes initialName separators before file creation", async () => {
+	it("createNote sanitizes initialName with the portable filename policy", async () => {
 		const { context, deps, getState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryCreated = vi.fn().mockResolvedValue(undefined)
@@ -23,15 +23,15 @@ describe("fs-structure-actions", () => {
 			initialName: "../../etc/passwd",
 		})
 
-		expect(createdPath).toBe("/ws/....etcpasswd.md")
+		expect(createdPath).toBe("/ws/. etc passwd.md")
 		expect(deps.fileSystemRepository.writeTextFile).toHaveBeenCalledWith(
-			"/ws/....etcpasswd.md",
+			"/ws/. etc passwd.md",
 			"",
 		)
 
 		const createdEntryName =
 			getState().entryCreated.mock.calls[0]?.[0]?.entry?.name
-		expect(createdEntryName).toBe("....etcpasswd.md")
+		expect(createdEntryName).toBe(". etc passwd.md")
 		expect(createdEntryName).not.toMatch(/[\\/]/)
 	})
 
@@ -106,7 +106,7 @@ describe("fs-structure-actions", () => {
 		expect(getState().selectionAnchorPath).toBe("/ws/Untitled.md")
 	})
 
-	it("renameEntry sanitizes separators from newName", async () => {
+	it("renameEntry preserves valid names without sanitizing them", async () => {
 		const { context, deps, getState, setState } = createActionTestContext()
 		const actions = createFsStructureActions(context)
 		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
@@ -118,20 +118,60 @@ describe("fs-structure-actions", () => {
 				name: "old.md",
 				isDirectory: false,
 			},
-			"a/b\\c",
+			"renamed.md",
 		)
 
-		expect(renamedPath).toBe("/ws/abc")
+		expect(renamedPath).toBe("/ws/renamed.md")
 		expect(deps.fileSystemRepository.rename).toHaveBeenCalledWith(
 			"/ws/old.md",
-			"/ws/abc",
+			"/ws/renamed.md",
 		)
 		expect(getState().entryRenamed).toHaveBeenCalledWith(
 			expect.objectContaining({
-				newPath: "/ws/abc",
-				newName: "abc",
+				newPath: "/ws/renamed.md",
+				newName: "renamed.md",
 			}),
 		)
+	})
+
+	it("renameEntry rejects invalid names instead of rewriting them", async () => {
+		const { context, deps, getState, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		getState().entryRenamed = vi.fn().mockResolvedValue(undefined)
+		setState({ workspacePath: "/ws" })
+
+		await expect(
+			actions.renameEntry(
+				{
+					path: "/ws/old.md",
+					name: "old.md",
+					isDirectory: false,
+				},
+				"CON.md",
+			),
+		).rejects.toThrow("Name cannot be used as a file name.")
+
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
+		expect(getState().entryRenamed).not.toHaveBeenCalled()
+	})
+
+	it("renameEntry rejects names with invalid path characters", async () => {
+		const { context, deps, setState } = createActionTestContext()
+		const actions = createFsStructureActions(context)
+		setState({ workspacePath: "/ws" })
+
+		await expect(
+			actions.renameEntry(
+				{
+					path: "/ws/old.md",
+					name: "old.md",
+					isDirectory: false,
+				},
+				"a/b\\c",
+			),
+		).rejects.toThrow("Name cannot be used as a file name.")
+
+		expect(deps.fileSystemRepository.rename).not.toHaveBeenCalled()
 	})
 
 	it("renameEntry allows case-only path changes when destination exists", async () => {

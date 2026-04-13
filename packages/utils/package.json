@@ -12,7 +12,8 @@
 		"./array-utils": "./src/array-utils.ts",
 		"./keyboard-shortcut": "./src/keyboard-shortcut.ts",
 		"./path-utils": "./src/path-utils.ts",
-		"./platform": "./src/platform.ts"
+		"./platform": "./src/platform.ts",
+		"./portable-filename": "./src/portable-filename.ts"
 	},
 	"dependencies": {
 		"pathe": "^2.0.3"

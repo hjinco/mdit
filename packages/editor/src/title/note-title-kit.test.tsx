@@ -7,9 +7,14 @@ import {
 	getEditorTitleText,
 	injectEditorTitleBlock,
 	NOTE_TITLE_KEY,
-	normalizeEditorTitleText,
+	type NoteTitleInputPolicy,
 	stripEditorTitleBlock,
 } from "./note-title-kit"
+
+const testTitleInputPolicy: NoteTitleInputPolicy = {
+	getValidationError: (text) =>
+		text.includes(":") ? "Name cannot be used as a file name." : null,
+}
 
 describe("note-title-kit", () => {
 	it("injects a title block from the current file name", () => {
@@ -25,6 +30,15 @@ describe("note-title-kit", () => {
 			type: KEYS.p,
 			children: [{ text: "Body" }],
 		})
+	})
+
+	it("preserves the raw file stem when injecting the editor title block", () => {
+		const value = injectEditorTitleBlock(
+			"/workspace/Client:Draft.md",
+			[] as Value,
+		)
+
+		expect(value[0]).toEqual(createNoteTitleBlock("Client:Draft"))
 	})
 
 	it("keeps frontmatter after the editor-only title block", () => {
@@ -78,14 +92,10 @@ describe("note-title-kit", () => {
 		).toBe("Title")
 	})
 
-	it("normalizes forbidden filename characters from title text", () => {
-		expect(normalizeEditorTitleText('  Hello:/\\"*?<>|\nWorld\t')).toBe(
-			"Hello World",
-		)
-	})
-
 	it("strips marks from title children on change", () => {
-		const plugin = createNoteTitlePlugin()
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
 		const replaceNodes = vi.fn()
 		const editor = {
 			children: [
@@ -95,6 +105,7 @@ describe("note-title-kit", () => {
 				},
 			],
 			api: {
+				block: vi.fn().mockReturnValue([{ type: NOTE_TITLE_KEY }, [0]]),
 				node: vi.fn().mockReturnValue(true),
 			},
 			tf: {
@@ -110,8 +121,45 @@ describe("note-title-kit", () => {
 		})
 	})
 
+	it("does not sanitize the initial raw file stem while editing outside the title", () => {
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
+		const replaceNodes = vi.fn()
+		const editor = {
+			children: [
+				{
+					type: NOTE_TITLE_KEY,
+					children: [{ text: "Client:Draft" }],
+				},
+				{
+					type: KEYS.p,
+					children: [{ text: "Body" }],
+				},
+			],
+			api: {
+				block: vi
+					.fn()
+					.mockReturnValue([
+						{ type: KEYS.p, children: [{ text: "Body" }] },
+						[1],
+					]),
+			},
+			tf: {
+				insertNodes: vi.fn(),
+				replaceNodes,
+			},
+		} as any
+
+		plugin.handlers.onChange?.({ editor } as any)
+
+		expect(replaceNodes).not.toHaveBeenCalled()
+	})
+
 	it("short-circuits title paste when another handler already prevented it", () => {
-		const plugin = createNoteTitlePlugin()
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
 		const insertText = vi.fn()
 		const event = {
 			defaultPrevented: true,
@@ -133,7 +181,9 @@ describe("note-title-kit", () => {
 	})
 
 	it("returns handled after applying title paste text", () => {
-		const plugin = createNoteTitlePlugin()
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
 		const insertText = vi.fn()
 		const preventDefault = vi.fn()
 		const stopPropagation = vi.fn()
@@ -162,8 +212,42 @@ describe("note-title-kit", () => {
 		expect(insertText).toHaveBeenCalledWith("Hello")
 	})
 
+	it("pastes raw title text without sanitizing it", () => {
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
+		const insertText = vi.fn()
+		const preventDefault = vi.fn()
+		const stopPropagation = vi.fn()
+		const editor = {
+			api: {
+				block: vi.fn().mockReturnValue([{ type: NOTE_TITLE_KEY }, [0]]),
+			},
+			tf: {
+				insertText,
+			},
+		} as any
+		const event = {
+			defaultPrevented: false,
+			clipboardData: {
+				getData: vi.fn().mockReturnValue("Hello:World"),
+			},
+			preventDefault,
+			stopPropagation,
+		} as any
+
+		const result = plugin.handlers.onPaste?.({ editor, event } as any)
+
+		expect(result).toBe(true)
+		expect(preventDefault).toHaveBeenCalledTimes(1)
+		expect(stopPropagation).toHaveBeenCalledTimes(1)
+		expect(insertText).toHaveBeenCalledWith("Hello:World")
+	})
+
 	it("blocks mark hotkeys inside the title", () => {
-		const plugin = createNoteTitlePlugin()
+		const plugin = createNoteTitlePlugin({
+			titleInputPolicy: testTitleInputPolicy,
+		})
 		const preventDefault = vi.fn()
 		const stopPropagation = vi.fn()
 		const editor = {
@@ -211,7 +295,10 @@ describe("note-title-kit", () => {
 			stopPropagation,
 		} as any
 
-		createNoteTitlePlugin({ onExitTitle }).handlers.onKeyDown?.({
+		createNoteTitlePlugin({
+			onExitTitle,
+			titleInputPolicy: testTitleInputPolicy,
+		}).handlers.onKeyDown?.({
 			editor,
 			event,
 		} as any)

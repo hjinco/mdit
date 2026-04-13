@@ -1,3 +1,5 @@
+import { tooltipContentVariants } from "@mdit/ui/components/tooltip"
+import { cn } from "@mdit/ui/lib/utils"
 import { KEYS, type Value } from "platejs"
 import {
 	createPlatePlugin,
@@ -15,18 +17,20 @@ import { HeadingElement } from "../basic/node-heading"
 import { requestFrontmatterFocus } from "../frontmatter/frontmatter-focus"
 
 const FRONTMATTER_KEY = "frontmatter"
-const NOTE_TITLE_INVALID_CHAR_REGEX = /[/\\:*?"<>|]/
-const NOTE_TITLE_INVALID_CHARS_GLOBAL_REGEX = /[/\\:*?"<>|]/g
 const NOTE_TITLE_BLOCKED_HOTKEY_REGEX = /^[1-6]$/
-const NOTE_TITLE_WHITESPACE_REGEX = /[\r\n\t]+/g
 const NOTE_TITLE_DOM_HIDDEN_TEXT_REGEX = /[\u200B\uFEFF\r\n\t]/g
 const NOTE_TITLE_PLACEHOLDER = "Untitled"
+const NOTE_TITLE_PENDING_TRAILING_SUFFIX_REGEX = /[. ]+$/
 
 export const NOTE_TITLE_KEY = "note_title"
 
+export type NoteTitleInputPolicy = {
+	getValidationError?: (text: string) => string | null
+}
+
 type NoteTitlePluginOptions = {
-	onInvalidInput?: () => void
 	onExitTitle?: () => void
+	titleInputPolicy?: NoteTitleInputPolicy
 }
 
 type NoteTitleElementNode = {
@@ -43,17 +47,10 @@ function getFileNameStem(path: string): string {
 	return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName
 }
 
-export function normalizeEditorTitleText(text: string): string {
-	return text
-		.replace(NOTE_TITLE_WHITESPACE_REGEX, " ")
-		.replace(NOTE_TITLE_INVALID_CHARS_GLOBAL_REGEX, "")
-		.trim()
-}
-
 export function createNoteTitleBlock(text: string): NoteTitleElementNode {
 	return {
 		type: NOTE_TITLE_KEY,
-		children: [{ text: normalizeEditorTitleText(text) }],
+		children: [{ text }],
 	}
 }
 
@@ -185,7 +182,6 @@ function focusOrCreateBodyBlock(editor: PlateEditor) {
 
 function sanitizeTitleNodeIfNeeded(
 	editor: Pick<PlateEditor, "children" | "api" | "tf">,
-	onInvalidInput?: () => void,
 ) {
 	const titleNode = editor.children[0]
 	if (!isNoteTitleNode(titleNode)) {
@@ -193,118 +189,165 @@ function sanitizeTitleNodeIfNeeded(
 	}
 
 	const currentText = getEditorTitleText(editor.children as Value)
-	const nextText = normalizeEditorTitleText(currentText)
-
-	if (currentText === nextText && !hasNonPlainTitleChildren(titleNode)) {
+	if (!hasNonPlainTitleChildren(titleNode)) {
 		return
 	}
 
-	replaceEditorTitleText(editor, nextText)
-	onInvalidInput?.()
+	replaceEditorTitleText(editor, currentText)
 }
 
-function NoteTitleElement(props: PlateElementProps) {
-	const [element, setElement] = useState<HTMLElement | null>(null)
-	const [hasDomText, setHasDomText] = useState(false)
-	const isEmpty =
-		isNoteTitleNode(props.element) && isNoteTitleEmpty(props.element)
-	const isComposing = props.editor.api.isComposing()
-	const syncDomText = useCallback(
-		(nextElement?: HTMLElement | null) => {
-			setHasDomText(hasVisibleTitleDomText(nextElement ?? element))
-		},
-		[element],
-	)
+function getTitleValidationState(
+	editor: PlateEditor,
+	getValidationError: (text: string) => string | null,
+) {
+	const currentText = getEditorTitleText(editor.children as Value)
+	const validationError =
+		currentText.length > 0 ? getValidationError(currentText) : null
+	const shouldDeferValidationWarning =
+		isSelectionInTitle(editor) &&
+		NOTE_TITLE_PENDING_TRAILING_SUFFIX_REGEX.test(currentText)
 
-	useEffect(() => {
-		syncDomText(element)
-		if (!element) {
-			return
-		}
+	return {
+		validationError,
+		shouldDeferValidationWarning,
+		visibleValidationError: shouldDeferValidationWarning
+			? null
+			: validationError,
+	}
+}
 
-		const observer = new MutationObserver(() => {
+function createNoteTitleElement(
+	getValidationError: (text: string) => string | null,
+) {
+	return function NoteTitleElement(props: PlateElementProps) {
+		const [element, setElement] = useState<HTMLElement | null>(null)
+		const [hasDomText, setHasDomText] = useState(false)
+		const isEmpty =
+			isNoteTitleNode(props.element) && isNoteTitleEmpty(props.element)
+		const isComposing = props.editor.api.isComposing()
+		const { visibleValidationError } = getTitleValidationState(
+			props.editor,
+			getValidationError,
+		)
+		const syncDomText = useCallback(
+			(nextElement?: HTMLElement | null) => {
+				setHasDomText(hasVisibleTitleDomText(nextElement ?? element))
+			},
+			[element],
+		)
+
+		useEffect(() => {
 			syncDomText(element)
-		})
+			if (!element) {
+				return
+			}
 
-		observer.observe(element, {
-			characterData: true,
-			childList: true,
-			subtree: true,
-		})
+			const observer = new MutationObserver(() => {
+				syncDomText(element)
+			})
 
-		return () => {
-			observer.disconnect()
-		}
-	}, [element, syncDomText])
+			observer.observe(element, {
+				characterData: true,
+				childList: true,
+				subtree: true,
+			})
 
-	const titlePlaceholderClassName =
-		isEmpty && !isComposing && !hasDomText
-			? "before:pointer-events-none before:absolute before:top-0 before:left-0 before:text-muted-foreground/55 before:content-[attr(data-note-title-placeholder)]"
-			: undefined
+			return () => {
+				observer.disconnect()
+			}
+		}, [element, syncDomText])
 
-	return (
-		<HeadingElement
-			variant="h1"
-			{...props}
-			attributes={{
-				...props.attributes,
-				className: [props.attributes.className, titlePlaceholderClassName]
-					.filter(Boolean)
-					.join(" "),
-				"data-note-title-block": "true",
-				"data-note-title-placeholder": NOTE_TITLE_PLACEHOLDER,
-				ref: (node: HTMLElement | null) => {
-					if (typeof props.attributes.ref === "function") {
-						props.attributes.ref(node)
-					} else if (props.attributes.ref) {
-						props.attributes.ref.current = node
-					}
-					setElement(node)
-					syncDomText(node)
-				},
-				onBeforeInput: (event: FormEvent<HTMLElement>) => {
-					if (typeof props.attributes.onBeforeInput === "function") {
-						props.attributes.onBeforeInput(event)
-					}
-					syncDomText(event.currentTarget as HTMLElement)
-				},
-				onInput: (event: FormEvent<HTMLElement>) => {
-					if (typeof props.attributes.onInput === "function") {
-						props.attributes.onInput(event)
-					}
-					syncDomText(event.currentTarget as HTMLElement)
-				},
-				onCompositionStart: (event: CompositionEvent<HTMLElement>) => {
-					if (typeof props.attributes.onCompositionStart === "function") {
-						props.attributes.onCompositionStart(event)
-					}
-					syncDomText(event.currentTarget as HTMLElement)
-				},
-				onCompositionUpdate: (event: CompositionEvent<HTMLElement>) => {
-					if (typeof props.attributes.onCompositionUpdate === "function") {
-						props.attributes.onCompositionUpdate(event)
-					}
-					syncDomText(event.currentTarget as HTMLElement)
-				},
-				onCompositionEnd: (event: CompositionEvent<HTMLElement>) => {
-					if (typeof props.attributes.onCompositionEnd === "function") {
-						props.attributes.onCompositionEnd(event)
-					}
-					syncDomText(event.currentTarget as HTMLElement)
-				},
-			}}
-		/>
-	)
+		const titlePlaceholderClassName =
+			isEmpty && !isComposing && !hasDomText
+				? "before:pointer-events-none before:absolute before:top-0 before:left-0 before:text-muted-foreground/55 before:content-[attr(data-note-title-placeholder)]"
+				: undefined
+
+		return (
+			<HeadingElement
+				variant="h1"
+				{...props}
+				children={
+					<>
+						{visibleValidationError ? (
+							<div
+								contentEditable={false}
+								className={cn(
+									tooltipContentVariants,
+									"pointer-events-none absolute top-0 left-0 z-10 max-w-64 -translate-y-[calc(100%+0.5rem)]",
+								)}
+							>
+								{visibleValidationError}
+							</div>
+						) : null}
+						{props.children}
+					</>
+				}
+				attributes={{
+					...props.attributes,
+					className: cn(
+						props.attributes.className,
+						titlePlaceholderClassName,
+						visibleValidationError && "text-destructive/80",
+					),
+					"aria-invalid": visibleValidationError ? true : undefined,
+					"data-note-title-block": "true",
+					"data-note-title-placeholder": NOTE_TITLE_PLACEHOLDER,
+					ref: (node: HTMLElement | null) => {
+						if (typeof props.attributes.ref === "function") {
+							props.attributes.ref(node)
+						} else if (props.attributes.ref) {
+							props.attributes.ref.current = node
+						}
+						setElement(node)
+						syncDomText(node)
+					},
+					onBeforeInput: (event: FormEvent<HTMLElement>) => {
+						if (typeof props.attributes.onBeforeInput === "function") {
+							props.attributes.onBeforeInput(event)
+						}
+						syncDomText(event.currentTarget as HTMLElement)
+					},
+					onInput: (event: FormEvent<HTMLElement>) => {
+						if (typeof props.attributes.onInput === "function") {
+							props.attributes.onInput(event)
+						}
+						syncDomText(event.currentTarget as HTMLElement)
+					},
+					onCompositionStart: (event: CompositionEvent<HTMLElement>) => {
+						if (typeof props.attributes.onCompositionStart === "function") {
+							props.attributes.onCompositionStart(event)
+						}
+						syncDomText(event.currentTarget as HTMLElement)
+					},
+					onCompositionUpdate: (event: CompositionEvent<HTMLElement>) => {
+						if (typeof props.attributes.onCompositionUpdate === "function") {
+							props.attributes.onCompositionUpdate(event)
+						}
+						syncDomText(event.currentTarget as HTMLElement)
+					},
+					onCompositionEnd: (event: CompositionEvent<HTMLElement>) => {
+						if (typeof props.attributes.onCompositionEnd === "function") {
+							props.attributes.onCompositionEnd(event)
+						}
+						syncDomText(event.currentTarget as HTMLElement)
+					},
+				}}
+			/>
+		)
+	}
 }
 
 export function createNoteTitlePlugin({
-	onInvalidInput,
 	onExitTitle,
+	titleInputPolicy,
 }: NoteTitlePluginOptions = {}) {
+	const getValidationError =
+		titleInputPolicy?.getValidationError ?? (() => null)
+
 	return createPlatePlugin({
 		key: NOTE_TITLE_KEY,
 		node: {
-			component: NoteTitleElement,
+			component: createNoteTitleElement(getValidationError),
 			isElement: true,
 		},
 		handlers: {
@@ -314,7 +357,7 @@ export function createNoteTitlePlugin({
 					return
 				}
 
-				sanitizeTitleNodeIfNeeded(editor, onInvalidInput)
+				sanitizeTitleNodeIfNeeded(editor)
 			},
 			onKeyDown: ({ editor, event }) => {
 				if (!isSelectionInTitle(editor)) {
@@ -368,18 +411,6 @@ export function createNoteTitlePlugin({
 					event.stopPropagation()
 					return
 				}
-
-				if (
-					!event.metaKey &&
-					!event.ctrlKey &&
-					!event.altKey &&
-					event.key.length === 1 &&
-					NOTE_TITLE_INVALID_CHAR_REGEX.test(event.key)
-				) {
-					event.preventDefault()
-					event.stopPropagation()
-					onInvalidInput?.()
-				}
 			},
 			onPaste: ({ editor, event }) => {
 				if (event.defaultPrevented) {
@@ -395,17 +426,9 @@ export function createNoteTitlePlugin({
 					return
 				}
 
-				const nextText = normalizeEditorTitleText(pastedText)
 				event.preventDefault()
 				event.stopPropagation()
-
-				if (nextText.length > 0) {
-					editor.tf.insertText(nextText)
-				}
-
-				if (nextText !== pastedText) {
-					onInvalidInput?.()
-				}
+				editor.tf.insertText(pastedText)
 
 				return true
 			},

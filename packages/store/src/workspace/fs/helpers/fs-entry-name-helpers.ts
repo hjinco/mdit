@@ -1,9 +1,15 @@
-const PATH_SEPARATORS_REGEX = /[/\\]/g
+import {
+	getPortableEntryNameValidationError,
+	sanitizePortableEntryName,
+} from "@mdit/utils/portable-filename"
 
 /**
- * Sanitizes user-provided entry names by removing path separators to prevent
- * path traversal through file/folder name inputs.
+ * Sanitizes user-provided entry names with a shared portable filename policy.
  */
 export const sanitizeWorkspaceEntryName = (name: string): string => {
-	return name.replace(PATH_SEPARATORS_REGEX, "").trim()
+	return sanitizePortableEntryName(name)
+}
+
+export const getWorkspaceEntryNameValidationError = (name: string) => {
+	return getPortableEntryNameValidationError(name)
 }

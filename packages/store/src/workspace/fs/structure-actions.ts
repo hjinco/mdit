@@ -4,7 +4,10 @@ import type { WorkspaceActionContext } from "../workspace-action-context"
 import type { WorkspaceEntry } from "../workspace-state"
 import { getActiveTabPathForWorkspacePolicy } from "../workspace-tab-policy"
 import { hasLockedPathConflict, resolveLockPathsForSource } from "./guards"
-import { sanitizeWorkspaceEntryName } from "./helpers/fs-entry-name-helpers"
+import {
+	getWorkspaceEntryNameValidationError,
+	sanitizeWorkspaceEntryName,
+} from "./helpers/fs-entry-name-helpers"
 import { generateUniqueFileName } from "./helpers/unique-filename-helpers"
 import {
 	waitForActiveTabDescendantToSettle,
@@ -202,15 +205,19 @@ export const createFsStructureActions = (
 			return entry.path
 		}
 
-		const trimmedName = sanitizeWorkspaceEntryName(newName)
-		if (!trimmedName || trimmedName === entry.name) {
+		if (!newName || newName === entry.name) {
 			return entry.path
+		}
+
+		const validationError = getWorkspaceEntryNameValidationError(newName)
+		if (validationError) {
+			throw new Error(validationError)
 		}
 
 		await waitForActiveTabDescendantToSettle(ctx, entry.path)
 
 		const directoryPath = dirname(entry.path)
-		const nextPath = join(directoryPath, trimmedName)
+		const nextPath = join(directoryPath, newName)
 
 		if (nextPath === entry.path) {
 			return entry.path
@@ -247,7 +254,7 @@ export const createFsStructureActions = (
 			oldPath: entry.path,
 			newPath: nextPath,
 			isDirectory: entry.isDirectory,
-			newName: trimmedName,
+			newName,
 		})
 
 		return nextPath

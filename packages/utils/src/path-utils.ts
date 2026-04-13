@@ -1,4 +1,5 @@
 import { normalize } from "pathe"
+import { sanitizePortableEntryName } from "./portable-filename"
 
 const PATH_SEGMENT_REGEX = /[/\\]/
 const BACKSLASH_REGEX = /\\/g
@@ -103,19 +104,18 @@ export const getFileNameWithoutExtension = (path: string): string => {
 }
 
 /**
- * Sanitizes a string to be used as a filename by removing invalid characters.
- * Removes characters that are not allowed in filenames: `/ \ : * ? " < > |`
- * and trims whitespace from both ends.
+ * Sanitizes a string to be used as a portable filename.
+ * Applies the shared cross-platform filename policy used by the app.
  *
  * @param text - The text to sanitize
  * @returns The sanitized filename-safe string
  *
  * @example
  * sanitizeFilename('My Document: Title?') // 'My Document Title'
- * sanitizeFilename('  File/Name\\Test  ') // 'FileNameTest'
+ * sanitizeFilename('  File/Name\\Test  ') // '  File Name Test'
  */
 export const sanitizeFilename = (text: string): string => {
-	return text.replace(/[/\\:*?"<>|]/g, "").trim()
+	return sanitizePortableEntryName(text)
 }
 
 /**

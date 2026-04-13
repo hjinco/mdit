@@ -2,6 +2,7 @@ import { useDroppable } from "@dnd-kit/react"
 import { hasPathConflictWithLockedPaths } from "@mdit/utils/path-utils"
 import { motion } from "motion/react"
 import { useCallback, useRef, useState } from "react"
+import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
 import { useMoveNotesWithAI } from "@/components/common/explorer-agent/hooks/use-move-notes-with-ai"
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
@@ -172,6 +173,11 @@ export function FileExplorer() {
 		async (entry: WorkspaceEntry, nextName: string) => {
 			try {
 				await renameEntry(entry, nextName, { allowLockedSourcePath: true })
+			} catch (error) {
+				console.error("Failed to rename entry:", error)
+				toast.error(
+					error instanceof Error ? error.message : "Failed to rename entry.",
+				)
 			} finally {
 				unlockAiEntries([entry.path])
 				setRenamingEntryPath(null)

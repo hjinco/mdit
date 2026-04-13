@@ -1,3 +1,4 @@
+export type { NoteTitleInputPolicy } from "./note-title-kit"
 export {
 	createNoteTitleBlock,
 	createNoteTitleKit,
@@ -6,6 +7,5 @@ export {
 	injectEditorTitleBlock,
 	isNoteTitleNode,
 	NOTE_TITLE_KEY,
-	normalizeEditorTitleText,
 	stripEditorTitleBlock,
 } from "./note-title-kit"

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { toast } from "sonner"
 import type { WorkspaceEntry } from "@/store"
 
 type RenameEntry = (
@@ -37,6 +38,9 @@ export function useCollectionRename({
 				}
 			} catch (error) {
 				console.error("Failed to rename entry:", error)
+				toast.error(
+					error instanceof Error ? error.message : "Failed to rename entry.",
+				)
 			} finally {
 				setRenamingEntryPath(null)
 			}
