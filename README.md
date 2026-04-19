@@ -47,5 +47,5 @@ Current releases support macOS only. Windows and mobile are planned.
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.
+This project is licensed under the Apache License, Version 2.0.
 You can find the full license text in the LICENSE file.

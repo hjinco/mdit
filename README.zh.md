@@ -47,5 +47,5 @@ Mdit 适合这样的人：喜欢现代工作空间工具的写作体验，但也
 
 ## License
 
-本项目基于 GNU Affero General Public License v3 发布。
+本项目基于 Apache License, Version 2.0 发布。
 完整许可文本请参阅 `LICENSE` 文件。
