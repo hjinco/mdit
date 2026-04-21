@@ -26,6 +26,10 @@ import {
 	useReadOnly,
 } from "platejs/react"
 import { useEffect, useMemo, useState } from "react"
+import {
+	createCodeDrawingNodeFromCodeBlock,
+	isMermaidCodeBlockLanguage,
+} from "./code-block-drawing-utils"
 
 export function CodeBlockElement(props: PlateElementProps<TCodeBlockElement>) {
 	const { editor, element } = props
@@ -140,10 +144,20 @@ function CodeBlockCombobox() {
 									className="cursor-pointer"
 									value={language.value}
 									onSelect={(value) => {
-										editor.tf.setNodes<TCodeBlockElement>(
-											{ lang: value },
-											{ at: element },
-										)
+										if (isMermaidCodeBlockLanguage(value)) {
+											const path = editor.api.findPath(element)
+											if (path) {
+												editor.tf.replaceNodes(
+													createCodeDrawingNodeFromCodeBlock(element) as any,
+													{ at: path },
+												)
+											}
+										} else {
+											editor.tf.setNodes<TCodeBlockElement>(
+												{ lang: value },
+												{ at: element },
+											)
+										}
 										setSearchValue(value)
 										setOpen(false)
 									}}

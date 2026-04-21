@@ -1,6 +1,7 @@
 import { deserializeMd, serializeMd } from "@platejs/markdown"
 import { createSlateEditor, KEYS } from "platejs"
 import { describe, expect, it } from "vitest"
+import { CODE_DRAWING_KEY } from "../code"
 import { createNoteTitleBlock } from "../title"
 import { MarkdownKit, MarkdownKitNoMdx } from "./markdown-kit"
 import { OBSIDIAN_EMBED_KEY } from "./obsidian-embed-plugin"
@@ -392,6 +393,44 @@ describe("markdown-kit serialization", () => {
 		expect(markdown).toContain("\\end{equation}")
 	})
 
+	it("serializes Mermaid code drawings as fenced Mermaid blocks", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: CODE_DRAWING_KEY,
+				data: {
+					code: "flowchart TD\n  A --> B",
+					drawingType: "Mermaid",
+				},
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("```mermaid")
+		expect(markdown).toContain("flowchart TD")
+		expect(markdown).toContain("A --> B")
+	})
+
+	it("serializes PlantUml code drawings as fenced plantuml blocks", async () => {
+		const editor = createMarkdownEditor()
+		const value = [
+			{
+				type: CODE_DRAWING_KEY,
+				data: {
+					code: "@startuml\nAlice -> Bob: Hello\n@enduml",
+					drawingType: "PlantUml",
+				},
+				children: [{ text: "" }],
+			},
+		]
+
+		const markdown = serializeMd(editor, { value })
+		expect(markdown).toContain("```plantuml")
+		expect(markdown).toContain("@startuml")
+		expect(markdown).toContain("Alice -> Bob: Hello")
+	})
+
 	it("serializes canonical tags rows as a yaml list", async () => {
 		const editor = createMarkdownEditor()
 		const value = [
@@ -589,6 +628,53 @@ describe("markdown-kit deserialization", () => {
 			environment: "equation",
 			texExpression: "E=mc^2",
 		})
+	})
+
+	it("deserializes Mermaid fenced code blocks into code drawings", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(
+			editor,
+			"```mermaid\nflowchart TD\n  A --> B\n```",
+		)
+		const codeDrawingNode = findNodeByType(value as any[], CODE_DRAWING_KEY)
+
+		expect(codeDrawingNode).toMatchObject({
+			type: CODE_DRAWING_KEY,
+			data: {
+				code: "flowchart TD\n  A --> B",
+				drawingType: "Mermaid",
+			},
+		})
+	})
+
+	it("deserializes plantuml fenced code blocks into PlantUml drawings", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(
+			editor,
+			"```plantuml\n@startuml\nAlice -> Bob: Hello\n@enduml\n```",
+		)
+		const codeDrawingNode = findNodeByType(value as any[], CODE_DRAWING_KEY)
+
+		expect(codeDrawingNode).toMatchObject({
+			type: CODE_DRAWING_KEY,
+			data: {
+				code: "@startuml\nAlice -> Bob: Hello\n@enduml",
+				drawingType: "PlantUml",
+			},
+		})
+	})
+
+	it("round-trips Mermaid fenced code blocks", async () => {
+		const editor = createMarkdownEditor()
+		const value = deserializeMd(
+			editor,
+			"```mermaid\nsequenceDiagram\n  Alice->>Bob: Hello\n```",
+		)
+
+		const markdown = serializeMd(editor, { value: value as any })
+		expect(markdown).toContain("```mermaid")
+		expect(markdown).toContain("sequenceDiagram")
+		expect(markdown).toContain("Alice->>Bob: Hello")
 	})
 
 	it("deserializes Obsidian callouts into callout nodes", async () => {
