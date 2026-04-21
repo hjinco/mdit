@@ -21,6 +21,7 @@ import remarkFrontmatter from "remark-frontmatter"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import YAML from "yaml"
+import { CODE_DRAWING_KEY } from "../code/code-drawing-kit"
 import type { FrontmatterRow as KVRow } from "../frontmatter"
 import {
 	convertValueToType,
@@ -67,9 +68,11 @@ type MdastRoot = {
 type MdastNode = {
 	type?: string
 	children?: MdastNode[]
+	lang?: string
 	value?: string
 	data?: {
 		alias?: string
+		drawingType?: string
 		hName?: string
 		hProperties?: Record<string, unknown>
 		path?: string
@@ -80,6 +83,16 @@ type SlateNodeWithChildren = {
 	children: Descendant[]
 	[key: string]: unknown
 }
+
+const DRAWING_TYPE_BY_FENCE_LANGUAGE = {
+	flowchart: "Flowchart",
+	graphviz: "Graphviz",
+	mermaid: "Mermaid",
+	plantuml: "PlantUml",
+} as const
+
+type SupportedDrawingType =
+	(typeof DRAWING_TYPE_BY_FENCE_LANGUAGE)[keyof typeof DRAWING_TYPE_BY_FENCE_LANGUAGE]
 
 function createRowId() {
 	return Math.random().toString(36).slice(2, 9)
@@ -244,6 +257,56 @@ function createEmbedNodeData(
 	}
 }
 
+function visitMdast(node: MdastNode, visitor: (node: MdastNode) => void) {
+	visitor(node)
+
+	for (const child of node.children ?? []) {
+		visitMdast(child, visitor)
+	}
+}
+
+function fenceLanguageToDrawingType(
+	lang: unknown,
+): SupportedDrawingType | undefined {
+	if (typeof lang !== "string") {
+		return undefined
+	}
+
+	return DRAWING_TYPE_BY_FENCE_LANGUAGE[
+		lang.trim().toLowerCase() as keyof typeof DRAWING_TYPE_BY_FENCE_LANGUAGE
+	]
+}
+
+function drawingTypeToFenceLanguage(drawingType: unknown): string {
+	switch (drawingType) {
+		case "Flowchart":
+			return "flowchart"
+		case "Graphviz":
+			return "graphviz"
+		case "PlantUml":
+			return "plantuml"
+		default:
+			return "mermaid"
+	}
+}
+
+export function remarkCodeDrawingBridge() {
+	return (tree: MdastRoot) => {
+		visitMdast(tree, (node) => {
+			if (node.type !== "code") return
+
+			const drawingType = fenceLanguageToDrawingType(node.lang)
+			if (!drawingType) return
+
+			node.type = "codeDrawing"
+			node.data = {
+				...node.data,
+				drawingType,
+			}
+		})
+	}
+}
+
 export type CreateMarkdownKitOptions = {
 	mdx?: boolean
 }
@@ -259,6 +322,7 @@ export const createMarkdownKit = ({
 		remarkFrontmatter,
 		remarkWikiLink,
 		remarkCallout,
+		remarkCodeDrawingBridge,
 		remarkObsidianCalloutBridge,
 	] as any[]
 
@@ -335,6 +399,20 @@ export const createMarkdownKit = ({
 							}
 						},
 					},
+					[CODE_DRAWING_KEY]: {
+						serialize: (
+							node: SlateNodeWithChildren & {
+								data?: {
+									code?: string
+									drawingType?: string
+								}
+							},
+						) => ({
+							type: "code",
+							lang: drawingTypeToFenceLanguage(node.data?.drawingType),
+							value: node.data?.code ?? "",
+						}),
+					},
 					yaml: {
 						deserialize: (
 							mdastNode: MdRootContent,
@@ -348,6 +426,22 @@ export const createMarkdownKit = ({
 										? mdastNode.value
 										: "",
 								),
+								children: [{ text: "" }],
+							}
+						},
+					},
+					codeDrawing: {
+						deserialize: (mdastNode: MdastNode) => {
+							const drawingType =
+								fenceLanguageToDrawingType(mdastNode.data?.drawingType) ??
+								"Mermaid"
+
+							return {
+								type: CODE_DRAWING_KEY,
+								data: {
+									code: mdastNode.value ?? "",
+									drawingType,
+								},
 								children: [{ text: "" }],
 							}
 						},
