@@ -6,11 +6,13 @@ import {
 } from "@mdit/ui/components/tooltip"
 import { SearchIcon } from "lucide-react"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useHotkeysState } from "@/state"
 
 export function SearchButton() {
-	const openCommandMenu = useStore((s) => s.openCommandMenu)
-	const commandMenuHotkey = useStore((s) => s.hotkeys["open-command-menu"])
+	const openCommandMenu = useDesktopRuntime().window.commands.openCommandMenu
+	const commandMenuHotkey = useHotkeysState(
+		(s) => s.hotkeys["open-command-menu"],
+	)
 
 	return (
 		<Tooltip>

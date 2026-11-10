@@ -4,18 +4,15 @@ import { stat } from "@tauri-apps/plugin-fs"
 import { ImageOff } from "lucide-react"
 import { basename } from "pathe"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState } from "@/state"
+
 import { formatFileSize } from "@/utils/format-utils"
 import { getImageProperties } from "./utils/image-process-utils"
 
 export function ImagePreviewDialog() {
-	const { imagePreviewPath, closeImagePreview } = useStore(
-		useShallow((state) => ({
-			imagePreviewPath: state.imagePreviewPath,
-			closeImagePreview: state.closeImagePreview,
-		})),
-	)
+	const imagePreviewPath = useWindowState((state) => state.imagePreviewPath)
+	const closeImagePreview =
+		useDesktopRuntime().window.commands.closeImagePreview
 
 	const [hasError, setHasError] = useState(false)
 	const [isImageReady, setIsImageReady] = useState(false)

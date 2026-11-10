@@ -8,9 +8,13 @@ import { stripFileExtensionForDisplay } from "@mdit/editor/link"
 import { invoke } from "@tauri-apps/api/core"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { resolve } from "pathe"
-import { useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { getDesktopRuntime, useDocumentState, useWorkspaceState } from "@/state"
+import {
+	selectActiveDocument,
+	selectDocumentById,
+} from "@/state/documents/selectors"
+import type { DocumentsSnapshot } from "@/state/documents/types"
 
 type RelatedNoteEntry = {
 	relPath: string
@@ -29,11 +33,15 @@ const defaultRuntimeDeps: DesktopLinkRuntimeDeps = {
 	navigation: {
 		openExternal: openUrl,
 		openPath: (path, options) =>
-			useStore.getState().openTab(path, options?.skipHistory, options?.force),
+			getDesktopRuntime().documents.commands.openTab(
+				path,
+				options?.skipHistory,
+				options?.force,
+			),
 	},
 	noteCreation: {
 		createNote: (directoryPath, options) =>
-			useStore.getState().createNote(directoryPath, {
+			getDesktopRuntime().workspace.commands.createNote(directoryPath, {
 				initialContent: options?.initialContent,
 				initialName: options?.initialName,
 				openTab: options?.openPath,
@@ -53,58 +61,29 @@ export const createDesktopLinkServices = (
 	documentId?: number,
 	runtimeDeps: DesktopLinkRuntimeDeps = defaultRuntimeDeps,
 ): LinkServices => {
+	const selectLinkDocument = (state: DocumentsSnapshot) =>
+		typeof documentId === "number"
+			? selectDocumentById(state, documentId)
+			: selectActiveDocument(state)
+
 	const useDesktopWorkspaceSnapshot: LinkWorkspacePort["useSnapshot"] = () => {
-		const { workspacePath, entries, activeTabId, tabs, openDocuments } =
-			useStore(
-				useShallow((state) => ({
-					workspacePath: state.workspacePath,
-					entries: state.entries,
-					activeTabId: state.activeTabId,
-					tabs: state.tabs,
-					openDocuments: state.openDocuments,
-				})),
-			)
-		const tab = useMemo(() => {
-			if (typeof documentId === "number") {
-				return (
-					openDocuments.find((document) => document.id === documentId) ?? null
-				)
-			}
-
-			const activeTab = tabs.find((tab) => tab.id === activeTabId)
-			if (!activeTab) {
-				return null
-			}
-
-			return (
-				openDocuments.find(
-					(document) => document.id === activeTab.documentId,
-				) ?? null
-			)
-		}, [activeTabId, openDocuments, tabs])
-
-		return {
-			workspacePath,
-			tab,
-			entries,
-		}
+		const { workspacePath, entries } = useWorkspaceState(
+			useShallow((state) => ({
+				workspacePath: state.workspacePath,
+				entries: state.entries,
+			})),
+		)
+		const tab = useDocumentState(selectLinkDocument)
+		return { workspacePath, tab, entries }
 	}
 
 	const getDesktopWorkspaceSnapshot: LinkWorkspacePort["getSnapshot"] = () => {
-		const state = useStore.getState()
-		const activeTab =
-			typeof documentId === "number"
-				? null
-				: state.tabs.find((tab) => tab.id === state.activeTabId)
+		const { workspace, documents } = getDesktopRuntime()
+		const { workspacePath, entries } = workspace.getSnapshot()
 		return {
-			workspacePath: state.workspacePath,
-			tab:
-				typeof documentId === "number"
-					? state.getDocumentById(documentId)
-					: activeTab
-						? state.getDocumentById(activeTab.documentId)
-						: null,
-			entries: state.entries,
+			workspacePath,
+			entries,
+			tab: selectLinkDocument(documents.getSnapshot()),
 		}
 	}
 
@@ -120,7 +99,9 @@ export const createDesktopLinkServices = (
 		}
 
 		try {
-			return useStore.getState().getIndexingConfig(workspacePath)
+			return getDesktopRuntime().indexing.commands.getIndexingConfig(
+				workspacePath,
+			)
 		} catch (error) {
 			console.error("Failed to get indexing config from store:", error)
 			return null

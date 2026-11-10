@@ -15,12 +15,12 @@ import {
 } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
 import { RefreshCw, Settings } from "lucide-react"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useGitSyncState } from "@/state"
 
 export function GitSyncStatus() {
-	const gitSyncState = useStore((state) => state.gitSyncState)
-	const performSync = useStore((state) => state.performSync)
-	const openSettings = useStore((state) => state.openSettingsWithTab)
+	const gitSyncState = useGitSyncState((state) => state.gitSyncState)
+	const performSync = useDesktopRuntime().gitSync.commands.performSync
+	const openSettings = useDesktopRuntime().window.commands.openSettingsWithTab
 
 	const { isGitRepo, status, error } = gitSyncState
 

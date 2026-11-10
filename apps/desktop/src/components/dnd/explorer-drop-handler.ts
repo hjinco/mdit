@@ -1,10 +1,11 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
-import type { WorkspaceSlice } from "@/store"
+import type { WorkspaceCommands } from "@/state/workspace"
+
 import { type DndDragEndEvent, isFileEntryDragData } from "./dnd-types"
 
 type HandleExplorerDropParams = {
 	event: DndDragEndEvent
-	moveEntry: WorkspaceSlice["moveEntry"]
+	moveEntry: WorkspaceCommands["moveEntry"]
 	selectedEntryPaths: Set<string>
 	resetSelection: () => void
 	overrideTargetPath?: string | null

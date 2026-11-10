@@ -14,14 +14,18 @@ import {
 	AIBatchResultsToast,
 	type AIBatchResultToastItem,
 } from "@/components/common/explorer-agent/ai-batch-results-toast"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import { getDesktopRuntime, useAISettingsState } from "@/state"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 const moveNoteWithAICore = createMoveNoteWithAICore({
 	fileSystem: {
 		readTextFile,
 		moveEntry: (sourcePath, destinationPath, options) =>
-			useStore.getState().moveEntry(sourcePath, destinationPath, options),
+			getDesktopRuntime().workspace.commands.moveEntry(
+				sourcePath,
+				destinationPath,
+				options,
+			),
 	},
 	codex: {
 		baseURL: CODEX_BASE_URL,
@@ -86,7 +90,7 @@ export function buildAIMoveResultToastItems(
 }
 
 export function useMoveNotesWithAI() {
-	const chatConfig = useStore((state) => state.chatConfig)
+	const chatConfig = useAISettingsState((state) => state.chatConfig)
 	const canMoveNotesWithAI = Boolean(chatConfig)
 
 	const moveNotesWithAI = useCallback(
@@ -103,7 +107,8 @@ export function useMoveNotesWithAI() {
 				return
 			}
 
-			const { workspacePath, entries } = useStore.getState()
+			const { workspacePath, entries } =
+				getDesktopRuntime().workspace.getSnapshot()
 			if (!workspacePath) {
 				return
 			}
@@ -123,10 +128,11 @@ export function useMoveNotesWithAI() {
 			let batchResult: MoveNoteWithAIBatchResult | null = null
 
 			try {
-				useStore.getState().lockAiEntries(entryPaths)
-				await useStore.getState().refreshCodexOAuthForTarget()
+				getDesktopRuntime().workspace.commands.lockAiEntries(entryPaths)
+				await getDesktopRuntime().aiSettings.commands.refreshCodexOAuthForTarget()
 
-				const { chatConfig: latestChatConfig } = useStore.getState()
+				const { chatConfig: latestChatConfig } =
+					getDesktopRuntime().aiSettings.getSnapshot()
 				const result = await moveNoteWithAICore.organizeNotes({
 					entries: entriesToMove,
 					workspacePath,
@@ -154,7 +160,7 @@ export function useMoveNotesWithAI() {
 			} catch (error) {
 				console.error("Failed to process note batch move with AI:", error)
 			} finally {
-				useStore.getState().unlockAiEntries(entryPaths)
+				getDesktopRuntime().workspace.commands.unlockAiEntries(entryPaths)
 			}
 
 			if (!batchResult) {
@@ -173,17 +179,20 @@ export function useMoveNotesWithAI() {
 						emptyMessage: "No notes were moved.",
 						items: movedItems,
 						onOpenPath: (path: string) => {
-							useStore.getState().openTab(path)
+							getDesktopRuntime().documents.commands.openTab(path)
 						},
 						onConfirm: () => toast.dismiss(toastId),
 						onUndo: async (item: AIBatchResultToastItem) => {
 							const sourceDirectoryPath = dirname(item.fromPath)
 							try {
-								const didUndo = await useStore
-									.getState()
-									.moveEntry(item.openPath, sourceDirectoryPath, {
-										onConflict: "fail",
-									})
+								const didUndo =
+									await getDesktopRuntime().workspace.commands.moveEntry(
+										item.openPath,
+										sourceDirectoryPath,
+										{
+											onConflict: "fail",
+										},
+									)
 								if (!didUndo) {
 									toast.error(
 										`Failed to undo AI move for "${basename(item.fromPath)}".`,

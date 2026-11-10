@@ -3,7 +3,7 @@ import { tooltipContentVariants } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
 import { memo, useCallback, useRef, useState } from "react"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useHotkeysState } from "@/state"
 
 type CollectionResizerProps = {
 	isOpen: boolean
@@ -16,7 +16,7 @@ export const CollectionResizer = memo(function CollectionResizer({
 	isResizing,
 	onPointerDown,
 }: CollectionResizerProps) {
-	const toggleCollectionHotkey = useStore(
+	const toggleCollectionHotkey = useHotkeysState(
 		(s) => s.hotkeys["toggle-collection-view"],
 	)
 	const [isPopoverOpen, setIsPopoverOpen] = useState(false)

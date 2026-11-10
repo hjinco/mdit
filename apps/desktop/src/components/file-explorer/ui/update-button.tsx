@@ -1,10 +1,10 @@
 import { Button } from "@mdit/ui/components/button"
 import { relaunch } from "@tauri-apps/plugin-process"
 import { ArrowDownToLineIcon } from "lucide-react"
-import { useStore } from "@/store"
+import { useWindowState } from "@/state"
 
 export function UpdateButton() {
-	const isUpdateReady = useStore((state) => state.isUpdateReady)
+	const isUpdateReady = useWindowState((state) => state.isUpdateReady)
 
 	if (!isUpdateReady) {
 		return null

@@ -10,7 +10,8 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs"
 import { dirname, resolve } from "pathe"
 import YAML from "yaml"
-import { useStore } from "@/store"
+import { getDesktopRuntime } from "@/state"
+
 import {
 	type DesktopImageImportHostDeps,
 	desktopImageImportHost,
@@ -68,7 +69,7 @@ const defaultRuntimeDeps: DesktopSlashHostRuntimeDeps = {
 	openDialog: open,
 	readDirectory: readDir,
 	readMarkdownFile: readTextFile,
-	getTabPath: () => useStore.getState().getActiveTabPath(),
+	getTabPath: () => getDesktopRuntime().documents.commands.getActiveTabPath(),
 	...desktopImageImportHost,
 }
 
@@ -83,8 +84,9 @@ export const createDesktopSlashHost = (
 			runtimeDeps?.getTabPath ??
 			(() =>
 				typeof documentId === "number"
-					? (useStore.getState().getDocumentById(documentId)?.path ?? null)
-					: useStore.getState().getActiveTabPath()),
+					? (getDesktopRuntime().documents.commands.getDocumentById(documentId)
+							?.path ?? null)
+					: getDesktopRuntime().documents.commands.getActiveTabPath()),
 	}
 
 	const getFrontmatterDefaults = async (): Promise<KVRow[]> => {

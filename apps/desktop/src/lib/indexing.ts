@@ -1,10 +1,10 @@
+import { invoke } from "@tauri-apps/api/core"
 import type {
 	IndexingConfig,
 	IndexingMeta,
 	IndexingPort,
 	WorkspaceIndexSummary,
-} from "@mdit/store/core"
-import { invoke } from "@tauri-apps/api/core"
+} from "@/state/services/indexing"
 
 export const createTauriIndexingPort = (
 	workspacePath: string,

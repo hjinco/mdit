@@ -7,7 +7,8 @@ import {
 import { invoke } from "@tauri-apps/api/core"
 import { useCallback } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState, useWorkspaceState } from "@/state"
+
 import { searchMarkdownContent } from "./utils/note-content-search"
 
 type QuerySearchEntry = {
@@ -25,23 +26,21 @@ type QueryTagEntry = {
 }
 
 export function CommandMenu() {
-	const {
-		entries,
-		workspacePath,
-		openTab,
-		isCommandMenuOpen,
-		commandMenuInitialQuery,
-		setCommandMenuOpen,
-	} = useStore(
+	const { entries, workspacePath } = useWorkspaceState(
 		useShallow((state) => ({
 			entries: state.entries,
 			workspacePath: state.workspacePath,
-			openTab: state.openTab,
-			isCommandMenuOpen: state.isCommandMenuOpen,
-			commandMenuInitialQuery: state.commandMenuInitialQuery,
-			setCommandMenuOpen: state.setCommandMenuOpen,
 		})),
 	)
+	const openTab = useDesktopRuntime().documents.commands.openTab
+	const { isCommandMenuOpen, commandMenuInitialQuery } = useWindowState(
+		useShallow((state) => ({
+			isCommandMenuOpen: state.isCommandMenuOpen,
+			commandMenuInitialQuery: state.commandMenuInitialQuery,
+		})),
+	)
+	const setCommandMenuOpen =
+		useDesktopRuntime().window.commands.setCommandMenuOpen
 
 	const handleSelectNote = useCallback(
 		(notePath: string) => {

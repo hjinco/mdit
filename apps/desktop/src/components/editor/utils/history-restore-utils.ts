@@ -1,5 +1,5 @@
 import { NOTE_TITLE_KEY } from "@mdit/editor/title"
-import type { TabHistorySelection } from "@/store"
+import type { TabHistorySelection } from "@/state/documents/types"
 
 type SelectionPoint = {
 	path: number[]

@@ -25,8 +25,8 @@ import { stat } from "@tauri-apps/plugin-fs"
 import { basename } from "pathe"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState } from "@/state"
+
 import { formatFileSize } from "@/utils/format-utils"
 import {
 	editImage,
@@ -35,18 +35,10 @@ import {
 } from "./utils/image-process-utils"
 
 export function ImageEditDialog() {
-	const { imageEditPath, closeImageEdit } = useStore(
-		useShallow((state) => ({
-			imageEditPath: state.imageEditPath,
-			closeImageEdit: state.closeImageEdit,
-		})),
-	)
-	const { refreshWorkspaceEntries, registerLocalMutation } = useStore(
-		useShallow((state) => ({
-			refreshWorkspaceEntries: state.refreshWorkspaceEntries,
-			registerLocalMutation: state.registerLocalMutation,
-		})),
-	)
+	const imageEditPath = useWindowState((state) => state.imageEditPath)
+	const closeImageEdit = useDesktopRuntime().window.commands.closeImageEdit
+	const { refreshWorkspaceEntries, registerLocalMutation } =
+		useDesktopRuntime().workspace.commands
 
 	const [filename, setFilename] = useState("")
 	const [resizeWidth, setResizeWidth] = useState<string>("")

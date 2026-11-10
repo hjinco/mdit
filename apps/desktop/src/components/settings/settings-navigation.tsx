@@ -1,7 +1,7 @@
 import { Button } from "@base-ui/react/button"
 import { DialogTitle } from "@mdit/ui/components/dialog"
 import { cn } from "@mdit/ui/lib/utils"
-import type { SettingsTab } from "@/store"
+import type { SettingsTab } from "@/state/window"
 import { getSettingsSections, SETTINGS_TAB_META } from "./settings-tabs"
 
 interface SettingsNavigationProps {

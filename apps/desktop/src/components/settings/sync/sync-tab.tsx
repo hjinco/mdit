@@ -11,65 +11,18 @@ import { Input } from "@mdit/ui/components/input"
 import { Switch } from "@mdit/ui/components/switch"
 import { Textarea } from "@mdit/ui/components/textarea"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWorkspaceState } from "@/state"
+import type { SyncConfig } from "@/state/services/git-sync"
 
 export function SyncTab() {
-	const {
-		workspacePath,
-		getSyncConfig,
-		setBranchName,
-		setCommitMessage,
-		setAutoSync,
-	} = useStore(
-		useShallow((state) => ({
-			workspacePath: state.workspacePath,
-			getSyncConfig: state.getSyncConfig,
-			setBranchName: state.setBranchName,
-			setCommitMessage: state.setCommitMessage,
-			setAutoSync: state.setAutoSync,
+	const { workspacePath, sessionId } = useWorkspaceState(
+		useShallow(({ workspacePath, sessionId }) => ({
+			workspacePath,
+			sessionId,
 		})),
 	)
-
-	const [branchName, setBranchNameLocal] = useState("")
-	const [commitMessage, setCommitMessageLocal] = useState("")
-	const [autoSync, setAutoSyncLocal] = useState(false)
-
-	// Update local state when workspacePath or config changes
-	useEffect(() => {
-		if (workspacePath) {
-			getSyncConfig(workspacePath).then((currentConfig) => {
-				setBranchNameLocal(currentConfig.branchName)
-				setCommitMessageLocal(currentConfig.commitMessage)
-				setAutoSyncLocal(currentConfig.autoSync)
-			})
-		} else {
-			setBranchNameLocal("")
-			setCommitMessageLocal("")
-			setAutoSyncLocal(false)
-		}
-	}, [workspacePath, getSyncConfig])
-
-	const handleBranchNameChange = async (value: string) => {
-		setBranchNameLocal(value)
-		if (workspacePath) {
-			await setBranchName(workspacePath, value)
-		}
-	}
-
-	const handleCommitMessageChange = async (value: string) => {
-		setCommitMessageLocal(value)
-		if (workspacePath) {
-			await setCommitMessage(workspacePath, value)
-		}
-	}
-
-	const handleAutoSyncChange = async (checked: boolean) => {
-		setAutoSyncLocal(checked)
-		if (workspacePath) {
-			await setAutoSync(workspacePath, checked)
-		}
-	}
 
 	if (!workspacePath) {
 		return (
@@ -82,6 +35,63 @@ export function SyncTab() {
 				</FieldSet>
 			</div>
 		)
+	}
+
+	return <SyncSettingsForm key={sessionId} workspacePath={workspacePath} />
+}
+
+async function persistSetting(write: () => Promise<void>): Promise<boolean> {
+	try {
+		await write()
+		return true
+	} catch (error) {
+		console.error("Failed to save Git sync settings:", error)
+		toast.error("Failed to save Git sync settings.")
+		return false
+	}
+}
+
+function SyncSettingsForm({ workspacePath }: { workspacePath: string }) {
+	const { getSyncConfig, setBranchName, setCommitMessage, setAutoSync } =
+		useDesktopRuntime().gitSync.commands
+	const [config, setConfig] = useState<SyncConfig | null>(null)
+	const [isSavingAutoSync, setIsSavingAutoSync] = useState(false)
+
+	useEffect(() => {
+		let active = true
+		void getSyncConfig(workspacePath)
+			.then((loaded) => {
+				if (active) {
+					setConfig(loaded)
+				}
+			})
+			.catch((error) => {
+				if (active) {
+					console.error("Failed to load Git sync settings:", error)
+					toast.error("Failed to load Git sync settings.")
+				}
+			})
+		return () => {
+			active = false
+		}
+	}, [workspacePath, getSyncConfig])
+
+	const handleBranchNameChange = (branchName: string) => {
+		setConfig((current) => current && { ...current, branchName })
+		void persistSetting(() => setBranchName(workspacePath, branchName))
+	}
+
+	const handleCommitMessageChange = (commitMessage: string) => {
+		setConfig((current) => current && { ...current, commitMessage })
+		void persistSetting(() => setCommitMessage(workspacePath, commitMessage))
+	}
+
+	const handleAutoSyncChange = async (autoSync: boolean) => {
+		setIsSavingAutoSync(true)
+		if (await persistSetting(() => setAutoSync(workspacePath, autoSync))) {
+			setConfig((current) => current && { ...current, autoSync })
+		}
+		setIsSavingAutoSync(false)
 	}
 
 	return (
@@ -101,7 +111,11 @@ export function SyncTab() {
 								repository is ahead/behind the remote.
 							</FieldDescription>
 						</FieldContent>
-						<Switch checked={autoSync} onCheckedChange={handleAutoSyncChange} />
+						<Switch
+							checked={config?.autoSync ?? false}
+							disabled={!config || isSavingAutoSync}
+							onCheckedChange={handleAutoSyncChange}
+						/>
 					</Field>
 
 					<Field orientation="vertical">
@@ -113,7 +127,8 @@ export function SyncTab() {
 							</FieldDescription>
 						</FieldContent>
 						<Input
-							value={branchName}
+							value={config?.branchName ?? ""}
+							disabled={!config}
 							onChange={(e) => handleBranchNameChange(e.target.value)}
 							placeholder="Leave empty to use current branch"
 						/>
@@ -128,7 +143,8 @@ export function SyncTab() {
 							</FieldDescription>
 						</FieldContent>
 						<Textarea
-							value={commitMessage}
+							value={config?.commitMessage ?? ""}
+							disabled={!config}
 							onChange={(e) => handleCommitMessageChange(e.target.value)}
 							placeholder="Leave empty to use default message"
 							rows={4}

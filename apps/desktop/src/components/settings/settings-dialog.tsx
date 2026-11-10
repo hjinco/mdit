@@ -1,8 +1,9 @@
 import { Dialog, DialogContent } from "@mdit/ui/components/dialog"
 import { type ComponentType, useEffect, useState } from "react"
 import { useShallow } from "zustand/shallow"
-import type { SettingsTab } from "@/store"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState, useWorkspaceState } from "@/state"
+import type { SettingsTab } from "@/state/window"
+
 import { AITab } from "./ai/ai-tab"
 import { ApiMcpTab } from "./api-mcp/api-mcp-tab"
 import { HotkeysTab } from "./hotkeys/hotkeys-tab"
@@ -22,19 +23,15 @@ const SETTINGS_TAB_COMPONENTS: Record<SettingsTab, ComponentType> = {
 }
 
 export function SettingsDialog() {
-	const {
-		workspacePath,
-		isSettingsDialogOpen,
-		setSettingsDialogOpen,
-		settingsInitialTab,
-	} = useStore(
+	const workspacePath = useWorkspaceState((s) => s.workspacePath)
+	const { isSettingsDialogOpen, settingsInitialTab } = useWindowState(
 		useShallow((s) => ({
-			workspacePath: s.workspacePath,
 			isSettingsDialogOpen: s.isSettingsDialogOpen,
-			setSettingsDialogOpen: s.setSettingsDialogOpen,
 			settingsInitialTab: s.settingsInitialTab,
 		})),
 	)
+	const setSettingsDialogOpen =
+		useDesktopRuntime().window.commands.setSettingsDialogOpen
 
 	const hasWorkspace = Boolean(workspacePath)
 	const [activeTab, setActiveTab] = useState<SettingsTab>("preferences")
@@ -49,18 +46,10 @@ export function SettingsDialog() {
 		setActiveTab((prev) => coerceSettingsTab(prev, hasWorkspace))
 	}, [hasWorkspace])
 
-	const handleOpenChange = (open: boolean) => {
-		setSettingsDialogOpen(open)
-		// Reset initial tab when dialog closes
-		if (!open) {
-			useStore.setState({ settingsInitialTab: null })
-		}
-	}
-
 	const ActiveTabComponent = SETTINGS_TAB_COMPONENTS[activeTab]
 
 	return (
-		<Dialog open={isSettingsDialogOpen} onOpenChange={handleOpenChange}>
+		<Dialog open={isSettingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
 			<DialogContent className="md:max-w-5xl max-h-[min(800px,calc(100vh-6rem))] w-full h-full p-0 overflow-hidden flex">
 				<SettingsNavigation
 					activeTab={activeTab}

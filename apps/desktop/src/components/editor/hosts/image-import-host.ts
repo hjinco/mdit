@@ -1,5 +1,6 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
-import { useStore } from "@/store"
+import { getDesktopRuntime } from "@/state"
+
 import { buildImageLinkData, type ImageLinkData } from "../utils/image-link"
 
 export type PreparedEditorImageLink = ImageLinkData & {
@@ -26,9 +27,13 @@ export class EditorImageImportError extends Error {
 }
 
 const defaultRuntimeDeps: PrepareImageForEditorInsertDeps = {
-	getWorkspacePath: () => useStore.getState().workspacePath,
+	getWorkspacePath: () =>
+		getDesktopRuntime().workspace.getSnapshot().workspacePath,
 	copyEntry: (sourcePath, destinationPath) =>
-		useStore.getState().copyEntry(sourcePath, destinationPath),
+		getDesktopRuntime().workspace.commands.copyEntry(
+			sourcePath,
+			destinationPath,
+		),
 	buildImageLink: buildImageLinkData,
 }
 

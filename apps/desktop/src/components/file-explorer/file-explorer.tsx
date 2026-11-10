@@ -8,8 +8,15 @@ import { useMoveNotesWithAI } from "@/components/common/explorer-agent/hooks/use
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
 import { useAutoCloseSidebars } from "@/hooks/use-auto-close-sidebars"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import {
+	useDesktopRuntime,
+	useDocumentState,
+	useWindowState,
+	useWorkspaceState,
+} from "@/state"
+import { selectActiveTabPath } from "@/state/documents/selectors"
+import type { WorkspaceEntry } from "@/state/workspace"
+
 import { FeedbackButton } from "./feedback"
 import { useFileExplorerMenus } from "./hooks/use-context-menus"
 import { useDeleteShortcut } from "./hooks/use-delete-shortcut"
@@ -28,12 +35,9 @@ import { WorkspaceDropdown } from "./ui/workspace-dropdown"
 export function FileExplorer() {
 	const fileExplorerRef = useRef<HTMLElement | null>(null)
 
-	const { isFileExplorerOpen, setFileExplorerOpen } = useStore(
-		useShallow((state) => ({
-			isFileExplorerOpen: state.isFileExplorerOpen,
-			setFileExplorerOpen: state.setFileExplorerOpen,
-		})),
-	)
+	const isFileExplorerOpen = useWindowState((state) => state.isFileExplorerOpen)
+	const setFileExplorerOpen =
+		useDesktopRuntime().window.commands.setFileExplorerOpen
 
 	const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
 		storageKey: "file-explorer-width",
@@ -46,13 +50,29 @@ export function FileExplorer() {
 		workspacePath,
 		entries,
 		expandedDirectories,
+		recentWorkspacePaths,
+		pinnedDirectories,
+		aiLockedEntryPaths,
+		selectedEntryPaths,
+		selectionAnchorPath,
+	} = useWorkspaceState(
+		useShallow((state) => ({
+			workspacePath: state.workspacePath,
+			entries: state.entries,
+			expandedDirectories: state.expandedDirectories,
+			recentWorkspacePaths: state.recentWorkspacePaths,
+			pinnedDirectories: state.pinnedDirectories,
+			aiLockedEntryPaths: state.aiLockedEntryPaths,
+			selectedEntryPaths: state.selectedEntryPaths,
+			selectionAnchorPath: state.selectionAnchorPath,
+		})),
+	)
+	const {
 		expandDirectory,
 		setExpandedDirectories,
-		recentWorkspacePaths,
 		setWorkspace,
 		removeWorkspaceFromHistory,
 		openFolderPicker,
-		pinnedDirectories,
 		pinDirectory,
 		unpinDirectory,
 		createNote,
@@ -60,48 +80,14 @@ export function FileExplorer() {
 		deleteEntries,
 		renameEntry,
 		setCurrentCollectionPath,
-		activeTabPath,
-		openTab,
-		openTabInNewTab,
-		aiLockedEntryPaths,
-		selectedEntryPaths,
-		selectionAnchorPath,
 		setEntrySelection,
 		resetSelection,
 		lockAiEntries,
 		unlockAiEntries,
-	} = useStore(
-		useShallow((state) => ({
-			workspacePath: state.workspacePath,
-			entries: state.entries,
-			expandedDirectories: state.expandedDirectories,
-			expandDirectory: state.expandDirectory,
-			setExpandedDirectories: state.setExpandedDirectories,
-			recentWorkspacePaths: state.recentWorkspacePaths,
-			setWorkspace: state.setWorkspace,
-			removeWorkspaceFromHistory: state.removeWorkspaceFromHistory,
-			openFolderPicker: state.openFolderPicker,
-			pinnedDirectories: state.pinnedDirectories,
-			pinDirectory: state.pinDirectory,
-			unpinDirectory: state.unpinDirectory,
-			createNote: state.createNote,
-			createFolder: state.createFolder,
-			deleteEntries: state.deleteEntries,
-			renameEntry: state.renameEntry,
-			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			activeTabPath: state.getActiveTabPath(),
-			openTab: state.openTab,
-			openTabInNewTab: state.openTabInNewTab,
-			aiLockedEntryPaths: state.aiLockedEntryPaths,
-			selectedEntryPaths: state.selectedEntryPaths,
-			selectionAnchorPath: state.selectionAnchorPath,
-			setEntrySelection: state.setEntrySelection,
-			resetSelection: state.resetSelection,
-			lockAiEntries: state.lockAiEntries,
-			unlockAiEntries: state.unlockAiEntries,
-		})),
-	)
-	const openImagePreview = useStore((state) => state.openImagePreview)
+	} = useDesktopRuntime().workspace.commands
+	const activeTabPath = useDocumentState((state) => selectActiveTabPath(state))
+	const { openTab, openTabInNewTab } = useDesktopRuntime().documents.commands
+	const openImagePreview = useDesktopRuntime().window.commands.openImagePreview
 	const [renamingEntryPath, setRenamingEntryPath] = useState<string | null>(
 		null,
 	)

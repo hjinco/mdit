@@ -1,6 +1,6 @@
 import type { Virtualizer } from "@tanstack/react-virtual"
 import { useEffect, useRef } from "react"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 type Params = {
 	currentCollectionPath: string | null

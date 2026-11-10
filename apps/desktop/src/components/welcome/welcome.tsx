@@ -1,11 +1,13 @@
 import { Logo } from "@mdit/assets"
 import { Button } from "@mdit/ui/components/button"
 import { motion } from "motion/react"
-import { useStore } from "@/store"
+import { useDesktopRuntime } from "@/state"
+
 import { isMac } from "@/utils/platform"
 
 export function Welcome() {
-	const openFolderPicker = useStore((state) => state.openFolderPicker)
+	const openFolderPicker =
+		useDesktopRuntime().workspace.commands.openFolderPicker
 
 	return (
 		<div className="w-full h-screen flex flex-col bg-[#f8fafc] selection:bg-primary/10">

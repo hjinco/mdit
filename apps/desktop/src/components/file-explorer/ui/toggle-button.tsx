@@ -6,9 +6,8 @@ import {
 } from "@mdit/ui/components/tooltip"
 import { cn } from "@mdit/ui/lib/utils"
 import { ArrowLeftToLineIcon, ArrowRightToLineIcon } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useHotkeysState, useWindowState, useWorkspaceState } from "@/state"
 
 type Props = {
 	isOpen: boolean
@@ -16,12 +15,12 @@ type Props = {
 }
 
 export function ToggleButton({ isOpen, onToggle }: Props) {
-	const { isFocusMode, currentCollectionPath, toggleExplorerHotkey } = useStore(
-		useShallow((s) => ({
-			isFocusMode: s.isFocusMode,
-			currentCollectionPath: s.currentCollectionPath,
-			toggleExplorerHotkey: s.hotkeys["toggle-file-explorer"],
-		})),
+	const isFocusMode = useWindowState((s) => s.isFocusMode)
+	const currentCollectionPath = useWorkspaceState(
+		(s) => s.currentCollectionPath,
+	)
+	const toggleExplorerHotkey = useHotkeysState(
+		(s) => s.hotkeys["toggle-file-explorer"],
 	)
 	const isCollectionViewOpen = currentCollectionPath !== null
 

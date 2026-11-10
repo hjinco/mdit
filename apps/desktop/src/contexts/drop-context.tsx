@@ -8,7 +8,8 @@ import {
 	useRef,
 	useState,
 } from "react"
-import { useStore } from "@/store"
+import { useWorkspaceState } from "@/state"
+
 import { resetCurrentDropZone } from "./drop-context.helpers"
 
 type DropKind = "over" | "drop" | "leave" | "enter"
@@ -76,7 +77,7 @@ export const DropProvider: React.FC<{ children: React.ReactNode }> = ({
 	const currentZoneIdRef = useRef<string | null>(null)
 	const previousWorkspacePathRef = useRef<string | null | undefined>(undefined)
 	const unlistenRef = useRef<null | (() => void)>(null)
-	const workspacePath = useStore((state) => state.workspacePath)
+	const workspacePath = useWorkspaceState((state) => state.workspacePath)
 
 	const registerZone = useCallback<DropAPI["registerZone"]>(
 		(cfg, setIsOver) => {

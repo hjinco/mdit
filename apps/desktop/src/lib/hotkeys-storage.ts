@@ -1,10 +1,3 @@
-import type { HotkeyStorage } from "@mdit/store/core"
-import {
-	type AppHotkeyActionId,
-	createDefaultAppHotkeys,
-	isAppHotkeyActionId,
-	mergeWithDefaultHotkeys,
-} from "@mdit/store/hotkeys"
 import { BaseDirectory } from "@tauri-apps/api/path"
 import {
 	exists,
@@ -12,6 +5,13 @@ import {
 	readTextFile,
 	writeTextFile,
 } from "@tauri-apps/plugin-fs"
+import type { HotkeyStorage } from "@/state/services/hotkeys"
+import {
+	type AppHotkeyActionId,
+	createDefaultAppHotkeys,
+	isAppHotkeyActionId,
+	mergeWithDefaultHotkeys,
+} from "@/state/services/hotkeys"
 
 const HOTKEY_SETTINGS_DIR = "settings"
 const HOTKEY_SETTINGS_FILE = "settings/hotkeys.json"

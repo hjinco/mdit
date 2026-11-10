@@ -1,8 +1,8 @@
 import type { TagHostDeps } from "@mdit/editor/tag"
-import { useStore } from "@/store"
+import { getDesktopRuntime } from "@/state"
 
 export const createDesktopTagHost = (): TagHostDeps => ({
 	openTagSearch: (query) => {
-		useStore.getState().openCommandMenuWithQuery(query)
+		getDesktopRuntime().window.commands.openCommandMenuWithQuery(query)
 	},
 })

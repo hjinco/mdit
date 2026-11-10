@@ -1,6 +1,6 @@
 import type { PlateEditor } from "@mdit/editor/plate"
 import { useEffect, useRef } from "react"
-import { useStore } from "@/store"
+import { useWindowState } from "@/state"
 
 /**
  * Save and restore editor selection when command menu opens/closes.
@@ -12,7 +12,7 @@ export function useCommandMenuSelectionRestore(
 	enabled: boolean,
 ) {
 	const savedSelectionRef = useRef<typeof editor.selection>(null)
-	const isCommandMenuOpen = useStore((s) => s.isCommandMenuOpen)
+	const isCommandMenuOpen = useWindowState((s) => s.isCommandMenuOpen)
 
 	useEffect(() => {
 		if (!enabled) {

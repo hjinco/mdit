@@ -13,19 +13,24 @@ import { motion } from "motion/react"
 import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
-import { useStore } from "@/store"
+import {
+	getDesktopRuntime,
+	useAISettingsState,
+	useDesktopRuntime,
+	useWindowState,
+} from "@/state"
 
 const toModelSelectValue = (provider: ChatProviderId, model: string): string =>
 	`${provider}|${model}`
 
 export function ChatPanel() {
-	const { chatPanelBetaEnabled, isChatPanelOpen, setChatPanelOpen } = useStore(
+	const { chatPanelBetaEnabled, isChatPanelOpen } = useWindowState(
 		useShallow((state) => ({
 			chatPanelBetaEnabled: state.chatPanelBetaEnabled,
 			isChatPanelOpen: state.isChatPanelOpen,
-			setChatPanelOpen: state.setChatPanelOpen,
 		})),
 	)
+	const setChatPanelOpen = useDesktopRuntime().window.commands.setChatPanelOpen
 
 	const { isOpen, width, isResizing, handlePointerDown } = useResizablePanel({
 		storageKey: "chat-panel-width",
@@ -69,20 +74,21 @@ export function ChatPanel() {
 }
 
 function ChatPanelContent() {
-	const { chatConfig, enabledChatModels, selectModel, openSettingsWithTab } =
-		useStore(
-			useShallow((state) => ({
-				chatConfig: state.chatConfig,
-				enabledChatModels: state.enabledChatModels,
-				selectModel: state.selectModel,
-				openSettingsWithTab: state.openSettingsWithTab,
-			})),
-		)
+	const { chatConfig, enabledChatModels } = useAISettingsState(
+		useShallow((state) => ({
+			chatConfig: state.chatConfig,
+			enabledChatModels: state.enabledChatModels,
+		})),
+	)
+	const selectModel = useDesktopRuntime().aiSettings.commands.selectModel
+	const openSettingsWithTab =
+		useDesktopRuntime().window.commands.openSettingsWithTab
 
 	const isConfigured = Boolean(chatConfig)
 
 	const resolveActiveConfig = useCallback(async () => {
-		const currentConfig = useStore.getState().chatConfig
+		const currentConfig =
+			getDesktopRuntime().aiSettings.getSnapshot().chatConfig
 		if (!currentConfig) {
 			return null
 		}
@@ -90,8 +96,8 @@ function ChatPanelContent() {
 			return currentConfig
 		}
 
-		await useStore.getState().refreshCodexOAuthForTarget()
-		return useStore.getState().chatConfig
+		await getDesktopRuntime().aiSettings.commands.refreshCodexOAuthForTarget()
+		return getDesktopRuntime().aiSettings.getSnapshot().chatConfig
 	}, [])
 
 	const selectedModelValue = useMemo(() => {
@@ -111,7 +117,8 @@ function ChatPanelContent() {
 
 	const panelChatToolDeps = useMemo(
 		() => ({
-			getActiveDocumentPath: () => useStore.getState().getActiveTabPath(),
+			getActiveDocumentPath: () =>
+				getDesktopRuntime().documents.commands.getActiveTabPath(),
 			readTextFile,
 		}),
 		[],

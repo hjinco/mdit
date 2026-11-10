@@ -3,7 +3,7 @@ import type { FileTreeRenderNode } from "@mdit/file-tree"
 import { useCallback } from "react"
 import type { FileEntryDragData } from "@/components/dnd/dnd-types"
 import { useDraggedExplorerPaths } from "@/components/dnd/explorer-drag-state"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 import { getExplorerEntryDisplayName } from "../utils/display-name"
 
 type UseTreeNodeInteractionsParams = {

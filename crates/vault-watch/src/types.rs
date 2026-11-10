@@ -75,6 +75,7 @@ pub struct VaultWatchBatch {
 #[serde(rename_all = "camelCase")]
 pub struct VaultWatchBatchPayload {
     pub workspace_path: String,
+    pub session_id: String,
     pub batch: VaultWatchBatch,
 }
 

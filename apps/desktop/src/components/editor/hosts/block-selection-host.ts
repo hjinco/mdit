@@ -4,7 +4,8 @@ import type {
 } from "@mdit/editor/selection"
 import { stripMarkdownExtension } from "@mdit/utils/path-utils"
 import { basename, dirname } from "pathe"
-import { useStore } from "@/store"
+import { getDesktopRuntime } from "@/state"
+
 import { toWikiTargetFromAbsolutePath } from "@/utils/wiki-link-utils"
 
 type CreateNoteFn = (
@@ -26,10 +27,12 @@ type BlockSelectionHostRuntimeDeps = {
 }
 
 const defaultRuntimeDeps: BlockSelectionHostRuntimeDeps = {
-	getWorkspacePath: () => useStore.getState().workspacePath,
-	getCurrentTabPath: () => useStore.getState().getActiveTabPath(),
+	getWorkspacePath: () =>
+		getDesktopRuntime().workspace.getSnapshot().workspacePath,
+	getCurrentTabPath: () =>
+		getDesktopRuntime().documents.commands.getActiveTabPath(),
 	createNote: (directoryPath, options) =>
-		useStore.getState().createNote(directoryPath, options),
+		getDesktopRuntime().workspace.commands.createNote(directoryPath, options),
 	onCreateFailure: (error) =>
 		console.error("Failed to create linked note from list item:", error),
 }
@@ -45,8 +48,9 @@ export const createDesktopBlockSelectionHost = (
 			runtimeDeps?.getCurrentTabPath ??
 			(() =>
 				typeof documentId === "number"
-					? (useStore.getState().getDocumentById(documentId)?.path ?? null)
-					: useStore.getState().getActiveTabPath()),
+					? (getDesktopRuntime().documents.commands.getDocumentById(documentId)
+							?.path ?? null)
+					: getDesktopRuntime().documents.commands.getActiveTabPath()),
 	}
 
 	return {

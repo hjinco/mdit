@@ -5,7 +5,7 @@ import {
 } from "@mdit/editor/link"
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { relative } from "pathe"
-import { useStore } from "@/store"
+import { getDesktopRuntime } from "@/state"
 
 export type ImageLinkData = {
 	url: string
@@ -22,7 +22,8 @@ export function buildImageLinkData(path: string): ImageLinkData {
 		return { url: path }
 	}
 
-	const workspacePath = useStore.getState().workspacePath
+	const workspacePath =
+		getDesktopRuntime().workspace.getSnapshot().workspacePath
 	if (!workspacePath) {
 		return { url: path }
 	}

@@ -1,9 +1,3 @@
-import {
-	APP_HOTKEY_CATEGORY_LABELS,
-	APP_HOTKEY_DEFINITIONS,
-	type AppHotkeyActionId,
-	type AppHotkeyCategory,
-} from "@mdit/store/hotkeys"
 import { Button } from "@mdit/ui/components/button"
 import {
 	Field,
@@ -21,9 +15,14 @@ import {
 } from "@tabler/icons-react"
 import { useHotkeyRecorder } from "@tanstack/react-hotkeys"
 import { useCallback, useMemo, useState } from "react"
-import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useHotkeysState } from "@/state"
+import {
+	APP_HOTKEY_CATEGORY_LABELS,
+	APP_HOTKEY_DEFINITIONS,
+	type AppHotkeyActionId,
+	type AppHotkeyCategory,
+} from "@/state/services/hotkeys"
 
 const HOTKEY_LABEL_BY_ID: Record<AppHotkeyActionId, string> =
 	APP_HOTKEY_DEFINITIONS.reduce(
@@ -37,13 +36,9 @@ const HOTKEY_LABEL_BY_ID: Record<AppHotkeyActionId, string> =
 const CATEGORY_ORDER: AppHotkeyCategory[] = ["file", "view", "history", "app"]
 
 export function HotkeysTab() {
-	const { hotkeys, setHotkeyBinding, resetHotkeyBindings } = useStore(
-		useShallow((state) => ({
-			hotkeys: state.hotkeys,
-			setHotkeyBinding: state.setHotkeyBinding,
-			resetHotkeyBindings: state.resetHotkeyBindings,
-		})),
-	)
+	const hotkeys = useHotkeysState((state) => state.hotkeys)
+	const { setHotkeyBinding, resetHotkeyBindings } =
+		useDesktopRuntime().hotkeys.commands
 
 	const [recordingActionId, setRecordingActionId] =
 		useState<AppHotkeyActionId | null>(null)

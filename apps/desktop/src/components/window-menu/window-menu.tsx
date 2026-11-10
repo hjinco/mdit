@@ -1,35 +1,26 @@
 import { useCallback, useEffect } from "react"
-import { useShallow } from "zustand/shallow"
 import { closeTabOrHideWindow } from "@/lib/close-tab-or-hide-window"
-import { useStore } from "@/store"
+import {
+	useDesktopRuntime,
+	useDocumentState,
+	useHotkeysState,
+	useWindowState,
+} from "@/state"
+
 import { installWindowMenu } from "./menu"
 
 export function WindowMenu() {
+	const { createAndOpenNote, openFolderPicker, toggleCollectionView } =
+		useDesktopRuntime().workspace.commands
+	const activeTabId = useDocumentState((s) => s.activeTabId)
+	const isEditMode = useWindowState((s) => s.isEditMode)
 	const {
-		createAndOpenNote,
-		activeTabId,
-		isEditMode,
 		closeActiveTab,
-		openFolderPicker,
 		activatePreviousTab,
 		activateNextTab,
-		toggleCollectionView,
 		goBack,
 		goForward,
-	} = useStore(
-		useShallow((s) => ({
-			createAndOpenNote: s.createAndOpenNote,
-			activeTabId: s.activeTabId,
-			isEditMode: s.isEditMode,
-			closeActiveTab: s.closeActiveTab,
-			openFolderPicker: s.openFolderPicker,
-			activatePreviousTab: s.activatePreviousTab,
-			activateNextTab: s.activateNextTab,
-			toggleCollectionView: s.toggleCollectionView,
-			goBack: s.goBack,
-			goForward: s.goForward,
-		})),
-	)
+	} = useDesktopRuntime().documents.commands
 
 	const handleCloseTab = useCallback(() => {
 		void closeTabOrHideWindow({
@@ -40,28 +31,16 @@ export function WindowMenu() {
 	}, [activeTabId, closeActiveTab, isEditMode])
 
 	const {
-		toggleFileExplorer,
+		toggleFileExplorerOpen: toggleFileExplorer,
 		openCommandMenu,
-		chatPanelBetaEnabled,
 		toggleChatPanelOpen,
 		toggleSettingsDialogOpen,
-		zoomIn,
-		zoomOut,
-		resetZoom,
-		hotkeys,
-	} = useStore(
-		useShallow((s) => ({
-			toggleFileExplorer: s.toggleFileExplorerOpen,
-			openCommandMenu: s.openCommandMenu,
-			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
-			toggleChatPanelOpen: s.toggleChatPanelOpen,
-			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
-			zoomIn: s.increaseFontScale,
-			zoomOut: s.decreaseFontScale,
-			resetZoom: s.resetFontScale,
-			hotkeys: s.hotkeys,
-		})),
-	)
+		increaseFontScale: zoomIn,
+		decreaseFontScale: zoomOut,
+		resetFontScale: resetZoom,
+	} = useDesktopRuntime().window.commands
+	const chatPanelBetaEnabled = useWindowState((s) => s.chatPanelBetaEnabled)
+	const hotkeys = useHotkeysState((s) => s.hotkeys)
 
 	useEffect(() => {
 		installWindowMenu({

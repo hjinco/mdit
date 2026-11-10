@@ -1,8 +1,8 @@
 import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { type MouseEvent, useCallback } from "react"
-import { useShallow } from "zustand/shallow"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import { useDesktopRuntime } from "@/state"
+import type { WorkspaceEntry } from "@/state/workspace"
+
 import { showDirectoryContextMenu, showEntryContextMenu } from "./menu-builders"
 import { getContextMenuSelection } from "./selection"
 import type { UseFileExplorerMenusProps } from "./types"
@@ -28,13 +28,9 @@ export const useFileExplorerMenus = ({
 	pinDirectory,
 	unpinDirectory,
 }: UseFileExplorerMenusProps) => {
-	const { openImageEdit, copyEntry, openTabInNewTab } = useStore(
-		useShallow((state) => ({
-			openImageEdit: state.openImageEdit,
-			copyEntry: state.copyEntry,
-			openTabInNewTab: state.openTabInNewTab,
-		})),
-	)
+	const openImageEdit = useDesktopRuntime().window.commands.openImageEdit
+	const copyEntry = useDesktopRuntime().workspace.commands.copyEntry
+	const openTabInNewTab = useDesktopRuntime().documents.commands.openTabInNewTab
 
 	const showEntryMenu = useCallback(
 		async (entry: WorkspaceEntry, selectionPaths: string[]) => {

@@ -19,7 +19,8 @@ import {
 	ensureLocalApiAuthToken,
 	rotateLocalApiAuthToken,
 } from "@/lib/local-api-auth"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState } from "@/state"
+
 import { getLocalApiToggleState } from "./api-mcp-state"
 
 const REST_APIS = [
@@ -91,19 +92,14 @@ url = "http://127.0.0.1:39123/mcp?token=<TOKEN>"`,
 ] as const
 
 export function ApiMcpTab() {
-	const {
-		localApiEnabled,
-		setLocalApiEnabled,
-		localApiError,
-		setLocalApiError,
-	} = useStore(
+	const { localApiEnabled, localApiError } = useWindowState(
 		useShallow((state) => ({
 			localApiEnabled: state.localApiEnabled,
-			setLocalApiEnabled: state.setLocalApiEnabled,
 			localApiError: state.localApiError,
-			setLocalApiError: state.setLocalApiError,
 		})),
 	)
+	const { setLocalApiEnabled, setLocalApiError } =
+		useDesktopRuntime().window.commands
 	const [token, setToken] = useState("")
 	const [tokenCopied, setTokenCopied] = useState(false)
 

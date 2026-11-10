@@ -1,7 +1,7 @@
 import { cn } from "@mdit/ui/lib/utils"
 import { FileTextIcon, ImageIcon } from "lucide-react"
 import type { CSSProperties, MouseEvent } from "react"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 import { isImageFile } from "@/utils/file-icon"
 
 type FileEntryProps = {

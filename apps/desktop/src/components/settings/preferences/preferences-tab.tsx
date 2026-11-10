@@ -16,23 +16,19 @@ import {
 } from "@mdit/ui/components/select"
 import { Switch } from "@mdit/ui/components/switch"
 import { Monitor, Moon, Sun } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
 import { useTheme } from "@/contexts/theme-context"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useHotkeysState, useWindowState } from "@/state"
 
 export function PreferencesTab() {
 	const { theme, setTheme } = useTheme()
-	const {
-		chatPanelBetaEnabled,
-		setChatPanelBetaEnabled,
-		toggleChatPanelHotkey,
-	} = useStore(
-		useShallow((state) => ({
-			chatPanelBetaEnabled: state.chatPanelBetaEnabled,
-			setChatPanelBetaEnabled: state.setChatPanelBetaEnabled,
-			toggleChatPanelHotkey: state.hotkeys["toggle-chat-panel"],
-		})),
+	const chatPanelBetaEnabled = useWindowState(
+		(state) => state.chatPanelBetaEnabled,
+	)
+	const setChatPanelBetaEnabled =
+		useDesktopRuntime().window.commands.setChatPanelBetaEnabled
+	const toggleChatPanelHotkey = useHotkeysState(
+		(state) => state.hotkeys["toggle-chat-panel"],
 	)
 
 	const themeOptions: Array<{

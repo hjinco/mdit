@@ -1,5 +1,8 @@
-import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@mdit/store/hotkeys"
 import { MenuItem, Submenu } from "@tauri-apps/api/menu"
+import {
+	type AppHotkeyMap,
+	hotkeyToMenuAccelerator,
+} from "@/state/services/hotkeys"
 
 export async function createHistoryMenu({
 	goBack,

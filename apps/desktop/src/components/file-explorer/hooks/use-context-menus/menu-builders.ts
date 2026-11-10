@@ -17,7 +17,7 @@ import {
 	getTemplateFiles,
 	saveNoteAsTemplate,
 } from "@/components/file-explorer/utils/template-utils"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 import { isImageFile } from "@/utils/file-icon"
 
 const REVEAL_LABEL = getRevealInFileManagerLabel()

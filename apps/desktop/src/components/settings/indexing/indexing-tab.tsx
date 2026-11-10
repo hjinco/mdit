@@ -16,41 +16,49 @@ import {
 	SelectValue,
 } from "@mdit/ui/components/select"
 import { Loader2Icon, RefreshCcwIcon } from "lucide-react"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import type { WorkspaceEntry } from "@/store"
-import { calculateIndexingProgress, useStore } from "@/store"
+import {
+	useAISettingsState,
+	useDesktopRuntime,
+	useIndexingState,
+	useWorkspaceState,
+} from "@/state"
+import { calculateIndexingProgress } from "@/state/services/indexing"
+import type { WorkspaceEntry } from "@/state/workspace"
 import { EmbeddingModelChangeDialog } from "./embedding-model-change-dialog"
 import { INDEXING_MODEL_CONTROL_STATE } from "./indexing-ui-state"
-import { useIndexingMetaPolling } from "./use-indexing-meta-polling"
 import { useIndexingModelChange } from "./use-indexing-model-change"
 
 export function IndexingTab() {
-	const {
-		workspacePath,
-		entries,
-		ollamaEmbeddingModels,
-		indexVaultDocuments,
-		isIndexing,
-		config,
-		indexedDocCount,
-		isMetaLoading,
-	} = useStore(
+	const { workspacePath, entries } = useWorkspaceState(
 		useShallow((state) => ({
 			workspacePath: state.workspacePath,
 			entries: state.entries,
-			ollamaEmbeddingModels: state.ollamaEmbeddingModels,
-			fetchOllamaModels: state.fetchOllamaModels,
-			indexVaultDocuments: state.indexVaultDocuments,
-			isIndexing: state.isIndexing,
-			config: state.config,
-			indexedDocCount: state.indexedDocCount,
-			isMetaLoading: state.isMetaLoading,
 		})),
 	)
+	const ollamaEmbeddingModels = useAISettingsState(
+		(state) => state.ollamaEmbeddingModels,
+	)
+	const { indexVaultDocuments, loadIndexingMeta } =
+		useDesktopRuntime().indexing.commands
+	const { isIndexing, config, indexedDocCount, isMetaLoading } =
+		useIndexingState(
+			useShallow((state) => ({
+				isIndexing: state.isIndexing,
+				config: state.config,
+				indexedDocCount: state.indexedDocCount,
+				isMetaLoading: state.isMetaLoading,
+			})),
+		)
+
+	useEffect(() => {
+		if (workspacePath) {
+			void loadIndexingMeta(workspacePath)
+		}
+	}, [workspacePath, loadIndexingMeta])
 
 	const currentConfig = config
-	useIndexingMetaPolling(workspacePath, isIndexing)
 	const {
 		isDialogOpen,
 		requestModelChange,
@@ -90,7 +98,6 @@ export function IndexingTab() {
 
 		try {
 			await indexVaultDocuments(workspacePath, forceReindex)
-			await useStore.getState().loadIndexingMeta(workspacePath)
 		} catch (error) {
 			console.error("Failed to index vault documents:", error)
 		}

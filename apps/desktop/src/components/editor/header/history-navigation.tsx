@@ -8,22 +8,22 @@ import type { LucideIcon } from "lucide-react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useDocumentState, useHotkeysState } from "@/state"
+import {
+	selectCanGoBack,
+	selectCanGoForward,
+} from "@/state/documents/selectors"
 
 export function HistoryNavigation() {
-	const {
-		canGoBack,
-		canGoForward,
-		goBack,
-		goForward,
-		goBackHotkey,
-		goForwardHotkey,
-	} = useStore(
+	const { canGoBack, canGoForward } = useDocumentState(
 		useShallow((s) => ({
-			canGoBack: s.canGoBack(),
-			canGoForward: s.canGoForward(),
-			goBack: s.goBack,
-			goForward: s.goForward,
+			canGoBack: selectCanGoBack(s),
+			canGoForward: selectCanGoForward(s),
+		})),
+	)
+	const { goBack, goForward } = useDesktopRuntime().documents.commands
+	const { goBackHotkey, goForwardHotkey } = useHotkeysState(
+		useShallow((s) => ({
 			goBackHotkey: s.hotkeys["go-back"],
 			goForwardHotkey: s.hotkeys["go-forward"],
 		})),

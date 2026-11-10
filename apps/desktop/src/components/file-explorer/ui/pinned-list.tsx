@@ -6,8 +6,9 @@ import { Menu, MenuItem } from "@tauri-apps/api/menu"
 import { PinIcon, PinOffIcon } from "lucide-react"
 import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWorkspaceState } from "@/state"
+import type { WorkspaceEntry } from "@/state/workspace"
+
 import { getEntryButtonClassName } from "../utils/entry-classnames"
 
 type PinnedListProps = {
@@ -15,21 +16,16 @@ type PinnedListProps = {
 }
 
 export function PinnedList({ lookupEntryByPath }: PinnedListProps) {
-	const {
-		currentCollectionPath,
-		setCurrentCollectionPath,
-		pinnedDirectories,
-		workspacePath,
-		unpinDirectory,
-	} = useStore(
-		useShallow((state) => ({
-			currentCollectionPath: state.currentCollectionPath,
-			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			pinnedDirectories: state.pinnedDirectories,
-			workspacePath: state.workspacePath,
-			unpinDirectory: state.unpinDirectory,
-		})),
-	)
+	const { currentCollectionPath, pinnedDirectories, workspacePath } =
+		useWorkspaceState(
+			useShallow((state) => ({
+				currentCollectionPath: state.currentCollectionPath,
+				pinnedDirectories: state.pinnedDirectories,
+				workspacePath: state.workspacePath,
+			})),
+		)
+	const { setCurrentCollectionPath, unpinDirectory } =
+		useDesktopRuntime().workspace.commands
 
 	const normalizedWorkspacePath = useMemo(
 		() => (workspacePath ? normalizePathSeparators(workspacePath) : null),

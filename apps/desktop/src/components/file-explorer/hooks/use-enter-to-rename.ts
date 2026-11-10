@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 type UseEnterToRenameOptions = {
 	containerRef: React.RefObject<HTMLElement | null>

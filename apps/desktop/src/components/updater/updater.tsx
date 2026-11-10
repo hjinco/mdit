@@ -2,25 +2,20 @@ import { check, type Update } from "@tauri-apps/plugin-updater"
 import { useCallback, useEffect } from "react"
 import { useShallow } from "zustand/react/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWindowState } from "@/state"
 
 export function Updater() {
 	const isDev = import.meta.env.DEV
 	const label = useCurrentWindowLabel()
 	const isMainWindow = label === "main"
-	const {
-		isUpdateReady,
-		isUpdateDownloading,
-		setUpdateReady,
-		setUpdateDownloading,
-	} = useStore(
+	const { isUpdateReady, isUpdateDownloading } = useWindowState(
 		useShallow((state) => ({
 			isUpdateReady: state.isUpdateReady,
 			isUpdateDownloading: state.isUpdateDownloading,
-			setUpdateReady: state.setUpdateReady,
-			setUpdateDownloading: state.setUpdateDownloading,
 		})),
 	)
+	const { setUpdateReady, setUpdateDownloading } =
+		useDesktopRuntime().window.commands
 
 	const downloadAndInstall = useCallback(
 		async (update: Update) => {

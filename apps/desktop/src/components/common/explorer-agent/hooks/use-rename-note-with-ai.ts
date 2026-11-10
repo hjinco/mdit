@@ -12,8 +12,8 @@ import {
 	AIBatchResultsToast,
 	type AIBatchResultToastItem,
 } from "@/components/common/explorer-agent/ai-batch-results-toast"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import { getDesktopRuntime, useAISettingsState } from "@/state"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 const renameNoteWithAICore = createRenameNoteWithAICore({
 	fileSystem: {
@@ -106,7 +106,7 @@ export function buildAIRenameResultToastItems(
 }
 
 export function useRenameNoteWithAI() {
-	const chatConfig = useStore((state) => state.chatConfig)
+	const chatConfig = useAISettingsState((state) => state.chatConfig)
 	const canRenameNoteWithAI = Boolean(chatConfig)
 
 	const renameNotesWithAI = useCallback(
@@ -133,9 +133,10 @@ export function useRenameNoteWithAI() {
 			let batchResult: AppliedRenameBatchResult | null = null
 
 			try {
-				useStore.getState().lockAiEntries(entryPaths)
-				await useStore.getState().refreshCodexOAuthForTarget()
-				const { chatConfig: latestChatConfig } = useStore.getState()
+				getDesktopRuntime().workspace.commands.lockAiEntries(entryPaths)
+				await getDesktopRuntime().aiSettings.commands.refreshCodexOAuthForTarget()
+				const { chatConfig: latestChatConfig } =
+					getDesktopRuntime().aiSettings.getSnapshot()
 
 				const suggestionResult = await renameNoteWithAICore.suggestRename({
 					entries: entriesToRename,
@@ -168,11 +169,14 @@ export function useRenameNoteWithAI() {
 					}
 
 					try {
-						const renamedPath = await useStore
-							.getState()
-							.renameEntry(entry, operation.finalFileName, {
-								allowLockedSourcePath: true,
-							})
+						const renamedPath =
+							await getDesktopRuntime().workspace.commands.renameEntry(
+								entry,
+								operation.finalFileName,
+								{
+									allowLockedSourcePath: true,
+								},
+							)
 						if (renamedPath === operation.path) {
 							appliedOperations.push({
 								path: operation.path,
@@ -221,7 +225,7 @@ export function useRenameNoteWithAI() {
 					position: "bottom-left",
 				})
 			} finally {
-				useStore.getState().unlockAiEntries(entryPaths)
+				getDesktopRuntime().workspace.commands.unlockAiEntries(entryPaths)
 			}
 
 			if (!batchResult) {
@@ -230,7 +234,7 @@ export function useRenameNoteWithAI() {
 
 			const renamedItems = buildAIRenameResultToastItems(batchResult)
 			const { renamedCount, unchangedCount, failedCount } = batchResult
-			const { workspacePath } = useStore.getState()
+			const { workspacePath } = getDesktopRuntime().workspace.getSnapshot()
 			toast.custom(
 				(toastId) =>
 					createElement(AIBatchResultsToast, {
@@ -242,20 +246,21 @@ export function useRenameNoteWithAI() {
 						emptyMessage: "No notes were renamed.",
 						items: renamedItems,
 						onOpenPath: (path: string) => {
-							useStore.getState().openTab(path)
+							getDesktopRuntime().documents.commands.openTab(path)
 						},
 						onConfirm: () => toast.dismiss(toastId),
 						onUndo: async (item: AIBatchResultToastItem) => {
 							const sourceName = basename(item.fromPath)
 							try {
-								const revertedPath = await useStore.getState().renameEntry(
-									{
-										path: item.openPath,
-										name: basename(item.openPath),
-										isDirectory: false,
-									},
-									sourceName,
-								)
+								const revertedPath =
+									await getDesktopRuntime().workspace.commands.renameEntry(
+										{
+											path: item.openPath,
+											name: basename(item.openPath),
+											isDirectory: false,
+										},
+										sourceName,
+									)
 								const didUndo = revertedPath === item.fromPath
 								if (!didUndo) {
 									toast.error(`Failed to undo AI rename for "${sourceName}".`, {

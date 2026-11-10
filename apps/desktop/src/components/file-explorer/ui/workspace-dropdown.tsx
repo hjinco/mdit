@@ -14,7 +14,7 @@ import {
 import { getFolderNameFromPath } from "@mdit/utils/path-utils"
 import { ChevronDown, InboxIcon, MinusIcon } from "lucide-react"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useHotkeysState } from "@/state"
 
 const REMOVE_WORKSPACE_SELECTOR = '[data-remove-workspace="true"]'
 
@@ -44,7 +44,7 @@ export function WorkspaceDropdown({
 	onWorkspaceRemove,
 	onOpenFolderPicker,
 }: WorkspaceDropdownProps) {
-	const openFolderHotkey = useStore((s) => s.hotkeys["open-folder"])
+	const openFolderHotkey = useHotkeysState((s) => s.hotkeys["open-folder"])
 	const currentWorkspaceName = workspacePath
 		? getFolderNameFromPath(workspacePath)
 		: "No folder"

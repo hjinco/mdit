@@ -1,5 +1,8 @@
-import { type AppHotkeyMap, hotkeyToMenuAccelerator } from "@mdit/store/hotkeys"
 import { MenuItem, PredefinedMenuItem, Submenu } from "@tauri-apps/api/menu"
+import {
+	type AppHotkeyMap,
+	hotkeyToMenuAccelerator,
+} from "@/state/services/hotkeys"
 
 export async function createViewMenu({
 	toggleFileExplorer,

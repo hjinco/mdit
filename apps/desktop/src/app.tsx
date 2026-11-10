@@ -1,7 +1,5 @@
-import { getCurrentWindow } from "@tauri-apps/api/window"
-import { useEffect } from "react"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import type { getCurrentWindow } from "@tauri-apps/api/window"
+import { useDesktopRuntime, useWorkspaceState } from "@/state"
 import { ChatPanel } from "./components/chat/chat-panel"
 import { CollectionView } from "./components/collection-view/collection-view"
 import { CommandMenu } from "./components/command-menu/command-menu"
@@ -12,86 +10,26 @@ import { ImagePreviewDialog } from "./components/image/image-preview-dialog"
 import { SettingsDialog } from "./components/settings"
 import { Welcome } from "./components/welcome/welcome"
 import { ScreenCaptureProvider } from "./contexts/screen-capture-context"
-import { useAutoIndexing } from "./hooks/use-auto-indexing"
 import { useFontScale } from "./hooks/use-font-scale"
-import { useGitSync } from "./hooks/use-git-sync"
-import { useStoreRuntimeLifecycle } from "./hooks/use-store-runtime-lifecycle"
-import { useWorkspaceLifecycle } from "./hooks/use-workspace-lifecycle"
-import { startLocalApiServer, stopLocalApiServer } from "./lib/local-api"
-import { shouldRunLocalApiServer } from "./lib/local-api-runtime"
+import { useSaveBeforeWindowClose } from "./hooks/use-save-before-window-close"
 import { isLinux, isWindows10 } from "./utils/platform"
 
+async function hideMainWindow(appWindow: ReturnType<typeof getCurrentWindow>) {
+	if (await appWindow.isFullscreen()) {
+		await appWindow.setFullscreen(false)
+		await new Promise((resolve) => setTimeout(resolve, 700))
+	}
+	await appWindow.hide()
+}
+
 export function App() {
-	const { workspacePath, isLoading, localApiEnabled, setLocalApiError } =
-		useStore(
-			useShallow((s) => ({
-				workspacePath: s.workspacePath,
-				isLoading: s.isLoading,
-				localApiEnabled: s.localApiEnabled,
-				setLocalApiError: s.setLocalApiError,
-			})),
-		)
+	const workspacePath = useWorkspaceState((state) => state.workspacePath)
+	const isLoading = useWorkspaceState((state) => state.isLoading)
+	const { flushAllDocuments } = useDesktopRuntime().documents.commands
 	useFontScale()
-	useWorkspaceLifecycle()
-	useStoreRuntimeLifecycle()
-	useAutoIndexing(workspacePath)
-	useGitSync(workspacePath)
+	useSaveBeforeWindowClose(flushAllDocuments, hideMainWindow)
 
-	const mutedBgClass = isWindows10() || isLinux() ? "bg-muted" : "bg-muted/70"
-
-	useEffect(() => {
-		const appWindow = getCurrentWindow()
-		const closeListener = appWindow.listen(
-			"tauri://close-requested",
-			async () => {
-				const isFullscreen = await appWindow.isFullscreen()
-				if (isFullscreen) {
-					await appWindow.setFullscreen(false)
-					await new Promise((resolve) => setTimeout(resolve, 700))
-				}
-				appWindow.hide()
-			},
-		)
-
-		return () => {
-			closeListener.then((unlisten) => unlisten())
-		}
-	}, [])
-
-	useEffect(() => {
-		let isActive = true
-		const shouldRunLocalApi = shouldRunLocalApiServer(localApiEnabled)
-		const setLocalApiErrorIfActive = (errorMessage: string | null) => {
-			if (!isActive) {
-				return
-			}
-			setLocalApiError(errorMessage)
-		}
-
-		const syncLocalApiServerState = async () => {
-			try {
-				if (shouldRunLocalApi) {
-					await startLocalApiServer()
-				} else {
-					await stopLocalApiServer()
-				}
-				setLocalApiErrorIfActive(null)
-			} catch (error) {
-				const action = shouldRunLocalApi ? "start" : "stop"
-				const message =
-					error instanceof Error ? error.message : String(error ?? "Unknown")
-				setLocalApiErrorIfActive(
-					`Failed to ${action} local API server: ${message}`,
-				)
-			}
-		}
-
-		void syncLocalApiServerState()
-
-		return () => {
-			isActive = false
-		}
-	}, [localApiEnabled, setLocalApiError])
+	const mutedBgClass = isLinux() || isWindows10() ? "bg-muted" : "bg-muted/70"
 
 	if (isLoading) {
 		return <div className={`h-screen ${mutedBgClass}`} />

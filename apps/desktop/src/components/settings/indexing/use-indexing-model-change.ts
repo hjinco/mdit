@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useShallow } from "zustand/shallow"
-import type { IndexingConfig } from "@/store"
+import { useDesktopRuntime } from "@/state"
+import type { IndexingConfig } from "@/state/services/indexing"
 import {
 	isModelChanging,
 	parseEmbeddingModelValue,
 	shouldShowModelChangeWarning,
-	useStore,
-} from "@/store"
+} from "@/state/services/indexing"
 
 type PendingModelChange = {
 	provider: string
@@ -19,13 +18,7 @@ export function useIndexingModelChange(
 	indexedDocCount: number,
 ) {
 	const { setIndexingConfig, refreshWorkspaceEmbeddings, loadIndexingMeta } =
-		useStore(
-			useShallow((state) => ({
-				setIndexingConfig: state.setIndexingConfig,
-				refreshWorkspaceEmbeddings: state.refreshWorkspaceEmbeddings,
-				loadIndexingMeta: state.loadIndexingMeta,
-			})),
-		)
+		useDesktopRuntime().indexing.commands
 	const [isDialogOpen, setIsDialogOpen] = useState(false)
 	const [pendingModelChange, setPendingModelChange] =
 		useState<PendingModelChange | null>(null)

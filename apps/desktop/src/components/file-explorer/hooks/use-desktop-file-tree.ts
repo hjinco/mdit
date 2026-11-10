@@ -5,7 +5,7 @@ import {
 } from "@mdit/file-tree"
 import { normalizePathSeparators } from "@mdit/utils/path-utils"
 import { useCallback, useMemo } from "react"
-import type { WorkspaceEntry, WorkspaceEntrySelection } from "@/store"
+import type { WorkspaceEntry, WorkspaceEntrySelection } from "@/state/workspace"
 
 export const workspaceEntryFileTreeAdapter: FileTreeAdapter<WorkspaceEntry> = {
 	getId: (entry) => entry.path,

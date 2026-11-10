@@ -2,11 +2,17 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
 import { Header } from "./header"
 
-const mockUseStore = vi.fn()
+const mockSelector = vi.fn()
 
-vi.mock("@/store", () => ({
-	useStore: (selector: (state: object) => unknown) => mockUseStore(selector),
-}))
+vi.mock("@/state", () => {
+	const select = (selector: (state: object) => unknown) =>
+		mockSelector(selector)
+	return {
+		useWindowState: select,
+		useWorkspaceState: select,
+		useDocumentState: select,
+	}
+})
 
 vi.mock("@/hooks/use-current-window-label", () => ({
 	useCurrentWindowLabel: vi.fn(() => null),
@@ -38,7 +44,7 @@ vi.mock("@/components/quick-note/window-pin-button", () => ({
 
 describe("Header", () => {
 	it("keeps history navigation visible without tabs but hides the info button", () => {
-		mockUseStore.mockImplementation((selector) =>
+		mockSelector.mockImplementation((selector) =>
 			selector({
 				isFileExplorerOpen: true,
 				isFocusMode: false,
@@ -57,7 +63,7 @@ describe("Header", () => {
 	})
 
 	it("shows the info button when tabs exist", () => {
-		mockUseStore.mockImplementation((selector) =>
+		mockSelector.mockImplementation((selector) =>
 			selector({
 				isFileExplorerOpen: true,
 				isFocusMode: false,
@@ -75,7 +81,7 @@ describe("Header", () => {
 	})
 
 	it("hides navigation entirely when navigation is disabled", () => {
-		mockUseStore.mockImplementation((selector) =>
+		mockSelector.mockImplementation((selector) =>
 			selector({
 				isFileExplorerOpen: true,
 				isFocusMode: false,

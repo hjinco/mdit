@@ -4,19 +4,18 @@ import { XIcon } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { type MouseEvent, useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useDocumentState } from "@/state"
 
 export function TabStrip() {
-	const { rawTabs, openDocuments, activeTabId, activateTabById, closeTabById } =
-		useStore(
-			useShallow((s) => ({
-				rawTabs: s.tabs,
-				openDocuments: s.openDocuments,
-				activeTabId: s.activeTabId,
-				activateTabById: s.activateTabById,
-				closeTabById: s.closeTabById,
-			})),
-		)
+	const { rawTabs, openDocuments, activeTabId } = useDocumentState(
+		useShallow((s) => ({
+			rawTabs: s.tabs,
+			openDocuments: s.openDocuments,
+			activeTabId: s.activeTabId,
+		})),
+	)
+	const { activateTabById, closeTabById } =
+		useDesktopRuntime().documents.commands
 	const tabs = useMemo(() => {
 		const documentsById = new Map(
 			openDocuments.map((document) => [document.id, document]),

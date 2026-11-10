@@ -1,9 +1,0 @@
-{
-	"extends": "@mdit/tsconfig/react-app",
-	"compilerOptions": {
-		"paths": {
-			"@/*": ["./src/*"]
-		}
-	},
-	"include": ["src", "vitest.config.ts"]
-}

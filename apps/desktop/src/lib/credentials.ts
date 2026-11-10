@@ -5,7 +5,7 @@ import type {
 	CodexOAuthCredential,
 	ProviderCredential,
 	ProviderId,
-} from "@/store"
+} from "@/state/services/ai-settings"
 
 function normalizeCodexCredential(
 	credential: CodexOAuthCredential,

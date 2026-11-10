@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("@/store", () => ({
-	useStore: {
-		getState: () => ({
-			workspacePath: "/workspace",
-		}),
-	},
+vi.mock("@/state", () => ({
+	getDesktopRuntime: () => ({
+		workspace: { getSnapshot: () => ({ workspacePath: "/workspace" }) },
+	}),
 }))
 
 import { buildImageLinkData } from "./image-link"

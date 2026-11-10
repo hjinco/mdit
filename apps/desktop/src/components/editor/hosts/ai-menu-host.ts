@@ -10,7 +10,12 @@ import { fetch as tauriHttpFetch } from "@tauri-apps/plugin-http"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
-import { useStore } from "@/store"
+import {
+	getDesktopRuntime,
+	useAISettingsState,
+	useDesktopRuntime,
+} from "@/state"
+
 import { EditorKit } from "../plugins/editor-kit"
 import { getDesktopAIMenuAccess } from "./ai-menu-access"
 
@@ -80,7 +85,7 @@ const desktopAIMenuStorage: AIMenuStorage = {
 }
 
 const resolveActiveChatConfig = async () => {
-	const currentConfig = useStore.getState().chatConfig
+	const currentConfig = getDesktopRuntime().aiSettings.getSnapshot().chatConfig
 	if (!currentConfig) {
 		throw new Error("LLM config not found")
 	}
@@ -88,8 +93,9 @@ const resolveActiveChatConfig = async () => {
 		return currentConfig
 	}
 
-	await useStore.getState().refreshCodexOAuthForTarget()
-	const refreshedConfig = useStore.getState().chatConfig
+	await getDesktopRuntime().aiSettings.commands.refreshCodexOAuthForTarget()
+	const refreshedConfig =
+		getDesktopRuntime().aiSettings.getSnapshot().chatConfig
 	if (!refreshedConfig || refreshedConfig.provider !== "codex_oauth") {
 		throw new Error("Codex OAuth credential not found")
 	}
@@ -98,15 +104,15 @@ const resolveActiveChatConfig = async () => {
 }
 
 const useDesktopAIMenuRuntime: AIMenuHostDeps["useRuntime"] = () => {
-	const { chatConfig, enabledChatModels, selectModel, openSettingsWithTab } =
-		useStore(
-			useShallow((s) => ({
-				chatConfig: s.chatConfig,
-				enabledChatModels: s.enabledChatModels,
-				selectModel: s.selectModel,
-				openSettingsWithTab: s.openSettingsWithTab,
-			})),
-		)
+	const { chatConfig, enabledChatModels } = useAISettingsState(
+		useShallow((s) => ({
+			chatConfig: s.chatConfig,
+			enabledChatModels: s.enabledChatModels,
+		})),
+	)
+	const selectModel = useDesktopRuntime().aiSettings.commands.selectModel
+	const openSettingsWithTab =
+		useDesktopRuntime().window.commands.openSettingsWithTab
 	const windowLabel = useCurrentWindowLabel()
 	const access = getDesktopAIMenuAccess(windowLabel)
 	const chat = useEditorChat({

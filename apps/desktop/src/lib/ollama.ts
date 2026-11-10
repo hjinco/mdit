@@ -1,5 +1,5 @@
-import type { OllamaModels } from "@mdit/store/core"
 import { invoke } from "@tauri-apps/api/core"
+import type { OllamaModels } from "@/state/services/ai-settings"
 
 type OllamaModelsCommandResult = {
 	completionModels?: string[]

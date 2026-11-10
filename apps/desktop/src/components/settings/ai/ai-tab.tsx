@@ -3,7 +3,8 @@ import { openUrl } from "@tauri-apps/plugin-opener"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import { useAISettingsState, useDesktopRuntime } from "@/state"
+
 import { useOllamaModelRefresh } from "../shared/use-ollama-model-refresh"
 import {
 	buildChatModelSelectOptions,
@@ -25,27 +26,23 @@ export function AITab() {
 		ollamaCompletionModels,
 		enabledChatModels,
 		chatConfig,
-		connectProvider,
-		connectCodexOAuth,
-		disconnectProvider,
-		fetchOllamaModels,
-		toggleModelEnabled,
-		selectModel,
-	} = useStore(
+	} = useAISettingsState(
 		useShallow((state) => ({
 			connectedProviders: state.connectedProviders,
 			apiModels: state.apiModels,
 			ollamaCompletionModels: state.ollamaCompletionModels,
 			enabledChatModels: state.enabledChatModels,
 			chatConfig: state.chatConfig,
-			connectProvider: state.connectProvider,
-			connectCodexOAuth: state.connectCodexOAuth,
-			disconnectProvider: state.disconnectProvider,
-			fetchOllamaModels: state.fetchOllamaModels,
-			toggleModelEnabled: state.toggleModelEnabled,
-			selectModel: state.selectModel,
 		})),
 	)
+	const {
+		connectProvider,
+		connectCodexOAuth,
+		disconnectProvider,
+		fetchOllamaModels,
+		toggleModelEnabled,
+		selectModel,
+	} = useDesktopRuntime().aiSettings.commands
 	const [providerBusy, setProviderBusy] = useState<
 		Partial<Record<ProviderId, boolean>>
 	>({})

@@ -1,8 +1,7 @@
 import { isPathEqualOrDescendant } from "@mdit/utils/path-utils"
 import { useCallback, useRef } from "react"
-import { useShallow } from "zustand/shallow"
 import { useDropZone } from "@/contexts/drop-context"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWorkspaceState } from "@/state"
 
 export function useFolderDropZone({
 	folderPath,
@@ -12,13 +11,9 @@ export function useFolderDropZone({
 	depth: number
 }) {
 	const ref = useRef<HTMLDivElement | null>(null)
-	const { workspacePath, moveEntry, moveExternalEntry } = useStore(
-		useShallow((state) => ({
-			workspacePath: state.workspacePath,
-			moveEntry: state.moveEntry,
-			moveExternalEntry: state.moveExternalEntry,
-		})),
-	)
+	const workspacePath = useWorkspaceState((state) => state.workspacePath)
+	const { moveEntry, moveExternalEntry } =
+		useDesktopRuntime().workspace.commands
 
 	const setRef = useCallback((node: HTMLDivElement | null) => {
 		ref.current = node

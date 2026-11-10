@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 import {
 	applySortDirection,
 	type BaseSortOption,

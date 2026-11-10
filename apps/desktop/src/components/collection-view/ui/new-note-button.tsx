@@ -5,21 +5,16 @@ import {
 	TooltipTrigger,
 } from "@mdit/ui/components/tooltip"
 import { SquarePenIcon } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useHotkeysState } from "@/state"
 
 export function NewNoteButton({
 	directoryPath,
 }: {
 	directoryPath: string | null
 }) {
-	const { createNote, createNoteHotkey } = useStore(
-		useShallow((s) => ({
-			createNote: s.createNote,
-			createNoteHotkey: s.hotkeys["create-note"],
-		})),
-	)
+	const createNote = useDesktopRuntime().workspace.commands.createNote
+	const createNoteHotkey = useHotkeysState((s) => s.hotkeys["create-note"])
 
 	return (
 		<Tooltip>

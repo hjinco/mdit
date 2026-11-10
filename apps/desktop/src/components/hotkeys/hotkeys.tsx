@@ -1,13 +1,19 @@
-import {
-	APP_HOTKEY_DEFINITIONS,
-	type AppHotkeyActionId,
-	FIXED_TAB_SHORTCUT_DIGITS,
-} from "@mdit/store/hotkeys"
 import { useHotkey } from "@tanstack/react-hotkeys"
 import { useCallback, useMemo } from "react"
 import { useShallow } from "zustand/shallow"
 import { closeTabOrHideWindow } from "@/lib/close-tab-or-hide-window"
-import { useStore } from "@/store"
+import {
+	getDesktopRuntime,
+	useDesktopRuntime,
+	useDocumentState,
+	useHotkeysState,
+	useWindowState,
+} from "@/state"
+import {
+	APP_HOTKEY_DEFINITIONS,
+	type AppHotkeyActionId,
+	FIXED_TAB_SHORTCUT_DIGITS,
+} from "@/state/services/hotkeys"
 
 const HOTKEY_OPTIONS = { preventDefault: true } as const
 type HotkeyBindingProps = {
@@ -36,53 +42,34 @@ export function getTabIdForNumberShortcut<T extends { id: number }>(
 }
 
 export function Hotkeys() {
+	const hotkeys = useHotkeysState((s) => s.hotkeys)
+	const { createAndOpenNote, openFolderPicker, toggleCollectionView } =
+		useDesktopRuntime().workspace.commands
+	const activeTabId = useDocumentState((s) => s.activeTabId)
+	const { isEditMode, chatPanelBetaEnabled } = useWindowState(
+		useShallow((s) => ({
+			isEditMode: s.isEditMode,
+			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
+		})),
+	)
 	const {
-		hotkeys,
-		createAndOpenNote,
-		activeTabId,
-		isEditMode,
 		closeActiveTab,
-		openFolderPicker,
 		activateTabById,
 		activatePreviousTab,
 		activateNextTab,
-		toggleCollectionView,
 		goBack,
 		goForward,
-		toggleFileExplorer,
+	} = useDesktopRuntime().documents.commands
+	const {
+		toggleFileExplorerOpen: toggleFileExplorer,
 		toggleCommandMenu,
 		toggleSettingsDialogOpen,
 		toggleNoteInfoOpen,
-		chatPanelBetaEnabled,
 		toggleChatPanelOpen,
-		zoomIn,
-		zoomOut,
-		resetZoom,
-	} = useStore(
-		useShallow((s) => ({
-			hotkeys: s.hotkeys,
-			createAndOpenNote: s.createAndOpenNote,
-			activeTabId: s.activeTabId,
-			isEditMode: s.isEditMode,
-			closeActiveTab: s.closeActiveTab,
-			openFolderPicker: s.openFolderPicker,
-			activateTabById: s.activateTabById,
-			activatePreviousTab: s.activatePreviousTab,
-			activateNextTab: s.activateNextTab,
-			toggleCollectionView: s.toggleCollectionView,
-			goBack: s.goBack,
-			goForward: s.goForward,
-			toggleFileExplorer: s.toggleFileExplorerOpen,
-			toggleCommandMenu: s.toggleCommandMenu,
-			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
-			toggleNoteInfoOpen: s.toggleNoteInfoOpen,
-			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
-			toggleChatPanelOpen: s.toggleChatPanelOpen,
-			zoomIn: s.increaseFontScale,
-			zoomOut: s.decreaseFontScale,
-			resetZoom: s.resetFontScale,
-		})),
-	)
+		increaseFontScale: zoomIn,
+		decreaseFontScale: zoomOut,
+		resetFontScale: resetZoom,
+	} = useDesktopRuntime().window.commands
 
 	const handleCloseTab = useCallback(() => {
 		void closeTabOrHideWindow({
@@ -95,7 +82,7 @@ export function Hotkeys() {
 	const handleActivateTabByNumber = useCallback(
 		(digit: number) => {
 			const targetTabId = getTabIdForNumberShortcut(
-				useStore.getState().tabs,
+				getDesktopRuntime().documents.getSnapshot().tabs,
 				digit,
 			)
 			if (targetTabId === null) {

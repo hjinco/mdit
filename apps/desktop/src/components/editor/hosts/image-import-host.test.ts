@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("@/store", () => ({
-	useStore: {
-		getState: () => ({
-			copyEntry: vi.fn(),
-			workspacePath: null,
-		}),
-	},
+vi.mock("@/state", () => ({
+	getDesktopRuntime: () => ({
+		workspace: {
+			getSnapshot: () => ({ workspacePath: null }),
+			commands: { copyEntry: vi.fn() },
+		},
+	}),
 }))
 
 import { prepareImageForEditorInsert } from "./image-import-host"

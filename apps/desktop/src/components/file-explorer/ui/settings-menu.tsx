@@ -1,16 +1,12 @@
 import { Button } from "@mdit/ui/components/button"
 import { SettingsIcon } from "lucide-react"
-import { useShallow } from "zustand/shallow"
 import { HotkeyKbd } from "@/components/hotkeys/hotkey-kbd"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useHotkeysState } from "@/state"
 
 export function SettingsMenu() {
-	const { setSettingsDialogOpen, settingsHotkey } = useStore(
-		useShallow((s) => ({
-			setSettingsDialogOpen: s.setSettingsDialogOpen,
-			settingsHotkey: s.hotkeys["toggle-settings"],
-		})),
-	)
+	const setSettingsDialogOpen =
+		useDesktopRuntime().window.commands.setSettingsDialogOpen
+	const settingsHotkey = useHotkeysState((s) => s.hotkeys["toggle-settings"])
 
 	return (
 		<Button

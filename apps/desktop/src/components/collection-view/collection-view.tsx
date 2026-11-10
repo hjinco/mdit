@@ -9,7 +9,14 @@ import { type MouseEvent, useCallback, useMemo, useRef } from "react"
 import { useShallow } from "zustand/shallow"
 import { useRenameNoteWithAI } from "@/components/common/explorer-agent/hooks/use-rename-note-with-ai"
 import { useResizablePanel } from "@/hooks/use-resizable-panel"
-import { computeCollectionEntries, useStore } from "@/store"
+import {
+	useDesktopRuntime,
+	useDocumentState,
+	useWindowState,
+	useWorkspaceState,
+} from "@/state"
+import { selectIsSaved } from "@/state/documents/selectors"
+import { computeCollectionEntries } from "@/state/workspace"
 import { isMac } from "@/utils/platform"
 import { useCollectionContextMenu } from "./hooks/use-collection-context-menu"
 import { useCollectionRename } from "./hooks/use-collection-rename"
@@ -24,37 +31,30 @@ import { NoteEntry } from "./ui/note-entry"
 import { SortSelector } from "./ui/sort-selector"
 
 export function CollectionView() {
+	const isFileExplorerOpen = useWindowState((state) => state.isFileExplorerOpen)
+	const { currentCollectionPath, entries, aiLockedEntryPaths } =
+		useWorkspaceState(
+			useShallow((state) => ({
+				currentCollectionPath: state.currentCollectionPath,
+				entries: state.entries,
+				aiLockedEntryPaths: state.aiLockedEntryPaths,
+			})),
+		)
 	const {
-		isFileExplorerOpen,
-		currentCollectionPath,
 		setCurrentCollectionPath,
-		entries,
-		activeTabId,
-		tabs,
-		openDocuments,
-		openTab,
-		activeTabSaved,
 		deleteEntries,
 		renameEntry,
 		updateEntryModifiedDate,
-		aiLockedEntryPaths,
-	} = useStore(
+	} = useDesktopRuntime().workspace.commands
+	const { activeTabId, tabs, openDocuments, activeTabSaved } = useDocumentState(
 		useShallow((state) => ({
-			isFileExplorerOpen: state.isFileExplorerOpen,
-			currentCollectionPath: state.currentCollectionPath,
-			setCurrentCollectionPath: state.setCurrentCollectionPath,
-			entries: state.entries,
 			activeTabId: state.activeTabId,
 			tabs: state.tabs,
 			openDocuments: state.openDocuments,
-			openTab: state.openTab,
-			activeTabSaved: state.getIsSaved(),
-			deleteEntries: state.deleteEntries,
-			renameEntry: state.renameEntry,
-			updateEntryModifiedDate: state.updateEntryModifiedDate,
-			aiLockedEntryPaths: state.aiLockedEntryPaths,
+			activeTabSaved: selectIsSaved(state),
 		})),
 	)
+	const openTab = useDesktopRuntime().documents.commands.openTab
 	const { renameNotesWithAI, canRenameNoteWithAI } = useRenameNoteWithAI()
 	const isCollectionViewOpen = currentCollectionPath !== null
 	const { isOpen, isResizing, width, handlePointerDown } = useResizablePanel({

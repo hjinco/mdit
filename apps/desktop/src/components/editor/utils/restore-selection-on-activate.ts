@@ -1,4 +1,4 @@
-import type { PendingHistorySelectionRestoreResult } from "@/store"
+import type { PendingHistorySelectionRestoreResult } from "@/state/documents/types"
 
 type HistoryRestoreEditor = {
 	children: unknown[]

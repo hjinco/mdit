@@ -6,13 +6,21 @@ import {
 	PopoverTrigger,
 } from "@mdit/ui/components/popover"
 import { Separator } from "@mdit/ui/components/separator"
+import { useQuery } from "@tanstack/react-query"
 import { invoke } from "@tauri-apps/api/core"
 import { ArrowRight, InfoIcon } from "lucide-react"
 import { resolve } from "pathe"
 import { useEffect, useState } from "react"
 import { countGraphemes } from "unicode-segmenter/grapheme"
 import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import {
+	useDesktopRuntime,
+	useDocumentState,
+	useIndexingState,
+	useWindowState,
+	useWorkspaceState,
+} from "@/state"
+import { selectActiveTabPath } from "@/state/documents/selectors"
 import { calculateReadingMinutes } from "../utils/reading-time"
 
 const WORD_SPLIT_REGEX = /\s+/
@@ -32,28 +40,50 @@ const RELATED_NOTES_LIMIT = 5
 export function InfoButton() {
 	const editor = useEditorRef()
 	const [stats, setStats] = useState({ characters: 0, words: 0, minutes: 0 })
-	const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([])
-	const [relatedNotes, setRelatedNotes] = useState<RelatedNoteEntry[]>([])
-
-	const {
-		activeTabPath,
-		workspacePath,
-		openTab,
-		isNoteInfoOpen,
-		setNoteInfoOpen,
-	} = useStore(
-		useShallow((s) => ({
-			activeTabPath: s.getActiveTabPath(),
-			workspacePath: s.workspacePath,
-			openTab: s.openTab,
-			isNoteInfoOpen: s.isNoteInfoOpen,
-			setNoteInfoOpen: s.setNoteInfoOpen,
+	const activeTabPath = useDocumentState(selectActiveTabPath)
+	const { sessionId, workspacePath } = useWorkspaceState(
+		useShallow((state) => ({
+			sessionId: state.sessionId,
+			workspacePath: state.workspacePath,
 		})),
 	)
-	const indexingConfig = useStore((s) => s.config)
-	const hasEmbeddingConfig = Boolean(
-		indexingConfig?.embeddingProvider && indexingConfig?.embeddingModel,
-	)
+	const isNoteInfoOpen = useWindowState((state) => state.isNoteInfoOpen)
+	const { documents, window } = useDesktopRuntime()
+	const { openTab } = documents.commands
+	const { setNoteInfoOpen } = window.commands
+	const indexingConfig = useIndexingState((state) => state.config)
+	const embeddingProvider = indexingConfig?.embeddingProvider
+	const embeddingModel = indexingConfig?.embeddingModel
+	const hasNote = Boolean(workspacePath && activeTabPath)
+
+	const { data: backlinks = [] } = useQuery({
+		queryKey: ["backlinks", sessionId, workspacePath, activeTabPath],
+		enabled: hasNote && isNoteInfoOpen,
+		queryFn: () =>
+			invoke<BacklinkEntry[]>("get_backlinks_command", {
+				workspacePath,
+				filePath: activeTabPath,
+			}),
+	})
+
+	const { data: relatedNotes = [] } = useQuery({
+		queryKey: [
+			"related-notes",
+			sessionId,
+			workspacePath,
+			activeTabPath,
+			embeddingProvider,
+			embeddingModel,
+		],
+		enabled:
+			hasNote && isNoteInfoOpen && Boolean(embeddingProvider && embeddingModel),
+		queryFn: () =>
+			invoke<RelatedNoteEntry[]>("get_related_notes_command", {
+				workspacePath,
+				filePath: activeTabPath,
+				limit: RELATED_NOTES_LIMIT,
+			}),
+	})
 
 	useEffect(() => {
 		if (!editor || !isNoteInfoOpen) {
@@ -70,58 +100,6 @@ export function InfoButton() {
 
 		setStats({ characters, words, minutes })
 	}, [editor, isNoteInfoOpen])
-
-	useEffect(() => {
-		if (!isNoteInfoOpen || !workspacePath || !activeTabPath) {
-			return
-		}
-
-		let cancelled = false
-		invoke<BacklinkEntry[]>("get_backlinks_command", {
-			workspacePath,
-			filePath: activeTabPath,
-		})
-			.then((entries) => {
-				if (!cancelled) setBacklinks(entries)
-			})
-			.catch((error) => {
-				console.error("Failed to fetch backlinks:", error)
-				if (!cancelled) setBacklinks([])
-			})
-
-		return () => {
-			cancelled = true
-		}
-	}, [activeTabPath, isNoteInfoOpen, workspacePath])
-
-	useEffect(() => {
-		setRelatedNotes([])
-	}, [activeTabPath])
-
-	useEffect(() => {
-		if (!workspacePath || !activeTabPath || !hasEmbeddingConfig) {
-			setRelatedNotes([])
-			return
-		}
-
-		let cancelled = false
-		invoke<RelatedNoteEntry[]>("get_related_notes_command", {
-			workspacePath,
-			filePath: activeTabPath,
-			limit: RELATED_NOTES_LIMIT,
-		})
-			.then((entries) => {
-				if (!cancelled) setRelatedNotes(entries)
-			})
-			.catch((error) => {
-				console.error("Failed to fetch related notes:", error)
-				if (!cancelled) setRelatedNotes([])
-			})
-
-		return () => {
-			cancelled = true
-		}
-	}, [activeTabPath, workspacePath, hasEmbeddingConfig])
 
 	const handleNoteClick = (relPath: string) => {
 		if (!workspacePath) return

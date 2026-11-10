@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex};
 use mdit_vault_indexer::{start_vault_indexer, VaultIndexerConfig, VaultIndexerHandle};
 use mdit_vault_indexing::VaultIndexingRuntimeAdapter;
 use mdit_vault_watch::{VaultWatchBatchPayload, VAULT_WATCH_BATCH_EVENT};
-use tauri::{AppHandle, Emitter, Runtime, State};
+use tauri::{AppHandle, Emitter, Runtime, State, Webview};
+
+const MAIN_WEBVIEW: &str = "main";
 
 #[derive(Default)]
 pub struct VaultWatchRuntimeState {
@@ -20,6 +22,7 @@ impl VaultWatchRuntimeState {
 
 struct VaultWatchSession {
     workspace_path: String,
+    session_id: String,
     handle: VaultIndexerHandle,
 }
 
@@ -30,28 +33,36 @@ fn stop_session(session: VaultWatchSession, error_message: &str) -> Result<(), S
         .map_err(|error| format!("{}: {}", error_message, error))
 }
 
+fn require_main_webview<R: Runtime>(webview: &Webview<R>) -> Result<(), String> {
+    if webview.label() == MAIN_WEBVIEW {
+        Ok(())
+    } else {
+        Err("Only the main window can control the vault watcher".into())
+    }
+}
+
 #[tauri::command]
 pub fn start_vault_watch_command<R: Runtime>(
     app_handle: AppHandle<R>,
+    webview: Webview<R>,
     state: State<'_, VaultWatchRuntimeState>,
     workspace_path: String,
+    session_id: String,
 ) -> Result<(), String> {
-    let previous_session = {
-        let mut watcher = state.lock_watcher()?;
-        if let Some(active) = watcher.as_ref() {
-            if active.workspace_path == workspace_path {
-                return Ok(());
-            }
-        }
-        watcher.take()
-    };
-
-    if let Some(active) = previous_session {
+    require_main_webview(&webview)?;
+    let mut watcher = state.lock_watcher()?;
+    if watcher.as_ref().is_some_and(|active| {
+        active.workspace_path == workspace_path && active.session_id == session_id
+    }) {
+        return Ok(());
+    }
+    if let Some(active) = watcher.take() {
         stop_session(active, "Failed to stop existing vault watcher")?;
     }
 
     let db_path = crate::persistence::run_app_migrations(&app_handle)?;
     let emit_workspace_path = workspace_path.clone();
+    let emit_session_id = session_id.clone();
     let emit_handle = app_handle.clone();
 
     let handle = start_vault_indexer(
@@ -62,67 +73,38 @@ pub fn start_vault_watch_command<R: Runtime>(
         move |batch| {
             let payload = VaultWatchBatchPayload {
                 workspace_path: emit_workspace_path.clone(),
+                session_id: emit_session_id.clone(),
                 batch,
             };
-            let _ = emit_handle.emit_to("main", VAULT_WATCH_BATCH_EVENT, payload);
+            let _ = emit_handle.emit_to(MAIN_WEBVIEW, VAULT_WATCH_BATCH_EVENT, payload);
         },
     )
     .map_err(|error| format!("Failed to start vault indexer: {}", error))?;
 
-    let (replaced_session, redundant_session) = {
-        let mut watcher = state.lock_watcher()?;
-        let new_session = VaultWatchSession {
-            workspace_path,
-            handle,
-        };
-
-        if let Some(active) = watcher.as_ref() {
-            if active.workspace_path == new_session.workspace_path {
-                (None, Some(new_session))
-            } else {
-                (watcher.replace(new_session), None)
-            }
-        } else {
-            (watcher.replace(new_session), None)
-        }
-    };
-
-    if let Some(redundant) = redundant_session {
-        stop_session(redundant, "Failed to stop redundant vault watcher")?;
-        return Ok(());
-    }
-
-    if let Some(active) = replaced_session {
-        stop_session(active, "Failed to stop existing vault watcher")?;
-    }
-
+    *watcher = Some(VaultWatchSession {
+        workspace_path,
+        session_id,
+        handle,
+    });
     Ok(())
 }
 
 #[tauri::command]
-pub fn stop_vault_watch_command(
+pub fn stop_vault_watch_command<R: Runtime>(
+    webview: Webview<R>,
     state: State<'_, VaultWatchRuntimeState>,
-    workspace_path: Option<String>,
+    workspace_path: String,
+    session_id: String,
 ) -> Result<(), String> {
-    let session_to_stop = {
-        let mut watcher = state.lock_watcher()?;
-        let should_stop = match (watcher.as_ref(), workspace_path.as_ref()) {
-            (Some(active), Some(expected_workspace_path)) => {
-                &active.workspace_path == expected_workspace_path
-            }
-            (Some(_), None) => true,
-            (None, _) => false,
-        };
-
-        if should_stop {
-            watcher.take()
-        } else {
-            None
+    require_main_webview(&webview)?;
+    let mut watcher = state.lock_watcher()?;
+    let matches = watcher.as_ref().is_some_and(|active| {
+        active.workspace_path == workspace_path && active.session_id == session_id
+    });
+    if matches {
+        if let Some(active) = watcher.take() {
+            stop_session(active, "Failed to stop vault watcher")?;
         }
-    };
-
-    if let Some(active) = session_to_stop {
-        stop_session(active, "Failed to stop vault watcher")?;
     }
 
     Ok(())

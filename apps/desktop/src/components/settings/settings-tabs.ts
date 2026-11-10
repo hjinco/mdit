@@ -7,7 +7,7 @@ import {
 	IconSearch,
 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
-import type { SettingsTab } from "@/store"
+import type { SettingsTab } from "@/state/window"
 
 type TabIcon = ComponentType<{
 	className?: string

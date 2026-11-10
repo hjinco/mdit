@@ -1,4 +1,4 @@
-import type { UIPreferences } from "@mdit/store/core"
+import type { UIPreferences } from "@/state/window"
 
 export const FILE_EXPLORER_STORAGE_KEY = "isFileExplorerOpen"
 export const FONT_SCALE_STORAGE_KEY = "font-scale"

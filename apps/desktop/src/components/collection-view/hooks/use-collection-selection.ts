@@ -1,6 +1,7 @@
 import { type MouseEvent, useCallback, useState } from "react"
-import type { WorkspaceEntry } from "@/store"
-import { useStore } from "@/store"
+import { useDesktopRuntime } from "@/state"
+import type { WorkspaceEntry } from "@/state/workspace"
+
 import { isImageFile } from "@/utils/file-icon"
 
 type Props = {
@@ -14,7 +15,7 @@ export function useCollectionSelection({
 	sortedEntries,
 	openTab,
 }: Props) {
-	const openImagePreview = useStore((state) => state.openImagePreview)
+	const openImagePreview = useDesktopRuntime().window.commands.openImagePreview
 	const [selectedEntryPaths, setSelectedEntryPaths] = useState<Set<string>>(
 		() => new Set(),
 	)

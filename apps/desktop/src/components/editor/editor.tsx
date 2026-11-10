@@ -7,21 +7,25 @@ import {
 	NOTE_TITLE_KEY,
 	stripEditorTitleBlock,
 } from "@mdit/editor/title"
-import { getFileNameFromPath } from "@mdit/utils/path-utils"
-import { getPortableNoteTitleValidationError } from "@mdit/utils/portable-filename"
-import { getCurrentWindow } from "@tauri-apps/api/window"
 import {
 	type KeyboardEvent,
 	type MouseEvent,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
+	useState,
 } from "react"
-import { toast } from "sonner"
-import { useShallow } from "zustand/shallow"
-import { useStore } from "@/store"
+import {
+	useDesktopRuntime,
+	useDocumentState,
+	useWindowState,
+	useWorkspaceState,
+} from "@/state"
+import type { OpenDocument } from "@/state/documents/types"
 import { isMac } from "@/utils/platform"
+import { DocumentConflictNotice } from "./document-conflict-notice"
 import { Header } from "./header/header"
 import { useCommandMenuSelectionRestore } from "./hooks/use-command-menu-selection-restore"
 import { useExternalImageDrop } from "./hooks/use-external-image-drop"
@@ -36,22 +40,13 @@ import {
 	toTabHistorySelection,
 } from "./utils/history-restore-utils"
 import { restoreSelectionOnEditorActivate } from "./utils/restore-selection-on-activate"
+import { resolveTitleSaveIntent } from "./utils/title-save-intent"
 
-export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
-	const {
-		openDocuments,
-		activeDocumentId,
-		activeTabId,
-		tabCount,
-		handleTypingProgress,
-	} = useStore(
-		useShallow((s) => ({
-			openDocuments: s.openDocuments,
-			activeDocumentId: s.getActiveDocumentId(),
-			activeTabId: s.activeTabId,
-			tabCount: s.tabs.length,
-			handleTypingProgress: s.handleTypingProgress,
-		})),
+export function Editor({ hideNavigation }: { hideNavigation?: boolean }) {
+	const { handleTypingProgress } = useDesktopRuntime().window.commands
+	const openDocuments = useDocumentState((state) => state.openDocuments)
+	const activeTab = useDocumentState(
+		(state) => state.tabs.find((tab) => tab.id === state.activeTabId) ?? null,
 	)
 
 	const deserializeWithFallback = useMemo(
@@ -63,10 +58,10 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 		[],
 	)
 
-	if (tabCount === 0 || activeDocumentId === null || activeTabId === null) {
+	if (!activeTab) {
 		return (
 			<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
-				<Header hideNavigation={destroyOnClose} />
+				<Header hideNavigation={hideNavigation} />
 				<div className="relative min-h-0 flex-1">
 					<div className="h-full bg-background">
 						<div
@@ -81,58 +76,40 @@ export function Editor({ destroyOnClose }: { destroyOnClose?: boolean }) {
 
 	return (
 		<div className="relative max-w-full w-full overflow-hidden flex flex-col bg-background shadow">
-			<Header hideNavigation={destroyOnClose} />
+			<Header hideNavigation={hideNavigation} />
 			<div className="relative min-h-0 flex-1">
-				{openDocuments.map((document) => (
-					<EditorPane
-						key={document.id}
-						documentId={document.id}
-						active={document.id === activeDocumentId}
-						activeTabId={document.id === activeDocumentId ? activeTabId : null}
-						destroyOnClose={destroyOnClose}
-						deserializeWithFallback={deserializeWithFallback}
-						onTypingProgress={handleTypingProgress}
-					/>
-				))}
+				{openDocuments.map((document) => {
+					const tab = document.id === activeTab.documentId ? activeTab : null
+					return (
+						<EditorPane
+							key={document.id}
+							document={document}
+							activeTabId={tab?.id ?? null}
+							activeHistoryIndex={tab?.historyIndex ?? null}
+							deserializeWithFallback={deserializeWithFallback}
+							onTypingProgress={handleTypingProgress}
+						/>
+					)
+				})}
 			</div>
 		</div>
 	)
 }
 
 function EditorPane({
-	documentId,
-	active,
+	document,
 	activeTabId,
-	destroyOnClose,
+	activeHistoryIndex,
 	deserializeWithFallback,
 	onTypingProgress,
 }: {
-	documentId: number
-	active: boolean
+	document: OpenDocument
 	activeTabId: number | null
-	destroyOnClose?: boolean
+	activeHistoryIndex: number | null
 	deserializeWithFallback: (input: { content: string; path: string }) => Value
 	onTypingProgress: () => void
 }) {
-	const document = useStore((s) => s.getDocumentById(documentId))
-
-	const value = useMemo(() => {
-		if (!document) {
-			return
-		}
-
-		return injectEditorTitleBlock(
-			document.path,
-			deserializeWithFallback({
-				content: document.content,
-				path: document.path,
-			}),
-		)
-	}, [deserializeWithFallback, document])
-
-	if (!document || !value) {
-		return null
-	}
+	const active = activeTabId !== null
 
 	return (
 		<div
@@ -142,13 +119,14 @@ function EditorPane({
 			<EditorContent
 				key={`${document.id}:${document.sessionEpoch}`}
 				documentId={document.id}
+				sessionEpoch={document.sessionEpoch}
 				activeTabId={activeTabId}
+				activeHistoryIndex={activeHistoryIndex}
 				path={document.path}
-				value={value}
-				active={active}
-				documentIsSaved={document.isSaved}
+				initialContent={document.content}
+				deserializeWithFallback={deserializeWithFallback}
+				conflictType={document.conflict?.type}
 				onTypingProgress={onTypingProgress}
-				destroyOnClose={destroyOnClose}
 			/>
 		</div>
 	)
@@ -156,64 +134,62 @@ function EditorPane({
 
 function EditorContent({
 	documentId,
+	sessionEpoch,
 	activeTabId,
+	activeHistoryIndex,
 	path,
-	value,
-	active,
-	documentIsSaved,
+	initialContent,
+	deserializeWithFallback,
+	conflictType,
 	onTypingProgress,
-	destroyOnClose,
 }: {
 	documentId: number
+	sessionEpoch: number
 	activeTabId: number | null
+	activeHistoryIndex: number | null
 	path: string
-	value: Value
-	active: boolean
-	documentIsSaved: boolean
+	initialContent: string
+	deserializeWithFallback: (input: { content: string; path: string }) => Value
+	conflictType?: "changed" | "deleted"
 	onTypingProgress: () => void
-	destroyOnClose?: boolean
 }) {
-	type SaveTrigger = "auto" | "blur" | "exit" | "title-exit"
-
-	const isSaved = useRef(documentIsSaved)
-	const isInitializing = useRef(true)
+	const active = activeTabId !== null
+	const [value] = useState(() =>
+		injectEditorTitleBlock(
+			path,
+			deserializeWithFallback({ content: initialContent, path }),
+		),
+	)
+	const titleState = useRef({
+		baseline: getEditorTitleText(value),
+		lastRequested: "",
+	})
 	const lastPathRef = useRef(path)
 	const lastActiveRef = useRef({
 		active,
 		tabId: activeTabId,
 		path,
 	})
+	const runtime = useDesktopRuntime()
 	const {
-		setDocumentSaved,
-		saveNoteContent,
+		discardDocumentChanges,
+		getDocumentById,
+		recordDocumentEdit,
+		registerDocumentSnapshotProvider,
+		requestDocumentSave,
 		setTabHistorySelectionProvider,
 		consumeTabPendingHistorySelectionRestore,
-		consumePendingExternalReloadSaveSkip,
-	} = useStore(
-		useShallow((s) => ({
-			setDocumentSaved: s.setDocumentSaved,
-			saveNoteContent: s.saveNoteContent,
-			setTabHistorySelectionProvider: s.setTabHistorySelectionProvider,
-			consumeTabPendingHistorySelectionRestore:
-				s.consumeTabPendingHistorySelectionRestore,
-			consumePendingExternalReloadSaveSkip:
-				s.consumePendingExternalReloadSaveSkip,
-		})),
-	)
-	const resetFocusMode = useStore((s) => s.resetFocusMode)
-	const isFocusMode = useStore((s) => s.isFocusMode)
-	const workspacePath = useStore((s) => s.workspacePath)
+	} = runtime.documents.commands
+	const { resetFocusMode } = runtime.window.commands
+	const isFocusMode = useWindowState((state) => state.isFocusMode)
+	const workspacePath = useWorkspaceState((state) => state.workspacePath)
 	const editorContainerRef = useRef<HTMLDivElement | null>(null)
-	const titleExitHandlerRef = useRef<() => void>(() => {})
+	const requestSave = useCallback(() => {
+		void requestDocumentSave(documentId)
+	}, [documentId, requestDocumentSave])
 	const plugins = useMemo(
-		() =>
-			createEditorKit({
-				documentId,
-				onTitleExit: () => {
-					titleExitHandlerRef.current()
-				},
-			}),
-		[documentId],
+		() => createEditorKit({ documentId, onTitleExit: requestSave }),
+		[documentId, requestSave],
 	)
 
 	const editor = usePlateEditor({
@@ -225,6 +201,40 @@ function EditorContent({
 		plugins,
 		value,
 	})
+
+	const serializeDraft = useCallback(
+		() =>
+			editor.api.markdown.serialize({
+				value: stripEditorTitleBlock(editor.children as Value),
+			}),
+		[editor],
+	)
+
+	const captureSnapshot = useCallback(() => {
+		const content = serializeDraft()
+		const title = getEditorTitleText(editor.children as Value)
+		titleState.current = resolveTitleSaveIntent(
+			titleState.current,
+			title,
+			getDocumentById(documentId)?.path,
+		)
+		return { title: titleState.current.lastRequested, content }
+	}, [documentId, editor, getDocumentById, serializeDraft])
+
+	useLayoutEffect(
+		() =>
+			registerDocumentSnapshotProvider(
+				documentId,
+				sessionEpoch,
+				captureSnapshot,
+			),
+		[
+			captureSnapshot,
+			documentId,
+			registerDocumentSnapshotProvider,
+			sessionEpoch,
+		],
+	)
 
 	const isSelectionInTitle = useCallback(() => {
 		const blockEntry = editor.api.block()
@@ -239,129 +249,6 @@ function EditorContent({
 			node.type === NOTE_TITLE_KEY
 		)
 	}, [editor])
-
-	const renameFromTitleIfNeeded = useCallback(async () => {
-		const store = useStore.getState()
-		const document = store.getDocumentById(documentId)
-		if (!document) {
-			return path
-		}
-
-		const rawTitle = getEditorTitleText(editor.children as Value)
-		const currentFileName = getFileNameFromPath(document.path)
-		const nextFileName = `${rawTitle}.md`
-		if (!rawTitle || nextFileName === currentFileName) {
-			return document.path
-		}
-
-		const validationError = getPortableNoteTitleValidationError(rawTitle)
-		if (validationError) {
-			return document.path
-		}
-
-		try {
-			const renamedPath = await store.renameEntry(
-				{ path: document.path, name: currentFileName, isDirectory: false },
-				nextFileName,
-			)
-
-			if (renamedPath === document.path) {
-				toast.error("Failed to rename note.")
-			}
-
-			return renamedPath
-		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to rename note.",
-			)
-			return document.path
-		}
-	}, [documentId, editor, path])
-
-	useEffect(() => {
-		isSaved.current = documentIsSaved
-	}, [documentIsSaved])
-
-	const handleSave = useCallback(
-		async (_trigger: SaveTrigger) => {
-			if (isSaved.current) {
-				return true
-			}
-
-			try {
-				const nextPath = await renameFromTitleIfNeeded()
-
-				await saveNoteContent(
-					nextPath,
-					editor.api.markdown.serialize({
-						value: stripEditorTitleBlock(editor.children as Value),
-					}),
-				)
-
-				isSaved.current = true
-				setDocumentSaved(documentId, true)
-				return true
-			} catch (error) {
-				isSaved.current = false
-				setDocumentSaved(documentId, false)
-				toast.error(
-					error instanceof Error ? error.message : "Failed to save note",
-				)
-				return false
-			}
-		},
-		[
-			documentId,
-			editor,
-			renameFromTitleIfNeeded,
-			saveNoteContent,
-			setDocumentSaved,
-		],
-	)
-
-	useEffect(() => {
-		titleExitHandlerRef.current = () => {
-			void handleSave("title-exit")
-		}
-	}, [handleSave])
-
-	useEffect(() => {
-		if (!active) {
-			return () => {
-				if (!consumePendingExternalReloadSaveSkip(documentId)) {
-					void handleSave("exit")
-				}
-			}
-		}
-
-		const appWindow = getCurrentWindow()
-		const interval = setInterval(() => {
-			void handleSave("auto")
-		}, 10_000)
-		const closeListener = appWindow.listen(
-			"tauri://close-requested",
-			async () => {
-				const didSave = await handleSave("exit")
-				if (destroyOnClose && didSave) {
-					appWindow.destroy()
-				}
-			},
-		)
-
-		return () => {
-			closeListener.then((unlisten) => unlisten())
-			clearInterval(interval)
-			if (!consumePendingExternalReloadSaveSkip(documentId)) {
-				void handleSave("exit")
-			}
-		}
-	}, [
-		active,
-		consumePendingExternalReloadSaveSkip,
-		destroyOnClose,
-		documentId,
-		handleSave,
-	])
 
 	useEffect(() => {
 		if (!active || activeTabId === null) {
@@ -385,7 +272,10 @@ function EditorContent({
 			path,
 		}
 
-		if (!active || activeTabId === null) {
+		if (!active || activeTabId === null || activeHistoryIndex === null) {
+			if (previous.active) {
+				requestSave()
+			}
 			return
 		}
 
@@ -419,10 +309,12 @@ function EditorContent({
 		}
 	}, [
 		active,
+		activeHistoryIndex,
 		activeTabId,
 		consumeTabPendingHistorySelectionRestore,
 		editor,
 		path,
+		requestSave,
 	])
 
 	useEffect(() => {
@@ -480,38 +372,38 @@ function EditorContent({
 				return
 			}
 
-			void handleSave("title-exit")
+			requestSave()
 		},
-		[handleSave, isSelectionInTitle],
+		[isSelectionInTitle, requestSave],
 	)
 
 	return (
 		<div
 			ref={editorContainerRef}
-			className={`h-full overflow-hidden ${isExternalDropOver ? "bg-accent/20" : ""}`}
+			className={`flex h-full flex-col overflow-hidden ${isExternalDropOver ? "bg-accent/20" : ""}`}
 			data-editor-scroll-root
 			onMouseDownCapture={handleEditorMouseDownCapture}
 		>
+			{conflictType && (
+				<DocumentConflictNotice
+					type={conflictType}
+					readDraft={serializeDraft}
+					discardDraft={() => discardDocumentChanges(documentId)}
+				/>
+			)}
 			<EditorSurface
 				editor={editor}
+				containerClassName="min-h-0 flex-1"
 				contentClassName={
 					isFocusMode
 						? "[&_.editor-block-handle]:!opacity-0 [&_.editor-block-handle]:!pointer-events-none"
 						: undefined
 				}
 				onValueChange={() => {
-					if (isInitializing.current) {
-						isInitializing.current = false
-						return
-					}
-
-					isSaved.current = false
-					setDocumentSaved(documentId, false)
+					recordDocumentEdit(documentId, sessionEpoch)
 				}}
 				onKeyDown={handleTypingDetection}
-				onBlur={() => {
-					void handleSave("blur")
-				}}
+				onBlur={requestSave}
 			/>
 		</div>
 	)

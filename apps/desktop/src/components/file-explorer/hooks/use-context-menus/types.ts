@@ -1,4 +1,4 @@
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 export type UseFileExplorerMenusProps = {
 	canRenameNoteWithAI: boolean

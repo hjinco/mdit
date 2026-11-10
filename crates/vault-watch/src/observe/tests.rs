@@ -2,12 +2,13 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant},
 };
 
 use notify::event::{CreateKind, DataChange, EventAttributes, ModifyKind, RemoveKind, RenameMode};
 use notify::{Event, EventKind};
 use notify_debouncer_full::DebouncedEvent;
+use uuid::Uuid;
 
 use super::PendingBatch;
 use crate::entry_index::collect_entry_index;
@@ -31,12 +32,8 @@ fn debounced_event_at(kind: EventKind, paths: &[PathBuf], time: Instant) -> Debo
 }
 
 fn temp_vault_dir() -> PathBuf {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("time should move forward")
-        .as_nanos();
-    let path = std::env::temp_dir().join(format!("vault-watch-observe-test-{nanos}"));
-    fs::create_dir_all(&path).expect("temp vault should be created");
+    let path = std::env::temp_dir().join(format!("vault-watch-observe-test-{}", Uuid::new_v4()));
+    fs::create_dir(&path).expect("temp vault should be created");
     path
 }
 

@@ -2,8 +2,8 @@ import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
 import { useEditorRef } from "@mdit/editor/plate"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
-import { useShallow } from "zustand/react/shallow"
-import { useStore } from "@/store"
+import { useDesktopRuntime, useWorkspaceState } from "@/state"
+
 import { isDndDragEndEvent, isFileEntryDragData } from "./dnd-types"
 import {
 	EditorBlockDragOverlay,
@@ -83,12 +83,9 @@ export function DndProvider({ children }: DndProviderProps) {
 	const [draggedExplorerPaths, setDraggedExplorerPaths] = useState<
 		ReadonlySet<string>
 	>(EMPTY_DRAGGED_EXPLORER_PATHS)
-	const { moveEntry, selectedEntryPaths, resetSelection } = useStore(
-		useShallow((state) => ({
-			moveEntry: state.moveEntry,
-			selectedEntryPaths: state.selectedEntryPaths,
-			resetSelection: state.resetSelection,
-		})),
+	const { moveEntry, resetSelection } = useDesktopRuntime().workspace.commands
+	const selectedEntryPaths = useWorkspaceState(
+		(state) => state.selectedEntryPaths,
 	)
 	const {
 		editorDropIndicator,

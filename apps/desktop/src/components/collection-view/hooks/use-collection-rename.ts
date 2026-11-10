@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import { toast } from "sonner"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 type RenameEntry = (
 	entry: WorkspaceEntry,

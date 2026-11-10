@@ -9,7 +9,7 @@ import {
 	useRef,
 	useState,
 } from "react"
-import type { WorkspaceEntry } from "@/store"
+import type { WorkspaceEntry } from "@/state/workspace"
 
 type NoteEntryProps = {
 	entry: WorkspaceEntry

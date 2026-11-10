@@ -3,7 +3,8 @@ import { useShallow } from "zustand/shallow"
 import { WindowPinButton } from "@/components/quick-note/window-pin-button"
 import { useCurrentWindowLabel } from "@/hooks/use-current-window-label"
 import { useIsFullscreen } from "@/hooks/use-is-fullscreen"
-import { useStore } from "@/store"
+import { useDocumentState, useWindowState, useWorkspaceState } from "@/state"
+
 import { isMac } from "@/utils/platform"
 import { HistoryNavigation } from "./history-navigation"
 import { InfoButton } from "./info-button"
@@ -14,23 +15,20 @@ export function Header({
 }: {
 	hideNavigation?: boolean
 }) {
-	const {
-		isFileExplorerOpen,
-		isFocusMode,
-		currentCollectionPath,
-		workspacePath,
-		isEditMode,
-		tabCount,
-	} = useStore(
+	const { isFileExplorerOpen, isFocusMode, isEditMode } = useWindowState(
 		useShallow((s) => ({
 			isFileExplorerOpen: s.isFileExplorerOpen,
 			isFocusMode: s.isFocusMode,
-			currentCollectionPath: s.currentCollectionPath,
-			workspacePath: s.workspacePath,
 			isEditMode: s.isEditMode,
-			tabCount: s.tabs.length,
 		})),
 	)
+	const { currentCollectionPath, workspacePath } = useWorkspaceState(
+		useShallow((s) => ({
+			currentCollectionPath: s.currentCollectionPath,
+			workspacePath: s.workspacePath,
+		})),
+	)
+	const tabCount = useDocumentState((s) => s.tabs.length)
 	const isCollectionViewOpen = currentCollectionPath !== null
 	const isFullscreen = useIsFullscreen()
 	const windowLabel = useCurrentWindowLabel()
