@@ -13,7 +13,6 @@ export function WindowMenu() {
 		openFolderPicker,
 		activatePreviousTab,
 		activateNextTab,
-		workspacePath,
 		toggleCollectionView,
 		goBack,
 		goForward,
@@ -26,7 +25,6 @@ export function WindowMenu() {
 			openFolderPicker: s.openFolderPicker,
 			activatePreviousTab: s.activatePreviousTab,
 			activateNextTab: s.activateNextTab,
-			workspacePath: s.workspacePath,
 			toggleCollectionView: s.toggleCollectionView,
 			goBack: s.goBack,
 			goForward: s.goForward,
@@ -44,8 +42,6 @@ export function WindowMenu() {
 	const {
 		toggleFileExplorer,
 		openCommandMenu,
-		isGraphViewDialogOpen,
-		toggleGraphViewDialogOpen,
 		chatPanelBetaEnabled,
 		toggleChatPanelOpen,
 		toggleSettingsDialogOpen,
@@ -57,8 +53,6 @@ export function WindowMenu() {
 		useShallow((s) => ({
 			toggleFileExplorer: s.toggleFileExplorerOpen,
 			openCommandMenu: s.openCommandMenu,
-			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
-			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
 			toggleChatPanelOpen: s.toggleChatPanelOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
@@ -83,12 +77,6 @@ export function WindowMenu() {
 			zoomOut,
 			resetZoom,
 			openCommandMenu,
-			openGraphView: () => {
-				if (!workspacePath && !isGraphViewDialogOpen) {
-					return
-				}
-				toggleGraphViewDialogOpen()
-			},
 			chatPanelBetaEnabled,
 			goBack,
 			goForward,
@@ -101,15 +89,12 @@ export function WindowMenu() {
 		openFolderPicker,
 		activatePreviousTab,
 		activateNextTab,
-		workspacePath,
 		toggleFileExplorer,
 		toggleCollectionView,
 		zoomIn,
 		zoomOut,
 		resetZoom,
 		openCommandMenu,
-		isGraphViewDialogOpen,
-		toggleGraphViewDialogOpen,
 		chatPanelBetaEnabled,
 		toggleChatPanelOpen,
 		goBack,

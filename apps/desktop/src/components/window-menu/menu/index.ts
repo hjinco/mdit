@@ -21,7 +21,6 @@ export async function installWindowMenu({
 	zoomOut,
 	resetZoom,
 	openCommandMenu,
-	openGraphView,
 	chatPanelBetaEnabled,
 	goBack,
 	goForward,
@@ -40,7 +39,6 @@ export async function installWindowMenu({
 	zoomOut: () => void
 	resetZoom: () => void
 	openCommandMenu: () => void
-	openGraphView: () => void
 	chatPanelBetaEnabled: boolean
 	goBack: () => Promise<boolean>
 	goForward: () => Promise<boolean>
@@ -65,7 +63,6 @@ export async function installWindowMenu({
 				zoomOut,
 				resetZoom,
 				openCommandMenu,
-				openGraphView,
 				chatPanelBetaEnabled,
 				hotkeys,
 			}),

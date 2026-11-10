@@ -98,9 +98,6 @@ importers:
       '@mdit/git-sync':
         specifier: workspace:*
         version: link:../../packages/git-sync
-      '@mdit/graph-view':
-        specifier: workspace:*
-        version: link:../../packages/graph-view
       '@mdit/local-fs-origin':
         specifier: workspace:*
         version: link:../../packages/local-fs-origin
@@ -167,9 +164,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      d3-force:
-        specifier: ^3.0.0
-        version: 3.0.0
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -273,9 +267,6 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.12.4
         version: 2.12.4
-      '@types/d3-force':
-        specifier: ^3.0.10
-        version: 3.0.10
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
@@ -815,34 +806,6 @@ importers:
       '@mdit/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@typescript/native-preview':
-        specifier: 'catalog:'
-        version: 7.0.0-dev.20260330.1
-      vitest:
-        specifier: 'catalog:'
-        version: 4.1.2(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(@vitest/browser-playwright@4.1.2)(jsdom@26.1.0)(vite@8.0.3(@emnapi/core@1.9.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.0)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
-
-  packages/graph-view:
-    dependencies:
-      '@mdit/ui':
-        specifier: workspace:*
-        version: link:../ui
-      d3-force:
-        specifier: ^3.0.0
-        version: 3.0.0
-      react:
-        specifier: 'catalog:'
-        version: 19.2.4
-    devDependencies:
-      '@mdit/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@types/d3-force':
-        specifier: ^3.0.10
-        version: 3.0.10
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.14
       '@typescript/native-preview':
         specifier: 'catalog:'
         version: 7.0.0-dev.20260330.1

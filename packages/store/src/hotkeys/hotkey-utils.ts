@@ -7,7 +7,6 @@ export type AppHotkeyActionId =
 	| "previous-tab"
 	| "next-tab"
 	| "open-command-menu"
-	| "toggle-graph-view"
 	| "toggle-file-explorer"
 	| "toggle-collection-view"
 	| "zoom-in"
@@ -68,12 +67,6 @@ export const APP_HOTKEY_DEFINITIONS: readonly AppHotkeyDefinition[] = [
 		label: "Command Menu",
 		category: "view",
 		defaultBinding: "Mod+K",
-	},
-	{
-		id: "toggle-graph-view",
-		label: "Graph View",
-		category: "view",
-		defaultBinding: "Mod+G",
 	},
 	{
 		id: "toggle-file-explorer",

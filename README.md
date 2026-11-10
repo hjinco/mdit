@@ -4,13 +4,13 @@
 
 Mdit combines the UX of Notion with the file ownership of Obsidian.
 
-It gives you a polished, structured writing experience while keeping your notes as plain local Markdown files on disk. You get backlinks and graph view without giving up durable files you control. No locked database, no forced cloud, and no tradeoff between a modern editor and local ownership.
+It gives you a polished, structured writing experience while keeping your notes as plain local Markdown files on disk. You get backlinks without giving up durable files you control. No locked database, no forced cloud, and no tradeoff between a modern editor and local ownership.
 
 Mdit is built around:
 
 - Plain `.md` files that stay on your machine
 - A Notion-like editing experience for thinking and organizing
-- Backlinks and graph view in an Obsidian-like local Markdown vault
+- Backlinks in an Obsidian-like local Markdown vault
 - Privacy-first AI that runs on your terms with your own API keys or local models
 
 ---
@@ -21,7 +21,7 @@ Mdit is built around:
 | --- | --- | --- | --- |
 | Local files | Yes | No | Yes |
 | Block editor | Yes | Yes | No |
-| Backlinks and Graph view | Yes | No | Yes |
+| Backlinks | Yes | No | Yes |
 | Sync | Planned | Yes | Yes |
 | AI | Your API keys or local models | Cloud-first | Plugin-dependent |
 | Open source | Yes | No | No |

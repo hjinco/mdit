@@ -7,7 +7,6 @@ import { CollectionView } from "./components/collection-view/collection-view"
 import { CommandMenu } from "./components/command-menu/command-menu"
 import { Editor } from "./components/editor/editor"
 import { FileExplorer } from "./components/file-explorer/file-explorer"
-import { GraphViewDialog } from "./components/graph-view/graph-view-dialog"
 import { ImageEditDialog } from "./components/image/image-edit-dialog"
 import { ImagePreviewDialog } from "./components/image/image-preview-dialog"
 import { SettingsDialog } from "./components/settings"
@@ -120,7 +119,6 @@ export function App() {
 			</div>
 			<SettingsDialog />
 			<CommandMenu />
-			<GraphViewDialog />
 			<ImagePreviewDialog />
 			<ImageEditDialog />
 		</ScreenCaptureProvider>

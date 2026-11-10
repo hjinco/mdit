@@ -9,7 +9,6 @@ export async function createViewMenu({
 	zoomOut,
 	resetZoom,
 	openCommandMenu,
-	openGraphView,
 	chatPanelBetaEnabled,
 	hotkeys,
 }: {
@@ -20,7 +19,6 @@ export async function createViewMenu({
 	zoomOut: () => void
 	resetZoom: () => void
 	openCommandMenu: () => void
-	openGraphView: () => void
 	chatPanelBetaEnabled: boolean
 	hotkeys: AppHotkeyMap
 }) {
@@ -30,12 +28,6 @@ export async function createViewMenu({
 			text: "Command Menu…",
 			accelerator: hotkeyToMenuAccelerator(hotkeys["open-command-menu"]),
 			action: () => openCommandMenu(),
-		}),
-		await MenuItem.new({
-			id: "graph-view",
-			text: "Graph View…",
-			accelerator: hotkeyToMenuAccelerator(hotkeys["toggle-graph-view"]),
-			action: () => openGraphView(),
 		}),
 		await PredefinedMenuItem.new({
 			text: "Separator",

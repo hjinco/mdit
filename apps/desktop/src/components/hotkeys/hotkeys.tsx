@@ -46,14 +46,11 @@ export function Hotkeys() {
 		activateTabById,
 		activatePreviousTab,
 		activateNextTab,
-		workspacePath,
 		toggleCollectionView,
 		goBack,
 		goForward,
 		toggleFileExplorer,
 		toggleCommandMenu,
-		isGraphViewDialogOpen,
-		toggleGraphViewDialogOpen,
 		toggleSettingsDialogOpen,
 		toggleNoteInfoOpen,
 		chatPanelBetaEnabled,
@@ -72,14 +69,11 @@ export function Hotkeys() {
 			activateTabById: s.activateTabById,
 			activatePreviousTab: s.activatePreviousTab,
 			activateNextTab: s.activateNextTab,
-			workspacePath: s.workspacePath,
 			toggleCollectionView: s.toggleCollectionView,
 			goBack: s.goBack,
 			goForward: s.goForward,
 			toggleFileExplorer: s.toggleFileExplorerOpen,
 			toggleCommandMenu: s.toggleCommandMenu,
-			isGraphViewDialogOpen: s.isGraphViewDialogOpen,
-			toggleGraphViewDialogOpen: s.toggleGraphViewDialogOpen,
 			toggleSettingsDialogOpen: s.toggleSettingsDialogOpen,
 			toggleNoteInfoOpen: s.toggleNoteInfoOpen,
 			chatPanelBetaEnabled: s.chatPanelBetaEnabled,
@@ -131,12 +125,6 @@ export function Hotkeys() {
 			"open-command-menu": () => {
 				toggleCommandMenu()
 			},
-			"toggle-graph-view": () => {
-				if (!workspacePath && !isGraphViewDialogOpen) {
-					return
-				}
-				toggleGraphViewDialogOpen()
-			},
 			"toggle-file-explorer": () => {
 				toggleFileExplorer()
 			},
@@ -179,9 +167,6 @@ export function Hotkeys() {
 			activatePreviousTab,
 			activateNextTab,
 			toggleCommandMenu,
-			workspacePath,
-			isGraphViewDialogOpen,
-			toggleGraphViewDialogOpen,
 			toggleFileExplorer,
 			toggleCollectionView,
 			zoomIn,

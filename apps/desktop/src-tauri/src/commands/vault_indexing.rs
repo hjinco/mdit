@@ -2,11 +2,11 @@ use std::path::{Path, PathBuf};
 
 use app_storage::vault::VaultEmbeddingConfig;
 use mdit_vault_indexing::{
-    delete_indexed_note, get_backlinks, get_graph_view_data, get_indexing_meta, get_related_notes,
-    index_note, index_vault_documents, refresh_workspace_embeddings, rename_indexed_note,
-    resolve_wiki_link, search_notes_by_tag, search_notes_for_query, BacklinkEntry, GraphViewData,
-    IndexSummary, IndexingMeta, RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult,
-    SemanticNoteEntry, TagNoteEntry,
+    delete_indexed_note, get_backlinks, get_indexing_meta, get_related_notes, index_note,
+    index_vault_documents, refresh_workspace_embeddings, rename_indexed_note, resolve_wiki_link,
+    search_notes_by_tag, search_notes_for_query, BacklinkEntry, IndexSummary, IndexingMeta,
+    RelatedNoteEntry, ResolveWikiLinkRequest, ResolveWikiLinkResult, SemanticNoteEntry,
+    TagNoteEntry,
 };
 use tauri::{AppHandle, Runtime};
 
@@ -225,17 +225,6 @@ pub async fn get_related_notes_command(
     let limit = limit.unwrap_or(5);
 
     run_blocking(move || get_related_notes(&workspace_path, &db_path, &file_path, limit)).await
-}
-
-#[tauri::command]
-pub async fn get_graph_view_data_command(
-    app_handle: tauri::AppHandle,
-    workspace_path: String,
-) -> Result<GraphViewData, String> {
-    let db_path = crate::persistence::run_app_migrations(&app_handle)?;
-    let workspace_path = PathBuf::from(workspace_path);
-
-    run_blocking(move || get_graph_view_data(&workspace_path, &db_path)).await
 }
 
 #[tauri::command]
