@@ -11,8 +11,8 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@fabianlars/tauri-plugin-oauth": "^2.0.0",
-		"@tauri-apps/plugin-opener": "~2.5.3"
+		"@fabianlars/tauri-plugin-oauth": "^2.1.0",
+		"@tauri-apps/plugin-opener": "~2.7.2"
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",

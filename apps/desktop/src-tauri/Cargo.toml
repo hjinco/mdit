@@ -15,7 +15,7 @@ name = "mdit_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.5", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 app-storage = { path = "../../../crates/app-storage" }
@@ -27,8 +27,8 @@ mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
 mdit-note = { package = "note", path = "../../../crates/note" }
 mdit-ollama-client = { package = "ollama-client", path = "../../../crates/ollama-client" }
 mdit-vault-watch = { package = "vault-watch", path = "../../../crates/vault-watch" }
-tauri = { version = "2.10.2", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
-tauri-plugin-opener = "2.5.3"
+tauri = { version = "2.12.5", features = [ "macos-private-api", "protocol-asset", "tray-icon", "image-png"] }
+tauri-plugin-opener = "2.7.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 axum = { version = "0.8.4", default-features = false, features = ["http1", "tokio", "json"] }
@@ -40,25 +40,25 @@ rmcp = { version = "0.16.0", features = [
 ] }
 tokio = { version = "1", features = ["net", "rt", "sync"] }
 tower = "0.5.2"
-tauri-plugin-dialog = "2.6.0"
-tauri-plugin-fs = { version = "2.4.5" }
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-fs = { version = "2.7.1" }
 tauri-plugin-keyring = "0.1.0"
-tauri-plugin-oauth = "2.0.0"
-tauri-plugin-process = "2.3.1"
+tauri-plugin-oauth = "2.1.0"
+tauri-plugin-process = "2.4.0"
 trash = "5.2.3"
-tauri-plugin-shell = "2.3.5"
-tauri-plugin-os = "2.3.2"
+tauri-plugin-shell = "2.6.0"
+tauri-plugin-os = "2.4.0"
 anyhow = "1"
 tauri-plugin-clipboard = "2.1.11"
-tauri-plugin-window-state = "2.4.1"
-tauri-plugin-global-shortcut = "2.3.1"
-tauri-plugin-http = "2.5.7"
+tauri-plugin-window-state = "2.5.0"
+tauri-plugin-global-shortcut = "2.4.1"
+tauri-plugin-http = "2.9.0"
 urlencoding = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-global-shortcut = "2.3.1"
-tauri-plugin-updater = "2.10.0"
-tauri-plugin-single-instance = "2.4.0"
+tauri-plugin-global-shortcut = "2.4.1"
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-single-instance = "2.5.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3.2", features = ["NSButton", "NSControl", "NSView", "NSWindow"] }

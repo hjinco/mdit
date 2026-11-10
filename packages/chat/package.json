@@ -11,7 +11,7 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
-		"@ai-sdk/react": "^3.0.93",
+		"@ai-sdk/react": "^4.0.170",
 		"@mdit/ai": "workspace:*",
 		"@mdit/ui": "workspace:*",
 		"@streamdown/cjk": "^1.0.3",
@@ -19,7 +19,7 @@
 		"@streamdown/math": "^1.0.2",
 		"@streamdown/mermaid": "^1.0.2",
 		"@tabler/icons-react": "^3.37.1",
-		"ai": "^6.0.142",
+		"ai": "^7.0.166",
 		"react": "catalog:",
 		"streamdown": "^2.5.0",
 		"use-stick-to-bottom": "^1.1.3",

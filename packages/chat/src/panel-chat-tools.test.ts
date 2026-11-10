@@ -5,7 +5,8 @@ import { createPanelChatTools } from "./panel-chat-tools"
 const toolExecutionOptions = {
 	toolCallId: "test",
 	messages: [],
-} satisfies ToolExecutionOptions
+	context: undefined,
+} satisfies ToolExecutionOptions<unknown>
 
 describe("createPanelChatTools", () => {
 	it("returns error when there is no active document path", async () => {
