@@ -8,6 +8,9 @@ const packageDir = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
 	test: {
+		api: {
+			host: "127.0.0.1",
+		},
 		projects: [
 			{
 				test: {
@@ -27,9 +30,6 @@ export default defineConfig({
 				],
 				test: {
 					browser: {
-						api: {
-							host: "127.0.0.1",
-						},
 						enabled: true,
 						headless: true,
 						instances: [{ browser: "chromium" }],

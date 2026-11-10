@@ -64,29 +64,29 @@ describe("workspace settings", () => {
 		).toEqual(["/vault/notes/a.md", "/vault/b.md"])
 	})
 
-	it.each([
-		'{"truncated":',
-		"[]",
-	])("recovers writes from invalid settings %s", async (invalid) => {
-		let file = invalid
-		const settings = createWorkspaceSettingsRepository({
-			exists: async () => true,
-			readTextFile: async () => file,
-			mkdir: async () => {},
-			writeTextFile: async (_path, content) => {
-				file = content
-			},
-		})
-		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-		try {
-			await settings.saveSettings("/vault", { pinnedDirectories: ["notes"] })
-			expect(await settings.loadSettings("/vault")).toEqual({
-				pinnedDirectories: ["notes"],
+	it.each(['{"truncated":', "[]"])(
+		"recovers writes from invalid settings %s",
+		async (invalid) => {
+			let file = invalid
+			const settings = createWorkspaceSettingsRepository({
+				exists: async () => true,
+				readTextFile: async () => file,
+				mkdir: async () => {},
+				writeTextFile: async (_path, content) => {
+					file = content
+				},
 			})
-		} finally {
-			warn.mockRestore()
-		}
-	})
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+			try {
+				await settings.saveSettings("/vault", { pinnedDirectories: ["notes"] })
+				expect(await settings.loadSettings("/vault")).toEqual({
+					pinnedDirectories: ["notes"],
+				})
+			} finally {
+				warn.mockRestore()
+			}
+		},
+	)
 
 	it("propagates settings read errors without overwriting the file", async () => {
 		const error = new Error("Permission denied")

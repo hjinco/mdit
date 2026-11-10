@@ -6,7 +6,7 @@ use mdit_local_api::{
 use rmcp::schemars;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{ServerCapabilities, ServerInfo},
+    model::{ServerCapabilities, ServerConfig},
     schemars::JsonSchema,
     tool, tool_handler, tool_router,
     transport::streamable_http_server::{
@@ -97,15 +97,10 @@ impl MditMcpServer {
 
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for MditMcpServer {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            instructions: Some(
-                "Expose vault listing, markdown note creation, and note search for local automation."
-                    .into(),
-            ),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            ..Default::default()
-        }
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build()).with_instructions(
+            "Expose vault listing, markdown note creation, and note search for local automation.",
+        )
     }
 }
 
@@ -117,12 +112,10 @@ pub fn build_mcp_service(
     StreamableHttpService::new(
         move || Ok(MditMcpServer::new(db_path.clone())),
         session_manager,
-        StreamableHttpServerConfig {
-            stateful_mode: true,
-            sse_keep_alive: None,
-            sse_retry: None,
-            ..Default::default()
-        },
+        StreamableHttpServerConfig::default()
+            .with_legacy_session_mode(true)
+            .with_sse_keep_alive(None)
+            .with_sse_retry(None),
     )
 }
 

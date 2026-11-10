@@ -2,6 +2,7 @@
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.tsx",
+		"scripts/**/*.ts",
 		".content-collections/generated/**/*.d.ts",
 		"content-collections.ts",
 		"app.config.ts",

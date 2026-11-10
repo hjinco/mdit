@@ -296,34 +296,34 @@ describe("document workspace", () => {
 		expect(selectIsSaved(workspace.getSnapshot())).toBe(true)
 	})
 
-	it.each([
-		{ content: "updated", revision: "updated" },
-		null,
-	])("rechecks a navigation destination after a save when disk returns %j", async (latest) => {
-		const destination = "/notes/b.md"
-		let disk: DiskDocument | null = { content: "original", revision: "old" }
-		const write = createDeferredPromise<DocumentWriteResult>()
-		const writeDocument = vi.fn(() => write.promise)
-		const { workspace } = createTestDocuments({
-			readDocument: async (path) =>
-				path === destination ? disk : { content: "a", revision: "a" },
-			writeDocument,
-		})
-		await workspace.commands.openTab("/notes/a.md")
-		recordDraft(workspace, () => ({ content: "draft", title: "a" }))
+	it.each([{ content: "updated", revision: "updated" }, null])(
+		"rechecks a navigation destination after a save when disk returns %j",
+		async (latest) => {
+			const destination = "/notes/b.md"
+			let disk: DiskDocument | null = { content: "original", revision: "old" }
+			const write = createDeferredPromise<DocumentWriteResult>()
+			const writeDocument = vi.fn(() => write.promise)
+			const { workspace } = createTestDocuments({
+				readDocument: async (path) =>
+					path === destination ? disk : { content: "a", revision: "a" },
+				writeDocument,
+			})
+			await workspace.commands.openTab("/notes/a.md")
+			recordDraft(workspace, () => ({ content: "draft", title: "a" }))
 
-		const opening = workspace.commands.openTab(destination)
-		await waitForAssertion(() => expect(writeDocument).toHaveBeenCalled())
-		disk = latest
-		write.resolve({ status: "saved", revision: "saved" })
-		await opening
+			const opening = workspace.commands.openTab(destination)
+			await waitForAssertion(() => expect(writeDocument).toHaveBeenCalled())
+			disk = latest
+			write.resolve({ status: "saved", revision: "saved" })
+			await opening
 
-		expect(selectActiveTab(workspace.getSnapshot())).toMatchObject(
-			latest
-				? { path: destination, content: latest.content, isSaved: true }
-				: { path: "/notes/a.md", content: "draft", isSaved: true },
-		)
-	})
+			expect(selectActiveTab(workspace.getSnapshot())).toMatchObject(
+				latest
+					? { path: destination, content: latest.content, isSaved: true }
+					: { path: "/notes/a.md", content: "draft", isSaved: true },
+			)
+		},
+	)
 
 	it("navigates history even when selection provider throws", async () => {
 		const { workspace } = createTestDocuments()

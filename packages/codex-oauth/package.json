@@ -12,7 +12,7 @@
 	},
 	"dependencies": {
 		"@fabianlars/tauri-plugin-oauth": "^2.1.0",
-		"@tauri-apps/plugin-opener": "~2.7.2"
+		"@tauri-apps/plugin-opener": "~2.7.3"
 	},
 	"devDependencies": {
 		"@mdit/tsconfig": "workspace:*",

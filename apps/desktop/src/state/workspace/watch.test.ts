@@ -220,33 +220,35 @@ describe("workspace watch runtime", () => {
 		)
 	})
 
-	it.each([
-		true,
-		false,
-	])("applies an incremental rename only while the destination still exists (%s)", async (targetExists) => {
-		const { deps, runtime, emit, lease } = createTestRuntime()
-		deps.tree.getEntryByPath.mockImplementation((path) =>
-			path === note.path ? { path, name: "note.md", isDirectory: false } : null,
-		)
-		deps.fileSystem.exists.mockResolvedValueOnce(targetExists)
+	it.each([true, false])(
+		"applies an incremental rename only while the destination still exists (%s)",
+		async (targetExists) => {
+			const { deps, runtime, emit, lease } = createTestRuntime()
+			deps.tree.getEntryByPath.mockImplementation((path) =>
+				path === note.path
+					? { path, name: "note.md", isDirectory: false }
+					: null,
+			)
+			deps.fileSystem.exists.mockResolvedValueOnce(targetExists)
 
-		await runtime.start({ workspacePath: "/vault", sessionId: 1 })
-		emit(0, lease(0), 1, [
-			{
-				type: "move",
-				fromRel: "note.md",
-				toRel: "renamed.md",
-				entryKind: "file",
-			},
-		])
-		await flush()
+			await runtime.start({ workspacePath: "/vault", sessionId: 1 })
+			emit(0, lease(0), 1, [
+				{
+					type: "move",
+					fromRel: "note.md",
+					toRel: "renamed.md",
+					entryKind: "file",
+				},
+			])
+			await flush()
 
-		expect(deps.fileSystem.exists).toHaveBeenCalledWith("/vault/renamed.md")
-		expect(deps.tree.entryRenamed).toHaveBeenCalledTimes(targetExists ? 1 : 0)
-		expect(deps.tree.reconcileDirectoryEntries).toHaveBeenCalledTimes(
-			targetExists ? 0 : 1,
-		)
-	})
+			expect(deps.fileSystem.exists).toHaveBeenCalledWith("/vault/renamed.md")
+			expect(deps.tree.entryRenamed).toHaveBeenCalledTimes(targetExists ? 1 : 0)
+			expect(deps.tree.reconcileDirectoryEntries).toHaveBeenCalledTimes(
+				targetExists ? 0 : 1,
+			)
+		},
+	)
 
 	it("ignores a watcher read if the document baseline changed while reading", async () => {
 		const { deps, runtime, emit, lease } = createTestRuntime()

@@ -224,7 +224,7 @@ fn revision(path: &Path, bytes: &[u8]) -> String {
     hash.update(path.as_os_str().as_encoded_bytes());
     hash.update([0]);
     hash.update(bytes);
-    format!("{:x}", hash.finalize())
+    hex::encode(hash.finalize())
 }
 
 fn canonical_parent(path: &Path) -> io::Result<PathBuf> {

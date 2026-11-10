@@ -62,9 +62,12 @@ export const createHotkeysService = ({
 			if (binding) {
 				const validation = validateHotkey(binding)
 				if (!validation.valid) {
+					const invalidPart = validation.errors[0]?.part
 					return {
 						success: false,
-						error: validation.errors[0] ?? "Invalid hotkey format",
+						error: invalidPart
+							? `Invalid hotkey part: ${invalidPart}`
+							: "Invalid hotkey format",
 					}
 				}
 				if (isReservedAppHotkeyBinding(binding)) {

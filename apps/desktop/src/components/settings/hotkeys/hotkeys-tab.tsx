@@ -82,15 +82,18 @@ export function HotkeysTab() {
 		[setHotkeyBinding],
 	)
 
+	const saveRecordedBinding = (binding: string) => {
+		if (!recordingActionId) {
+			return
+		}
+		setRecordingActionId(null)
+		void saveBinding(recordingActionId, binding)
+	}
+
 	const recorder = useHotkeyRecorder({
-		onRecord: (binding) => {
-			if (!recordingActionId) {
-				return
-			}
-			const targetActionId = recordingActionId
-			setRecordingActionId(null)
-			void saveBinding(targetActionId, binding)
-		},
+		recordBy: "key",
+		onRecord: saveRecordedBinding,
+		onClear: () => saveRecordedBinding(""),
 		onCancel: () => {
 			setRecordingActionId(null)
 		},

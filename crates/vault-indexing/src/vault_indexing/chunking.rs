@@ -182,7 +182,7 @@ fn split_text_strict_by_tokens(text: &str, max_tokens: usize) -> Vec<String> {
         let mut decoded_chunk: Option<String> = None;
 
         while end <= tokens.len() {
-            match tokenizer.decode(tokens[start..end].to_vec()) {
+            match tokenizer.decode(&tokens[start..end]) {
                 Ok(decoded) => {
                     decoded_chunk = Some(decoded);
                     break;

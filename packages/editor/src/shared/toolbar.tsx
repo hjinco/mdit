@@ -181,10 +181,7 @@ export function ToolbarSplitButton({
 	)
 }
 
-type ToolbarSplitButtonPrimaryProps = Omit<
-	React.ComponentPropsWithoutRef<typeof ToolbarToggleItem>,
-	"value"
-> &
+type ToolbarSplitButtonPrimaryProps = React.ComponentPropsWithoutRef<"span"> &
 	VariantProps<typeof toolbarButtonVariants>
 
 export function ToolbarSplitButtonPrimary({

@@ -5,16 +5,16 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"ts:check": "tsgo --noEmit",
+		"ts:check": "node scripts/generate-content.ts && tsgo --noEmit",
 		"preview": "vite preview",
 		"deploy": "pnpm build && wrangler deploy",
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
-		"@content-collections/core": "^0.14.2",
+		"@content-collections/core": "^0.15.3",
 		"@mdit/ui": "workspace:*",
-		"@tanstack/react-router": "^1.166.2",
-		"@tanstack/react-start": "^1.166.2",
+		"@tanstack/react-router": "^1.170.46",
+		"@tanstack/react-start": "^1.169.5",
 		"gray-matter": "^4.0.3",
 		"hast-util-to-string": "^3.0.1",
 		"react": "catalog:",
@@ -27,22 +27,21 @@
 		"remark-parse": "^11.0.0",
 		"remark-rehype": "^11.1.2",
 		"unified": "^11.0.5",
-		"unist-util-visit": "^5.0.0",
-		"zod": "^4.3.6"
+		"unist-util-visit": "^5.2.0",
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "^1.30.2",
-		"@content-collections/vite": "^0.2.9",
-		"@tailwindcss/vite": "^4.2.2",
-		"@types/node": "^24.10.13",
+		"@cloudflare/vite-plugin": "^1.68.0",
+		"@content-collections/vite": "^0.3.1",
+		"@tailwindcss/vite": "^4.3.5",
+		"@types/node": "^26.6.6",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
 		"@typescript/native-preview": "catalog:",
-		"@vitejs/plugin-react": "^6.0.1",
-		"tailwindcss": "^4.1.12",
-		"typescript": "^5.9.3",
+		"@vitejs/plugin-react": "^6.3.0",
+		"tailwindcss": "^4.3.5",
+		"typescript": "^7.0.2",
 		"vite": "catalog:",
-		"vite-tsconfig-paths": "^5.1.4",
 		"wrangler": "catalog:"
 	}
 }

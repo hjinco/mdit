@@ -67,4 +67,4 @@ const legalPages = defineCollection({
 
 export default defineConfig({
 	content: [blogPosts, legalPages],
-} as any)
+})

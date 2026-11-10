@@ -9,7 +9,7 @@ import remarkRehype from "remark-rehype"
 import { unified } from "unified"
 import { visit } from "unist-util-visit"
 
-export interface ContentHeading {
+export type ContentHeading = {
 	slug: string
 	text: string
 	depth: number

@@ -32,8 +32,8 @@ import {
 import {
 	type ColumnDef,
 	flexRender,
-	getCoreRowModel,
-	useReactTable,
+	tableFeatures,
+	useTable,
 } from "@tanstack/react-table"
 import { PlusIcon } from "lucide-react"
 import { KEYS } from "platejs"
@@ -104,6 +104,7 @@ export type KVRow = {
 }
 
 const columnsOrder = ["type", "key", "value"] as const
+const frontmatterTableFeatures = tableFeatures({})
 type ColumnId = (typeof columnsOrder)[number]
 type CellPosition = { rowIndex: number; colIndex: number }
 
@@ -699,7 +700,7 @@ export function FrontmatterTable({
 		)
 	}, [])
 
-	const columns = useMemo<ColumnDef<KVRow>[]>(
+	const columns = useMemo<ColumnDef<typeof frontmatterTableFeatures, KVRow>[]>(
 		() => [
 			{
 				accessorKey: "type",
@@ -826,10 +827,10 @@ export function FrontmatterTable({
 		],
 	)
 
-	const table = useReactTable({
+	const table = useTable({
+		features: frontmatterTableFeatures,
 		data: tableData,
 		columns,
-		getCoreRowModel: getCoreRowModel(),
 	})
 
 	rowOrderRef.current = table.getRowModel().rows.map((row) => row.original.id)
@@ -1257,7 +1258,7 @@ export function FrontmatterTable({
 				<tbody className="flex flex-col gap-2">
 					{table.getRowModel().rows.map((row) => (
 						<tr key={row.id} className="group flex items-start gap-1">
-							{row.getVisibleCells().map((cell) => (
+							{row.getAllCells().map((cell) => (
 								<td
 									key={cell.id}
 									className={cn(

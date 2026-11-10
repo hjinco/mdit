@@ -1,5 +1,6 @@
+import { allLegalPages } from "content-collections"
 import { DEFAULT_LOCALE, type Locale } from "../../i18n/locales"
-import type { BlogPost, LegalPage } from "./mappers"
+import { type BlogPost, type LegalPage, mapLegalEntry } from "./mappers"
 
 interface QueryOptions {
 	locale?: Locale
@@ -36,8 +37,8 @@ export function getLegalPageBySlug(
 	slug: string,
 	locale: Locale = DEFAULT_LOCALE,
 ): LegalPage | undefined {
-	void slug
-	void locale
-
-	return undefined
+	const entry = allLegalPages.find(
+		(page) => page.slug === slug && page.locale === locale,
+	)
+	return entry && mapLegalEntry(entry)
 }

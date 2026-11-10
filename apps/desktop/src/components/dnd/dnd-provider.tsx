@@ -1,4 +1,5 @@
-import { DragDropProvider, DragOverlay, PointerSensor } from "@dnd-kit/react"
+import { PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom"
+import { DragDropProvider, DragOverlay } from "@dnd-kit/react"
 import { useEditorRef } from "@mdit/editor/plate"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
@@ -50,9 +51,9 @@ type DragOverlaySource = {
 
 const DND_SENSORS = [
 	PointerSensor.configure({
-		activationConstraints: {
-			distance: { value: 4 },
-		},
+		activationConstraints: [
+			new PointerActivationConstraints.Distance({ value: 4 }),
+		],
 	}),
 ]
 

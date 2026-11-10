@@ -3,17 +3,45 @@ packages:
   - packages/*
 
 catalog:
-  react: 19.2.4
-  react-dom: 19.2.4
-  '@types/react': 19.2.14
-  '@types/react-dom': 19.2.3
-  '@typescript/native-preview': 7.0.0-dev.20260330.1
-  vite: 8.0.3
-  vitest: 4.1.2
-  wrangler: 4.78.0
+  react: 19.3.1
+  react-dom: 19.3.1
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  '@typescript/native-preview': 7.0.0-dev.20260707.2
+  vite: 8.3.7
+  vitest: 5.1.0
+  wrangler: 4.160.0
 
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - esbuild
-  - sharp
-  - workerd
+overrides:
+  esbuild: 0.28.2
+
+# Keep the exact versions selected in the dependency upgrade.
+minimumReleaseAgeExclude:
+  - '@cloudflare/vite-plugin@1.68.0'
+  - '@cloudflare/workerd-darwin-64@1.20261110.1'
+  - '@cloudflare/workerd-darwin-arm64@1.20261110.1'
+  - '@cloudflare/workerd-linux-64@1.20261110.1'
+  - '@cloudflare/workerd-linux-arm64@1.20261110.1'
+  - '@cloudflare/workerd-windows-64@1.20261110.1'
+  - '@storybook/addon-vitest@10.6.7'
+  - '@tanstack/hotkeys@0.27.0'
+  - '@tanstack/react-hotkeys@0.23.0'
+  - '@tauri-apps/plugin-http@2.9.0'
+  - '@tauri-apps/plugin-opener@2.7.3'
+  - '@testing-library/user-event@14.6.9'
+  - framer-motion@14.12.0
+  - lucide-react@1.71.0
+  - marked@18.2.0
+  - miniflare@5.20261110.0-beta
+  - motion-dom@14.12.0
+  - motion@14.12.0
+  - storybook@10.6.7
+  - workerd@1.20261110.1
+  - wrangler@4.160.0
+minimumReleaseAgeExcludePrune: true
+
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+  sharp: true
+  workerd: true

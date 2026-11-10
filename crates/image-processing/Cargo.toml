@@ -4,11 +4,11 @@ version = '0.1.0'
 edition.workspace = true
 
 [dependencies]
-image = '0.25.9'
-serde = { version = '1', features = ['derive'] }
-webp = '0.3'
+image = '0.25.10'
+serde = { version = '1.0.229', features = ['derive'] }
+webp = '0.3.1'
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation = '0.10'
-core-graphics = '0.24'
-foreign-types = '0.5'
+core-foundation = '0.10.1'
+core-graphics = '0.25.0'
+foreign-types = '0.5.0'

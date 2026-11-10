@@ -33,18 +33,18 @@ async fn mcp_tools_list_and_create_note_conflict_flow() {
     assert!(tools.iter().any(|tool| tool.name == "search_notes"));
 
     client
-        .call_tool(CallToolRequestParams {
-            meta: None,
-            name: "create_note".into(),
-            arguments: json!({
-                "vaultId": harness.vault_id,
-                "title": "Mcp Note",
-                "content": "# from mcp"
-            })
-            .as_object()
-            .cloned(),
-            task: None,
-        })
+        .call_tool(
+            CallToolRequestParams::new("create_note").with_arguments(
+                json!({
+                    "vaultId": harness.vault_id,
+                    "title": "Mcp Note",
+                    "content": "# from mcp"
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        )
         .await
         .expect("first create_note call should succeed");
 
@@ -52,17 +52,17 @@ async fn mcp_tools_list_and_create_note_conflict_flow() {
     assert!(created_file.is_file());
 
     let conflict = client
-        .call_tool(CallToolRequestParams {
-            meta: None,
-            name: "create_note".into(),
-            arguments: json!({
-                "vaultId": harness.vault_id,
-                "title": "Mcp Note"
-            })
-            .as_object()
-            .cloned(),
-            task: None,
-        })
+        .call_tool(
+            CallToolRequestParams::new("create_note").with_arguments(
+                json!({
+                    "vaultId": harness.vault_id,
+                    "title": "Mcp Note"
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        )
         .await
         .expect_err("duplicate create_note call should fail");
 
@@ -88,18 +88,18 @@ async fn mcp_search_notes_returns_results_and_maps_invalid_input() {
     let client = server.connect_client().await;
 
     let result = client
-        .call_tool(CallToolRequestParams {
-            meta: None,
-            name: "search_notes".into(),
-            arguments: json!({
-                "vaultId": harness.vault_id,
-                "query": "nebula",
-                "limit": 1
-            })
-            .as_object()
-            .cloned(),
-            task: None,
-        })
+        .call_tool(
+            CallToolRequestParams::new("search_notes").with_arguments(
+                json!({
+                    "vaultId": harness.vault_id,
+                    "query": "nebula",
+                    "limit": 1
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        )
         .await
         .expect("search_notes call should succeed");
 
@@ -118,17 +118,17 @@ async fn mcp_search_notes_returns_results_and_maps_invalid_input() {
         .ends_with(".md"));
 
     let invalid = client
-        .call_tool(CallToolRequestParams {
-            meta: None,
-            name: "search_notes".into(),
-            arguments: json!({
-                "vaultId": harness.vault_id,
-                "query": "   "
-            })
-            .as_object()
-            .cloned(),
-            task: None,
-        })
+        .call_tool(
+            CallToolRequestParams::new("search_notes").with_arguments(
+                json!({
+                    "vaultId": harness.vault_id,
+                    "query": "   "
+                })
+                .as_object()
+                .unwrap()
+                .clone(),
+            ),
+        )
         .await
         .expect_err("empty query should fail");
 
