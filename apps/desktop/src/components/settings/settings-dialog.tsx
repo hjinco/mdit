@@ -5,7 +5,6 @@ import { useDesktopRuntime, useWindowState, useWorkspaceState } from "@/state"
 import type { SettingsTab } from "@/state/window"
 
 import { AITab } from "./ai/ai-tab"
-import { ApiMcpTab } from "./api-mcp/api-mcp-tab"
 import { HotkeysTab } from "./hotkeys/hotkeys-tab"
 import { IndexingTab } from "./indexing/indexing-tab"
 import { PreferencesTab } from "./preferences/preferences-tab"
@@ -17,7 +16,6 @@ const SETTINGS_TAB_COMPONENTS: Record<SettingsTab, ComponentType> = {
 	preferences: PreferencesTab,
 	hotkeys: HotkeysTab,
 	ai: AITab,
-	"api-mcp": ApiMcpTab,
 	sync: SyncTab,
 	indexing: IndexingTab,
 }

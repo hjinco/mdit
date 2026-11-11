@@ -3,7 +3,6 @@ pub mod credentials;
 pub mod document_files;
 pub mod filesystem;
 pub mod image;
-pub mod local_api;
 pub mod ollama;
 pub mod vault_indexing;
 pub mod vault_watch;

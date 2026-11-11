@@ -19,7 +19,6 @@ import {
 import { createDesktopGitSyncCore } from "@/lib/git-sync"
 import { createAppDataHotkeyStorage } from "@/lib/hotkeys-storage"
 import { createTauriIndexingPort } from "@/lib/indexing"
-import { startLocalApiServer, stopLocalApiServer } from "@/lib/local-api"
 import { fetchOllamaModels } from "@/lib/ollama"
 import { FileSystemRepository } from "@/repositories/file-system-repository"
 import { UserSettingsRepository } from "@/repositories/user-settings-repository"
@@ -132,7 +131,6 @@ export function createDesktopRuntime(mode: "workspace" | "detached") {
 
 	let started = false
 	let stopServices: (() => void) | undefined
-	let stopLocalApi: (() => void) | undefined
 	let stopAutosave: (() => void) | undefined
 	let unlistenOpenWorkspace: Promise<(() => void) | undefined> | undefined
 
@@ -182,14 +180,12 @@ export function createDesktopRuntime(mode: "workspace" | "detached") {
 					indexing.commands.startAutoIndexing(workspacePath)
 				}
 			})
-			stopLocalApi = bindLocalApi(preferences)
 			void workspace.start().catch(console.error)
 		}
 	}
 
 	async function dispose() {
 		stopServices?.()
-		stopLocalApi?.()
 		stopAutosave?.()
 		indexing.commands.setWorkspace(null)
 		await Promise.all([
@@ -209,39 +205,6 @@ export function createDesktopRuntime(mode: "workspace" | "detached") {
 		gitSync,
 		start,
 		dispose,
-	}
-}
-
-function bindLocalApi(preferences: ReturnType<typeof createWindowState>) {
-	let requested: boolean | undefined
-	let pending = Promise.resolve()
-	let disposed = false
-
-	const update = () => {
-		const enabled = preferences.getSnapshot().localApiEnabled
-		if (requested === enabled) return
-		requested = enabled
-		pending = pending.then(async () => {
-			if (disposed || requested !== enabled) return
-			try {
-				await (enabled ? startLocalApiServer() : stopLocalApiServer())
-				if (requested === enabled && !disposed)
-					preferences.commands.setLocalApiError(null)
-			} catch (error) {
-				if (requested === enabled && !disposed) {
-					preferences.commands.setLocalApiError(
-						`Failed to ${enabled ? "start" : "stop"} local API server: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}
-		})
-	}
-
-	const unsubscribe = preferences.subscribe(update)
-	update()
-	return () => {
-		disposed = true
-		unsubscribe()
 	}
 }
 

@@ -5,7 +5,6 @@ function createPreferencesState() {
 	return {
 		fileExplorerOpen: true,
 		fontScale: 1,
-		localApiEnabled: false,
 		chatPanelBetaEnabled: false,
 	}
 }
@@ -34,11 +33,6 @@ const createPreferences = (state: ReturnType<typeof createPreferencesState>) =>
 			state.fontScale = 1
 			return state.fontScale
 		},
-		getLocalApiEnabled: () => state.localApiEnabled,
-		setLocalApiEnabled: (enabled) => {
-			state.localApiEnabled = enabled
-			return enabled
-		},
 		getChatPanelBetaEnabled: () => state.chatPanelBetaEnabled,
 		setChatPanelBetaEnabled: (enabled) => {
 			state.chatPanelBetaEnabled = enabled
@@ -49,36 +43,6 @@ const createPreferences = (state: ReturnType<typeof createPreferencesState>) =>
 const createTestWindow = (preferencesState = createPreferencesState()) => ({
 	store: createWindowState(createPreferences(preferencesState), "workspace"),
 	preferencesState,
-})
-
-describe("window local api settings", () => {
-	it("defaults localApiEnabled to false when no persisted value exists", () => {
-		const { store } = createTestWindow()
-
-		expect(store.getSnapshot().localApiEnabled).toBe(false)
-	})
-
-	it("persists localApiEnabled changes through injected preferences", () => {
-		const { store, preferencesState } = createTestWindow()
-
-		store.commands.setLocalApiEnabled(true)
-
-		expect(store.getSnapshot().localApiEnabled).toBe(true)
-		expect(preferencesState.localApiEnabled).toBe(true)
-
-		const { store: rehydratedStore } = createTestWindow(preferencesState)
-		expect(rehydratedStore.getSnapshot().localApiEnabled).toBe(true)
-	})
-
-	it("sets and clears localApiError", () => {
-		const { store } = createTestWindow()
-
-		store.commands.setLocalApiError("error message")
-		expect(store.getSnapshot().localApiError).toBe("error message")
-
-		store.commands.setLocalApiError(null)
-		expect(store.getSnapshot().localApiError).toBeNull()
-	})
 })
 
 describe("window note info panel", () => {

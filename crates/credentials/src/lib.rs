@@ -38,7 +38,6 @@ impl From<ApiKeyProviderId> for ProviderId {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum AppSecretKey {
-    LocalApiToken,
     LicenseKey,
 }
 
@@ -100,8 +99,6 @@ impl From<CodexOAuthCredential> for ProviderCredential {
 pub struct CredentialStore {
     pub version: u8,
     pub providers: BTreeMap<ProviderId, ProviderCredential>,
-    #[serde(rename = "localApiToken", skip_serializing_if = "Option::is_none")]
-    pub local_api_token: Option<String>,
     #[serde(rename = "licenseKey", skip_serializing_if = "Option::is_none")]
     pub license_key: Option<String>,
 }
@@ -111,13 +108,12 @@ impl CredentialStore {
         Self {
             version: CREDENTIAL_STORE_VERSION,
             providers: BTreeMap::new(),
-            local_api_token: None,
             license_key: None,
         }
     }
 
     fn is_empty(&self) -> bool {
-        self.providers.is_empty() && self.local_api_token.is_none() && self.license_key.is_none()
+        self.providers.is_empty() && self.license_key.is_none()
     }
 }
 
@@ -157,7 +153,6 @@ fn decode_provider_id(value: &str) -> Option<ProviderId> {
 
 fn decode_app_secret_key(value: &str) -> Option<AppSecretKey> {
     match value {
-        "local_api_token" => Some(AppSecretKey::LocalApiToken),
         "license_key" => Some(AppSecretKey::LicenseKey),
         _ => None,
     }
@@ -165,7 +160,6 @@ fn decode_app_secret_key(value: &str) -> Option<AppSecretKey> {
 
 fn secret_key_field(key: AppSecretKey) -> &'static str {
     match key {
-        AppSecretKey::LocalApiToken => "localApiToken",
         AppSecretKey::LicenseKey => "licenseKey",
     }
 }
@@ -214,9 +208,6 @@ pub fn decode_credential_store(raw: &str) -> CredentialStore {
         }
     }
 
-    if let Some(local_api_token) = root.get("localApiToken").and_then(Value::as_str) {
-        store.local_api_token = Some(local_api_token.to_owned());
-    }
     if let Some(license_key) = root.get("licenseKey").and_then(Value::as_str) {
         store.license_key = Some(license_key.to_owned());
     }
@@ -230,9 +221,6 @@ pub fn decode_credential_store(raw: &str) -> CredentialStore {
                 continue;
             };
             match secret_key {
-                AppSecretKey::LocalApiToken => {
-                    store.local_api_token = Some(secret_value.to_owned());
-                }
                 AppSecretKey::LicenseKey => {
                     store.license_key = Some(secret_value.to_owned());
                 }
@@ -341,7 +329,6 @@ pub fn get_app_secret(
 ) -> Result<Option<String>, CredentialsError> {
     let store = load_credential_store(backend)?;
     Ok(match key {
-        AppSecretKey::LocalApiToken => store.local_api_token,
         AppSecretKey::LicenseKey => store.license_key,
     })
 }
@@ -357,7 +344,6 @@ pub fn set_app_secret(
 
     let mut store = load_credential_store(backend)?;
     match key {
-        AppSecretKey::LocalApiToken => store.local_api_token = Some(value.to_owned()),
         AppSecretKey::LicenseKey => store.license_key = Some(value.to_owned()),
     }
     save_credential_store(&store, backend)
@@ -369,7 +355,6 @@ pub fn delete_app_secret(
 ) -> Result<(), CredentialsError> {
     let mut store = load_credential_store(backend)?;
     match key {
-        AppSecretKey::LocalApiToken => store.local_api_token = None,
         AppSecretKey::LicenseKey => store.license_key = None,
     }
     save_credential_store(&store, backend)
@@ -472,19 +457,17 @@ mod tests {
     }
 
     #[test]
-    fn decode_supports_top_level_and_legacy_secret_fields() {
+    fn decode_supports_legacy_secret_fields() {
         let store = decode_credential_store(
             r#"{
                 "version": 1,
                 "providers": {},
-                "localApiToken": "top-level-token",
                 "secrets": {
                     "license_key": "legacy-license"
                 }
             }"#,
         );
 
-        assert_eq!(store.local_api_token.as_deref(), Some("top-level-token"));
         assert_eq!(store.license_key.as_deref(), Some("legacy-license"));
     }
 
@@ -521,8 +504,8 @@ mod tests {
     fn deleting_last_item_removes_store_entry() {
         let backend = TestBackend::default();
 
-        set_app_secret(AppSecretKey::LocalApiToken, "token", &backend).unwrap();
-        delete_app_secret(AppSecretKey::LocalApiToken, &backend).unwrap();
+        set_app_secret(AppSecretKey::LicenseKey, "token", &backend).unwrap();
+        delete_app_secret(AppSecretKey::LicenseKey, &backend).unwrap();
 
         assert_eq!(backend.stored_value(), None);
     }

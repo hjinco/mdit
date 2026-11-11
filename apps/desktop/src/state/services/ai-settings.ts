@@ -10,7 +10,7 @@ import { createSerialQueue } from "./serial-queue"
 
 export type { ApiKeyProviderId, ProviderId } from "@mdit/ai"
 
-export type AppSecretKey = "local_api_token" | "license_key"
+export type AppSecretKey = "license_key"
 
 export type ApiKeyCredential = {
 	type: "api_key"

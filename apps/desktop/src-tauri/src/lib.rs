@@ -1,6 +1,5 @@
 mod app;
 mod commands;
-mod local_api;
 mod persistence;
 
 use tauri::Manager;
@@ -40,8 +39,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard::init())
         .plugin(WindowStateBuilder::default().build())
-        .manage(local_api::LocalApiRuntimeState::default())
-        .manage(local_api::LocalApiAuthState::default())
         .manage(commands::vault_watch::VaultWatchRuntimeState::default())
         .invoke_handler(tauri::generate_handler![
             app::window_lifecycle::show_main_window,
@@ -80,9 +77,6 @@ pub fn run() {
             commands::vault_indexing::set_vault_embedding_config_command,
             commands::vault_watch::start_vault_watch_command,
             commands::vault_watch::stop_vault_watch_command,
-            commands::local_api::start_local_api_server_command,
-            commands::local_api::set_local_api_auth_token_command,
-            commands::local_api::stop_local_api_server_command,
             commands::ollama::list_ollama_models_command,
             commands::image::get_image_properties,
             commands::image::edit_image,
@@ -94,7 +88,6 @@ pub fn run() {
         .expect("error while running tauri application");
 
     app.run(|app_handle, event| {
-        local_api::handle_run_event(app_handle, &event);
         app::window_lifecycle::handle_run_event(app_handle, &event);
     });
 }

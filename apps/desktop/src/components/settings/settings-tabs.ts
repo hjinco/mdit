@@ -2,7 +2,6 @@ import {
 	IconAdjustmentsHorizontal,
 	IconBrain,
 	IconKeyboard,
-	IconPlugConnected,
 	IconRefresh,
 	IconSearch,
 } from "@tabler/icons-react"
@@ -27,7 +26,6 @@ export const SETTINGS_TAB_META: Record<
 > = {
 	preferences: { label: "Preferences", icon: IconAdjustmentsHorizontal },
 	ai: { label: "AI", icon: IconBrain },
-	"api-mcp": { label: "MCP", icon: IconPlugConnected },
 	sync: { label: "Sync", icon: IconRefresh },
 	indexing: { label: "Indexing", icon: IconSearch },
 	hotkeys: { label: "Hotkeys", icon: IconKeyboard },
@@ -47,7 +45,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
 	{
 		id: "features",
 		label: "Features",
-		tabs: ["ai", "api-mcp", "hotkeys"],
+		tabs: ["ai", "hotkeys"],
 	},
 ]
 

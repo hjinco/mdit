@@ -1,12 +1,6 @@
 import { createState } from "./create-state"
 
-export type SettingsTab =
-	| "preferences"
-	| "ai"
-	| "api-mcp"
-	| "sync"
-	| "indexing"
-	| "hotkeys"
+export type SettingsTab = "preferences" | "ai" | "sync" | "indexing" | "hotkeys"
 
 export type FontScaleUpdater = number | ((current: number) => number)
 
@@ -18,8 +12,6 @@ export type UIPreferences = {
 	increaseFontScale: (current: number) => number
 	decreaseFontScale: (current: number) => number
 	resetFontScale: () => number
-	getLocalApiEnabled: () => boolean
-	setLocalApiEnabled: (enabled: boolean) => boolean
 	getChatPanelBetaEnabled: () => boolean
 	setChatPanelBetaEnabled: (enabled: boolean) => boolean
 }
@@ -43,8 +35,6 @@ export function createWindowState(
 		imagePreviewPath: null as string | null,
 		imageEditPath: null as string | null,
 		fontScale: preferences.getFontScale(),
-		localApiEnabled: preferences.getLocalApiEnabled(),
-		localApiError: null as string | null,
 		chatPanelBetaEnabled: preferences.getChatPanelBetaEnabled(),
 		isChatPanelOpen: false,
 		isFocusMode: false,
@@ -138,12 +128,6 @@ export function createWindowState(
 				}),
 			resetFontScale: () =>
 				state.update({ fontScale: preferences.resetFontScale() }),
-			setLocalApiEnabled: (enabled: boolean) =>
-				state.update({
-					localApiEnabled: preferences.setLocalApiEnabled(enabled),
-				}),
-			setLocalApiError: (message: string | null) =>
-				state.update({ localApiError: message }),
 			setChatPanelBetaEnabled: (enabled: boolean) => {
 				const nextEnabled = preferences.setChatPanelBetaEnabled(enabled)
 				state.update(({ isChatPanelOpen }) => ({

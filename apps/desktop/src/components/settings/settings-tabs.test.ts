@@ -24,14 +24,8 @@ describe("settings tabs", () => {
 			"sync",
 			"indexing",
 			"ai",
-			"api-mcp",
 			"hotkeys",
 		])
-		expect(getSettingsTabs(false)).toEqual([
-			"preferences",
-			"ai",
-			"api-mcp",
-			"hotkeys",
-		])
+		expect(getSettingsTabs(false)).toEqual(["preferences", "ai", "hotkeys"])
 	})
 })

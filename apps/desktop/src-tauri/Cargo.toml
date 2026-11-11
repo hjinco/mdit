@@ -23,7 +23,6 @@ mdit-credentials = { package = "credentials", path = "../../../crates/credential
 mdit-image-processing = { package = "image-processing", path = "../../../crates/image-processing" }
 mdit-vault-indexing = { package = "vault-indexing", path = "../../../crates/vault-indexing" }
 mdit-vault-indexer = { package = "vault-indexer", path = "../../../crates/vault-indexer" }
-mdit-local-api = { package = "local-api", path = "../../../crates/local-api" }
 mdit-note = { package = "note", path = "../../../crates/note" }
 mdit-ollama-client = { package = "ollama-client", path = "../../../crates/ollama-client" }
 mdit-vault-watch = { package = "vault-watch", path = "../../../crates/vault-watch" }
@@ -36,15 +35,6 @@ same-file = "1.0.6"
 hex = "0.4.3"
 sha2 = "0.11.1"
 tempfile = "3.27.0"
-axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio", "json"] }
-rmcp = { version = "3.9.0", features = [
-  "client",
-  "reqwest-native-tls",
-  "transport-streamable-http-server",
-  "transport-streamable-http-client-reqwest",
-] }
-tokio = { version = "1.54.1", features = ["net", "rt", "sync"] }
-tower = "0.5.3"
 tauri-plugin-dialog = "2.8.4"
 tauri-plugin-fs = { version = "2.7.1" }
 tauri-plugin-keyring = "0.1.0"
