@@ -47,7 +47,7 @@ jobs:
               - 'Cargo.toml'
               - 'Cargo.lock'
               - 'crates/**'
-              - 'apps/desktop/src-tauri/**'
+              - 'apps/desktop-legacy/src-tauri/**'
 
   rust-check:
     runs-on: ubuntu-latest
@@ -68,5 +68,5 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
 
-      - name: Run cargo check
-        run: cargo check --workspace --manifest-path Cargo.toml --locked
+      - name: Check legacy app and shared crates (desktop is checked on macOS)
+        run: cargo check --workspace --exclude mdit-desktop --manifest-path Cargo.toml --locked

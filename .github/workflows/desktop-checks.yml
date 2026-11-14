@@ -1,0 +1,28 @@
+name: Desktop Checks
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - 'tooling/release/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/desktop-checks.yml'
+      - '.github/workflows/release.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+      - run: cargo fmt --all --manifest-path Cargo.toml -- --check
+      - run: cargo check -p mdit-desktop --all-targets --locked
+      - run: python3 -m unittest discover -s tooling/release -p 'test_*.py'

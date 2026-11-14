@@ -11,13 +11,13 @@
 // import {
 // 	Caption,
 // 	CaptionTextarea,
-// } from "../../../../apps/desktop/src/components/editor/ui/caption"
-// import { MediaToolbar } from "../../../../apps/desktop/src/components/editor/ui/media-toolbar"
+// } from "../../../../apps/desktop-legacy/src/components/editor/ui/caption"
+// import { MediaToolbar } from "../../../../apps/desktop-legacy/src/components/editor/ui/media-toolbar"
 // import {
 // 	mediaResizeHandleVariants,
 // 	Resizable,
 // 	ResizeHandle,
-// } from "../../../../apps/desktop/src/components/editor/ui/resize-handle"
+// } from "../../../../apps/desktop-legacy/src/components/editor/ui/resize-handle"
 
 // export const MediaEmbedElement = withHOC(
 // 	ResizableProvider,

@@ -45,6 +45,10 @@ Current releases support macOS only. Windows and mobile are planned.
 
 ---
 
+## Development
+
+For the repository layout and development commands, see [Development](docs/development.md).
+
 ## License
 
 This project is licensed under the Apache License, Version 2.0.

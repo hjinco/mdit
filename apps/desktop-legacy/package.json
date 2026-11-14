@@ -1,5 +1,5 @@
 {
-	"name": "@mdit/desktop",
+	"name": "@mdit/desktop-legacy",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",

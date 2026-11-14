@@ -1,8 +1,10 @@
 [workspace]
 members = [
-  "apps/desktop/src-tauri",
+  "apps/desktop",
+  "apps/desktop-legacy/src-tauri",
   "crates/*"
 ]
+default-members = ["apps/desktop"]
 resolver = "2"
 
 [workspace.package]

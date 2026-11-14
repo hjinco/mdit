@@ -9,6 +9,7 @@ serde = { version = '1.0.229', features = ['derive'] }
 webp = '0.3.1'
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-foundation = '0.10.1'
+# GPUI 0.2.2 pins 0.10.0; accept the shared 0.10 API across both apps.
+core-foundation = '0.10.0'
 core-graphics = '0.25.0'
 foreign-types = '0.5.0'

@@ -206,7 +206,7 @@ importers:
         specifier: 2.11.10
         version: 2.11.10
 
-  apps/desktop:
+  apps/desktop-legacy:
     dependencies:
       '@ai-sdk/react':
         specifier: ^4.0.170
