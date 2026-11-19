@@ -27,10 +27,9 @@ jobs:
         with:
           node-version: "24"
 
+      # Do not set "version" here — package.json packageManager field pins pnpm@12.18.0
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Get pnpm store directory
         shell: bash
