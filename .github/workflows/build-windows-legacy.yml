@@ -1,0 +1,83 @@
+name: Build Windows (Legacy Tauri)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - windows-experimental-build
+    paths:
+      - "apps/desktop-legacy/**"
+      - "crates/**"
+      - "packages/**"
+      - ".github/workflows/build-windows-legacy.yml"
+
+concurrency:
+  group: windows-legacy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            apps/desktop-legacy/src-tauri -> target
+          key: windows-legacy
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri app (Windows)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Skip updater signing for experimental builds
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          projectPath: apps/desktop-legacy
+          # NSIS = setup.exe installer, MSI = classic installer
+          args: --bundles nsis,msi --no-sign
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdit-windows-x64
+          path: |
+            apps/desktop-legacy/src-tauri/target/release/bundle/nsis/*
+            apps/desktop-legacy/src-tauri/target/release/bundle/msi/*
+            apps/desktop-legacy/src-tauri/target/release/mdit.exe
+          if-no-files-found: warn
+          retention-days: 14
