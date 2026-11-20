@@ -14,6 +14,7 @@
 		@apply border-border outline-ring/50 select-none;
 		overscroll-behavior: none;
 		scrollbar-width: thin;
+		scrollbar-color: color-mix(in oklab, var(--foreground) 22%, transparent) transparent;
 	}
 
 	html {
@@ -76,15 +77,16 @@
 		@apply overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)] [mask-repeat:no-repeat];
 	}
 
+	/* Soft fade only on the last few pixels so long lists still feel fully scrollable */
 	.mask-fade-bottom {
 		-webkit-mask-image: linear-gradient(
 			to bottom,
-			black calc(100% - 48px),
+			black calc(100% - 16px),
 			transparent
 		);
 		mask-image: linear-gradient(
 			to bottom,
-			black calc(100% - 32px),
+			black calc(100% - 12px),
 			transparent
 		);
 	}
