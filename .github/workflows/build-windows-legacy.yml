@@ -1,0 +1,105 @@
+name: Build Windows (Legacy Tauri)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - windows-experimental-build
+    paths:
+      - "apps/desktop-legacy/**"
+      - "crates/**"
+      - "packages/**"
+      - ".github/workflows/build-windows-legacy.yml"
+
+concurrency:
+  group: windows-legacy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+          key: windows-legacy
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri app (Windows)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          projectPath: apps/desktop-legacy
+          args: --bundles nsis,msi --no-sign
+          tagName: experimental-windows
+          releaseName: "Experimental Windows build"
+          releaseBody: |
+            **Unofficial / experimental Windows build of Mdit (legacy Tauri app).**
+
+            Built from branch `windows-experimental-build` for testing only.
+            Not signed. Windows may show SmartScreen warnings — that is expected.
+
+            ### Files
+            - `Mdit_*_x64-setup.exe` — recommended NSIS installer
+            - `Mdit_*_x64_en-US.msi` — MSI installer
+            - `mdit.exe` — portable binary (may need WebView2 runtime)
+
+            If something breaks, open an issue on your fork or report findings upstream.
+          releaseDraft: false
+          prerelease: true
+
+      - name: Locate built bundles
+        shell: bash
+        run: |
+          find . -type f \( -name "*.exe" -o -name "*.msi" \) 2>/dev/null | head -30 || true
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdit-windows-x64
+          path: |
+            target/release/bundle/nsis/**
+            target/release/bundle/msi/**
+            target/release/*.exe
+            apps/desktop-legacy/src-tauri/target/release/bundle/nsis/**
+            apps/desktop-legacy/src-tauri/target/release/bundle/msi/**
+            apps/desktop-legacy/src-tauri/target/release/*.exe
+          if-no-files-found: error
+          retention-days: 14

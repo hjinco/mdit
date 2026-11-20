@@ -37,7 +37,7 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": ["dmg", "app", "msi", "appimage"],
+		"targets": ["dmg", "app", "msi", "nsis", "appimage"],
 		"createUpdaterArtifacts": true,
 		"icon": [
 			"icons/32x32.png",

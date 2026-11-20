@@ -359,9 +359,9 @@ export function FileExplorer() {
 								workspaceExternalDropRef(node)
 							}}
 							data-explorer-drop-root={workspacePath ?? undefined}
-							className="min-h-0 flex-1 px-2 pb-4 pt-0.5 overflow-y-auto mask-fade-bottom"
+							className="min-h-0 flex-1 px-1.5 pb-6 pt-1 overflow-y-auto overscroll-contain mask-fade-bottom"
 						>
-							<ul className="space-y-0.5">
+							<ul className="space-y-1">
 								{pendingNewFolderPath === workspacePath && workspacePath && (
 									<RootNewFolderInput
 										onSubmit={handleNewFolderSubmit}
