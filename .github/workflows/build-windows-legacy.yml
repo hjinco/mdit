@@ -52,7 +52,6 @@ jobs:
         with:
           workspaces: |
             . -> target
-            apps/desktop-legacy/src-tauri -> target
           key: windows-legacy
 
       - name: Install frontend dependencies
@@ -62,21 +61,32 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Skip updater signing for experimental builds
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           projectPath: apps/desktop-legacy
-          # NSIS = setup.exe installer, MSI = classic installer
           args: --bundles nsis,msi --no-sign
+
+      - name: Locate built bundles
+        shell: bash
+        run: |
+          echo "=== Searching for Windows installers / exe ==="
+          find . -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.nsis.zip" \) 2>/dev/null | head -50 || true
+          echo "=== target/release/bundle ==="
+          ls -laR target/release/bundle 2>/dev/null || true
+          echo "=== apps/desktop-legacy/src-tauri/target ==="
+          ls -laR apps/desktop-legacy/src-tauri/target/release/bundle 2>/dev/null || true
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mdit-windows-x64
           path: |
-            apps/desktop-legacy/src-tauri/target/release/bundle/nsis/*
-            apps/desktop-legacy/src-tauri/target/release/bundle/msi/*
-            apps/desktop-legacy/src-tauri/target/release/mdit.exe
-          if-no-files-found: warn
+            target/release/bundle/nsis/**
+            target/release/bundle/msi/**
+            target/release/*.exe
+            apps/desktop-legacy/src-tauri/target/release/bundle/nsis/**
+            apps/desktop-legacy/src-tauri/target/release/bundle/msi/**
+            apps/desktop-legacy/src-tauri/target/release/*.exe
+          if-no-files-found: error
           retention-days: 14
